@@ -13,3 +13,4 @@ export {
   splitByPosition,
   type ColumnTypeName,
 } from './columns';
+export { duplicateRows, FILTER_OPS, fillRows, filterRows, headerNames, promoteHeaders, removeBlankRows, removeRows, sortRows, type FilterOp } from './rows';
