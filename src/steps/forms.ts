@@ -38,6 +38,8 @@ export interface DefaultsContext {
   firstRow?: Record<string, string | null>;
   /** Date formats detected on a column, for forms that ask for it with `detectsDates`. */
   dates?: Detection;
+  /** The project locale's decimal mark. */
+  decimal?: '.' | ',';
 }
 
 /** The editor side of a step type: its name in the Add step menu, its group, its form and its defaults. */
@@ -74,6 +76,9 @@ export function labelFor(step: Pick<Step, 'type' | 'params' | 'label' | 'customL
   if (def && parsed?.success) return def.label(parsed.data);
   return stepForm(step.type)?.title ?? step.label;
 }
+
+/** The same step with its label recomputed from its settings, unless it was renamed. */
+export const relabel = (step: Step): Step => ({ ...step, label: labelFor(step) });
 
 /** A new step of this type with defaults drawn from the selected columns. */
 export function newStep(type: string, ctx: DefaultsContext): Step {
