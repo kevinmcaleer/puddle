@@ -17,6 +17,10 @@ npm test           # unit tests, plus engine tests on real DuckDB-WASM (Node bui
 npm run e2e        # Playwright against a production build (run `npx playwright install chromium` once)
 ```
 
+## Tests
+
+Every feature ships with its own tests, and every bug fix with a regression test, so later changes can't silently break earlier work. CI (`.github/workflows/ci.yml`) runs lint, typecheck, the unit and engine tests, and the Playwright suite on every pull request.
+
 ## Layout
 
 | Path | What lives there |
