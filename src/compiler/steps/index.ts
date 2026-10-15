@@ -1,2 +1,15 @@
 export { defineStep, stepDef, stepParams, stepTypes, type StepContext, type StepDef } from './registry';
 export { changeCase, removeColumns, renameColumns, trimWhitespace } from './basic';
+export {
+  addColumn,
+  addIndex,
+  changeType,
+  COLUMN_TYPES,
+  duplicateColumn,
+  expressionProblem,
+  mergeColumns,
+  reorderColumns,
+  splitByDelimiter,
+  splitByPosition,
+  type ColumnTypeName,
+} from './columns';

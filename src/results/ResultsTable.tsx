@@ -127,7 +127,7 @@ function Grid({ engine, project, target, columns }: { engine: EngineClient; proj
 
   const rows = total ?? loaded;
   return (
-    <div className="h-full w-full" data-testid="results-table" data-rows={total ?? ''} data-loaded={loaded} data-selected={selection.columns.toArray().map((i) => columns[i]?.name).join(',')}>
+    <div className="h-full w-full" data-testid="results-table" data-columns={columns.map((c) => c.name).join(',')} data-rows={total ?? ''} data-loaded={loaded} data-selected={selection.columns.toArray().map((i) => columns[i]?.name).join(',')}>
       <DataEditor
         columns={gridColumns}
         rows={rows}

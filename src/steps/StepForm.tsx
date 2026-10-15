@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import type { ColumnSchema } from '../model';
 import { Button, columnKind, cx, Field, Select, Switch, TextInput, TypeTag } from '../ui';
+import { ExpressionInput } from './ExpressionInput';
 import { fieldErrors, stepForm, type FieldSpec } from './forms';
 
 type Params = Record<string, unknown>;
@@ -84,6 +85,24 @@ function FieldInput({ field, value, columns, error, onChange }: { field: FieldSp
       return <Select id={id} options={field.options} value={String(value ?? '')} onChange={(e) => onChange(e.target.value)} />;
     case 'switch':
       return <Switch id={id} label={field.label} checked={!!value} onChange={onChange} />;
+    case 'list': {
+      const items = Array.isArray(value) ? value.map(String) : [];
+      return (
+        <CommitInput
+          key={items.join(',')}
+          id={id}
+          mono
+          error={!!error}
+          value={items.join(', ')}
+          onCommit={(v) => {
+            const parts = v.split(',').map((x) => x.trim()).filter(Boolean);
+            onChange(field.of === 'number' ? parts.map(Number) : parts);
+          }}
+        />
+      );
+    }
+    case 'expression':
+      return <ExpressionInput key={String(value ?? '')} id={id} value={String(value ?? '')} columns={columns} error={!!error} onCommit={onChange} />;
     case 'renames':
       return <Renames value={Array.isArray(value) ? (value as { from: string; to: string }[]) : []} columns={columns} onChange={onChange} />;
   }

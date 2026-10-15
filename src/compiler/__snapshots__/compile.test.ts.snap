@@ -50,6 +50,24 @@ exports[`sources > tsv with {} 1`] = `"read_csv('src_x.tsv', delim = '	')"`;
 
 exports[`sources > xlsx with {} 1`] = `""src_x""`;
 
+exports[`step snapshots > addColumn {"name":"domain","expression":"split_part(email, '@', 2)"} 1`] = `
+"WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv')),
+  "n_clean_s0" AS (SELECT *, (split_part(email, '@', 2)) AS "domain" FROM "n_src")
+SELECT * FROM "n_clean_s0""
+`;
+
+exports[`step snapshots > addIndex {"name":"row","start":0} 1`] = `
+"WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv')),
+  "n_clean_s0" AS (SELECT row_number() OVER () - 1 AS "row", * FROM "n_src")
+SELECT * FROM "n_clean_s0""
+`;
+
+exports[`step snapshots > addIndex {"name":"row","start":1} 1`] = `
+"WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv')),
+  "n_clean_s0" AS (SELECT row_number() OVER () AS "row", * FROM "n_src")
+SELECT * FROM "n_clean_s0""
+`;
+
 exports[`step snapshots > changeCase {"columns":["name"],"mode":"lower"} 1`] = `
 "WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv')),
   "n_clean_s0" AS (SELECT * REPLACE (lower("name") AS "name") FROM "n_src")
@@ -74,6 +92,30 @@ exports[`step snapshots > changeCase {"columns":["name"],"mode":"upper"} 1`] = `
 SELECT * FROM "n_clean_s0""
 `;
 
+exports[`step snapshots > changeType {"columns":["id"],"to":"text","onError":"empty"} 1`] = `
+"WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv')),
+  "n_clean_s0" AS (SELECT * REPLACE (TRY_CAST("id" AS VARCHAR) AS "id") FROM "n_src")
+SELECT * FROM "n_clean_s0""
+`;
+
+exports[`step snapshots > changeType {"columns":["joined","id"],"to":"date","onError":"fail"} 1`] = `
+"WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv')),
+  "n_clean_s0" AS (SELECT * REPLACE (CAST("joined" AS DATE) AS "joined", CAST("id" AS DATE) AS "id") FROM "n_src")
+SELECT * FROM "n_clean_s0""
+`;
+
+exports[`step snapshots > duplicateColumn {"column":"email","into":"email copy"} 1`] = `
+"WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv')),
+  "n_clean_s0" AS (SELECT *, "email" AS "email copy" FROM "n_src")
+SELECT * FROM "n_clean_s0""
+`;
+
+exports[`step snapshots > mergeColumns {"columns":["name","email"],"separator":" <","into":"contact","keepOriginals":false} 1`] = `
+"WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv')),
+  "n_clean_s0" AS (SELECT * EXCLUDE ("name", "email"), concat_ws(' <', CAST("name" AS VARCHAR), CAST("email" AS VARCHAR)) AS "contact" FROM "n_src")
+SELECT * FROM "n_clean_s0""
+`;
+
 exports[`step snapshots > removeColumns {"columns":["email"]} 1`] = `
 "WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv')),
   "n_clean_s0" AS (SELECT * EXCLUDE ("email") FROM "n_src")
@@ -83,6 +125,30 @@ SELECT * FROM "n_clean_s0""
 exports[`step snapshots > renameColumns {"renames":[{"from":"name","to":"full_name"},{"from":"joined","to":"joined_on"}]} 1`] = `
 "WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv')),
   "n_clean_s0" AS (SELECT * RENAME ("name" AS "full_name", "joined" AS "joined_on") FROM "n_src")
+SELECT * FROM "n_clean_s0""
+`;
+
+exports[`step snapshots > reorderColumns {"columns":["email","id"]} 1`] = `
+"WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv')),
+  "n_clean_s0" AS (SELECT "email", "id", * EXCLUDE ("email", "id") FROM "n_src")
+SELECT * FROM "n_clean_s0""
+`;
+
+exports[`step snapshots > splitByDelimiter {"column":"email","delimiter":"@","into":["user","domain"],"keepOriginal":false} 1`] = `
+"WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv')),
+  "n_clean_s0" AS (SELECT * EXCLUDE ("email"), string_split(CAST("email" AS VARCHAR), '@')[1] AS "user", string_split(CAST("email" AS VARCHAR), '@')[2] AS "domain" FROM "n_src")
+SELECT * FROM "n_clean_s0""
+`;
+
+exports[`step snapshots > splitByDelimiter {"column":"name","delimiter":"'","into":["a"],"keepOriginal":true} 1`] = `
+"WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv')),
+  "n_clean_s0" AS (SELECT *, string_split(CAST("name" AS VARCHAR), '''')[1] AS "a" FROM "n_src")
+SELECT * FROM "n_clean_s0""
+`;
+
+exports[`step snapshots > splitByPosition {"column":"joined","positions":[4,7],"into":["year","dash_month","dash_day"],"keepOriginal":true} 1`] = `
+"WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv')),
+  "n_clean_s0" AS (SELECT *, substr(CAST("joined" AS VARCHAR), 1, 4) AS "year", substr(CAST("joined" AS VARCHAR), 5, 3) AS "dash_month", substr(CAST("joined" AS VARCHAR), 8) AS "dash_day" FROM "n_src")
 SELECT * FROM "n_clean_s0""
 `;
 

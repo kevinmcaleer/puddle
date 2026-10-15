@@ -9,7 +9,11 @@ export type FieldSpec =
   | { key: string; label: string; kind: 'number'; hint?: string; min?: number }
   | { key: string; label: string; kind: 'select'; hint?: string; options: { value: string; label: string }[] }
   | { key: string; label: string; kind: 'switch'; hint?: string }
-  | { key: string; label: string; kind: 'renames'; hint?: string };
+  | { key: string; label: string; kind: 'renames'; hint?: string }
+  /** A comma-separated list of names or whole numbers. */
+  | { key: string; label: string; kind: 'list'; of: 'text' | 'number'; hint?: string }
+  /** A DuckDB SQL expression, with the step's columns offered for insertion. */
+  | { key: string; label: string; kind: 'expression'; hint?: string };
 
 export type StepGroup = 'Clean' | 'Columns' | 'Rows' | 'Text' | 'Dates';
 

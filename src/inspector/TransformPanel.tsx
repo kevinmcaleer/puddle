@@ -15,9 +15,9 @@ import {
   type Step,
   type TransformNode,
 } from '../model';
-import { labelFor, newStep, stepForms, type StepGroup } from '../steps';
+import { fieldErrors, labelFor, newStep, stepForms, type StepGroup } from '../steps';
 import { CommitInput, StepForm } from '../steps/StepForm';
-import { Button, Field, Menu, Section, StepList, Switch, type MenuItem } from '../ui';
+import { Banner, Button, Field, Menu, Section, StepList, Switch, type MenuItem } from '../ui';
 import { useStepColumns, useStepErrors } from './useStepColumns';
 
 const GROUPS: StepGroup[] = ['Clean', 'Columns', 'Rows', 'Text', 'Dates'];
@@ -49,7 +49,7 @@ function AddStepMenu({ node, after }: { node: TransformNode; after: number }) {
   return <Menu label="Add step" button={{ variant: 'ghost', size: 'sm', icon: 'plus' }} items={items} />;
 }
 
-function StepSettings({ node, index }: { node: TransformNode; index: number }) {
+function StepSettings({ node, index, error }: { node: TransformNode; index: number; error?: string }) {
   const project = useProject();
   const step = node.steps[index]!;
   const columns = useStepColumns(project, node.id, index);
@@ -69,6 +69,12 @@ function StepSettings({ node, index }: { node: TransformNode; index: number }) {
           />
         </Field>
         <Switch id="step-enabled" label="Enabled" checked={step.enabled} onChange={(enabled) => update({ enabled })} />
+        {/* Settings mistakes show on their fields; this is for what only running the step finds. */}
+        {error && !Object.keys(fieldErrors(step)).length && (
+          <Banner tone="fail" title="This step can’t run">
+            {error}
+          </Banner>
+        )}
         <StepForm type={step.type} params={step.params} columns={columns} onChange={(params) => update({ params, label: labelFor({ ...step, params }) })} />
         <div className="flex flex-wrap gap-2">
           {index > 0 && (
@@ -135,7 +141,7 @@ export function TransformPanel({ node }: { node: TransformNode }) {
           <p className="text-ink-muted">No steps yet. Add one, or select columns in the results table and use a quick fix.</p>
         )}
       </Section>
-      {selected >= 0 && <StepSettings node={node} index={selected} />}
+      {selected >= 0 && <StepSettings node={node} index={selected} error={errors[selected]} />}
       <Section title="Notes">
         <textarea
           key={node.notes ?? ''}
