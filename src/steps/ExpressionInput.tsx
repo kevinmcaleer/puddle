@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useLayoutEffect, useRef, useState } from 'react';
 import type { ColumnSchema } from '../model';
 import { columnKind, cx, TypeTag } from '../ui';
 import { insertColumn, suggest, wordAt } from './expression';
@@ -25,6 +25,13 @@ export function ExpressionInput({
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(0);
   const ref = useRef<HTMLTextAreaElement>(null);
+  // Where to put the caret after inserting a column. Set before the next keystroke can land, not a frame later.
+  const pendingCaret = useRef<number | null>(null);
+  useLayoutEffect(() => {
+    if (pendingCaret.current == null) return;
+    ref.current?.setSelectionRange(pendingCaret.current, pendingCaret.current);
+    pendingCaret.current = null;
+  });
   const matches = open ? suggest(columns, wordAt(draft, caret).word) : [];
 
   const pick = (column: string) => {
@@ -32,7 +39,7 @@ export function ExpressionInput({
     setDraft(next.text);
     setCaret(next.caret);
     setOpen(false);
-    requestAnimationFrame(() => ref.current?.setSelectionRange(next.caret, next.caret));
+    pendingCaret.current = next.caret;
   };
 
   return (
