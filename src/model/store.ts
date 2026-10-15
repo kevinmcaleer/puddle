@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { canRedo, canUndo, initHistory, pushHistory, redo, undo, type History } from './history';
 import { createProject } from './project';
-import type { Project } from './schema';
+import type { Project, ProjectView } from './schema';
 
 export interface ProjectState {
   history: History<Project>;
@@ -9,6 +9,10 @@ export interface ProjectState {
   apply: (edit: (p: Project) => Project) => void;
   /** Replace the project without an undo step (open, import). */
   load: (p: Project) => void;
+  /** Change what the results table views. Not an undoable edit. */
+  setView: (view: Partial<ProjectView>) => void;
+  /** Record derived facts (such as a source's detected schema) without adding an undo step. */
+  amend: (edit: (p: Project) => Project) => void;
   undo: () => void;
   redo: () => void;
   canUndo: () => boolean;
@@ -24,6 +28,13 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       return { history: pushHistory(history, { ...next, updatedAt: new Date().toISOString() }) };
     }),
   load: (p) => set({ history: initHistory(p) }),
+  setView: (view) =>
+    set(({ history }) => ({ history: { ...history, present: { ...history.present, view: { ...history.present.view, ...view } } } })),
+  amend: (edit) =>
+    set(({ history }) => {
+      const next = edit(history.present);
+      return next === history.present ? {} : { history: { ...history, present: next } };
+    }),
   undo: () => set(({ history }) => ({ history: undo(history) })),
   redo: () => set(({ history }) => ({ history: redo(history) })),
   canUndo: () => canUndo(get().history),

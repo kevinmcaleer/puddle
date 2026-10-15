@@ -19,3 +19,23 @@ describe('project store', () => {
     expect(useProjectStore.getState().history.past.length).toBe(past);
   });
 });
+
+describe('view and derived facts', () => {
+  it('changes the view without an undo step', () => {
+    const past = useProjectStore.getState().history.past.length;
+    useProjectStore.getState().setView({ viewedNodeId: 'x', viewedStepIndex: 2 });
+    const { history } = useProjectStore.getState();
+    expect(history.present.view).toMatchObject({ viewedNodeId: 'x', viewedStepIndex: 2 });
+    expect(history.past.length).toBe(past);
+  });
+
+  it('amends the present without an undo step, and keeps it when nothing changes', () => {
+    const past = useProjectStore.getState().history.past.length;
+    useProjectStore.getState().amend((p) => ({ ...p, notes: 'derived' }));
+    expect(useProjectStore.getState().history.present.notes).toBe('derived');
+    expect(useProjectStore.getState().history.past.length).toBe(past);
+    const before = useProjectStore.getState().history;
+    useProjectStore.getState().amend((p) => p);
+    expect(useProjectStore.getState().history).toBe(before);
+  });
+});

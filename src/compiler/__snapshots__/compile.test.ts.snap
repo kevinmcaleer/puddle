@@ -29,6 +29,13 @@ exports[`compile > quotes awkward column and node names 1`] = `
 SELECT * FROM "n_t_s0""
 `;
 
+exports[`results table queries > profiles through SUMMARIZE 1`] = `
+"SELECT column_name, CAST(null_percentage AS DOUBLE) AS null_pct, approx_unique FROM (SUMMARIZE SELECT * FROM (WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv')),
+  "n_clean_s0" AS (SELECT * REPLACE (trim("name") AS "name") FROM "n_src"),
+  "n_clean_s1" AS (SELECT * REPLACE (list_aggr(list_transform(string_split("name", ' '), w -> upper(left(w, 1)) || lower(substr(w, 2))), 'string_agg', ' ') AS "name") FROM "n_clean_s0")
+SELECT * FROM "n_clean_s1"))"
+`;
+
 exports[`sources > csv with {"delimiter":";","header":true,"quote":"\\"","encoding":"latin-1","nullStrings":["N/A",""]} 1`] = `"read_csv('src_x.csv', delim = ';', header = true, quote = '"', encoding = 'latin-1', nullstr = ['N/A', ''])"`;
 
 exports[`sources > csv with {} 1`] = `"read_csv('src_x.csv')"`;
