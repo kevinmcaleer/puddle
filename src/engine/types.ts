@@ -3,7 +3,7 @@ import type { Table } from 'apache-arrow';
 /** Preview queries run first; profiling and rule queries wait behind them and yield to them. */
 export type Priority = 'preview' | 'background';
 
-export type BundleName = 'mvp' | 'eh' | 'coi';
+export type BundleName = 'mvp' | 'eh';
 
 export interface ColumnSchema {
   name: string;
@@ -49,5 +49,17 @@ export interface DuckBackend {
   /** Register small in-memory content (clipboard text, fixtures). */
   registerBuffer(name: string, data: Uint8Array): Promise<void>;
   dropFile(name: string): Promise<void>;
+  /** A file for COPY ... TO to write into, handed back as a Blob once written. */
+  openOutput(name: string): Promise<OutputFile>;
   close(): Promise<void>;
+}
+
+/** Where an export is written: DuckDB's in-memory file system in the browser, a temp folder in Node tests. */
+export interface OutputFile {
+  /** The path to give COPY ... TO. */
+  path: string;
+  /** Close the file and return its contents. */
+  finish(): Promise<Blob>;
+  /** Close and remove the file after a failed write. */
+  discard(): Promise<void>;
 }

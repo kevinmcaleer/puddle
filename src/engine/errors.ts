@@ -39,7 +39,7 @@ export function toEngineError(e: unknown): EngineError {
   if (/interrupt/i.test(raw)) return new EngineError('cancelled', 'The query was cancelled.', raw);
   if (/^Parser Error/i.test(line)) return new EngineError('syntax', `The SQL couldn't be read: ${body}. Check the expression for typos.`, raw);
   const ext = /exists in the (\w+) extension/i.exec(raw) ?? /extension "?(\w+)"? (?:is not|not) (?:installed|loaded|found)/i.exec(raw);
-  if (ext) return new EngineError('missing-extension', `Reading this needs DuckDB's ${ext[1]} extension, which couldn't be loaded. Check your connection and try again.`, raw);
+  if (ext) return new EngineError('missing-extension', `This needs DuckDB's ${ext[1]} extension, which couldn't be loaded. Check your connection and try again.`, raw);
   if (/^(Binder|Catalog) Error/i.test(line)) {
     const col = /column "?([^"\s]+)"? not found/i.exec(raw) ?? /Referenced column "?([^"\s]+)"?/i.exec(raw);
     if (col) return new EngineError('missing', `Column ${col[1]} doesn't exist at this point in the flow. Pick a column that exists upstream.`, raw);

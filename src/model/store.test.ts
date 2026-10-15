@@ -1,3 +1,4 @@
+import { logExport } from './exports';
 import { useProjectStore } from './store';
 
 describe('project store', () => {
@@ -47,5 +48,16 @@ describe('view and derived facts', () => {
     const before = useProjectStore.getState().history;
     useProjectStore.getState().amend((p) => p);
     expect(useProjectStore.getState().history).toBe(before);
+  });
+
+  it('keeps the export log through undo and redo: an export happened either way', () => {
+    const s = useProjectStore.getState();
+    s.apply((p) => ({ ...p, name: 'Before export' }));
+    useProjectStore.getState().amend((p) => logExport(p, { at: '2026-10-15T00:00:00Z', nodeId: 'o', nodeName: 'Out', format: 'csv', fileName: 'Out.csv', rows: 3 }, 'x1'));
+    useProjectStore.getState().undo();
+    expect(useProjectStore.getState().history.present.name).not.toBe('Before export');
+    expect(useProjectStore.getState().history.present.exportLog.map((e) => e.id)).toEqual(['x1']);
+    useProjectStore.getState().redo();
+    expect(useProjectStore.getState().history.present.exportLog.map((e) => e.id)).toEqual(['x1']);
   });
 });

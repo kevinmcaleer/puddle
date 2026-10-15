@@ -50,7 +50,24 @@ export function QuickFixBar({ fixes, onFix }: { fixes: Array<string | QuickFix>;
   );
 }
 
-export function ResultsBar({ title, kind = 'transform', pinned, children, onExport }: { title: ReactNode; kind?: NodeKind; pinned?: boolean; children?: ReactNode; onExport?: () => void }) {
+export function ResultsBar({
+  title,
+  kind = 'transform',
+  pinned,
+  children,
+  onExport,
+  exportLabel = 'Export',
+  action,
+}: {
+  title: ReactNode;
+  kind?: NodeKind;
+  pinned?: boolean;
+  children?: ReactNode;
+  onExport?: () => void;
+  exportLabel?: string;
+  /** Replaces the plain Export button, e.g. with one that knows about the quality gate. */
+  action?: ReactNode;
+}) {
   return (
     <div className={cx('ui-resultsbar', pinned && 'is-pinned')}>
       <div className="ui-resultsbar__title">
@@ -59,8 +76,9 @@ export function ResultsBar({ title, kind = 'transform', pinned, children, onExpo
         {pinned && (
           <span className="ui-pinned"><Icon name="pin" size={14} />Pinned</span>
         )}
-        {onExport && (
-          <Button size="sm" icon="export" variant={kind === 'output' ? 'primary' : 'secondary'} onClick={onExport}>Export</Button>
+        {action}
+        {!action && onExport && (
+          <Button size="sm" icon="export" variant={kind === 'output' ? 'primary' : 'secondary'} onClick={onExport}>{exportLabel}</Button>
         )}
       </div>
       {children}
