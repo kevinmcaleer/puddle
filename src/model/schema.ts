@@ -127,6 +127,18 @@ export const ProjectViewZ = z.object({
   canvasViewport: z.object({ x: z.number(), y: z.number(), zoom: z.number().positive() }).default({ x: 0, y: 0, zoom: 1 }),
 });
 
+/** One export from an Output node, kept with the project; an override names the failing rules it went past. */
+export const ExportLogEntryZ = z.object({
+  id: z.string().min(1),
+  at: z.string(),
+  nodeId: z.string().min(1),
+  nodeName: z.string(),
+  format: OutputSpecZ.shape.format,
+  fileName: z.string(),
+  rows: z.number().int().nonnegative(),
+  overridden: z.array(z.object({ nodeName: z.string(), rule: z.string() })).optional(),
+});
+
 export const ProjectZ = z.object({
   id: z.string().min(1),
   name: z.string(),
@@ -139,7 +151,11 @@ export const ProjectZ = z.object({
   nodes: z.array(NodeZ).default([]),
   edges: z.array(EdgeZ).default([]),
   view: ProjectViewZ.default({ pinned: false, canvasViewport: { x: 0, y: 0, zoom: 1 } }),
+  /** Newest first, at most EXPORT_LOG_LIMIT entries. Not part of undo: an export happened either way. */
+  exportLog: z.array(ExportLogEntryZ).default([]),
 });
+
+export const EXPORT_LOG_LIMIT = 50;
 
 export type ColumnSchema = z.infer<typeof ColumnSchemaZ>;
 export type SourceFormat = z.infer<typeof SourceFormatZ>;
@@ -157,3 +173,4 @@ export type Edge = z.infer<typeof EdgeZ>;
 export type ProjectSettings = z.infer<typeof ProjectSettingsZ>;
 export type ProjectView = z.infer<typeof ProjectViewZ>;
 export type Project = z.infer<typeof ProjectZ>;
+export type ExportLogEntry = z.infer<typeof ExportLogEntryZ>;

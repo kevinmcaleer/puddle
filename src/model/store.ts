@@ -19,6 +19,9 @@ export interface ProjectState {
   canRedo: () => boolean;
 }
 
+const keepLog = (h: History<Project>, from: Project): History<Project> =>
+  h.present.exportLog === from.exportLog ? h : { ...h, present: { ...h.present, exportLog: from.exportLog } };
+
 export const useProjectStore = create<ProjectState>((set, get) => ({
   history: initHistory(createProject()),
   apply: (edit) =>
@@ -40,8 +43,9 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       const next = edit(history.present);
       return next === history.present ? {} : { history: { ...history, present: next } };
     }),
-  undo: () => set(({ history }) => ({ history: undo(history) })),
-  redo: () => set(({ history }) => ({ history: redo(history) })),
+  // The export log records what happened, so undo and redo keep the latest one.
+  undo: () => set(({ history }) => ({ history: keepLog(undo(history), history.present) })),
+  redo: () => set(({ history }) => ({ history: keepLog(redo(history), history.present) })),
   canUndo: () => canUndo(get().history),
   canRedo: () => canRedo(get().history),
 }));

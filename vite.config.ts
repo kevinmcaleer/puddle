@@ -2,7 +2,8 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 
-// Cross-origin isolation unlocks DuckDB's multi-threaded `coi` bundle (plan D1, D13).
+// Cross-origin isolation (plan D1, D13). The multi-threaded `coi` bundle it unlocks is off for now (see
+// src/engine/browser.ts); the headers stay so it can return without a hosting change.
 // Production sets the same headers in public/_headers.
 const isolationHeaders = {
   'Cross-Origin-Opener-Policy': 'same-origin',

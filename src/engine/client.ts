@@ -1,7 +1,7 @@
 import type { Table } from 'apache-arrow';
 import { EngineError, toEngineError } from './errors';
 import { Scheduler } from './scheduler';
-import type { ColumnSchema, DuckBackend, EngineInfo, QueryOptions, QueryResult } from './types';
+import type { ColumnSchema, DuckBackend, EngineInfo, OutputFile, QueryOptions, QueryResult } from './types';
 
 const now = () => (typeof performance !== 'undefined' ? performance.now() : Date.now());
 
@@ -71,6 +71,28 @@ export class EngineClient {
       const table = await this.backend.query(`DESCRIBE ${sql}`, signal);
       return tableRows(table).map((r) => ({ name: String(r.column_name), type: String(r.column_type) }));
     }, opts);
+  }
+
+  /**
+   * Run a COPY ... TO into a new output file and return what it wrote: the file and DuckDB's row count.
+   * `sql` gets the path to write to. A failed or cancelled write leaves nothing behind.
+   */
+  async exportFile(name: string, sql: (path: string) => string, opts: QueryOptions = {}): Promise<{ blob: Blob; rows: number }> {
+    let out: OutputFile;
+    try {
+      out = await this.backend.openOutput(name);
+    } catch (e) {
+      throw toEngineError(e);
+    }
+    try {
+      const r = await this.query(sql(out.path), opts);
+      const count = r.table.numRows ? Object.values(r.table.get(0)?.toJSON() ?? {})[0] : 0;
+      const blob = await out.finish();
+      return { blob, rows: Number(count ?? 0) };
+    } catch (e) {
+      await out.discard().catch(() => undefined);
+      throw toEngineError(e);
+    }
   }
 
   async registerFile(name: string, file: File): Promise<void> {

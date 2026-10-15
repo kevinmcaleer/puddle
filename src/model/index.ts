@@ -9,3 +9,4 @@ export { addNode, addSource, moveNodes, nextNodeName, removeNodes, setCollapsed,
 export { useProject, useProjectStore, type ProjectState } from './store';
 export { placeStep, type Placed } from './quickfix';
 export { addRule, removeRule, updateRule } from './rules';
+export { logExport, setOutputSpec } from './exports';

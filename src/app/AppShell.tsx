@@ -8,6 +8,7 @@ import { openProjectDialog } from '../home/dialogs';
 import { exportProject, goHome, importProject } from '../persistence/workspace';
 import { QuickFixes } from '../quickfix/QuickFixes';
 import { showFailing } from '../rules';
+import { exportAll, ExportBlockedBanner, ExportButton } from '../export';
 import { ResultsTable } from '../results/ResultsTable';
 import { useResultsStore } from '../results/state';
 import { ACCEPT } from '../sources/detect';
@@ -65,7 +66,8 @@ function ResultsTitle() {
   const failing = project.view.failingRuleId ? node.rules.find((r) => r.id === project.view.failingRuleId) : undefined;
   const title = failing ? `${node.name} · failing ${failing.label}` : step == null ? node.name : `${node.name} · step ${step + 1}`;
   return (
-    <ResultsBar title={<span data-testid="results-title">{title}</span>} kind={kind}>
+    <ResultsBar title={<span data-testid="results-title">{title}</span>} kind={kind} action={node.type === 'output' && !failing ? <ExportButton node={node} /> : undefined}>
+      {node.type === 'output' && !failing && <ExportBlockedBanner node={node} className="px-3 pb-2" />}
       {failing ? (
         <div className="px-3 pb-2">
           <Button size="sm" variant="secondary" onClick={() => showFailing(node.id, undefined)}>
@@ -132,7 +134,7 @@ export function AppShell() {
             ]}
           />
           <Button variant="ghost" icon="layout" onClick={layoutFlow} disabled={!project.nodes.length}>Auto layout</Button>
-          <Button variant="ghost" icon="export">Export all</Button>
+          <Button variant="ghost" icon="export" disabled={!project.nodes.some((n) => n.type === 'output')} onClick={() => void exportAll()}>Export all</Button>
           <Button variant="ghost" icon="undo" iconOnly aria-label="Undo" title="Undo (Ctrl+Z)" disabled={!canUndo} onClick={undo} />
           <Button variant="ghost" icon="redo" iconOnly aria-label="Redo" title="Redo (Ctrl+Shift+Z)" disabled={!canRedo} onClick={redo} />
           <Button variant="ghost" icon="notes" iconOnly aria-label="Notes" />

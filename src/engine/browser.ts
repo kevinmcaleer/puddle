@@ -1,27 +1,41 @@
 import * as duckdb from '@duckdb/duckdb-wasm';
-import coiWorker from '@duckdb/duckdb-wasm/dist/duckdb-browser-coi.worker.js?url';
-import coiPthreadWorker from '@duckdb/duckdb-wasm/dist/duckdb-browser-coi.pthread.worker.js?url';
 import ehWorker from '@duckdb/duckdb-wasm/dist/duckdb-browser-eh.worker.js?url';
 import mvpWorker from '@duckdb/duckdb-wasm/dist/duckdb-browser-mvp.worker.js?url';
-import coiWasm from '@duckdb/duckdb-wasm/dist/duckdb-coi.wasm?url';
 import ehWasm from '@duckdb/duckdb-wasm/dist/duckdb-eh.wasm?url';
 import mvpWasm from '@duckdb/duckdb-wasm/dist/duckdb-mvp.wasm?url';
 import { Table, type RecordBatch } from 'apache-arrow';
 import { cancelled } from './errors';
-import type { BundleName, DuckBackend, EngineInfo } from './types';
+import type { BundleName, DuckBackend, EngineInfo, OutputFile } from './types';
 
+// The multi-threaded `coi` bundle is left out: its worker threads never receive files chosen in the browser, so
+// any file big enough to be scanned in parallel fails with "No HTML5 file registered" (DuckDB-WASM 1.33).
 const BUNDLES: duckdb.DuckDBBundles = {
   mvp: { mainModule: mvpWasm, mainWorker: mvpWorker },
   eh: { mainModule: ehWasm, mainWorker: ehWorker },
-  coi: { mainModule: coiWasm, mainWorker: coiWorker, pthreadWorker: coiPthreadWorker },
 };
 
-const bundleName = (b: duckdb.DuckDBBundle): BundleName => (b.mainModule === coiWasm ? 'coi' : b.mainModule === ehWasm ? 'eh' : 'mvp');
+const bundleName = (b: duckdb.DuckDBBundle): BundleName => (b.mainModule === ehWasm ? 'eh' : 'mvp');
 
 /**
- * DuckDB-WASM in a dedicated Web Worker. selectBundle picks `coi` (multi-threaded) when the page is
- * cross-origin isolated, `eh` otherwise, and `mvp` only on browsers without WASM exceptions.
+ * A file in DuckDB's in-memory file system, copied out once written. The rows never become JavaScript objects;
+ * the file is copied into a Blob once. (OPFS files can't be used: the multi-threaded bundle can't pass their
+ * write handles to its threads.)
  */
+function memoryOutput(db: duckdb.AsyncDuckDB, name: string): OutputFile {
+  return {
+    path: name,
+    async finish() {
+      const data = await db.copyFileToBuffer(name);
+      await db.dropFile(name);
+      return new Blob([data as Uint8Array<ArrayBuffer>]);
+    },
+    async discard() {
+      await db.dropFile(name).catch(() => undefined);
+    },
+  };
+}
+
+/** DuckDB-WASM in a dedicated Web Worker: `eh`, or `mvp` on browsers without WASM exceptions. */
 export async function createBrowserBackend(): Promise<DuckBackend> {
   const bundle = await duckdb.selectBundle(BUNDLES);
   const worker = new Worker(bundle.mainWorker!);
@@ -69,6 +83,7 @@ export async function createBrowserBackend(): Promise<DuckBackend> {
     dropFile: async (name) => {
       await db.dropFile(name);
     },
+    openOutput: async (name) => memoryOutput(db, name),
     async close() {
       await conn.close();
       await db.terminate();
