@@ -4,6 +4,8 @@ import { Canvas } from '../canvas/Canvas';
 import { useFlowEvaluation } from '../flow/useFlowEvaluation';
 import { Inspector } from '../inspector/Inspector';
 import { nodeById, useProject, useProjectStore } from '../model';
+import { openProjectDialog } from '../home/dialogs';
+import { exportProject, goHome, importProject } from '../persistence/workspace';
 import { ResultsTable } from '../results/ResultsTable';
 import { useResultsStore } from '../results/state';
 import { ACCEPT } from '../sources/detect';
@@ -82,12 +84,21 @@ export function AppShell() {
   useFlowEvaluation();
   useShortcuts();
 
+  const importInput = useRef<HTMLInputElement>(null);
   const chooseFiles = () => fileInput.current?.click();
 
   return (
     <ReactFlowProvider>
       <div className="grid h-full min-w-[960px] grid-rows-[auto_minmax(0,1fr)_auto_auto] bg-surface-panel text-body text-ink">
-        <Toolbar project={project.name}>
+        <Toolbar
+          project={project.name}
+          projectMenu={[
+            { label: 'Rename', icon: 'text', onSelect: () => openProjectDialog({ kind: 'rename', id: project.id, name: project.name }) },
+            { label: 'Export project', icon: 'export', hint: '.puddle.json', onSelect: exportProject },
+            { label: 'Import project', icon: 'source', onSelect: () => importInput.current?.click() },
+            { label: 'All projects', icon: 'layout', onSelect: () => void goHome() },
+          ]}
+        >
           <Menu
             label="Add source"
             button={{ variant: 'primary', icon: 'plus' }}
@@ -119,6 +130,18 @@ export function AppShell() {
             onClick={theme.cycle}
           />
         </Toolbar>
+        <input
+          ref={importInput}
+          type="file"
+          accept=".json,application/json"
+          hidden
+          data-testid="import-input"
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            e.target.value = '';
+            if (file) void importProject(file);
+          }}
+        />
         <input
           ref={fileInput}
           type="file"

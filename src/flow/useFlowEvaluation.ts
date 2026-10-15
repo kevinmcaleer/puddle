@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { useEngineStore } from '../app/engine';
 import { updateSource, useProject, useProjectStore } from '../model';
+import { useAttachments } from '../sources/attachments';
 import { evaluateFlow, useFlowStore } from './status';
 
 /**
@@ -10,10 +11,11 @@ import { evaluateFlow, useFlowStore } from './status';
 export function useFlowEvaluation() {
   const project = useProject();
   const engine = useEngineStore((s) => s.engine);
+  const attachments = useAttachments((s) => s.sources);
 
   useEffect(() => {
     if (!engine) return;
-    void evaluateFlow(engine, project).then(() => {
+    void evaluateFlow(engine, project, (id) => (attachments[id] ?? 'detached') === 'detached').then(() => {
       const statuses = useFlowStore.getState().nodes;
       useProjectStore.getState().amend((p) => {
         let next = p;
@@ -27,5 +29,5 @@ export function useFlowEvaluation() {
         return next;
       });
     });
-  }, [engine, project]);
+  }, [engine, project, attachments]);
 }

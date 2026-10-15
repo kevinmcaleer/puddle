@@ -2,9 +2,12 @@ import { useState } from 'react';
 import { useSession } from '../app/session';
 import { useNodeStatus } from '../flow/status';
 import { formatLabel } from '../canvas/formatLabel';
-import { nodeById, setParseOptions, useProject, useProjectStore, type ParseOptions, type Source } from '../model';
+import { nodeById, setParseOptions, useProject, useProjectStore, type ParseOptions, type ProjectSettings as ProjectSettingsT, type Source } from '../model';
 import { Banner, columnKind, Field, Icon, NODE_KIND, Section, Select, StepList, Switch, TextInput, TypeTag } from '../ui';
-import { DELIMITERS, delimiterValue, ENCODINGS, hasParseOptions, parseNullStrings, withOption } from './options';
+import { useAttachments } from '../sources/attachments';
+import { detachedMessage } from '../sources/attach';
+import { ReattachButton } from '../sources/ReattachButton';
+import { DELIMITERS, delimiterValue, ENCODINGS, hasParseOptions, LOCALES, parseNullStrings, withOption } from './options';
 
 /** A text input that commits on Enter or blur, so typing doesn't add an undo step per key. Key it by value to reset. */
 function CommitInput({ id, value, onCommit, placeholder }: { id: string; value: string; onCommit: (v: string) => void; placeholder?: string }) {
@@ -48,6 +51,25 @@ function SourceOptions({ source }: { source: Source }) {
   );
 }
 
+/** A warning on a source whose file needs choosing again, or turned out different from the one it was built on. */
+function AttachmentBanner({ source }: { source: Source }) {
+  const state = useAttachments((s) => s.sources[source.id] ?? 'detached');
+  if (state === 'attached') return null;
+  return (
+    <div className="px-4 pt-3" data-testid="attachment-banner" data-state={state}>
+      {state === 'detached' ? (
+        <Banner tone="warn" title="File not connected" action={<ReattachButton source={source} />}>
+          {detachedMessage(source)}
+        </Banner>
+      ) : (
+        <Banner tone="warn" title="This file looks different" action={<ReattachButton source={source} label="Choose another" />}>
+          Its first megabyte doesn’t match the file this project was built on. The steps have re-run on it; check the results.
+        </Banner>
+      )}
+    </div>
+  );
+}
+
 function Columns({ nodeId }: { nodeId: string }) {
   const status = useNodeStatus(nodeId);
   if (status.state === 'error') return <div className="px-4 pb-4"><Banner tone="fail" title="This node can’t run">{status.message}</Banner></div>;
@@ -67,6 +89,42 @@ function Columns({ nodeId }: { nodeId: string }) {
   );
 }
 
+/** Settings for the whole project: when to sample, and how dates and numbers are read and shown. */
+function ProjectSettings() {
+  const settings = useProject().settings;
+  const apply = useProjectStore((s) => s.apply);
+  const set = (patch: Partial<ProjectSettingsT>) => apply((p) => ({ ...p, settings: { ...p.settings, ...patch } }));
+  return (
+    <Section title="Project settings">
+      <div className="flex flex-col gap-3" data-testid="project-settings">
+        <Field label="Sample above" htmlFor="set-sample" hint="Rows. Larger results are previewed from a sample.">
+          <CommitInput
+            key={settings.sampleThresholdRows}
+            id="set-sample"
+            value={String(settings.sampleThresholdRows)}
+            onCommit={(v) => {
+              const n = Number(v.replace(/[,\s_]/g, ''));
+              if (Number.isInteger(n) && n > 0) set({ sampleThresholdRows: n });
+            }}
+          />
+        </Field>
+        <Field label="Locale" htmlFor="set-locale" hint="How numbers and dates are written.">
+          <Select id="set-locale" options={LOCALES} value={settings.locale} onChange={(e) => set({ locale: e.target.value })} />
+        </Field>
+        <Field label="Date formats" htmlFor="set-dates" hint="Tried in order when text is read as a date, separated by commas.">
+          <CommitInput
+            key={settings.defaultDateFormats.join(',')}
+            id="set-dates"
+            value={settings.defaultDateFormats.join(', ')}
+            placeholder="%d/%m/%Y, %Y-%m-%d"
+            onCommit={(v) => set({ defaultDateFormats: parseNullStrings(v) })}
+          />
+        </Field>
+      </div>
+    </Section>
+  );
+}
+
 /** The right-hand panel: what the selected node is, how it reads or transforms data, and its columns. */
 export function Inspector() {
   const project = useProject();
@@ -75,9 +133,12 @@ export function Inspector() {
 
   if (!node)
     return (
-      <Section title="Inspector">
-        <p className="text-ink-muted">Select a node on the canvas to see its steps, settings and rules.</p>
-      </Section>
+      <>
+        <Section title="Inspector">
+          <p className="text-ink-muted">Select a node on the canvas to see its steps, settings and rules.</p>
+        </Section>
+        <ProjectSettings />
+      </>
     );
 
   const kind = NODE_KIND[node.type];
@@ -91,6 +152,7 @@ export function Inspector() {
           <div className="text-label text-ink-muted">{source ? `${kind.label} · ${formatLabel(source.format)}` : kind.label}</div>
         </div>
       </div>
+      {source && source.kind === 'file' && <AttachmentBanner source={source} />}
       {source && hasParseOptions(source) && <SourceOptions source={source} />}
       {node.type === 'transform' && (
         <Section title="Applied steps" count={node.steps.length}>

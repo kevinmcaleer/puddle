@@ -95,3 +95,17 @@ describe('results pages and profiles', () => {
     expect(nulls.map((r) => r.city)).toEqual(['Leeds', null, 'York']);
   });
 });
+
+describe('detached sources', () => {
+  it('marks a source whose file needs choosing again, and dims what reads from it', async () => {
+    await evaluateFlow(engine, chain(), (id) => id === 'cust');
+    expect(states()).toMatchObject({ in: 'detached', t: 'blocked', out: 'blocked', loose: 'unwired' });
+  });
+
+  it('re-checks every node once the file is attached again', async () => {
+    const p = chain();
+    await evaluateFlow(engine, p, () => true);
+    await evaluateFlow(engine, p, () => false);
+    expect(states()).toMatchObject({ in: 'ok', t: 'ok', out: 'ok' });
+  });
+});

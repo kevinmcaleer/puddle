@@ -31,7 +31,9 @@ Every feature ships with its own tests, and every bug fix with a regression test
 | `src/engine/` | DuckDB-WASM in a Web Worker and the typed `EngineClient` (priorities, cancellation, plain-word errors) |
 | `src/model/` | The project graph: Zod schemas, wiring rules, undo and redo |
 | `src/compiler/` | The pure graph-to-SQL compiler, step registry and schema cache |
-| `src/sources/` | Adding sources: format detection, file handles, clipboard text |
+| `src/sources/` | Adding sources: format detection, file handles, clipboard text, and choosing files again on reopen |
+| `src/persistence/` | IndexedDB autosave, `.puddle.json` export and import, format migrations |
+| `src/home/` | The projects home screen and the rename and delete dialogs |
 | `src/canvas/` | The node canvas on React Flow: nodes, wires, auto layout |
 | `src/flow/` | Each node's live status (columns, row count, broken, dimmed), kept in step with the project |
 | `src/inspector/` | The right-hand panel: node details and source read options |
