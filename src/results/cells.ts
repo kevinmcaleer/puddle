@@ -15,3 +15,9 @@ export function resultCell(value: string | null | undefined, kind: ColumnKind, n
 
 /** The italic, subtle look of a null, from the current grid theme. */
 export const nullTheme = (theme: { textLight: string; baseFontStyle: string }): Partial<Theme> => ({ textDark: theme.textLight, baseFontStyle: `italic ${theme.baseFontStyle}` });
+
+/** Failing cells: fail-tint under the value and a fail inset outline, read from the current theme's tokens. */
+export function failingCells(el: Element = document.documentElement) {
+  const cs = getComputedStyle(el);
+  return { tint: cs.getPropertyValue('--fail-tint').trim(), line: cs.getPropertyValue('--fail').trim() };
+}

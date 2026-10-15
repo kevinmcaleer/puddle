@@ -40,6 +40,41 @@ exports[`compile > quotes awkward column and node names 1`] = `
 SELECT * FROM "n_t_s0""
 `;
 
+exports[`quality rules > counts every rule’s failures over the node’s output in one query 1`] = `
+"SELECT count(*) AS total, count(*) FILTER (WHERE NOT coalesce("r0", false)) AS "f0", count(*) FILTER (WHERE NOT coalesce("r1", false)) AS "f1" FROM (SELECT (NOT (coalesce(trim(CAST("email" AS VARCHAR)), '') = '')) AS "r0", (("id" IS NULL) OR count(*) OVER (PARTITION BY "id") = 1) AS "r1" FROM (WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv')),
+  "n_clean_s0" AS (SELECT * REPLACE (trim("name") AS "name") FROM "n_src"),
+  "n_clean_s1" AS (SELECT * REPLACE (list_aggr(list_transform(string_split("name", ' '), w -> upper(left(w, 1)) || lower(substr(w, 2))), 'string_agg', ' ') AS "name") FROM "n_clean_s0")
+SELECT * FROM "n_clean_s1"))"
+`;
+
+exports[`quality rules > inRange {"column":"id","min":"1","max":"10"} 1`] = `""id" IS NULL OR ("id" >= '1' AND "id" <= '10')"`;
+
+exports[`quality rules > inRange {"column":"joined","min":"2020-01-01","max":""} 1`] = `""joined" IS NULL OR ("joined" >= '2020-01-01')"`;
+
+exports[`quality rules > inSet {"column":"name","values":["Ann","O'Neil"],"matchCase":true} 1`] = `""name" IS NULL OR CAST("name" AS VARCHAR) IN ('Ann', 'O''Neil')"`;
+
+exports[`quality rules > inSet {"column":"name","values":["Ann"],"matchCase":false} 1`] = `""name" IS NULL OR lower(CAST("name" AS VARCHAR)) IN ('ann')"`;
+
+exports[`quality rules > matchesPattern {"column":"email","preset":"email"} 1`] = `""email" IS NULL OR regexp_full_match(CAST("email" AS VARCHAR), '^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$')"`;
+
+exports[`quality rules > matchesPattern {"column":"id","preset":"custom","pattern":"^[0-9]+'$"} 1`] = `""id" IS NULL OR regexp_full_match(CAST("id" AS VARCHAR), '^[0-9]+''$')"`;
+
+exports[`quality rules > noEdgeSpaces {"column":"name"} 1`] = `""name" IS NULL OR CAST("name" AS VARCHAR) = trim(CAST("name" AS VARCHAR))"`;
+
+exports[`quality rules > notEmpty {"column":"email"} 1`] = `"NOT (coalesce(trim(CAST("email" AS VARCHAR)), '') = '')"`;
+
+exports[`quality rules > shows only the rows a rule fails, keyed apart from the full preview 1`] = `
+"WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv')),
+  "n_clean_s0" AS (SELECT * REPLACE (trim("name") AS "name") FROM "n_src"),
+  "n_clean_s1" AS (SELECT * REPLACE (list_aggr(list_transform(string_split("name", ' '), w -> upper(left(w, 1)) || lower(substr(w, 2))), 'string_agg', ' ') AS "name") FROM "n_clean_s0"),
+  "n_clean_failing" AS (SELECT * EXCLUDE ("__puddle_pass") FROM (SELECT *, (NOT (coalesce(trim(CAST("email" AS VARCHAR)), '') = '')) AS "__puddle_pass" FROM "n_clean_s1") WHERE NOT coalesce("__puddle_pass", false))
+SELECT * FROM "n_clean_failing""
+`;
+
+exports[`quality rules > unique {"columns":["id"]} 1`] = `"("id" IS NULL) OR count(*) OVER (PARTITION BY "id") = 1"`;
+
+exports[`quality rules > unique {"columns":["name","email"]} 1`] = `"("name" IS NULL OR "email" IS NULL) OR count(*) OVER (PARTITION BY "name", "email") = 1"`;
+
 exports[`results table queries > profiles through SUMMARIZE 1`] = `
 "SELECT column_name, CAST(null_percentage AS DOUBLE) AS null_pct, approx_unique FROM (SUMMARIZE SELECT * FROM (WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv')),
   "n_clean_s0" AS (SELECT * REPLACE (trim("name") AS "name") FROM "n_src"),

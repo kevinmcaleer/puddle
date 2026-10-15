@@ -29,7 +29,12 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     }),
   load: (p) => set({ history: initHistory(p) }),
   setView: (view) =>
-    set(({ history }) => ({ history: { ...history, present: { ...history.present, view: { ...history.present.view, ...view } } } })),
+    set(({ history }) => {
+      const next = { ...history.present.view, ...view };
+      // Viewing something else stops showing one rule's failing rows, unless the change says otherwise.
+      if (!('failingRuleId' in view) && ('viewedNodeId' in view || 'viewedStepIndex' in view)) next.failingRuleId = undefined;
+      return { history: { ...history, present: { ...history.present, view: next } } };
+    }),
   amend: (edit) =>
     set(({ history }) => {
       const next = edit(history.present);

@@ -4,6 +4,7 @@ import { formatLabel } from '../canvas/formatLabel';
 import { nodeById, setParseOptions, useProject, useProjectStore, type ParseOptions, type ProjectSettings as ProjectSettingsT, type Source } from '../model';
 import { Banner, columnKind, Field, Icon, NODE_KIND, Section, Select, Switch, TypeTag } from '../ui';
 import { CommitInput } from '../steps/StepForm';
+import { RulesPanel } from './RulesPanel';
 import { TransformPanel } from './TransformPanel';
 import { useAttachments } from '../sources/attachments';
 import { detachedMessage } from '../sources/attach';
@@ -130,6 +131,7 @@ export function Inspector() {
       <>
         <TransformPanel node={node} />
         <Columns nodeId={node.id} />
+        <RulesPanel node={node} />
       </>
     );
 
@@ -147,6 +149,7 @@ export function Inspector() {
       {source && source.kind === 'file' && <AttachmentBanner source={source} />}
       {source && hasParseOptions(source) && <SourceOptions source={source} />}
       <Columns nodeId={node.id} />
+      <RulesPanel node={node} />
     </div>
   );
 }

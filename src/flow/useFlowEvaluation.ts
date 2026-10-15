@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { useEngineStore } from '../app/engine';
 import { updateSource, useProject, useProjectStore } from '../model';
 import { useAttachments } from '../sources/attachments';
+import { evaluateRules } from './rules';
 import { evaluateFlow, useFlowStore } from './status';
 
 /**
@@ -16,6 +17,8 @@ export function useFlowEvaluation() {
   useEffect(() => {
     if (!engine) return;
     void evaluateFlow(engine, project, (id) => (attachments[id] ?? 'detached') === 'detached').then(() => {
+      // Rules run after every preview is settled, at background priority, so they never hold it up.
+      void evaluateRules(engine, project);
       const statuses = useFlowStore.getState().nodes;
       useProjectStore.getState().amend((p) => {
         let next = p;

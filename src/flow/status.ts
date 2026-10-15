@@ -48,12 +48,13 @@ export function schemaCacheFor(engine: EngineClient): SchemaCache {
   return schemaCache!;
 }
 
-/** Full row count for a node, cached by its upstream key and run at background priority. */
-export function countRows(engine: EngineClient, project: Project, nodeId: string, stepIndex?: number): Promise<number> {
-  const key = upstreamKey(project, { nodeId, stepIndex });
+/** Full row count for a node (or one of its steps, or its rows failing a rule), cached by its upstream key and run at background priority. */
+export function countRows(engine: EngineClient, project: Project, nodeId: string, stepIndex?: number, failingRuleId?: string): Promise<number> {
+  const target = { nodeId, stepIndex, failingRuleId };
+  const key = upstreamKey(project, target);
   let hit = counts.get(key);
   if (!hit) {
-    hit = engine.query(compileCount(project, { nodeId, stepIndex }), { priority: 'background' }).then((r) => Number(tableRows(r.table)[0]!.n));
+    hit = engine.query(compileCount(project, target), { priority: 'background' }).then((r) => Number(tableRows(r.table)[0]!.n));
     counts.set(key, hit);
     hit.catch(() => counts.delete(key));
   }

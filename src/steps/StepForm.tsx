@@ -165,14 +165,27 @@ function FieldInput({ field, value, params, columns, error, detectDates, onChang
   }
 }
 
-/** The settings form for one step, built from its field list, with field errors shown before anything runs. */
-export function StepForm({ type, params, columns, detectDates, onChange }: { type: string; params: Params; columns: ColumnSchema[]; detectDates?: (column: string) => Promise<Detection>; onChange: (params: Params) => void }) {
-  const form = stepForm(type);
-  if (!form) return <p className="text-ink-muted">This step type has no settings form.</p>;
-  const errors = fieldErrors({ type, params });
+/** A form built from a field list, with field errors shown before anything runs. Steps and rules share it. */
+export function FormFields({
+  fields,
+  params,
+  errors,
+  columns,
+  detectDates,
+  onChange,
+  testId,
+}: {
+  fields: FieldSpec[];
+  params: Params;
+  errors: Record<string, string>;
+  columns: ColumnSchema[];
+  detectDates?: (column: string) => Promise<Detection>;
+  onChange: (params: Params) => void;
+  testId?: string;
+}) {
   return (
-    <div className="flex flex-col gap-3" data-testid="step-form">
-      {form.fields.filter((f) => !f.when || f.when(params)).map((f) =>
+    <div className="flex flex-col gap-3" data-testid={testId}>
+      {fields.filter((f) => !f.when || f.when(params)).map((f) =>
         f.kind === 'switch' ? (
           <FieldInput key={f.key} field={f} value={params[f.key]} params={params} columns={columns} onChange={(v) => onChange({ ...params, [f.key]: v })} />
         ) : (
@@ -183,4 +196,11 @@ export function StepForm({ type, params, columns, detectDates, onChange }: { typ
       )}
     </div>
   );
+}
+
+/** The settings form for one step. */
+export function StepForm({ type, params, columns, detectDates, onChange }: { type: string; params: Params; columns: ColumnSchema[]; detectDates?: (column: string) => Promise<Detection>; onChange: (params: Params) => void }) {
+  const form = stepForm(type);
+  if (!form) return <p className="text-ink-muted">This step type has no settings form.</p>;
+  return <FormFields testId="step-form" fields={form.fields} params={params} errors={fieldErrors({ type, params })} columns={columns} detectDates={detectDates} onChange={onChange} />;
 }

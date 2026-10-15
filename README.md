@@ -39,6 +39,7 @@ Every feature ships with its own tests, and every bug fix with a regression test
 | `src/steps/` | Each step type's editor form (`defineStepForm`): its Add step menu entry, fields and defaults; the expression editor |
 | `src/dates/` | Date format detection: candidate `strptime` formats, ranking by match rate, day and month ambiguity |
 | `src/quickfix/` | The quick-fix bar: one click on the selected columns adds one step where the viewed data is |
+| `src/rules/` | Quality rule forms and labels; rules compile in `src/compiler/rules.ts` and are checked per node by `src/flow/rules.ts` |
 | `src/inspector/` | The right-hand panel: source read options, applied steps, step settings and node notes |
 | `src/results/` | The results table on Glide Data Grid: paging, headers with type and quality |
 | `tests/` | Engine integration tests, fixtures and helpers |

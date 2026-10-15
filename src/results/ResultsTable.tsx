@@ -1,15 +1,15 @@
-import { CompactSelection, DataEditor, type GridCell, type GridColumn, type GridSelection, type Item, type Rectangle } from '@glideapps/glide-data-grid';
+import { CompactSelection, DataEditor, type DrawCellCallback, type GridCell, type GridColumn, type GridSelection, type Item, type Rectangle } from '@glideapps/glide-data-grid';
 import '@glideapps/glide-data-grid/dist/index.css';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useEngineStore } from '../app/engine';
 import { useSession } from '../app/session';
 import { useTheme } from '../app/theme';
-import { compileDisplayPage, compileProfile, PAGE_SIZE, upstreamKey, type Target } from '../compiler';
+import { compileDisplayPage, compileProfile, PAGE_SIZE, ruleColumns, upstreamKey, type Target } from '../compiler';
 import { isCancelled, tableRows, toEngineError, type EngineClient } from '../engine';
 import { countRows, schemaCacheFor, useNodeStatus } from '../flow/status';
-import type { ColumnSchema, Project } from '../model';
+import { nodeById, type ColumnSchema, type Project } from '../model';
 import { Banner, columnKind, glideTheme, type Quality } from '../ui';
-import { nullTheme, resultCell } from './cells';
+import { failingCells, nullTheme, resultCell } from './cells';
 import { HEADER_HEIGHT, headerColors, makeDrawHeader } from './header';
 import { PageLoader, type Row } from './pages';
 import { detachedMessage } from '../sources/attach';
@@ -67,6 +67,26 @@ function Grid({ engine, project, target, columns }: { engine: EngineClient; proj
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const colors = useMemo(() => headerColors(), [themeTick]);
   const subtle = useMemo(() => nullTheme(theme), [theme]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const failColors = useMemo(() => failingCells(), [themeTick]);
+  // Showing a rule's failing rows: the cells it checks are marked.
+  const failingRule = target.failingRuleId ? nodeById(project, target.nodeId)?.rules.find((r) => r.id === target.failingRuleId) : undefined;
+  const failingCols = useMemo(() => {
+    const names = failingRule ? ruleColumns(failingRule) : [];
+    return new Set(columns.flatMap((c, i) => (names.includes(c.name) ? [i] : [])));
+  }, [failingRule, columns]);
+  const drawCell: DrawCellCallback = useCallback(
+    ({ ctx, rect, col }, drawContent) => {
+      if (!failingCols.has(col)) return drawContent();
+      ctx.fillStyle = failColors.tint;
+      ctx.fillRect(rect.x, rect.y, rect.width, rect.height);
+      drawContent();
+      ctx.strokeStyle = failColors.line;
+      ctx.lineWidth = 1;
+      ctx.strokeRect(rect.x + 1.5, rect.y + 1.5, rect.width - 3, rect.height - 3);
+    },
+    [failingCols, failColors],
+  );
 
   useEffect(() => {
     let live = true;
@@ -74,7 +94,7 @@ function Grid({ engine, project, target, columns }: { engine: EngineClient; proj
     useResultsStore.getState().set({ rows: undefined, cols: columns.length, ms: undefined });
     useSession.getState().setSelectedColumns([]);
     void loader.ensure(0, PAGE_SIZE).catch(() => undefined);
-    countRows(engine, project, target.nodeId, target.stepIndex).then(
+    countRows(engine, project, target.nodeId, target.stepIndex, target.failingRuleId).then(
       (n) => {
         if (!live) return;
         setTotal(n);
@@ -127,11 +147,12 @@ function Grid({ engine, project, target, columns }: { engine: EngineClient; proj
 
   const rows = total ?? loaded;
   return (
-    <div className="h-full w-full" data-testid="results-table" data-columns={columns.map((c) => c.name).join(',')} data-rows={total ?? ''} data-loaded={loaded} data-selected={selection.columns.toArray().map((i) => columns[i]?.name).join(',')}>
+    <div className="h-full w-full" data-testid="results-table" data-failing-columns={[...failingCols].map((i) => columns[i]?.name).join(',')} data-columns={columns.map((c) => c.name).join(',')} data-rows={total ?? ''} data-loaded={loaded} data-selected={selection.columns.toArray().map((i) => columns[i]?.name).join(',')}>
       <DataEditor
         columns={gridColumns}
         rows={rows}
         getCellContent={getCellContent}
+        drawCell={failingCols.size ? drawCell : undefined}
         drawHeader={drawHeader}
         headerHeight={HEADER_HEIGHT}
         rowHeight={28}
@@ -198,7 +219,7 @@ export function ResultsTable({ project }: { project: Project }) {
         <Banner tone="fail" title="This node can’t run">{status.message}</Banner>
       </div>
     );
-  return <StepGrid engine={engine} project={project} target={{ nodeId, stepIndex: project.view.viewedStepIndex }} nodeColumns={status.columns} />;
+  return <StepGrid engine={engine} project={project} target={{ nodeId, stepIndex: project.view.viewedStepIndex, failingRuleId: project.view.failingRuleId }} nodeColumns={status.columns} />;
 }
 
 const gridKey = (project: Project, target: Target, columns: ColumnSchema[]) => upstreamKey(project, target) + columns.map((c) => c.name).join('\u0000');
