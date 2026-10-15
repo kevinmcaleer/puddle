@@ -122,6 +122,7 @@ test('projects can be created, renamed, duplicated and deleted from the home scr
 
   // Reloading from the home screen stays on the home screen.
   await projectMenu(page, 'All projects');
+  await expect(page.getByTestId('home')).toBeVisible();
   await page.reload();
   await expect(page.getByTestId('home')).toBeVisible();
 });
@@ -207,4 +208,20 @@ test('a Source to Transform to Output flow is saved and reloaded with its layout
   await expect(page.getByTestId('wire-customers.csv->Transform 1')).toBeAttached();
   await expect(page.getByTestId('wire-Transform 1->Output 1')).toBeAttached();
   await expect(node(page, 'Output 1')).toHaveAttribute('data-status', 'blocked');
+});
+
+// Regression: leaving for the home screen forgot the open project only after saving, so a reload in between
+// reopened the project instead of the home screen.
+test('the home screen is remembered the moment you leave a project', async ({ page }) => {
+  await openApp(page);
+  await addFiles(page, [fixture('customers.csv')]);
+  await expect.poll(async () => (await saved(page))?.nodes.length).toBe(1);
+  await page.getByTestId('project-menu').click();
+  const remembered = await page.evaluate(() => {
+    (Array.from(document.querySelectorAll('[role=menuitem]')).find((el) => el.textContent?.includes('All projects')) as HTMLElement).click();
+    return localStorage.getItem('puddle.lastProject');
+  });
+  expect(remembered).toBeNull();
+  await page.reload();
+  await expect(page.getByTestId('home')).toBeVisible();
 });

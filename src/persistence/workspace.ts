@@ -130,8 +130,9 @@ export function newProject(name?: string) {
 }
 
 export async function goHome() {
-  await flush();
+  // Forget the open project first, so a reload straight after this lands on the home screen too.
   remember(null);
+  await flush();
   await refreshProjects();
   useWorkspace.setState({ screen: 'home' });
 }
