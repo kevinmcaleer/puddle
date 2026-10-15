@@ -1,6 +1,7 @@
 import { flow, src, step } from '../../tests/helpers/projects';
 import type { ParseOptions, Source } from '../model';
-import { compile, compileCount, compileDateDetection, compileDisplayPage, compilePreview, compileProfile, upstreamKey } from './compile';
+import { rulePredicate } from './rules';
+import { compile, compileCount, compileDateDetection, compileRules, compileDisplayPage, compilePreview, compileProfile, upstreamKey } from './compile';
 import { CompileError } from './errors';
 import { SchemaCache } from './schemaCache';
 import { ident, str } from './sql';
@@ -263,5 +264,48 @@ describe('column step settings', () => {
     expect(invalid('filterRows', { conditions: [{ column: 'id', op: 'empty' }] })).not.toThrow();
     expect(invalid('removeRows', { from: 'top', count: 0 })).toThrow(/at least one row/);
     expect(invalid('sortRows', { keys: [] })).toThrow(/sort by/);
+  });
+});
+
+describe('quality rules', () => {
+  const rule = (id: string, type: string, params: Record<string, unknown>, severity: 'fail' | 'warn' = 'fail') => ({ id, type, label: `${type} ${id}`, enabled: true, severity, params });
+  const withRules = (rules: ReturnType<typeof rule>[]) => {
+    const p = cleanFlow();
+    return { ...p, nodes: p.nodes.map((n) => (n.id === 'clean' ? { ...n, rules } : n)) };
+  };
+
+  it.each([
+    ['notEmpty', { column: 'email' }],
+    ['unique', { columns: ['id'] }],
+    ['unique', { columns: ['name', 'email'] }],
+    ['matchesPattern', { column: 'email', preset: 'email' }],
+    ['matchesPattern', { column: 'id', preset: 'custom', pattern: "^[0-9]+'$" }],
+    ['noEdgeSpaces', { column: 'name' }],
+    ['inSet', { column: 'name', values: ['Ann', "O'Neil"], matchCase: true }],
+    ['inSet', { column: 'name', values: ['Ann'], matchCase: false }],
+    ['inRange', { column: 'id', min: '1', max: '10' }],
+    ['inRange', { column: 'joined', min: '2020-01-01', max: '' }],
+  ])('%s %j', (type, params) => {
+    expect(rulePredicate({ type, params, label: type })).toMatchSnapshot();
+  });
+
+  it('counts every rule’s failures over the node’s output in one query', () => {
+    const p = withRules([rule('r1', 'notEmpty', { column: 'email' }), rule('r2', 'unique', { columns: ['id'] })]);
+    expect(compileRules(p, 'clean', p.nodes[1]!.rules)).toMatchSnapshot();
+  });
+
+  it('shows only the rows a rule fails, keyed apart from the full preview', () => {
+    const p = withRules([rule('r1', 'notEmpty', { column: 'email' })]);
+    const sql = compile(p, { nodeId: 'clean', failingRuleId: 'r1' }).sql;
+    expect(sql).toContain('WHERE NOT coalesce("__puddle_pass", false)');
+    expect(sql).toMatchSnapshot();
+    expect(upstreamKey(p, { nodeId: 'clean', failingRuleId: 'r1' })).not.toBe(upstreamKey(p, { nodeId: 'clean' }));
+    expect(() => compile(p, { nodeId: 'clean', failingRuleId: 'gone' })).toThrow(/no such rule/);
+  });
+
+  it('names the rule whose settings are incomplete', () => {
+    expect(() => rulePredicate({ type: 'inRange', params: { column: 'id', min: '', max: '' }, label: 'Range' })).toThrow(/Rule "Range" has invalid settings: min give a lowest or highest value/);
+    expect(() => rulePredicate({ type: 'matchesPattern', params: { column: 'id', preset: 'custom', pattern: '' }, label: 'P' })).toThrow(/give a pattern/);
+    expect(() => rulePredicate({ type: 'nope', params: {}, label: 'X' })).toThrow(/unknown type/);
   });
 });

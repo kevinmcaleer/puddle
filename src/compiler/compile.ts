@@ -1,7 +1,8 @@
-import { hashValue, inputEdges, nodeById, topoSort, upstreamIds, type GraphNode, type Project } from '../model';
+import { hashValue, inputEdges, nodeById, topoSort, upstreamIds, type GraphNode, type Project, type Rule } from '../model';
 import { CompileError } from './errors';
 import { sourceRelation } from './sources';
 import { cteName, ident, num, str } from './sql';
+import { rulePredicate } from './rules';
 import { stepParams } from './steps';
 
 export const PAGE_SIZE = 500;
@@ -10,6 +11,8 @@ export interface Target {
   nodeId: string;
   /** Preview step k inside a transform node: only steps 0..k are compiled. Omit for the whole node. */
   stepIndex?: number;
+  /** Only the rows of the node's output that fail this rule of the node. */
+  failingRuleId?: string;
 }
 
 export interface Compiled {
@@ -71,7 +74,15 @@ export function compile(project: Project, target: Target): Compiled {
     }
   }
 
-  const output = out.get(target.nodeId)!;
+  let output = out.get(target.nodeId)!;
+  if (target.failingRuleId) {
+    const rule = node.rules.find((r) => r.id === target.failingRuleId);
+    if (!rule) throw new CompileError(`${node.name} has no such rule.`, node.id);
+    const pass = ident('__puddle_pass');
+    const name = ident(`n_${node.id}_failing`);
+    ctes.push(`${name} AS (SELECT * EXCLUDE (${pass}) FROM (SELECT *, (${rulePredicate(rule)}) AS ${pass} FROM ${output}) WHERE NOT coalesce(${pass}, false))`);
+    output = name;
+  }
   const sql = ctes.length ? `WITH ${ctes.join(',\n  ')}\nSELECT * FROM ${output}` : `SELECT * FROM ${output}`;
   return { sql, output, nodeIds: order };
 }
@@ -123,7 +134,8 @@ export function upstreamKey(project: Project, target: Target): string {
       return { id: n.id, type: n.type, inputs };
     })
     .sort((a, b) => (a.id < b.id ? -1 : 1));
-  return hashValue({ target: [target.nodeId, target.stepIndex ?? null], nodes });
+  const failing = target.failingRuleId ? nodeById(project, target.nodeId)?.rules.find((r) => r.id === target.failingRuleId) : undefined;
+  return hashValue({ target: [target.nodeId, target.stepIndex ?? null], nodes, ...(target.failingRuleId ? { failing: failing ? [failing.type, failing.params] : target.failingRuleId } : {}) });
 }
 
 /**
@@ -139,4 +151,16 @@ export function compileDateDetection(project: Project, target: Target, column: s
     return `SELECT ${num(i)} AS i, ${str(f)} AS format, count(*) FILTER (WHERE ${reads}) AS matched, count(*) AS total, any_value(v) FILTER (WHERE ${reads}) AS example FROM s`;
   });
   return `WITH s AS (${values})\nSELECT format, matched, total, example FROM (\n  ${tried.join('\n  UNION ALL ')}\n) ORDER BY i`;
+}
+
+/**
+ * Every enabled rule of a node in one pass over its output: `total` rows, and `f<i>` failures for the i-th rule
+ * given. Predicates may use window functions (unique), so they're computed per row first, then counted.
+ */
+export function compileRules(project: Project, nodeId: string, rules: Rule[]): string {
+  if (!rules.length) throw new RangeError('No rules to check.');
+  const { sql } = compile(project, { nodeId });
+  const flags = rules.map((r, i) => `(${rulePredicate(r)}) AS ${ident(`r${i}`)}`);
+  const counts = rules.map((_, i) => `count(*) FILTER (WHERE NOT coalesce(${ident(`r${i}`)}, false)) AS ${ident(`f${i}`)}`);
+  return `SELECT count(*) AS total, ${counts.join(', ')} FROM (SELECT ${flags.join(', ')} FROM (${sql}))`;
 }

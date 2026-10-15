@@ -121,6 +121,8 @@ export const ProjectSettingsZ = z.object({
 export const ProjectViewZ = z.object({
   viewedNodeId: z.string().optional(),
   viewedStepIndex: z.number().int().nonnegative().optional(),
+  /** The results table shows only the viewed node's rows that fail this rule. */
+  failingRuleId: z.string().optional(),
   pinned: z.boolean().default(false),
   canvasViewport: z.object({ x: z.number(), y: z.number(), zoom: z.number().positive() }).default({ x: 0, y: 0, zoom: 1 }),
 });

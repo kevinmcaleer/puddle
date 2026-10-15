@@ -90,8 +90,11 @@ export function newStep(type: string, ctx: DefaultsContext): Step {
 }
 
 /** Field errors from the step's schema, keyed by field, so the form shows them before anything runs. */
-export function fieldErrors(step: Pick<Step, 'type' | 'params'>): Record<string, string> {
-  const parsed = stepDef(step.type)?.params.safeParse(step.params);
+export const fieldErrors = (step: Pick<Step, 'type' | 'params'>) => schemaErrors(stepDef(step.type)?.params, step.params);
+
+/** Errors from a params schema, keyed by field, as sentences. */
+export function schemaErrors(schema: { safeParse: (v: unknown) => { success: true } | { success: false; error: { issues: { path: PropertyKey[]; message: string }[] } } } | undefined, params: unknown): Record<string, string> {
+  const parsed = schema?.safeParse(params);
   if (!parsed || parsed.success) return {};
   const out: Record<string, string> = {};
   for (const issue of parsed.error.issues) {

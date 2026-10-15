@@ -1,5 +1,6 @@
 import { Handle, Position, type Node, type NodeProps } from '@xyflow/react';
 import type { ReactNode } from 'react';
+import { summarise, useRuleStore } from '../flow/rules';
 import { useNodeStatus } from '../flow/status';
 import type { GraphNode } from '../model';
 import { NodeCard } from '../ui';
@@ -13,8 +14,10 @@ export function PuddleNode({ data, selected }: NodeProps<PuddleFlowNode>) {
   const status = useNodeStatus(node.id);
   const steps = node.type === 'transform' ? node.steps.map((s) => ({ label: s.label, disabled: !s.enabled })) : undefined;
   const ok = status.state === 'ok' ? status : null;
+  const results = useRuleStore((s) => s.nodes[node.id]?.results);
+  const rule = ok ? summarise(node.rules, results) : undefined;
   return (
-    <div data-testid={`node-${node.name}`} data-status={status.state}>
+    <div data-testid={`node-${node.name}`} data-status={status.state} data-rules={rule?.status}>
       <NodeCard
         kind={node.type}
         name={node.name}
@@ -23,6 +26,7 @@ export function PuddleNode({ data, selected }: NodeProps<PuddleFlowNode>) {
         expanded={node.collapsed === false}
         rows={ok?.rows}
         cols={ok?.columns.length}
+        rule={rule}
         selected={selected}
         viewed={viewed}
         error={status.state === 'error' ? status.message : status.state === 'detached' ? 'File not connected. Choose it again in the inspector.' : undefined}

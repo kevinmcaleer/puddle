@@ -29,6 +29,16 @@ describe('view and derived facts', () => {
     expect(history.past.length).toBe(past);
   });
 
+  it('viewing another node or step stops showing a rule’s failing rows', () => {
+    const { setView } = useProjectStore.getState();
+    setView({ viewedNodeId: 'x', viewedStepIndex: undefined, failingRuleId: 'r1' });
+    expect(useProjectStore.getState().history.present.view.failingRuleId).toBe('r1');
+    setView({ pinned: true });
+    expect(useProjectStore.getState().history.present.view.failingRuleId).toBe('r1');
+    setView({ viewedNodeId: 'y' });
+    expect(useProjectStore.getState().history.present.view.failingRuleId).toBeUndefined();
+  });
+
   it('amends the present without an undo step, and keeps it when nothing changes', () => {
     const past = useProjectStore.getState().history.past.length;
     useProjectStore.getState().amend((p) => ({ ...p, notes: 'derived' }));
