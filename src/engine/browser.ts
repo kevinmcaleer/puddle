@@ -4,7 +4,9 @@ import mvpWorker from '@duckdb/duckdb-wasm/dist/duckdb-browser-mvp.worker.js?url
 import ehWasm from '@duckdb/duckdb-wasm/dist/duckdb-eh.wasm?url';
 import mvpWasm from '@duckdb/duckdb-wasm/dist/duckdb-mvp.wasm?url';
 import { Table, type RecordBatch } from 'apache-arrow';
+import { setExtensionRepository } from '../compiler/sql';
 import { cancelled } from './errors';
+import { selfHostedRepository } from './extensions';
 import type { BundleName, DuckBackend, EngineInfo, OutputFile } from './types';
 
 // The multi-threaded `coi` bundle is left out: its worker threads never receive files chosen in the browser, so
@@ -52,11 +54,18 @@ export async function createBrowserBackend(): Promise<DuckBackend> {
     // OPFS spill is unavailable in this browser or bundle; DuckDB keeps temporary data in memory.
   }
 
+  const name = bundleName(bundle);
+  const version = await db.getVersion();
+  // Use the extensions this site serves, when its build includes them for this DuckDB version.
+  const extensions = await selfHostedRepository(version, `wasm_${name}`, new URL(import.meta.env.BASE_URL, location.href).href);
+  if (extensions) for (const sql of setExtensionRepository(extensions)) await conn.query(sql);
+
   const info: EngineInfo = {
-    bundle: bundleName(bundle),
-    version: await db.getVersion(),
+    bundle: name,
+    version,
     spill,
     crossOriginIsolated: globalThis.crossOriginIsolated === true,
+    extensions: extensions ?? 'https://extensions.duckdb.org',
   };
 
   return {

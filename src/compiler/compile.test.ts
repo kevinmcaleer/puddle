@@ -4,7 +4,7 @@ import { rulePredicate } from './rules';
 import { compile, compileCount, compileDateDetection, compileRules, compileDisplayPage, compilePreview, compileProfile, compileTypeSniff, upstreamKey } from './compile';
 import { CompileError } from './errors';
 import { SchemaCache } from './schemaCache';
-import { ident, str } from './sql';
+import { ident, setExtensionRepository, str } from './sql';
 import { sourceRelation } from './sources';
 import { expressionProblem, regexProblem } from './steps';
 
@@ -312,5 +312,14 @@ describe('quality rules', () => {
     expect(() => rulePredicate({ type: 'inRange', params: { column: 'id', min: '', max: '' }, label: 'Range' })).toThrow(/Rule "Range" has invalid settings: min give a lowest or highest value/);
     expect(() => rulePredicate({ type: 'matchesPattern', params: { column: 'id', preset: 'custom', pattern: '' }, label: 'P' })).toThrow(/give a pattern/);
     expect(() => rulePredicate({ type: 'nope', params: {}, label: 'X' })).toThrow(/unknown type/);
+  });
+});
+
+describe('engine settings', () => {
+  it('points extension installs and autoloads at a quoted repository', () => {
+    expect(setExtensionRepository("https://x.example/it's")).toEqual([
+      "SET custom_extension_repository = 'https://x.example/it''s'",
+      "SET autoinstall_extension_repository = 'https://x.example/it''s'",
+    ]);
   });
 });

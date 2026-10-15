@@ -10,16 +10,21 @@ Needs Node 20 or later.
 
 ```sh
 npm install
-npm run dev        # http://localhost:5173, cross-origin isolated so DuckDB uses its multi-threaded bundle
+npm run dev        # http://localhost:5173
 npm run lint
 npm run typecheck
 npm test           # unit tests, plus engine tests on real DuckDB-WASM (Node build)
 npm run e2e        # Playwright against a production build (run `npx playwright install chromium` once)
+npm run fetch-extensions  # optional: serve DuckDB's json and parquet extensions locally
 ```
 
 ## Tests
 
-Every feature ships with its own tests, and every bug fix with a regression test, so later changes can't silently break earlier work. CI (`.github/workflows/ci.yml`) runs lint, typecheck, the unit and engine tests, and the Playwright suite on every pull request.
+Every feature ships with its own tests, and every bug fix with a regression test, so later changes can't silently break earlier work. CI (`.github/workflows/ci.yml`) runs lint, typecheck, the unit and engine tests, and the Playwright suite on every pull request. It also builds the Docker image for amd64 and arm64 and runs `npm run e2e:container` against it: isolation headers, JSON and Parquet from the self-hosted extensions, and offline use.
+
+## Deploying
+
+A Docker image (nginx serving the static build) behind a Cloudflare Tunnel at puddle.kevspowertools.com. See [deploy/README.md](deploy/README.md).
 
 ## Layout
 
@@ -40,6 +45,7 @@ Every feature ships with its own tests, and every bug fix with a regression test
 | `src/dates/` | Date format detection: candidate `strptime` formats, ranking by match rate, day and month ambiguity |
 | `src/quickfix/` | The quick-fix bar: one click on the selected columns adds one step where the viewed data is |
 | `src/rules/` | Quality rule forms and labels; rules compile in `src/compiler/rules.ts` and are checked per node by `src/flow/rules.ts` |
+| `src/pwa/` | The service worker (precached app, engine and extensions for offline use), its precache list and the web app manifest |
 | `src/export/` | Exports from Output nodes: the quality gate, `COPY ... TO` into DuckDB's in-memory file system, download or clipboard, and the export log |
 | `src/inspector/` | The right-hand panel: source read options, applied steps, step settings and node notes |
 | `src/results/` | The results table on Glide Data Grid: paging, headers with type and quality |

@@ -1,0 +1,20 @@
+# Puddle behind a Cloudflare Tunnel. Set CLOUDFLARE_TUNNEL_TOKEN (in a .env file next to this one), then:
+#   docker compose -f deploy/docker-compose.yml up -d
+# In Cloudflare, give the tunnel the public hostname puddle.kevspowertools.com with service http://puddle:8080.
+services:
+  puddle:
+    image: ghcr.io/kevinmcaleer/puddle:latest
+    restart: unless-stopped
+    read_only: true
+    # nginx keeps its pid and temporary files here.
+    tmpfs: [/tmp]
+    # Optional: reach Puddle on the LAN without the tunnel.
+    ports: ['8088:8080']
+
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    restart: unless-stopped
+    command: tunnel --no-autoupdate run
+    environment:
+      TUNNEL_TOKEN: ${CLOUDFLARE_TUNNEL_TOKEN:?Set CLOUDFLARE_TUNNEL_TOKEN to the tunnel's token}
+    depends_on: [puddle]
