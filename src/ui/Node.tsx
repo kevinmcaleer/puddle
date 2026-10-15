@@ -1,0 +1,94 @@
+import type { CSSProperties, MouseEventHandler, ReactNode } from 'react';
+import { cx } from './cx';
+import { abbreviate } from './format';
+import { Icon } from './Icon';
+import { NODE_KIND, type NodeKind } from './nodeKinds';
+import { StatusBadge, type Status } from './StatusBadge';
+
+export interface NodeStepSummary {
+  label: ReactNode;
+  disabled?: boolean;
+}
+
+export interface NodeCardProps {
+  kind?: NodeKind;
+  name: string;
+  detail?: string;
+  rows?: number;
+  cols?: number;
+  steps?: number | NodeStepSummary[];
+  rule?: { status: Status; label: string };
+  selected?: boolean;
+  viewed?: boolean;
+  pinned?: boolean;
+  error?: string;
+  dimmed?: boolean;
+  expanded?: boolean;
+  brokenInput?: boolean;
+  style?: CSSProperties;
+  className?: string;
+  onClick?: MouseEventHandler<HTMLDivElement>;
+  /** Replace the decorative port spans, e.g. with React Flow handles. */
+  renderPorts?: (ports: { inputs: string[]; output: boolean }) => ReactNode;
+}
+
+/** The node card. The canvas wraps this in a React Flow custom node and swaps the ports for handles. */
+export function NodeCard({
+  kind = 'transform', name, detail, rows, cols, steps, rule, selected, viewed, pinned, error, dimmed, expanded, brokenInput,
+  style, className, onClick, renderPorts,
+}: NodeCardProps) {
+  const k = NODE_KIND[kind];
+  const stepCount = Array.isArray(steps) ? steps.length : steps;
+  const sub = detail ?? [k.label, stepCount != null && kind !== 'source' && `${stepCount} ${stepCount === 1 ? 'step' : 'steps'}`].filter(Boolean).join(' · ');
+  const inputs = k.inputs === 2 ? ['33%', '67%'] : k.inputs ? ['50%'] : [];
+  return (
+    <div
+      className={cx('ui-node', selected && 'is-selected', viewed && 'is-viewed', error && 'has-error', dimmed && 'is-dimmed', className)}
+      data-kind={kind}
+      style={style}
+      onClick={onClick}
+    >
+      {renderPorts
+        ? renderPorts({ inputs, output: !k.noOut })
+        : inputs.map((top, i) => (
+            <span key={i} className={cx('ui-port ui-port--in', brokenInput && 'is-broken')} style={{ top, marginTop: 'calc(var(--size-handle) / -2)' }} />
+          ))}
+      {(viewed || pinned) && (
+        <span className="ui-node__eye">
+          <Icon name={pinned ? 'pin' : 'eye'} size={12} />
+          {pinned ? 'Pinned' : 'Viewing'}
+        </span>
+      )}
+      <div className="ui-node__head">
+        <span className="ui-node__chip"><Icon name={k.icon} /></span>
+        <div className="ui-node__titles">
+          <div className="ui-node__name" title={name}>{name}</div>
+          <div className="ui-node__kind">{sub}</div>
+        </div>
+      </div>
+      {error && (
+        <div className="ui-node__error">
+          <Icon name="cross" size={14} />
+          <span>{error}</span>
+        </div>
+      )}
+      {(rows != null || rule) && (
+        <div className="ui-node__meta">
+          <span className="ui-metric">
+            {rows != null && `${abbreviate(rows)} rows`}
+            {cols != null && ` · ${cols} cols`}
+          </span>
+          {rule && <StatusBadge status={rule.status}>{rule.label}</StatusBadge>}
+        </div>
+      )}
+      {expanded && Array.isArray(steps) && (
+        <ol className="ui-node__steps">
+          {steps.map((s, i) => (
+            <li key={i} className={s.disabled ? 'is-off' : undefined}>{s.label}</li>
+          ))}
+        </ol>
+      )}
+      {!renderPorts && !k.noOut && <span className="ui-port ui-port--out" />}
+    </div>
+  );
+}

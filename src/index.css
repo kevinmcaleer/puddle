@@ -1,0 +1,21 @@
+@import './design-system/fonts.css';
+@import './design-system/tokens.css';
+@import './design-system/components.css';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+  body {
+    margin: 0;
+    background: var(--surface-panel);
+    color: var(--ink);
+    font-family: var(--font-ui);
+  }
+}
