@@ -9,7 +9,15 @@ export type FieldSpec =
   | { key: string; label: string; kind: 'number'; hint?: string; min?: number }
   | { key: string; label: string; kind: 'select'; hint?: string; options: { value: string; label: string }[] }
   | { key: string; label: string; kind: 'switch'; hint?: string }
-  | { key: string; label: string; kind: 'renames'; hint?: string };
+  | { key: string; label: string; kind: 'renames'; hint?: string }
+  /** A comma-separated list of names or whole numbers. */
+  | { key: string; label: string; kind: 'list'; of: 'text' | 'number'; hint?: string }
+  /** A DuckDB SQL expression, with the step's columns offered for insertion. */
+  | { key: string; label: string; kind: 'expression'; hint?: string }
+  /** Filter conditions: column, comparison and value per row. */
+  | { key: string; label: string; kind: 'conditions'; hint?: string }
+  /** Sort keys: column and direction per row. */
+  | { key: string; label: string; kind: 'sortKeys'; hint?: string };
 
 export type StepGroup = 'Clean' | 'Columns' | 'Rows' | 'Text' | 'Dates';
 
@@ -18,6 +26,8 @@ export interface DefaultsContext {
   selected: string[];
   /** Columns arriving at the step. */
   available: ColumnSchema[];
+  /** The first row arriving at the step, as text, for forms that ask for it with `needsFirstRow`. */
+  firstRow?: Record<string, string | null>;
 }
 
 /** The editor side of a step type: its name in the Add step menu, its group, its form and its defaults. */
@@ -27,6 +37,8 @@ export interface StepForm {
   group: StepGroup;
   fields: FieldSpec[];
   defaults: (ctx: DefaultsContext) => Record<string, unknown>;
+  /** Read the step input's first row before choosing defaults (promote headers). */
+  needsFirstRow?: boolean;
 }
 
 const FORMS = new Map<string, StepForm>();

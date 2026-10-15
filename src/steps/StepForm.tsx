@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import type { ColumnSchema } from '../model';
 import { Button, columnKind, cx, Field, Select, Switch, TextInput, TypeTag } from '../ui';
+import { FILTER_OPS } from '../compiler';
+import { ExpressionInput } from './ExpressionInput';
 import { fieldErrors, stepForm, type FieldSpec } from './forms';
 
 type Params = Record<string, unknown>;
@@ -61,6 +63,56 @@ function Renames({ value, columns, onChange }: { value: { from: string; to: stri
   );
 }
 
+type Condition = { column: string; op: string; value: string };
+
+const OPS = Object.entries(FILTER_OPS).map(([value, label]) => ({ value, label }));
+const NO_VALUE = new Set(['empty', 'notEmpty']);
+
+function Conditions({ value, columns, onChange }: { value: Condition[]; columns: ColumnSchema[]; onChange: (v: Condition[]) => void }) {
+  const set = (i: number, patch: Partial<Condition>) => onChange(value.map((c, k) => (k === i ? { ...c, ...patch } : c)));
+  return (
+    <div className="flex flex-col gap-2">
+      {value.map((c, i) => (
+        <div key={i} className="flex flex-col gap-1 border-b border-line pb-2">
+          <div className="grid grid-cols-[1fr_1fr_auto] items-center gap-2">
+            <Select aria-label={`Condition ${i + 1} column`} options={[...new Set([c.column, ...columns.map((x) => x.name)])]} value={c.column} onChange={(e) => set(i, { column: e.target.value })} />
+            <Select aria-label={`Condition ${i + 1} comparison`} options={OPS} value={c.op} onChange={(e) => set(i, { op: e.target.value })} />
+            <Button variant="ghost" size="sm" icon="cross" iconOnly aria-label={`Remove condition ${i + 1}`} onClick={() => onChange(value.filter((_, k) => k !== i))} />
+          </div>
+          {!NO_VALUE.has(c.op) && <CommitInput key={c.value} aria-label={`Condition ${i + 1} value`} mono value={c.value} onCommit={(v) => set(i, { value: v })} />}
+        </div>
+      ))}
+      <Button variant="ghost" size="sm" icon="plus" onClick={() => onChange([...value, { column: columns[0]?.name ?? '', op: 'equals', value: '' }])}>Add condition</Button>
+    </div>
+  );
+}
+
+type SortKey = { column: string; descending: boolean };
+
+function SortKeys({ value, columns, onChange }: { value: SortKey[]; columns: ColumnSchema[]; onChange: (v: SortKey[]) => void }) {
+  const set = (i: number, patch: Partial<SortKey>) => onChange(value.map((k, j) => (j === i ? { ...k, ...patch } : k)));
+  return (
+    <div className="flex flex-col gap-2">
+      {value.map((k, i) => (
+        <div key={i} className="grid grid-cols-[1fr_1fr_auto] items-center gap-2">
+          <Select aria-label={`Sort column ${i + 1}`} options={[...new Set([k.column, ...columns.map((x) => x.name)])]} value={k.column} onChange={(e) => set(i, { column: e.target.value })} />
+          <Select
+            aria-label={`Sort direction ${i + 1}`}
+            options={[
+              { value: 'asc', label: 'Smallest first' },
+              { value: 'desc', label: 'Largest first' },
+            ]}
+            value={k.descending ? 'desc' : 'asc'}
+            onChange={(e) => set(i, { descending: e.target.value === 'desc' })}
+          />
+          <Button variant="ghost" size="sm" icon="cross" iconOnly aria-label={`Remove sort column ${i + 1}`} onClick={() => onChange(value.filter((_, j) => j !== i))} />
+        </div>
+      ))}
+      <Button variant="ghost" size="sm" icon="plus" onClick={() => onChange([...value, { column: columns[0]?.name ?? '', descending: false }])}>Add sort column</Button>
+    </div>
+  );
+}
+
 function FieldInput({ field, value, columns, error, onChange }: { field: FieldSpec; value: unknown; columns: ColumnSchema[]; error?: string; onChange: (v: unknown) => void }) {
   const id = `step-${field.key}`;
   switch (field.kind) {
@@ -84,6 +136,28 @@ function FieldInput({ field, value, columns, error, onChange }: { field: FieldSp
       return <Select id={id} options={field.options} value={String(value ?? '')} onChange={(e) => onChange(e.target.value)} />;
     case 'switch':
       return <Switch id={id} label={field.label} checked={!!value} onChange={onChange} />;
+    case 'list': {
+      const items = Array.isArray(value) ? value.map(String) : [];
+      return (
+        <CommitInput
+          key={items.join(',')}
+          id={id}
+          mono
+          error={!!error}
+          value={items.join(', ')}
+          onCommit={(v) => {
+            const parts = v.split(',').map((x) => x.trim()).filter(Boolean);
+            onChange(field.of === 'number' ? parts.map(Number) : parts);
+          }}
+        />
+      );
+    }
+    case 'expression':
+      return <ExpressionInput key={String(value ?? '')} id={id} value={String(value ?? '')} columns={columns} error={!!error} onCommit={onChange} />;
+    case 'conditions':
+      return <Conditions value={Array.isArray(value) ? (value as Condition[]) : []} columns={columns} onChange={onChange} />;
+    case 'sortKeys':
+      return <SortKeys value={Array.isArray(value) ? (value as SortKey[]) : []} columns={columns} onChange={onChange} />;
     case 'renames':
       return <Renames value={Array.isArray(value) ? (value as { from: string; to: string }[]) : []} columns={columns} onChange={onChange} />;
   }

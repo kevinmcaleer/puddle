@@ -5,6 +5,7 @@ import { CompileError } from './errors';
 import { SchemaCache } from './schemaCache';
 import { ident, str } from './sql';
 import { sourceRelation } from './sources';
+import { expressionProblem } from './steps';
 
 const cleanFlow = (steps = [step('s1', 'trimWhitespace', { columns: ['name'] }), step('s2', 'changeCase', { columns: ['name'], mode: 'title' })]) =>
   flow({
@@ -97,6 +98,29 @@ describe('step snapshots', () => {
     ['changeCase', { columns: ['name'], mode: 'sentence' }],
     ['renameColumns', { renames: [{ from: 'name', to: 'full_name' }, { from: 'joined', to: 'joined_on' }] }],
     ['removeColumns', { columns: ['email'] }],
+    ['reorderColumns', { columns: ['email', 'id'] }],
+    ['changeType', { columns: ['id'], to: 'text', onError: 'empty' }],
+    ['changeType', { columns: ['joined', 'id'], to: 'date', onError: 'fail' }],
+    ['splitByDelimiter', { column: 'email', delimiter: '@', into: ['user', 'domain'], keepOriginal: false }],
+    ['splitByDelimiter', { column: 'name', delimiter: "'", into: ['a'], keepOriginal: true }],
+    ['splitByPosition', { column: 'joined', positions: [4, 7], into: ['year', 'dash_month', 'dash_day'], keepOriginal: true }],
+    ['mergeColumns', { columns: ['name', 'email'], separator: ' <', into: 'contact', keepOriginals: false }],
+    ['addIndex', { name: 'row', start: 1 }],
+    ['addIndex', { name: 'row', start: 0 }],
+    ['duplicateColumn', { column: 'email', into: 'email copy' }],
+    ['addColumn', { name: 'domain', expression: "split_part(email, '@', 2)" }],
+    ['filterRows', { mode: 'keep', match: 'all', conditions: [{ column: 'email', op: 'contains', value: "O'Brien" }], matchCase: false }],
+    ['filterRows', { mode: 'remove', match: 'any', conditions: [{ column: 'id', op: 'greater', value: '2' }, { column: 'name', op: 'empty', value: '' }], matchCase: true }],
+    ['sortRows', { keys: [{ column: 'joined', descending: true }, { column: 'id', descending: false }] }],
+    ['removeRows', { from: 'top', count: 2 }],
+    ['removeRows', { from: 'bottom', count: 1 }],
+    ['removeBlankRows', { columns: [] }],
+    ['removeBlankRows', { columns: ['name', 'email'] }],
+    ['duplicateRows', { columns: [], keep: 'first' }],
+    ['duplicateRows', { columns: ['email'], keep: 'duplicates' }],
+    ['fillRows', { columns: ['name'], direction: 'down' }],
+    ['fillRows', { columns: ['name', 'email'], direction: 'up' }],
+    ['promoteHeaders', { renames: [{ from: 'id', to: 'ID' }, { from: 'name', to: 'name' }] }],
   ])('%s %j', (type, params) => {
     expect(compile(cleanFlow([step('s', type, params)]), { nodeId: 'clean' }).sql).toMatchSnapshot();
   });
@@ -173,5 +197,33 @@ describe('results table queries', () => {
 
   it('profiles through SUMMARIZE', () => {
     expect(compileProfile(cleanFlow(), { nodeId: 'out' })).toMatchSnapshot();
+  });
+});
+
+describe('column step settings', () => {
+  const invalid = (type: string, params: Record<string, unknown>) => () => compile(cleanFlow([step('s', type, params)]), { nodeId: 'clean' });
+
+  it('refuses expressions that could end the query early', () => {
+    expect(expressionProblem("split_part(email, ';', 2)")).toBeUndefined();
+    expect(expressionProblem('"odd;name" + 1')).toBeUndefined();
+    expect(expressionProblem('1; DROP TABLE x')).toMatch(/without ;/);
+    expect(expressionProblem('1 -- hide the rest')).toMatch(/comments/);
+    expect(expressionProblem('1 /* hide')).toMatch(/comments/);
+    expect(expressionProblem("'open")).toMatch(/quote/);
+    expect(invalid('addColumn', { name: 'x', expression: '1; select 2' })).toThrow(CompileError);
+  });
+
+  it('needs positions in order and one more name than positions', () => {
+    expect(invalid('splitByPosition', { column: 'id', positions: [3, 2], into: ['a', 'b', 'c'] })).toThrow(/smallest to largest/);
+    expect(invalid('splitByPosition', { column: 'id', positions: [2], into: ['a'] })).toThrow(/one more column/);
+    expect(invalid('mergeColumns', { columns: ['name'], into: 'x' })).toThrow(/at least two/);
+    expect(invalid('splitByDelimiter', { column: 'id', delimiter: '', into: ['a'] })).toThrow(/delimiter/);
+  });
+
+  it('row steps say what is missing', () => {
+    expect(invalid('filterRows', { conditions: [{ column: 'id', op: 'equals', value: '' }] })).toThrow(/value to compare/);
+    expect(invalid('filterRows', { conditions: [{ column: 'id', op: 'empty' }] })).not.toThrow();
+    expect(invalid('removeRows', { from: 'top', count: 0 })).toThrow(/at least one row/);
+    expect(invalid('sortRows', { keys: [] })).toThrow(/sort by/);
   });
 });
