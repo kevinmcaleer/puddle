@@ -1,6 +1,6 @@
 import { flow, src, step } from '../../tests/helpers/projects';
 import type { ParseOptions, Source } from '../model';
-import { compile, compileCount, compileDisplayPage, compilePreview, compileProfile, upstreamKey } from './compile';
+import { compile, compileCount, compileDateDetection, compileDisplayPage, compilePreview, compileProfile, upstreamKey } from './compile';
 import { CompileError } from './errors';
 import { SchemaCache } from './schemaCache';
 import { ident, str } from './sql';
@@ -131,6 +131,8 @@ describe('step snapshots', () => {
     ['padText', { columns: ['id'], length: 5, character: '0', side: 'start' }],
     ['padText', { columns: ['name'], length: 20, character: '.', side: 'end' }],
     ['textLength', { column: 'name', into: 'name_length' }],
+    ['parseDates', { columns: ['joined'], formats: ['%d/%m/%Y'], onError: 'empty' }],
+    ['parseDates', { columns: ['joined'], formats: ['%Y-%m-%d %H:%M:%S', "%d %b '%y"], onError: 'fail' }],
   ])('%s %j', (type, params) => {
     expect(compile(cleanFlow([step('s', type, params)]), { nodeId: 'clean' }).sql).toMatchSnapshot();
   });
@@ -242,6 +244,13 @@ describe('column step settings', () => {
     expect(invalid('findReplace', { columns: ['name'], find: '(', regex: false })).not.toThrow();
     expect(invalid('extractText', { column: 'name', mode: 'regex', pattern: '[', into: 'x' })).toThrow(/close every \[/);
     expect(invalid('padText', { columns: ['id'], length: 3, character: '00' })).toThrow(/one character/);
+  });
+
+  it('detects date formats on a sample of non-empty values, one constant format per SELECT', () => {
+    const sql = compileDateDetection(cleanFlow(), { nodeId: 'clean' }, 'joined', ['%Y-%m-%d', '%d/%m/%Y']);
+    expect(sql).toMatchSnapshot();
+    expect(() => compileDateDetection(cleanFlow(), { nodeId: 'clean' }, 'joined', [])).toThrow(RangeError);
+    expect(invalid('parseDates', { columns: ['joined'], formats: [] })).toThrow(/choose a date format/);
   });
 
   it('row steps say what is missing', () => {
