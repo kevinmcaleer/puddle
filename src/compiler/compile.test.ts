@@ -109,6 +109,18 @@ describe('step snapshots', () => {
     ['addIndex', { name: 'row', start: 0 }],
     ['duplicateColumn', { column: 'email', into: 'email copy' }],
     ['addColumn', { name: 'domain', expression: "split_part(email, '@', 2)" }],
+    ['filterRows', { mode: 'keep', match: 'all', conditions: [{ column: 'email', op: 'contains', value: "O'Brien" }], matchCase: false }],
+    ['filterRows', { mode: 'remove', match: 'any', conditions: [{ column: 'id', op: 'greater', value: '2' }, { column: 'name', op: 'empty', value: '' }], matchCase: true }],
+    ['sortRows', { keys: [{ column: 'joined', descending: true }, { column: 'id', descending: false }] }],
+    ['removeRows', { from: 'top', count: 2 }],
+    ['removeRows', { from: 'bottom', count: 1 }],
+    ['removeBlankRows', { columns: [] }],
+    ['removeBlankRows', { columns: ['name', 'email'] }],
+    ['duplicateRows', { columns: [], keep: 'first' }],
+    ['duplicateRows', { columns: ['email'], keep: 'duplicates' }],
+    ['fillRows', { columns: ['name'], direction: 'down' }],
+    ['fillRows', { columns: ['name', 'email'], direction: 'up' }],
+    ['promoteHeaders', { renames: [{ from: 'id', to: 'ID' }, { from: 'name', to: 'name' }] }],
   ])('%s %j', (type, params) => {
     expect(compile(cleanFlow([step('s', type, params)]), { nodeId: 'clean' }).sql).toMatchSnapshot();
   });
@@ -206,5 +218,12 @@ describe('column step settings', () => {
     expect(invalid('splitByPosition', { column: 'id', positions: [2], into: ['a'] })).toThrow(/one more column/);
     expect(invalid('mergeColumns', { columns: ['name'], into: 'x' })).toThrow(/at least two/);
     expect(invalid('splitByDelimiter', { column: 'id', delimiter: '', into: ['a'] })).toThrow(/delimiter/);
+  });
+
+  it('row steps say what is missing', () => {
+    expect(invalid('filterRows', { conditions: [{ column: 'id', op: 'equals', value: '' }] })).toThrow(/value to compare/);
+    expect(invalid('filterRows', { conditions: [{ column: 'id', op: 'empty' }] })).not.toThrow();
+    expect(invalid('removeRows', { from: 'top', count: 0 })).toThrow(/at least one row/);
+    expect(invalid('sortRows', { keys: [] })).toThrow(/sort by/);
   });
 });

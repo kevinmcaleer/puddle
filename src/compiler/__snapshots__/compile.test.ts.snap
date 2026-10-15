@@ -110,15 +110,81 @@ exports[`step snapshots > duplicateColumn {"column":"email","into":"email copy"}
 SELECT * FROM "n_clean_s0""
 `;
 
+exports[`step snapshots > duplicateRows {"columns":["email"],"keep":"duplicates"} 1`] = `
+"WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv')),
+  "n_clean_s0" AS (SELECT * EXCLUDE ("__puddle_row", "__puddle_key") FROM (SELECT row_number() OVER () AS "__puddle_row", row("email") AS "__puddle_key", * FROM "n_src") QUALIFY count(*) OVER (PARTITION BY "__puddle_key") > 1 ORDER BY "__puddle_row")
+SELECT * FROM "n_clean_s0""
+`;
+
+exports[`step snapshots > duplicateRows {"columns":[],"keep":"first"} 1`] = `
+"WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv')),
+  "n_clean_s0" AS (SELECT * EXCLUDE ("__puddle_row", "__puddle_key") FROM (SELECT row_number() OVER () AS "__puddle_row", row(*COLUMNS(*)) AS "__puddle_key", * FROM "n_src") QUALIFY row_number() OVER (PARTITION BY "__puddle_key" ORDER BY "__puddle_row") = 1 ORDER BY "__puddle_row")
+SELECT * FROM "n_clean_s0""
+`;
+
+exports[`step snapshots > fillRows {"columns":["name","email"],"direction":"up"} 1`] = `
+"WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv')),
+  "n_clean_s0" AS (SELECT * EXCLUDE ("__puddle_row") REPLACE (first_value("name" IGNORE NULLS) OVER (ORDER BY "__puddle_row" ROWS BETWEEN CURRENT ROW AND UNBOUNDED FOLLOWING) AS "name", first_value("email" IGNORE NULLS) OVER (ORDER BY "__puddle_row" ROWS BETWEEN CURRENT ROW AND UNBOUNDED FOLLOWING) AS "email") FROM (SELECT row_number() OVER () AS "__puddle_row", * FROM "n_src") ORDER BY "__puddle_row")
+SELECT * FROM "n_clean_s0""
+`;
+
+exports[`step snapshots > fillRows {"columns":["name"],"direction":"down"} 1`] = `
+"WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv')),
+  "n_clean_s0" AS (SELECT * EXCLUDE ("__puddle_row") REPLACE (last_value("name" IGNORE NULLS) OVER (ORDER BY "__puddle_row" ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS "name") FROM (SELECT row_number() OVER () AS "__puddle_row", * FROM "n_src") ORDER BY "__puddle_row")
+SELECT * FROM "n_clean_s0""
+`;
+
+exports[`step snapshots > filterRows {"mode":"keep","match":"all","conditions":[{"column":"email","op":"contains","value":"O'Brien"}],"matchCase":false} 1`] = `
+"WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv')),
+  "n_clean_s0" AS (SELECT * FROM "n_src" WHERE coalesce((contains(lower(CAST("email" AS VARCHAR)), 'o''brien')), false))
+SELECT * FROM "n_clean_s0""
+`;
+
+exports[`step snapshots > filterRows {"mode":"remove","match":"any","conditions":[{"column":"id","op":"greater","value":"2"},{"column":"name","op":"empty","value":""}],"matchCase":true} 1`] = `
+"WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv')),
+  "n_clean_s0" AS (SELECT * FROM "n_src" WHERE NOT coalesce(("id" > '2') OR (coalesce(trim(CAST("name" AS VARCHAR)), '') = ''), false))
+SELECT * FROM "n_clean_s0""
+`;
+
 exports[`step snapshots > mergeColumns {"columns":["name","email"],"separator":" <","into":"contact","keepOriginals":false} 1`] = `
 "WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv')),
   "n_clean_s0" AS (SELECT * EXCLUDE ("name", "email"), concat_ws(' <', CAST("name" AS VARCHAR), CAST("email" AS VARCHAR)) AS "contact" FROM "n_src")
 SELECT * FROM "n_clean_s0""
 `;
 
+exports[`step snapshots > promoteHeaders {"renames":[{"from":"id","to":"ID"},{"from":"name","to":"name"}]} 1`] = `
+"WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv')),
+  "n_clean_s0" AS (SELECT * RENAME ("id" AS "ID") FROM "n_src" OFFSET 1)
+SELECT * FROM "n_clean_s0""
+`;
+
+exports[`step snapshots > removeBlankRows {"columns":["name","email"]} 1`] = `
+"WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv')),
+  "n_clean_s0" AS (SELECT * FROM "n_src" WHERE coalesce(trim(concat_ws('', CAST("name" AS VARCHAR), CAST("email" AS VARCHAR))), '') <> '')
+SELECT * FROM "n_clean_s0""
+`;
+
+exports[`step snapshots > removeBlankRows {"columns":[]} 1`] = `
+"WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv')),
+  "n_clean_s0" AS (SELECT * FROM "n_src" WHERE coalesce(trim(concat_ws('', *COLUMNS(*))), '') <> '')
+SELECT * FROM "n_clean_s0""
+`;
+
 exports[`step snapshots > removeColumns {"columns":["email"]} 1`] = `
 "WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv')),
   "n_clean_s0" AS (SELECT * EXCLUDE ("email") FROM "n_src")
+SELECT * FROM "n_clean_s0""
+`;
+
+exports[`step snapshots > removeRows {"from":"bottom","count":1} 1`] = `
+"WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv')),
+  "n_clean_s0" AS (SELECT * FROM "n_src" LIMIT greatest((SELECT count(*) FROM "n_src") - 1, 0))
+SELECT * FROM "n_clean_s0""
+`;
+
+exports[`step snapshots > removeRows {"from":"top","count":2} 1`] = `
+"WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv')),
+  "n_clean_s0" AS (SELECT * FROM "n_src" OFFSET 2)
 SELECT * FROM "n_clean_s0""
 `;
 
@@ -131,6 +197,12 @@ SELECT * FROM "n_clean_s0""
 exports[`step snapshots > reorderColumns {"columns":["email","id"]} 1`] = `
 "WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv')),
   "n_clean_s0" AS (SELECT "email", "id", * EXCLUDE ("email", "id") FROM "n_src")
+SELECT * FROM "n_clean_s0""
+`;
+
+exports[`step snapshots > sortRows {"keys":[{"column":"joined","descending":true},{"column":"id","descending":false}]} 1`] = `
+"WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv')),
+  "n_clean_s0" AS (SELECT * EXCLUDE ("__puddle_row") FROM (SELECT row_number() OVER () AS "__puddle_row", * FROM "n_src") ORDER BY "joined" DESC NULLS LAST, "id" ASC NULLS LAST, "__puddle_row")
 SELECT * FROM "n_clean_s0""
 `;
 
