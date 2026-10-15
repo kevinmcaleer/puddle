@@ -1,0 +1,5 @@
+id,name,email,joined
+1,  Ada Lovelace ,ADA@example.com,2024-01-31
+2,grace hopper,grace@example.com ,2024-02-29
+3,"Edsger W. Dijkstra",,2024-03-01
+4,  ,null@example.com,not a date

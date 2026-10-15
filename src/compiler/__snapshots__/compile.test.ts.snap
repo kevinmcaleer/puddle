@@ -1,0 +1,86 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`compile > compiles a source node 1`] = `
+"WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv'))
+SELECT * FROM "n_src""
+`;
+
+exports[`compile > compiles a transform node as one CTE per step 1`] = `
+"WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv')),
+  "n_clean_s0" AS (SELECT * REPLACE (trim("name") AS "name") FROM "n_src"),
+  "n_clean_s1" AS (SELECT * REPLACE (list_aggr(list_transform(string_split("name", ' '), w -> upper(left(w, 1)) || lower(substr(w, 2))), 'string_agg', ' ') AS "name") FROM "n_clean_s0")
+SELECT * FROM "n_clean_s1""
+`;
+
+exports[`compile > compiles a transform with no steps (a Check node) as a pass-through 1`] = `
+"WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv'))
+SELECT * FROM "n_src""
+`;
+
+exports[`compile > leaves disabled steps out of the SQL 1`] = `
+"WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv')),
+  "n_clean_s1" AS (SELECT * EXCLUDE ("email") FROM "n_src")
+SELECT * FROM "n_clean_s1""
+`;
+
+exports[`compile > quotes awkward column and node names 1`] = `
+"WITH "n_n""1" AS (SELECT * FROM read_csv('src_a"b.csv')),
+  "n_t_s0" AS (SELECT * RENAME ("first ""name""" AS "it's") FROM "n_n""1")
+SELECT * FROM "n_t_s0""
+`;
+
+exports[`sources > csv with {"delimiter":";","header":true,"quote":"\\"","encoding":"latin-1","nullStrings":["N/A",""]} 1`] = `"read_csv('src_x.csv', delim = ';', header = true, quote = '"', encoding = 'latin-1', nullstr = ['N/A', ''])"`;
+
+exports[`sources > csv with {} 1`] = `"read_csv('src_x.csv')"`;
+
+exports[`sources > json with {} 1`] = `"read_json_auto('src_x.json')"`;
+
+exports[`sources > ndjson with {} 1`] = `"read_json_auto('src_x.ndjson', format = 'newline_delimited')"`;
+
+exports[`sources > parquet with {} 1`] = `"read_parquet('src_x.parquet')"`;
+
+exports[`sources > tsv with {} 1`] = `"read_csv('src_x.tsv', delim = '	')"`;
+
+exports[`sources > xlsx with {} 1`] = `""src_x""`;
+
+exports[`step snapshots > changeCase {"columns":["name"],"mode":"lower"} 1`] = `
+"WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv')),
+  "n_clean_s0" AS (SELECT * REPLACE (lower("name") AS "name") FROM "n_src")
+SELECT * FROM "n_clean_s0""
+`;
+
+exports[`step snapshots > changeCase {"columns":["name"],"mode":"sentence"} 1`] = `
+"WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv')),
+  "n_clean_s0" AS (SELECT * REPLACE (upper(left("name", 1)) || lower(substr("name", 2)) AS "name") FROM "n_src")
+SELECT * FROM "n_clean_s0""
+`;
+
+exports[`step snapshots > changeCase {"columns":["name"],"mode":"title"} 1`] = `
+"WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv')),
+  "n_clean_s0" AS (SELECT * REPLACE (list_aggr(list_transform(string_split("name", ' '), w -> upper(left(w, 1)) || lower(substr(w, 2))), 'string_agg', ' ') AS "name") FROM "n_src")
+SELECT * FROM "n_clean_s0""
+`;
+
+exports[`step snapshots > changeCase {"columns":["name"],"mode":"upper"} 1`] = `
+"WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv')),
+  "n_clean_s0" AS (SELECT * REPLACE (upper("name") AS "name") FROM "n_src")
+SELECT * FROM "n_clean_s0""
+`;
+
+exports[`step snapshots > removeColumns {"columns":["email"]} 1`] = `
+"WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv')),
+  "n_clean_s0" AS (SELECT * EXCLUDE ("email") FROM "n_src")
+SELECT * FROM "n_clean_s0""
+`;
+
+exports[`step snapshots > renameColumns {"renames":[{"from":"name","to":"full_name"},{"from":"joined","to":"joined_on"}]} 1`] = `
+"WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv')),
+  "n_clean_s0" AS (SELECT * RENAME ("name" AS "full_name", "joined" AS "joined_on") FROM "n_src")
+SELECT * FROM "n_clean_s0""
+`;
+
+exports[`step snapshots > trimWhitespace {"columns":["name","email"]} 1`] = `
+"WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv')),
+  "n_clean_s0" AS (SELECT * REPLACE (trim("name") AS "name", trim("email") AS "email") FROM "n_src")
+SELECT * FROM "n_clean_s0""
+`;

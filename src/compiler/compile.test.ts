@@ -1,0 +1,163 @@
+import { flow, src, step } from '../../tests/helpers/projects';
+import type { ParseOptions, Source } from '../model';
+import { compile, compileCount, compilePreview, upstreamKey } from './compile';
+import { CompileError } from './errors';
+import { SchemaCache } from './schemaCache';
+import { ident, str } from './sql';
+import { sourceRelation } from './sources';
+
+const cleanFlow = (steps = [step('s1', 'trimWhitespace', { columns: ['name'] }), step('s2', 'changeCase', { columns: ['name'], mode: 'title' })]) =>
+  flow({
+    sources: [src({ id: 'cust', format: 'csv' })],
+    nodes: [
+      { id: 'src', type: 'source', sourceId: 'cust' },
+      { id: 'clean', type: 'transform', steps },
+      { id: 'out', type: 'output' },
+    ],
+    wires: [['src', 'clean'], ['clean', 'out']],
+  });
+
+describe('quoting', () => {
+  it('escapes identifiers and strings', () => {
+    expect(ident('a"b')).toBe('"a""b"');
+    expect(str("O'Brien")).toBe("'O''Brien'");
+  });
+});
+
+describe('sources', () => {
+  it.each<[Source['format'], ParseOptions]>([
+    ['csv', {}],
+    ['csv', { delimiter: ';', header: true, quote: '"', encoding: 'latin-1', nullStrings: ['N/A', ''] }],
+    ['tsv', {}],
+    ['json', {}],
+    ['ndjson', {}],
+    ['parquet', {}],
+    ['xlsx', {}],
+  ])('%s with %j', (format, parseOptions) => {
+    expect(sourceRelation(src({ id: 'x', format, parseOptions }))).toMatchSnapshot();
+  });
+});
+
+describe('compile', () => {
+  it('compiles a source node', () => {
+    expect(compile(cleanFlow(), { nodeId: 'src' }).sql).toMatchSnapshot();
+  });
+
+  it('compiles a transform node as one CTE per step', () => {
+    expect(compile(cleanFlow(), { nodeId: 'clean' }).sql).toMatchSnapshot();
+  });
+
+  it('compiles an output node as its input', () => {
+    const c = compile(cleanFlow(), { nodeId: 'out' });
+    expect(c.sql).toBe(compile(cleanFlow(), { nodeId: 'clean' }).sql);
+    expect(c.nodeIds).toEqual(['src', 'clean', 'out']);
+  });
+
+  it('compiles a transform with no steps (a Check node) as a pass-through', () => {
+    expect(compile(cleanFlow([]), { nodeId: 'clean' }).sql).toMatchSnapshot();
+  });
+
+  it('previews step k with steps 0..k only', () => {
+    const sql = compile(cleanFlow(), { nodeId: 'clean', stepIndex: 0 }).sql;
+    expect(sql).toContain('trim(');
+    expect(sql).not.toContain('upper(');
+  });
+
+  it('leaves disabled steps out of the SQL', () => {
+    const sql = compile(cleanFlow([step('s1', 'trimWhitespace', { columns: ['name'] }, false), step('s2', 'removeColumns', { columns: ['email'] })]), { nodeId: 'clean' }).sql;
+    expect(sql).not.toContain('trim(');
+    expect(sql).toMatchSnapshot();
+  });
+
+  it('pages and counts', () => {
+    expect(compilePreview(cleanFlow(), { nodeId: 'out' }, 2)).toMatch(/LIMIT 500 OFFSET 1000$/);
+    expect(compileCount(cleanFlow(), { nodeId: 'out' })).toMatch(/^SELECT COUNT\(\*\) AS n FROM \(WITH/);
+    expect(() => compilePreview(cleanFlow(), { nodeId: 'out' }, -1)).toThrow(RangeError);
+  });
+
+  it('quotes awkward column and node names', () => {
+    const p = flow({
+      sources: [src({ id: 'a"b', format: 'csv' })],
+      nodes: [
+        { id: 'n"1', type: 'source', sourceId: 'a"b' },
+        { id: 't', type: 'transform', steps: [step('s', 'renameColumns', { renames: [{ from: 'first "name"', to: "it's" }] })] },
+      ],
+      wires: [['n"1', 't']],
+    });
+    expect(compile(p, { nodeId: 't' }).sql).toMatchSnapshot();
+  });
+});
+
+describe('step snapshots', () => {
+  it.each([
+    ['trimWhitespace', { columns: ['name', 'email'] }],
+    ['changeCase', { columns: ['name'], mode: 'upper' }],
+    ['changeCase', { columns: ['name'], mode: 'lower' }],
+    ['changeCase', { columns: ['name'], mode: 'title' }],
+    ['changeCase', { columns: ['name'], mode: 'sentence' }],
+    ['renameColumns', { renames: [{ from: 'name', to: 'full_name' }, { from: 'joined', to: 'joined_on' }] }],
+    ['removeColumns', { columns: ['email'] }],
+  ])('%s %j', (type, params) => {
+    expect(compile(cleanFlow([step('s', type, params)]), { nodeId: 'clean' }).sql).toMatchSnapshot();
+  });
+});
+
+describe('errors', () => {
+  it('names the node that has no input', () => {
+    const p = flow({ nodes: [{ id: 't', type: 'transform' }] });
+    expect(() => compile(p, { nodeId: 't' })).toThrow(new CompileError('t has no input. Connect a wire into it.', 't'));
+  });
+
+  it('rejects unknown step types and bad params with the step named', () => {
+    expect(() => compile(cleanFlow([step('s', 'nope', {})]), { nodeId: 'clean' })).toThrow(/unknown type/);
+    expect(() => compile(cleanFlow([step('s', 'trimWhitespace', { columns: [] })]), { nodeId: 'clean' })).toThrow(/invalid settings: columns pick at least one column/);
+  });
+
+  it('reports a missing source and a missing node', () => {
+    const p = cleanFlow();
+    expect(() => compile({ ...p, sources: [] }, { nodeId: 'out' })).toThrow(/lost its source/);
+    expect(() => compile(p, { nodeId: 'ghost' })).toThrow(/no longer exists/);
+    expect(() => compile(p, { nodeId: 'clean', stepIndex: 5 })).toThrow(/no step 6/);
+  });
+});
+
+describe('upstreamKey', () => {
+  it('ignores names, notes, positions and downstream edits', () => {
+    const p = cleanFlow();
+    const key = upstreamKey(p, { nodeId: 'clean' });
+    const moved = { ...p, name: 'Other', nodes: p.nodes.map((n) => ({ ...n, name: 'x', notes: 'y', position: { x: 9, y: 9 } })) };
+    expect(upstreamKey(moved, { nodeId: 'clean' })).toBe(key);
+    const addedDownstream = { ...p, nodes: p.nodes.map((n) => (n.type === 'output' ? { ...n, outputSpec: { format: 'parquet' as const, options: {} } } : n)) };
+    expect(upstreamKey(addedDownstream, { nodeId: 'clean' })).toBe(key);
+  });
+
+  it('changes when steps, options or the file change, and differs per step', () => {
+    const p = cleanFlow();
+    const key = upstreamKey(p, { nodeId: 'clean' });
+    expect(upstreamKey(p, { nodeId: 'clean', stepIndex: 0 })).not.toBe(key);
+    expect(upstreamKey(cleanFlow([step('s1', 'trimWhitespace', { columns: ['email'] })]), { nodeId: 'clean' })).not.toBe(key);
+    expect(upstreamKey({ ...p, sources: [src({ id: 'cust', format: 'csv', parseOptions: { delimiter: ';' } })] }, { nodeId: 'clean' })).not.toBe(key);
+    expect(upstreamKey({ ...p, sources: [src({ id: 'cust', format: 'csv', file: { originalName: 'c.csv', size: 1, lastModified: 0, headHash: 'abc' } })] }, { nodeId: 'clean' })).not.toBe(key);
+  });
+});
+
+describe('SchemaCache', () => {
+  it('describes once per upstream state and retries after a failure', async () => {
+    let calls = 0;
+    let fail = true;
+    const cache = new SchemaCache(async () => {
+      calls++;
+      if (fail) throw new Error('boom');
+      return [{ name: 'id', type: 'BIGINT' }];
+    }, 2);
+    const p = cleanFlow();
+    await expect(cache.get(p, { nodeId: 'clean' })).rejects.toThrow('boom');
+    fail = false;
+    expect(await cache.get(p, { nodeId: 'clean' })).toEqual([{ name: 'id', type: 'BIGINT' }]);
+    await cache.get({ ...p, name: 'renamed' }, { nodeId: 'clean' });
+    expect(calls).toBe(2);
+    await cache.get(p, { nodeId: 'src' });
+    await cache.get(p, { nodeId: 'clean', stepIndex: 0 });
+    expect(cache.size).toBe(2);
+  });
+});
