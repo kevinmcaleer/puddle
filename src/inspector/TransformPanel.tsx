@@ -1,4 +1,7 @@
+import { useEngineStore } from '../app/engine';
 import { useSession } from '../app/session';
+import { compileDisplayPage } from '../compiler';
+import { tableRows } from '../engine/client';
 import { useNodeStatus } from '../flow/status';
 import {
   addStep,
@@ -12,6 +15,8 @@ import {
   updateStep,
   useProject,
   useProjectStore,
+  type ColumnSchema,
+  type Project,
   type Step,
   type TransformNode,
 } from '../model';
@@ -30,6 +35,19 @@ function viewStep(nodeId: string, index: number, step: Step | undefined) {
   useProjectStore.getState().setView({ viewedNodeId: nodeId, viewedStepIndex: step ? index : undefined });
 }
 
+/** The first row arriving after step `after` (-1 for the node's input), as text; empty when it can't be read. */
+async function readFirstRow(project: Project, nodeId: string, after: number, columns: ColumnSchema[]): Promise<Record<string, string | null>> {
+  const engine = useEngineStore.getState().engine;
+  if (!engine || !columns.length) return {};
+  try {
+    const sql = compileDisplayPage(project, { nodeId, stepIndex: after }, columns.map((c) => c.name), 0, 1);
+    const [row] = tableRows((await engine.query(sql)).table);
+    return Object.fromEntries(Object.entries(row ?? {}).map(([k, v]) => [k, v == null ? null : String(v)]));
+  } catch {
+    return {};
+  }
+}
+
 function AddStepMenu({ node, after }: { node: TransformNode; after: number }) {
   const project = useProject();
   const available = useStepColumns(project, node.id, after + 1);
@@ -39,8 +57,9 @@ function AddStepMenu({ node, after }: { node: TransformNode; after: number }) {
       .map((f) => ({
         label: f.title,
         hint: g,
-        onSelect: () => {
-          const step = newStep(f.type, { selected: useSession.getState().selectedColumns, available });
+        onSelect: async () => {
+          const firstRow = f.needsFirstRow ? await readFirstRow(project, node.id, after, available) : undefined;
+          const step = newStep(f.type, { selected: useSession.getState().selectedColumns, available, firstRow });
           apply((p) => addStep(p, node.id, step, after + 1));
           viewStep(node.id, after + 1, step);
         },
