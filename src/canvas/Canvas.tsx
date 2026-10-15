@@ -14,7 +14,7 @@ import { useCallback, useMemo, useState, type DragEvent } from 'react';
 import { addFiles } from '../app/actions';
 import { useSession } from '../app/session';
 import { useFlowStore } from '../flow/status';
-import { canConnect, connect, moveNodes, newId, removeNodes, setCollapsed, upstreamIds, useProject, useProjectStore, type GraphNode } from '../model';
+import { canConnect, canGroup, connect, groupNodes, moveNodes, newId, removeNodes, setCollapsed, upstreamIds, useProject, useProjectStore, type GraphNode } from '../model';
 import { Banner, Button } from '../ui';
 import { formatLabel } from './formatLabel';
 import { PuddleNode, type PuddleFlowNode } from './PuddleNode';
@@ -31,11 +31,35 @@ function detailFor(node: GraphNode, sources: ReturnType<typeof useProject>['sour
   return s.kind === 'clipboard' ? `Source · Pasted ${formatLabel(s.format)}` : `Source · ${formatLabel(s.format)}`;
 }
 
+/** Shown when several nodes are selected: group them into one, or say why they can't be. */
+function GroupBar({ ids }: { ids: string[] }) {
+  const project = useProject();
+  const check = canGroup(project, ids);
+  return (
+    <div className="absolute bottom-4 left-1/2 z-panel -translate-x-1/2" data-testid="group-bar">
+      <div className="ui-popover flex w-auto items-center gap-3 px-3 py-2">
+        <span className="text-ink-muted">{check.ok ? `${ids.length} nodes selected` : check.reason}</span>
+        <Button
+          size="sm"
+          variant="primary"
+          disabled={!check.ok}
+          onClick={() => {
+            useProjectStore.getState().apply((p) => groupNodes(p, ids));
+            if (check.ok) useSession.getState().select(check.chain[0]!);
+          }}
+        >
+          Group into one node
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 /** The node canvas: the primary editing surface (plan D3, D18). */
 export function Canvas({ onAddSource }: { onAddSource: () => void }) {
   const project = useProject();
   const { apply, setView } = useProjectStore.getState();
-  const selectedNodeId = useSession((s) => s.selectedNodeId);
+  const selectedNodeIds = useSession((s) => s.selectedNodeIds);
   const notice = useSession((s) => s.notice);
   const statuses = useFlowStore((s) => s.nodes);
   const [dragging, setDragging] = useState<Record<string, { x: number; y: number }>>({});
@@ -52,10 +76,10 @@ export function Canvas({ onAddSource }: { onAddSource: () => void }) {
         id: n.id,
         type: 'puddle',
         position: dragging[n.id] ?? n.position,
-        selected: n.id === selectedNodeId,
+        selected: selectedNodeIds.includes(n.id),
         data: { node: n, viewed: n.id === viewedId, detail: detailFor(n, project.sources) },
       })),
-    [project.nodes, project.sources, dragging, selectedNodeId, viewedId],
+    [project.nodes, project.sources, dragging, selectedNodeIds, viewedId],
   );
 
   const edges: WireFlowEdge[] = useMemo(
@@ -140,7 +164,8 @@ export function Canvas({ onAddSource }: { onAddSource: () => void }) {
         onNodesChange={onNodesChange}
         onConnect={onConnect}
         onMoveEnd={onMoveEnd}
-        onNodeClick={(_e, n) => {
+        onNodeClick={(e, n) => {
+          if (e.shiftKey || e.metaKey || e.ctrlKey) return useSession.getState().toggleSelected(n.id);
           useSession.getState().select(n.id);
           setView({ viewedNodeId: n.id, viewedStepIndex: undefined });
         }}
@@ -173,6 +198,8 @@ export function Canvas({ onAddSource }: { onAddSource: () => void }) {
           </div>
         </div>
       )}
+
+      {selectedNodeIds.length > 1 && <GroupBar ids={selectedNodeIds} />}
 
       {notice && (
         <div className="absolute left-4 right-4 top-4 z-panel mx-auto max-w-[560px]" data-testid="canvas-notice">

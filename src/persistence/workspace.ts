@@ -47,7 +47,7 @@ export async function refreshProjects() {
 /** Show a project in the editor: load it without history, reset per-tab state and reconnect what can be. */
 function show(project: Project) {
   invalidateCaches();
-  useSession.setState({ selectedNodeId: null, selectedColumns: [], notice: null });
+  useSession.setState({ selectedNodeId: null, selectedNodeIds: [], selectedStepId: null, selectedColumns: [], notice: null });
   useResultsStore.getState().set({ rows: undefined, cols: undefined, ms: undefined });
   useProjectStore.getState().load(project);
   remember(project.id);

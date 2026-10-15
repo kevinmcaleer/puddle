@@ -40,14 +40,32 @@ export const SourceZ = z.object({
   detectedSchema: z.array(ColumnSchemaZ).default([]),
 });
 
+/**
+ * Where a step came from when nodes were grouped: the first step of each absorbed node carries that node, so
+ * ungrouping restores the exact original graph.
+ */
+export const StepOriginZ = z.object({
+  nodeId: z.string().min(1),
+  name: z.string(),
+  notes: z.string().optional(),
+  position: z.object({ x: z.number(), y: z.number() }),
+  collapsed: z.boolean().optional(),
+  rules: z.array(z.lazy(() => RuleZ)).default([]),
+  /** The wire that ran into the absorbed node from the node before it. */
+  edgeId: z.string().min(1),
+});
+
 /** A step's params are validated by its step definition (compiler/steps); the model only fixes the envelope. */
 export const StepZ = z.object({
   id: z.string().min(1),
   type: z.string().min(1),
   label: z.string(),
+  /** True once someone renamed the step; its label then stops following its settings. */
+  customLabel: z.boolean().optional(),
   enabled: z.boolean().default(true),
   params: z.record(z.string(), z.unknown()).default({}),
   notes: z.string().optional(),
+  origin: StepOriginZ.optional(),
 });
 
 export const RuleZ = z.object({
@@ -126,6 +144,7 @@ export type SourceFormat = z.infer<typeof SourceFormatZ>;
 export type ParseOptions = z.infer<typeof ParseOptionsZ>;
 export type Source = z.infer<typeof SourceZ>;
 export type Step = z.infer<typeof StepZ>;
+export type StepOrigin = z.infer<typeof StepOriginZ>;
 export type Rule = z.infer<typeof RuleZ>;
 export type SourceNode = z.infer<typeof SourceNodeZ>;
 export type TransformNode = z.infer<typeof TransformNodeZ>;

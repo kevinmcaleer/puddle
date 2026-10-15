@@ -1,30 +1,14 @@
-import { useState } from 'react';
 import { useSession } from '../app/session';
 import { useNodeStatus } from '../flow/status';
 import { formatLabel } from '../canvas/formatLabel';
 import { nodeById, setParseOptions, useProject, useProjectStore, type ParseOptions, type ProjectSettings as ProjectSettingsT, type Source } from '../model';
-import { Banner, columnKind, Field, Icon, NODE_KIND, Section, Select, StepList, Switch, TextInput, TypeTag } from '../ui';
+import { Banner, columnKind, Field, Icon, NODE_KIND, Section, Select, Switch, TypeTag } from '../ui';
+import { CommitInput } from '../steps/StepForm';
+import { TransformPanel } from './TransformPanel';
 import { useAttachments } from '../sources/attachments';
 import { detachedMessage } from '../sources/attach';
 import { ReattachButton } from '../sources/ReattachButton';
 import { DELIMITERS, delimiterValue, ENCODINGS, hasParseOptions, LOCALES, parseNullStrings, withOption } from './options';
-
-/** A text input that commits on Enter or blur, so typing doesn't add an undo step per key. Key it by value to reset. */
-function CommitInput({ id, value, onCommit, placeholder }: { id: string; value: string; onCommit: (v: string) => void; placeholder?: string }) {
-  const [draft, setDraft] = useState(value);
-  const commit = () => draft !== value && onCommit(draft);
-  return (
-    <TextInput
-      id={id}
-      mono
-      value={draft}
-      placeholder={placeholder}
-      onChange={(e) => setDraft(e.target.value)}
-      onBlur={commit}
-      onKeyDown={(e) => e.key === 'Enter' && commit()}
-    />
-  );
-}
 
 function SourceOptions({ source }: { source: Source }) {
   const apply = useProjectStore((s) => s.apply);
@@ -141,6 +125,14 @@ export function Inspector() {
       </>
     );
 
+  if (node.type === 'transform')
+    return (
+      <>
+        <TransformPanel node={node} />
+        <Columns nodeId={node.id} />
+      </>
+    );
+
   const kind = NODE_KIND[node.type];
   const source = node.type === 'source' ? project.sources.find((s) => s.id === node.sourceId) : undefined;
   return (
@@ -154,15 +146,6 @@ export function Inspector() {
       </div>
       {source && source.kind === 'file' && <AttachmentBanner source={source} />}
       {source && hasParseOptions(source) && <SourceOptions source={source} />}
-      {node.type === 'transform' && (
-        <Section title="Applied steps" count={node.steps.length}>
-          {node.steps.length ? (
-            <StepList steps={node.steps.map((s) => ({ label: s.label, disabled: !s.enabled }))} onAdd={false} />
-          ) : (
-            <p className="text-ink-muted">No steps yet. Steps arrive with the step editor.</p>
-          )}
-        </Section>
-      )}
       <Columns nodeId={node.id} />
     </div>
   );
