@@ -44,3 +44,82 @@ jobs:
             playwright-report
             test-results
           retention-days: 7
+
+  container:
+    name: Container image and deployment tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+      - name: Build the amd64 image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/amd64
+          load: true
+          tags: puddle:ci
+          build-args: PUDDLE_BUILD=${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      - name: Build the arm64 image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/arm64
+          load: true
+          tags: puddle:ci-arm64
+          build-args: PUDDLE_BUILD=${{ github.sha }}
+          cache-from: type=gha
+      - name: Run the arm64 image
+        run: |
+          docker run -d --name puddle-arm64 --platform linux/arm64 --read-only --tmpfs /tmp -p 8089:8080 puddle:ci-arm64
+          for i in $(seq 1 30); do curl -sf http://localhost:8089/healthz && break; sleep 1; done
+          curl -sfI http://localhost:8089/ | grep -i 'cross-origin-embedder-policy: require-corp'
+      - name: Run the amd64 image
+        run: |
+          docker run -d --name puddle --read-only --tmpfs /tmp -p 8088:8080 puddle:ci
+          for i in $(seq 1 30); do curl -sf http://localhost:8088/healthz && break; sleep 1; done
+      - run: npx playwright install --with-deps chromium
+      - run: npm run e2e:container
+      - if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: container-report
+          path: |
+            playwright-report
+            test-results
+          retention-days: 7
+
+  publish:
+    name: Publish the image
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [check, e2e, container]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository }}:latest
+            ghcr.io/${{ github.repository }}:${{ github.sha }}
+          build-args: PUDDLE_BUILD=${{ github.sha }}
+          cache-from: type=gha

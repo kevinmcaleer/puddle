@@ -29,3 +29,6 @@ export const strList = (items: string[]) => '[' + items.map(str).join(', ') + ']
 export function cteName(nodeId: string, step?: number): string {
   return ident(step == null ? `n_${nodeId}` : `n_${nodeId}_s${step}`);
 }
+
+/** Point DuckDB's extension installs and autoloads at another repository. */
+export const setExtensionRepository = (url: string) => [`SET custom_extension_repository = ${str(url)}`, `SET autoinstall_extension_repository = ${str(url)}`];

@@ -35,6 +35,8 @@ export interface EngineInfo {
   /** True when DuckDB can spill temporary data to the Origin Private File System. */
   spill: boolean;
   crossOriginIsolated: boolean;
+  /** Where DuckDB loads json and parquet from: this site's own copy, or extensions.duckdb.org. */
+  extensions?: string;
 }
 
 /**
