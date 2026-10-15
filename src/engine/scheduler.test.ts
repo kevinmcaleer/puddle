@@ -1,0 +1,88 @@
+import { EngineError, isCancelled } from './errors';
+import { Scheduler } from './scheduler';
+
+/** A job that finishes when released, and notices aborts the way DuckDB's cancelSent does. */
+function gate<T>(value: T, log: string[], name: string) {
+  let release!: () => void;
+  const done = new Promise<void>((r) => (release = r));
+  const run = async (signal: AbortSignal) => {
+    log.push(`start ${name}`);
+    await Promise.race([done, new Promise<void>((r) => signal.addEventListener('abort', () => r(), { once: true }))]);
+    if (signal.aborted) {
+      log.push(`abort ${name}`);
+      throw new Error('INTERRUPT Error: Interrupted!');
+    }
+    log.push(`end ${name}`);
+    return value;
+  };
+  return { run, release: () => release() };
+}
+
+const tick = () => new Promise((r) => setTimeout(r, 0));
+
+describe('Scheduler', () => {
+  it('cancels a queued preview when a newer one supersedes it', async () => {
+    const s = new Scheduler();
+    const log: string[] = [];
+    const a = s.submit(async () => 'a', { supersede: 'preview' });
+    const b = s.submit(async () => 'b', { supersede: 'preview' });
+    await expect(a).rejects.toSatisfy(isCancelled);
+    await expect(b).resolves.toBe('b');
+    expect(log).toEqual([]);
+  });
+
+  it('cancels a running preview and never delivers its result', async () => {
+    const s = new Scheduler();
+    const log: string[] = [];
+    const slow = gate('old rows', log, 'old');
+    const first = s.submit(slow.run, { supersede: 'preview' });
+    await tick();
+    const second = s.submit(async () => 'new rows', { supersede: 'preview' });
+    await expect(first).rejects.toSatisfy(isCancelled);
+    await expect(second).resolves.toBe('new rows');
+    expect(log).toEqual(['start old', 'abort old']);
+  });
+
+  it('drops a result that arrives after its job was cancelled', async () => {
+    const s = new Scheduler();
+    const controller = new AbortController();
+    let finish!: (v: string) => void;
+    const p = s.submit(() => new Promise<string>((r) => (finish = r)), { signal: controller.signal });
+    await tick();
+    controller.abort();
+    finish('late');
+    await expect(p).rejects.toSatisfy(isCancelled);
+  });
+
+  it('runs previews before background work and pre-empts running background jobs', async () => {
+    const s = new Scheduler();
+    const log: string[] = [];
+    const profile = gate('profile', log, 'profile');
+    const bg = s.submit(profile.run, { priority: 'background' });
+    await tick();
+    const preview = s.submit(async () => {
+      log.push('preview');
+      return 'rows';
+    });
+    await expect(preview).resolves.toBe('rows');
+    await tick();
+    profile.release();
+    await expect(bg).resolves.toBe('profile');
+    expect(log).toEqual(['start profile', 'abort profile', 'preview', 'start profile', 'end profile']);
+  });
+
+  it('orders queued work by priority', async () => {
+    const s = new Scheduler();
+    const log: string[] = [];
+    const job = (name: string) => async () => void log.push(name);
+    await Promise.all([s.submit(job('bg1'), { priority: 'background' }), s.submit(job('p1')), s.submit(job('bg2'), { priority: 'background' }), s.submit(job('p2'))]);
+    expect(log).toEqual(['p1', 'p2', 'bg1', 'bg2']);
+  });
+
+  it('rejects an already-aborted token and wraps errors', async () => {
+    const s = new Scheduler();
+    await expect(s.submit(async () => 1, { signal: AbortSignal.abort() })).rejects.toSatisfy(isCancelled);
+    await expect(s.submit(async () => { throw new Error('Parser Error: syntax error at or near "SELEC"'); })).rejects.toBeInstanceOf(EngineError);
+    expect(s.size).toBe(0);
+  });
+});
