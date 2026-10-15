@@ -1,7 +1,7 @@
 import { hashValue, inputEdges, nodeById, topoSort, upstreamIds, type GraphNode, type Project } from '../model';
 import { CompileError } from './errors';
 import { sourceRelation } from './sources';
-import { cteName, ident, num } from './sql';
+import { cteName, ident, num, str } from './sql';
 import { stepParams } from './steps';
 
 export const PAGE_SIZE = 500;
@@ -124,4 +124,19 @@ export function upstreamKey(project: Project, target: Target): string {
     })
     .sort((a, b) => (a.id < b.id ? -1 : 1));
   return hashValue({ target: [target.nodeId, target.stepIndex ?? null], nodes });
+}
+
+/**
+ * How many of a sample of a column's non-empty values each strptime format reads: one row per format with
+ * `format`, `matched` and `total`, plus one `example` value it reads. For ranking date formats.
+ */
+export function compileDateDetection(project: Project, target: Target, column: string, formats: string[], sample = 1000): string {
+  if (!formats.length) throw new RangeError('No formats to try.');
+  const values = `SELECT trim(CAST(${ident(column)} AS VARCHAR)) AS v FROM (${compile(project, target).sql}) WHERE coalesce(trim(CAST(${ident(column)} AS VARCHAR)), '') <> '' LIMIT ${num(sample)}`;
+  // strptime needs a constant format, so each format gets its own SELECT.
+  const tried = formats.map((f, i) => {
+    const reads = `try_strptime(v, ${str(f)}) IS NOT NULL`;
+    return `SELECT ${num(i)} AS i, ${str(f)} AS format, count(*) FILTER (WHERE ${reads}) AS matched, count(*) AS total, any_value(v) FILTER (WHERE ${reads}) AS example FROM s`;
+  });
+  return `WITH s AS (${values})\nSELECT format, matched, total, example FROM (\n  ${tried.join('\n  UNION ALL ')}\n) ORDER BY i`;
 }

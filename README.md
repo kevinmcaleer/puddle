@@ -37,6 +37,7 @@ Every feature ships with its own tests, and every bug fix with a regression test
 | `src/canvas/` | The node canvas on React Flow: nodes, wires, auto layout |
 | `src/flow/` | Each node's live status (columns, row count, broken, dimmed), kept in step with the project |
 | `src/steps/` | Each step type's editor form (`defineStepForm`): its Add step menu entry, fields and defaults; the expression editor |
+| `src/dates/` | Date format detection: candidate `strptime` formats, ranking by match rate, day and month ambiguity |
 | `src/inspector/` | The right-hand panel: source read options, applied steps, step settings and node notes |
 | `src/results/` | The results table on Glide Data Grid: paging, headers with type and quality |
 | `tests/` | Engine integration tests, fixtures and helpers |

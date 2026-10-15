@@ -1,5 +1,16 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
+exports[`column step settings > detects date formats on a sample of non-empty values, one constant format per SELECT 1`] = `
+"WITH s AS (SELECT trim(CAST("joined" AS VARCHAR)) AS v FROM (WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv')),
+  "n_clean_s0" AS (SELECT * REPLACE (trim("name") AS "name") FROM "n_src"),
+  "n_clean_s1" AS (SELECT * REPLACE (list_aggr(list_transform(string_split("name", ' '), w -> upper(left(w, 1)) || lower(substr(w, 2))), 'string_agg', ' ') AS "name") FROM "n_clean_s0")
+SELECT * FROM "n_clean_s1") WHERE coalesce(trim(CAST("joined" AS VARCHAR)), '') <> '' LIMIT 1000)
+SELECT format, matched, total, example FROM (
+  SELECT 0 AS i, '%Y-%m-%d' AS format, count(*) FILTER (WHERE try_strptime(v, '%Y-%m-%d') IS NOT NULL) AS matched, count(*) AS total, any_value(v) FILTER (WHERE try_strptime(v, '%Y-%m-%d') IS NOT NULL) AS example FROM s
+  UNION ALL SELECT 1 AS i, '%d/%m/%Y' AS format, count(*) FILTER (WHERE try_strptime(v, '%d/%m/%Y') IS NOT NULL) AS matched, count(*) AS total, any_value(v) FILTER (WHERE try_strptime(v, '%d/%m/%Y') IS NOT NULL) AS example FROM s
+) ORDER BY i"
+`;
+
 exports[`compile > compiles a source node 1`] = `
 "WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv'))
 SELECT * FROM "n_src""
@@ -203,6 +214,18 @@ SELECT * FROM "n_clean_s0""
 exports[`step snapshots > padText {"columns":["name"],"length":20,"character":".","side":"end"} 1`] = `
 "WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv')),
   "n_clean_s0" AS (SELECT * REPLACE (CASE WHEN length(CAST("name" AS VARCHAR)) >= 20 THEN CAST("name" AS VARCHAR) ELSE rpad(CAST("name" AS VARCHAR), 20, '.') END AS "name") FROM "n_src")
+SELECT * FROM "n_clean_s0""
+`;
+
+exports[`step snapshots > parseDates {"columns":["joined"],"formats":["%Y-%m-%d %H:%M:%S","%d %b '%y"],"onError":"fail"} 1`] = `
+"WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv')),
+  "n_clean_s0" AS (SELECT * REPLACE (CAST(strptime(trim(CAST("joined" AS VARCHAR)), ['%Y-%m-%d %H:%M:%S', '%d %b ''%y']) AS TIMESTAMP) AS "joined") FROM "n_src")
+SELECT * FROM "n_clean_s0""
+`;
+
+exports[`step snapshots > parseDates {"columns":["joined"],"formats":["%d/%m/%Y"],"onError":"empty"} 1`] = `
+"WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv')),
+  "n_clean_s0" AS (SELECT * REPLACE (CAST(try_strptime(trim(CAST("joined" AS VARCHAR)), '%d/%m/%Y') AS DATE) AS "joined") FROM "n_src")
 SELECT * FROM "n_clean_s0""
 `;
 

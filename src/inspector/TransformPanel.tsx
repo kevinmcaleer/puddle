@@ -1,6 +1,8 @@
+import { useMemo } from 'react';
 import { useEngineStore } from '../app/engine';
 import { useSession } from '../app/session';
-import { compileDisplayPage } from '../compiler';
+import { compileDisplayPage, upstreamKey } from '../compiler';
+import { detectDateFormats, type Detection } from '../dates';
 import { tableRows } from '../engine/client';
 import { useNodeStatus } from '../flow/status';
 import {
@@ -48,6 +50,14 @@ async function readFirstRow(project: Project, nodeId: string, after: number, col
   }
 }
 
+/** Date formats detected on the first of these columns as it arrives after step `after`. */
+async function detectFor(project: Project, nodeId: string, after: number, columns: unknown): Promise<Detection | undefined> {
+  const engine = useEngineStore.getState().engine;
+  const column = Array.isArray(columns) && typeof columns[0] === 'string' ? columns[0] : undefined;
+  if (!engine || !column) return undefined;
+  return detectDateFormats(engine, project, { nodeId, stepIndex: after }, column).catch(() => undefined);
+}
+
 function AddStepMenu({ node, after }: { node: TransformNode; after: number }) {
   const project = useProject();
   const available = useStepColumns(project, node.id, after + 1);
@@ -58,8 +68,10 @@ function AddStepMenu({ node, after }: { node: TransformNode; after: number }) {
         label: f.title,
         hint: g,
         onSelect: async () => {
+          const selected = useSession.getState().selectedColumns;
           const firstRow = f.needsFirstRow ? await readFirstRow(project, node.id, after, available) : undefined;
-          const step = newStep(f.type, { selected: useSession.getState().selectedColumns, available, firstRow });
+          const dates = f.detectsDates ? await detectFor(project, node.id, after, f.defaults({ selected, available }).columns) : undefined;
+          const step = newStep(f.type, { selected, available, firstRow, dates });
           apply((p) => addStep(p, node.id, step, after + 1));
           viewStep(node.id, after + 1, step);
         },
@@ -73,6 +85,17 @@ function StepSettings({ node, index, error }: { node: TransformNode; index: numb
   const step = node.steps[index]!;
   const columns = useStepColumns(project, node.id, index);
   const update = (patch: Partial<Step>) => apply((p) => updateStep(p, node.id, step.id, patch));
+  // Detect on the step's input; a new function only when that input changes, so the form doesn't re-run it.
+  const inputKey = upstreamKey(project, { nodeId: node.id, stepIndex: index - 1 });
+  const detectDates = useMemo(
+    () => {
+      const engine = useEngineStore.getState().engine;
+      const p = useProjectStore.getState().history.present;
+      return engine ? (column: string) => detectDateFormats(engine, p, { nodeId: node.id, stepIndex: index - 1 }, column) : undefined;
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [inputKey],
+  );
   return (
     <Section title="Step settings">
       <div className="flex flex-col gap-3" data-testid="step-settings">
@@ -94,7 +117,7 @@ function StepSettings({ node, index, error }: { node: TransformNode; index: numb
             {error}
           </Banner>
         )}
-        <StepForm type={step.type} params={step.params} columns={columns} onChange={(params) => update({ params, label: labelFor({ ...step, params }) })} />
+        <StepForm type={step.type} params={step.params} columns={columns} detectDates={detectDates} onChange={(params) => update({ params, label: labelFor({ ...step, params }) })} />
         <div className="flex flex-wrap gap-2">
           {index > 0 && (
             <Button size="sm" variant="ghost" icon="layout" onClick={() => apply((p) => splitNode(p, node.id, index))}>
