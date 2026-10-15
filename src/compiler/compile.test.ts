@@ -1,7 +1,7 @@
 import { flow, src, step } from '../../tests/helpers/projects';
 import type { ParseOptions, Source } from '../model';
 import { rulePredicate } from './rules';
-import { compile, compileCount, compileDateDetection, compileRules, compileDisplayPage, compilePreview, compileProfile, upstreamKey } from './compile';
+import { compile, compileCount, compileDateDetection, compileRules, compileDisplayPage, compilePreview, compileProfile, compileTypeSniff, upstreamKey } from './compile';
 import { CompileError } from './errors';
 import { SchemaCache } from './schemaCache';
 import { ident, str } from './sql';
@@ -215,6 +215,11 @@ describe('results table queries', () => {
 
   it('profiles through SUMMARIZE', () => {
     expect(compileProfile(cleanFlow(), { nodeId: 'out' })).toMatchSnapshot();
+  });
+
+  it('checks what text columns look like, one set of counts per column', () => {
+    expect(compileTypeSniff(cleanFlow(), { nodeId: 'out' }, ['joined', 'na"me'])).toMatchSnapshot();
+    expect(() => compileTypeSniff(cleanFlow(), { nodeId: 'out' }, [])).toThrow(RangeError);
   });
 });
 

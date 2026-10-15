@@ -8,6 +8,8 @@ import { openProjectDialog } from '../home/dialogs';
 import { exportProject, goHome, importProject } from '../persistence/workspace';
 import { QuickFixes } from '../quickfix/QuickFixes';
 import { showFailing } from '../rules';
+import { ruleTally, useRuleStore } from '../flow/rules';
+import { describeProfile } from '../results/profile';
 import { exportAll, ExportBlockedBanner, ExportButton } from '../export';
 import { ResultsTable } from '../results/ResultsTable';
 import { useResultsStore } from '../results/state';
@@ -16,6 +18,7 @@ import { Button, Menu, ResultsBar, StatusBadge, StatusStrip, Toolbar, type NodeK
 import { addFiles, addNodeAfterSelection, addPastedText, layoutFlow, pasteFromClipboard } from './actions';
 import { useEngineStore, type EngineStatus } from './engine';
 import { ResultsPanel } from './ResultsPanel';
+import { useSession } from './session';
 import { THEME_ICON, THEME_LABEL, useTheme } from './theme';
 
 function EngineBadge({ status }: { status: EngineStatus }) {
@@ -83,9 +86,17 @@ function ResultsTitle() {
 
 function Strip() {
   const engine = useEngineStore((s) => s.status);
-  const viewed = useProject().view.viewedNodeId;
-  const { rows, cols, ms } = useResultsStore();
-  return viewed ? <StatusStrip rows={rows} cols={cols} ms={ms} end={<EngineBadge status={engine} />} /> : <StatusStrip end={<EngineBadge status={engine} />} />;
+  const project = useProject();
+  const viewed = project.view.viewedNodeId;
+  const { rows, cols, ms, profile } = useResultsStore();
+  const selected = useSession((s) => s.selectedColumns);
+  const node = viewed ? nodeById(project, viewed) : undefined;
+  const results = useRuleStore((s) => (viewed ? s.nodes[viewed]?.results : undefined));
+  if (!node) return <StatusStrip end={<EngineBadge status={engine} />} />;
+  const one = selected.length === 1 ? selected[0]! : undefined;
+  const p = one ? profile?.[one] : undefined;
+  const detail = one && p ? <span data-testid="column-profile">{one} · {describeProfile(p)}</span> : undefined;
+  return <StatusStrip rows={rows} cols={cols} ms={ms} rules={ruleTally(node.rules, results)} detail={detail} end={<EngineBadge status={engine} />} />;
 }
 
 /**

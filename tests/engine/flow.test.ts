@@ -1,7 +1,8 @@
 // Node statuses, results pages and profiles on real DuckDB-WASM (Node build) against fixture files.
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { compileDisplayPage, compileProfile, sourceFileName } from '../../src/compiler';
+import { compileDisplayPage, compileProfile, compileTypeSniff, sourceFileName } from '../../src/compiler';
+import { parseProfile, parseTypeSniff } from '../../src/results/profile';
 import { EngineClient, tableRows } from '../../src/engine/client';
 import { countRows, evaluateFlow, invalidateCaches, useFlowStore } from '../../src/flow/status';
 import { groupNodes, splitNode, ungroupNode, type Project, type Source } from '../../src/model';
@@ -85,6 +86,21 @@ describe('results pages and profiles', () => {
     const r = tableRows((await engine.query(compileProfile(chain(), { nodeId: 'out' }))).table);
     const pct = Object.fromEntries(r.map((row) => [row.column_name, row.null_pct]));
     expect(pct).toMatchObject({ id: 0, email: 25 });
+  });
+
+  it('profiles distinct counts, smallest and largest values', async () => {
+    const profile = parseProfile(tableRows((await engine.query(compileProfile(chain(), { nodeId: 'out' }))).table));
+    expect(profile.id).toEqual({ empty: 0, distinct: 4, min: '1', max: '4' });
+    expect(profile.email).toMatchObject({ empty: 0.25, distinct: 3 });
+  });
+
+  it('says when a text column holds numbers or dates', async () => {
+    const mixed = src({ id: 'mixed', format: 'csv' });
+    await engine.registerText(sourceFileName(mixed), 'code,amount,when,label\nA1,1,2024-01-01,x\nB2,2,2024-01-02,y\nC3,3,2024-01-03,z\nD4,4,2024-01-04,w\nE5,five,soon,v\n');
+    const p = chain([], mixed);
+    const cols = ['code', 'amount', 'when', 'label'];
+    const row = tableRows((await engine.query(compileTypeSniff(p, { nodeId: 'out' }, cols))).table)[0]!;
+    expect(parseTypeSniff(row, cols)).toEqual({ amount: { kind: 'numbers', share: 0.8 }, when: { kind: 'dates', share: 0.8 } });
   });
 
   it('reads with the chosen delimiter and treat-as-empty values', async () => {

@@ -34,6 +34,21 @@ export function summarise(rules: Rule[], results: Record<string, RuleResult> | u
   return { status: 'pass', label: on.length === 1 ? 'Rule passes' : `${on.length} rules pass` };
 }
 
+/** How a node's enabled rules stand, for the status strip; rules still being checked aren't counted. */
+export function ruleTally(rules: Rule[], results: Record<string, RuleResult> | undefined): { pass: number; warn: number; fail: number } | undefined {
+  const on = rules.filter((r) => r.enabled);
+  if (!on.length) return undefined;
+  const t = { pass: 0, warn: 0, fail: 0 };
+  for (const r of on) {
+    const res = results?.[r.id];
+    if (!res || res.state === 'pending') continue;
+    if (res.state === 'error') t.fail++;
+    else if (!res.failures) t.pass++;
+    else t[r.severity]++;
+  }
+  return t;
+}
+
 const keyFor = (project: Project, nodeId: string, rules: Rule[]) => hashValue([upstreamKey(project, { nodeId }), rules.map((r) => [r.id, r.type, r.params])]);
 
 /** Check each node's enabled rules on its output, once its preview is ok. Unchanged nodes keep their results. */

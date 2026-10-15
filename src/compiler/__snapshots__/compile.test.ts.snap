@@ -75,8 +75,15 @@ exports[`quality rules > unique {"columns":["id"]} 1`] = `"("id" IS NULL) OR cou
 
 exports[`quality rules > unique {"columns":["name","email"]} 1`] = `"("name" IS NULL OR "email" IS NULL) OR count(*) OVER (PARTITION BY "name", "email") = 1"`;
 
+exports[`results table queries > checks what text columns look like, one set of counts per column 1`] = `
+"SELECT count(nullif(trim(CAST("joined" AS VARCHAR)), '')) AS "n0", count(TRY_CAST(nullif(trim(CAST("joined" AS VARCHAR)), '') AS DOUBLE)) AS "num0", count(TRY_CAST(nullif(trim(CAST("joined" AS VARCHAR)), '') AS DATE)) AS "date0", count(nullif(trim(CAST("na""me" AS VARCHAR)), '')) AS "n1", count(TRY_CAST(nullif(trim(CAST("na""me" AS VARCHAR)), '') AS DOUBLE)) AS "num1", count(TRY_CAST(nullif(trim(CAST("na""me" AS VARCHAR)), '') AS DATE)) AS "date1" FROM (WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv')),
+  "n_clean_s0" AS (SELECT * REPLACE (trim("name") AS "name") FROM "n_src"),
+  "n_clean_s1" AS (SELECT * REPLACE (list_aggr(list_transform(string_split("name", ' '), w -> upper(left(w, 1)) || lower(substr(w, 2))), 'string_agg', ' ') AS "name") FROM "n_clean_s0")
+SELECT * FROM "n_clean_s1")"
+`;
+
 exports[`results table queries > profiles through SUMMARIZE 1`] = `
-"SELECT column_name, CAST(null_percentage AS DOUBLE) AS null_pct, approx_unique FROM (SUMMARIZE SELECT * FROM (WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv')),
+"SELECT column_name, CAST(null_percentage AS DOUBLE) AS null_pct, approx_unique, CAST(min AS VARCHAR) AS min, CAST(max AS VARCHAR) AS max FROM (SUMMARIZE SELECT * FROM (WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv')),
   "n_clean_s0" AS (SELECT * REPLACE (trim("name") AS "name") FROM "n_src"),
   "n_clean_s1" AS (SELECT * REPLACE (list_aggr(list_transform(string_split("name", ' '), w -> upper(left(w, 1)) || lower(substr(w, 2))), 'string_agg', ' ') AS "name") FROM "n_clean_s0")
 SELECT * FROM "n_clean_s1"))"
