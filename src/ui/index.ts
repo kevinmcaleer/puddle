@@ -3,6 +3,7 @@
 export { Banner } from './Banner';
 export { Button, type ButtonProps } from './Button';
 export { cx } from './cx';
+export { Dialog } from './Dialog';
 export { Field, Select, Switch, TextInput, type SelectOption } from './Field';
 export { abbreviate, formatDuration, fullCount } from './format';
 export { glideTheme } from './glideTheme';

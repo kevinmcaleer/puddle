@@ -11,7 +11,20 @@ export interface MenuItem {
 }
 
 /** A button that opens a short list of actions, drawn as a raised popover. Escape or a click outside closes it. */
-export function Menu({ label, items, button, align = 'end' }: { label: ReactNode; items: MenuItem[]; button?: Omit<ButtonProps, 'children' | 'onClick'>; align?: 'start' | 'end' }) {
+export function Menu({
+  label,
+  items,
+  button,
+  align = 'end',
+  renderTrigger,
+}: {
+  label: ReactNode;
+  items: MenuItem[];
+  button?: Omit<ButtonProps, 'children' | 'onClick'>;
+  align?: 'start' | 'end';
+  /** Draw the trigger yourself (e.g. the toolbar's project name); give it the aria props passed in. */
+  renderTrigger?: (p: { 'aria-haspopup': 'menu'; 'aria-expanded': boolean; onClick: () => void }) => ReactNode;
+}) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -29,10 +42,14 @@ export function Menu({ label, items, button, align = 'end' }: { label: ReactNode
 
   return (
     <div className="relative" ref={ref}>
-      <Button {...button} aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen((o) => !o)}>
-        {label}
-        <Icon name="chevron-down" size={14} />
-      </Button>
+      {renderTrigger ? (
+        renderTrigger({ 'aria-haspopup': 'menu', 'aria-expanded': open, onClick: () => setOpen((o) => !o) })
+      ) : (
+        <Button {...button} aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen((o) => !o)}>
+          {label}
+          {!button?.iconOnly && <Icon name="chevron-down" size={14} />}
+        </Button>
+      )}
       {open && (
         <div role="menu" className={`ui-popover absolute top-full z-popover mt-1 py-1 ${align === 'end' ? 'right-0' : 'left-0'}`}>
           {items.map((item) => (

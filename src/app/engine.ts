@@ -21,3 +21,21 @@ export function bootEngine() {
     (e: unknown) => useEngineStore.setState({ status: { state: 'failed', message: e instanceof Error ? e.message : String(e) } }),
   );
 }
+
+/** Resolves once DuckDB is ready; rejects if it failed to start. */
+export function whenEngine(): Promise<EngineClient> {
+  const now = useEngineStore.getState();
+  if (now.engine) return Promise.resolve(now.engine);
+  if (now.status.state === 'failed') return Promise.reject(new Error(now.status.message));
+  return new Promise((resolve, reject) => {
+    const off = useEngineStore.subscribe((s) => {
+      if (s.engine) {
+        off();
+        resolve(s.engine);
+      } else if (s.status.state === 'failed') {
+        off();
+        reject(new Error(s.status.message));
+      }
+    });
+  });
+}

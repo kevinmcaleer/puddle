@@ -8,10 +8,12 @@ import { inputEdges, topoSort, type ColumnSchema, type Project } from '../model'
  * - ok: it compiles and DuckDB can describe it (rows arrive later from a background count);
  * - unwired: it has no input yet, which isn't an error;
  * - error: this node is where the flow breaks (bad step, missing column, unreadable file);
- * - blocked: something upstream is broken, so this node dims.
+ * - blocked: something upstream is broken, so this node dims;
+ * - detached: a source whose file needs choosing again after the project was reopened.
  */
 export type NodeStatus =
   | { state: 'pending' }
+  | { state: 'detached' }
   | { state: 'ok'; columns: ColumnSchema[]; rows?: number }
   | { state: 'unwired' }
   | { state: 'error'; message: string }
@@ -68,7 +70,7 @@ export function invalidateCaches() {
 let generation = 0;
 
 /** Re-evaluate every node whose upstream changed. Nodes whose key is unchanged keep their status. */
-export async function evaluateFlow(engine: EngineClient, project: Project): Promise<void> {
+export async function evaluateFlow(engine: EngineClient, project: Project, isDetached: (sourceId: string) => boolean = () => false): Promise<void> {
   const gen = ++generation;
   const cache = schemaCacheFor(engine);
   let order: string[];
@@ -84,12 +86,18 @@ export async function evaluateFlow(engine: EngineClient, project: Project): Prom
   for (const id of order) {
     const key = upstreamKey(project, { nodeId: id });
     const inputs = inputEdges(project, id).map((e) => next[e.from.nodeId]?.status.state);
+    const node = project.nodes.find((n) => n.id === id);
+    if (node?.type === 'source' && isDetached(node.sourceId)) {
+      next[id] = { key, status: { state: 'detached' } };
+      continue;
+    }
     const kept = prev[id];
-    if (kept && kept.key === key && kept.status.state !== 'pending') {
+    // A kept status must not outlive a detached input: re-check once the file is chosen again.
+    if (kept && kept.key === key && kept.status.state !== 'pending' && kept.status.state !== 'detached' && kept.status.state !== 'blocked') {
       next[id] = kept;
       continue;
     }
-    if (inputs.some((s) => s === 'error' || s === 'blocked' || s === 'unwired')) {
+    if (inputs.some((s) => s === 'error' || s === 'blocked' || s === 'unwired' || s === 'detached')) {
       next[id] = { key, status: inputs.includes('unwired') ? { state: 'unwired' } : { state: 'blocked' } };
       continue;
     }

@@ -12,6 +12,8 @@ import { Banner, columnKind, glideTheme, type Quality } from '../ui';
 import { nullTheme, resultCell } from './cells';
 import { HEADER_HEIGHT, headerColors, makeDrawHeader } from './header';
 import { PageLoader, type Row } from './pages';
+import { detachedMessage } from '../sources/attach';
+import { ReattachButton } from '../sources/ReattachButton';
 import { useResultsStore } from './state';
 
 /** Re-read token colours when the theme preference or the OS scheme changes. */
@@ -173,10 +175,21 @@ export function ResultsTable({ project }: { project: Project }) {
         <Banner tone="info">Connect a wire into this node to see its rows.</Banner>
       </div>
     );
+  if (status.state === 'detached') {
+    const node = project.nodes.find((n) => n.id === nodeId);
+    const source = node?.type === 'source' ? project.sources.find((x) => x.id === node.sourceId) : undefined;
+    return (
+      <div className="p-4" data-testid="results-detached">
+        <Banner tone="warn" title="This file isn’t connected" action={source && <ReattachButton source={source} />}>
+          {source ? detachedMessage(source) : 'Choose the file again to read it.'}
+        </Banner>
+      </div>
+    );
+  }
   if (status.state === 'blocked')
     return (
       <div className="p-4">
-        <Banner tone="warn">A node upstream is broken. Fix it to see these rows.</Banner>
+        <Banner tone="warn">A node upstream is broken or its file isn’t connected. Fix it to see these rows.</Banner>
       </div>
     );
   if (status.state === 'error')

@@ -37,3 +37,13 @@ export const parseNullStrings = (text: string) =>
     .split(',')
     .map((s) => s.trim())
     .filter(Boolean);
+
+export const LOCALES = [
+  { value: 'en-GB', label: 'English (UK)' },
+  { value: 'en-US', label: 'English (US)' },
+  { value: 'de-DE', label: 'German' },
+  { value: 'fr-FR', label: 'French' },
+  { value: 'es-ES', label: 'Spanish' },
+  { value: 'nl-NL', label: 'Dutch' },
+];
+

@@ -1,0 +1,97 @@
+{
+  "id": "pV1fixture",
+  "name": "Customers clean-up (format 1)",
+  "formatVersion": 1,
+  "createdAt": "2026-09-01T09:00:00.000Z",
+  "updatedAt": "2026-09-02T17:30:00.000Z",
+  "notes": "Saved in format 1. Every later Puddle must still open this file.",
+  "sources": [
+    {
+      "id": "sCust",
+      "name": "customers.csv",
+      "kind": "file",
+      "format": "csv",
+      "file": {
+        "originalName": "customers.csv",
+        "size": 190,
+        "lastModified": 1767225600000,
+        "headHash": "0000000000000000000000000000000000000000000000000000000000000000"
+      },
+      "parseOptions": {
+        "delimiter": ","
+      },
+      "detectedSchema": [
+        {
+          "name": "id",
+          "type": "BIGINT"
+        }
+      ]
+    },
+    {
+      "id": "sPaste",
+      "name": "Pasted data",
+      "kind": "clipboard",
+      "format": "tsv",
+      "clipboard": {
+        "text": "sku\tqty\nA1\t3\nB2\t5\n"
+      }
+    }
+  ],
+  "nodes": [
+    {
+      "id": "nCust",
+      "type": "source",
+      "name": "customers.csv",
+      "sourceId": "sCust",
+      "position": {
+        "x": 80,
+        "y": 80
+      }
+    },
+    {
+      "id": "nPaste",
+      "type": "source",
+      "name": "Pasted data",
+      "sourceId": "sPaste",
+      "position": {
+        "x": 80,
+        "y": 240
+      }
+    },
+    {
+      "id": "nOut",
+      "type": "output",
+      "name": "Output 1",
+      "position": {
+        "x": 400,
+        "y": 80
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "e1",
+      "from": {
+        "nodeId": "nCust"
+      },
+      "to": {
+        "nodeId": "nOut"
+      }
+    }
+  ],
+  "view": {
+    "viewedNodeId": "nOut",
+    "canvasViewport": {
+      "x": -20,
+      "y": 10,
+      "zoom": 1.25
+    }
+  },
+  "settings": {
+    "sampleThresholdRows": 1000000,
+    "locale": "en-GB",
+    "defaultDateFormats": [
+      "%d/%m/%Y"
+    ]
+  }
+}
