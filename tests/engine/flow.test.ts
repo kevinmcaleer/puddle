@@ -4,7 +4,7 @@ import { join } from 'node:path';
 import { compileDisplayPage, compileProfile, sourceFileName } from '../../src/compiler';
 import { EngineClient, tableRows } from '../../src/engine/client';
 import { countRows, evaluateFlow, invalidateCaches, useFlowStore } from '../../src/flow/status';
-import type { Project, Source } from '../../src/model';
+import { groupNodes, splitNode, ungroupNode, type Project, type Source } from '../../src/model';
 import { createNodeBackend } from '../helpers/nodeBackend';
 import { flow, src, step } from '../helpers/projects';
 
@@ -107,5 +107,34 @@ describe('detached sources', () => {
     await evaluateFlow(engine, p, () => true);
     await evaluateFlow(engine, p, () => false);
     expect(states()).toMatchObject({ in: 'ok', t: 'ok', out: 'ok' });
+  });
+});
+
+describe('grouping', () => {
+  const two = (): Project =>
+    flow({
+      sources: [cust],
+      nodes: [
+        { id: 'in', type: 'source', sourceId: cust.id },
+        { id: 'a', type: 'transform', steps: [step('trim', 'trimWhitespace', { columns: ['name', 'email'] })] },
+        { id: 'b', type: 'transform', steps: [step('case', 'changeCase', { columns: ['name'], mode: 'title' }), step('drop', 'removeColumns', { columns: ['joined'] })] },
+        { id: 'out', type: 'output' },
+      ],
+      wires: [['in', 'a'], ['a', 'b'], ['b', 'out']],
+    });
+  const rows = async (p: Project) => tableRows((await engine.query(compileDisplayPage(p, { nodeId: 'out' }, ['id', 'name', 'email'], 0))).table);
+
+  it('grouping, ungrouping and splitting a chain never change what reaches the output', async () => {
+    const p = two();
+    const expected = await rows(p);
+    expect(expected.slice(0, 2)).toEqual([
+      { id: '1', name: 'Ada Lovelace', email: 'ADA@example.com' },
+      { id: '2', name: 'Grace Hopper', email: 'grace@example.com' },
+    ]);
+    const grouped = groupNodes(p, ['a', 'b']);
+    expect(grouped.nodes.map((n) => n.id)).toEqual(['in', 'a', 'out']);
+    expect(await rows(grouped)).toEqual(expected);
+    expect(await rows(ungroupNode(grouped, 'a'))).toEqual(expected);
+    expect(await rows(splitNode(grouped, 'a', 2, 'c'))).toEqual(expected);
   });
 });
