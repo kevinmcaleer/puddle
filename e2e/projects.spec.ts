@@ -181,3 +181,30 @@ test('project settings are saved with the project', async ({ page }) => {
   await page.reload();
   await expect(page.getByLabel('Locale')).toHaveValue('de-DE');
 });
+
+test('a Source to Transform to Output flow is saved and reloaded with its layout', async ({ page }) => {
+  await openApp(page);
+  await addFiles(page, [fixture('customers.csv')]);
+  await node(page, 'customers.csv').click();
+  await page.getByRole('button', { name: 'Add node' }).click();
+  await page.getByRole('menuitem', { name: 'Transform' }).click();
+  await page.getByRole('button', { name: 'Add node' }).click();
+  await page.getByRole('menuitem', { name: 'Output' }).click();
+  await page.getByRole('button', { name: 'Auto layout' }).click();
+  await expect.poll(async () => (await saved(page))?.nodes.length).toBe(3);
+  const positions = () =>
+    page.evaluate(() =>
+      (globalThis.__puddle as unknown as { store: { getState(): { history: { present: { nodes: Array<{ name: string; position: unknown }> } } } } }).store
+        .getState()
+        .history.present.nodes.map((n) => [n.name, n.position]),
+    );
+  await expect.poll(async () => JSON.stringify((await saved(page))?.nodes.map((n) => [(n as { name: string }).name, (n as { position: unknown }).position]))).toBe(JSON.stringify(await positions()));
+  const before = await positions();
+
+  await page.reload();
+  await expect(page.getByTestId('engine-ready')).toBeVisible({ timeout: 45_000 });
+  expect(await positions()).toEqual(before);
+  await expect(page.getByTestId('wire-customers.csv->Transform 1')).toBeAttached();
+  await expect(page.getByTestId('wire-Transform 1->Output 1')).toBeAttached();
+  await expect(node(page, 'Output 1')).toHaveAttribute('data-status', 'blocked');
+});
