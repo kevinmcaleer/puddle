@@ -170,7 +170,7 @@ export function StepForm({ type, params, columns, onChange }: { type: string; pa
   const errors = fieldErrors({ type, params });
   return (
     <div className="flex flex-col gap-3" data-testid="step-form">
-      {form.fields.map((f) =>
+      {form.fields.filter((f) => !f.when || f.when(params)).map((f) =>
         f.kind === 'switch' ? (
           <FieldInput key={f.key} field={f} value={params[f.key]} columns={columns} onChange={(v) => onChange({ ...params, [f.key]: v })} />
         ) : (

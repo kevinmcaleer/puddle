@@ -2,5 +2,6 @@
 import './basic';
 import './columns';
 import './rows';
+import './text';
 
 export { defineStepForm, fieldErrors, labelFor, newStep, stepForm, stepForms, type DefaultsContext, type FieldSpec, type StepForm, type StepGroup } from './forms';

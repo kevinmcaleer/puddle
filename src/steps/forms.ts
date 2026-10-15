@@ -2,7 +2,12 @@ import { newId, type ColumnSchema, type Step } from '../model';
 import { stepDef } from '../compiler';
 
 /** One setting in a step's editor form. The generic form renders these; a step needs no React of its own. */
-export type FieldSpec =
+export type FieldSpec = FieldKind & {
+  /** Show the field only when this holds for the step's settings, e.g. one extract mode's options. */
+  when?: (params: Record<string, unknown>) => boolean;
+};
+
+type FieldKind =
   | { key: string; label: string; kind: 'columns'; hint?: string }
   | { key: string; label: string; kind: 'column'; hint?: string }
   | { key: string; label: string; kind: 'text'; hint?: string; mono?: boolean; placeholder?: string }
