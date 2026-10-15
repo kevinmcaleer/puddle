@@ -7,3 +7,4 @@ export { createProject, parseProject } from './project';
 export { addStep, canGroup, canUngroup, groupNodes, moveStep, removeStep, renameNode, setNodeNotes, splitNode, toggleStep, ungroupNode, updateStep, type GroupCheck } from './steps';
 export { addNode, addSource, moveNodes, nextNodeName, removeNodes, setCollapsed, setParseOptions, updateSource } from './edits';
 export { useProject, useProjectStore, type ProjectState } from './store';
+export { placeStep, type Placed } from './quickfix';

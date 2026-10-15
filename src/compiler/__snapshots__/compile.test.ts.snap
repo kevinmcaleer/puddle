@@ -115,6 +115,12 @@ exports[`step snapshots > changeType {"columns":["joined","id"],"to":"date","onE
 SELECT * FROM "n_clean_s0""
 `;
 
+exports[`step snapshots > collapseSpaces {"columns":["name","email"]} 1`] = `
+"WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv')),
+  "n_clean_s0" AS (SELECT * REPLACE (regexp_replace(CAST("name" AS VARCHAR), '\\s{2,}', ' ', 'g') AS "name", regexp_replace(CAST("email" AS VARCHAR), '\\s{2,}', ' ', 'g') AS "email") FROM "n_src")
+SELECT * FROM "n_clean_s0""
+`;
+
 exports[`step snapshots > duplicateColumn {"column":"email","into":"email copy"} 1`] = `
 "WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv')),
   "n_clean_s0" AS (SELECT *, "email" AS "email copy" FROM "n_src")
@@ -130,6 +136,12 @@ SELECT * FROM "n_clean_s0""
 exports[`step snapshots > duplicateRows {"columns":[],"keep":"first"} 1`] = `
 "WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv')),
   "n_clean_s0" AS (SELECT * EXCLUDE ("__puddle_row", "__puddle_key") FROM (SELECT row_number() OVER () AS "__puddle_row", row(*COLUMNS(*)) AS "__puddle_key", * FROM "n_src") QUALIFY row_number() OVER (PARTITION BY "__puddle_key" ORDER BY "__puddle_row") = 1 ORDER BY "__puddle_row")
+SELECT * FROM "n_clean_s0""
+`;
+
+exports[`step snapshots > emptyToNull {"columns":["name","id"]} 1`] = `
+"WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv')),
+  "n_clean_s0" AS (SELECT * REPLACE (CASE WHEN trim(CAST("name" AS VARCHAR)) = '' THEN NULL ELSE "name" END AS "name", CASE WHEN trim(CAST("id" AS VARCHAR)) = '' THEN NULL ELSE "id" END AS "id") FROM "n_src")
 SELECT * FROM "n_clean_s0""
 `;
 
@@ -229,6 +241,18 @@ exports[`step snapshots > parseDates {"columns":["joined"],"formats":["%d/%m/%Y"
 SELECT * FROM "n_clean_s0""
 `;
 
+exports[`step snapshots > parseNumbers {"columns":["id"],"decimal":","} 1`] = `
+"WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv')),
+  "n_clean_s0" AS (SELECT * REPLACE (CASE WHEN regexp_matches(trim(CAST("id" AS VARCHAR)), '^\\(.*\\)$') THEN -TRY_CAST(replace(regexp_replace(CAST("id" AS VARCHAR), '[^0-9,\\-]', '', 'g'), ',', '.') AS DOUBLE) ELSE TRY_CAST(replace(regexp_replace(CAST("id" AS VARCHAR), '[^0-9,\\-]', '', 'g'), ',', '.') AS DOUBLE) END AS "id") FROM "n_src")
+SELECT * FROM "n_clean_s0""
+`;
+
+exports[`step snapshots > parseNumbers {"columns":["id"],"decimal":"."} 1`] = `
+"WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv')),
+  "n_clean_s0" AS (SELECT * REPLACE (CASE WHEN regexp_matches(trim(CAST("id" AS VARCHAR)), '^\\(.*\\)$') THEN -TRY_CAST(regexp_replace(CAST("id" AS VARCHAR), '[^0-9.\\-]', '', 'g') AS DOUBLE) ELSE TRY_CAST(regexp_replace(CAST("id" AS VARCHAR), '[^0-9.\\-]', '', 'g') AS DOUBLE) END AS "id") FROM "n_src")
+SELECT * FROM "n_clean_s0""
+`;
+
 exports[`step snapshots > promoteHeaders {"renames":[{"from":"id","to":"ID"},{"from":"name","to":"name"}]} 1`] = `
 "WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv')),
   "n_clean_s0" AS (SELECT * RENAME ("id" AS "ID") FROM "n_src" OFFSET 1)
@@ -250,6 +274,12 @@ SELECT * FROM "n_clean_s0""
 exports[`step snapshots > removeColumns {"columns":["email"]} 1`] = `
 "WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv')),
   "n_clean_s0" AS (SELECT * EXCLUDE ("email") FROM "n_src")
+SELECT * FROM "n_clean_s0""
+`;
+
+exports[`step snapshots > removeNonPrinting {"columns":["name"]} 1`] = `
+"WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv')),
+  "n_clean_s0" AS (SELECT * REPLACE (regexp_replace(CAST("name" AS VARCHAR), '[\\x00-\\x1F\\x7F\\x{200B}-\\x{200D}\\x{2060}\\x{FEFF}]', '', 'g') AS "name") FROM "n_src")
 SELECT * FROM "n_clean_s0""
 `;
 

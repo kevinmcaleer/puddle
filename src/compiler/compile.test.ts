@@ -132,6 +132,11 @@ describe('step snapshots', () => {
     ['padText', { columns: ['name'], length: 20, character: '.', side: 'end' }],
     ['textLength', { column: 'name', into: 'name_length' }],
     ['parseDates', { columns: ['joined'], formats: ['%d/%m/%Y'], onError: 'empty' }],
+    ['collapseSpaces', { columns: ['name', 'email'] }],
+    ['removeNonPrinting', { columns: ['name'] }],
+    ['emptyToNull', { columns: ['name', 'id'] }],
+    ['parseNumbers', { columns: ['id'], decimal: '.' }],
+    ['parseNumbers', { columns: ['id'], decimal: ',' }],
     ['parseDates', { columns: ['joined'], formats: ['%Y-%m-%d %H:%M:%S', "%d %b '%y"], onError: 'fail' }],
   ])('%s %j', (type, params) => {
     expect(compile(cleanFlow([step('s', type, params)]), { nodeId: 'clean' }).sql).toMatchSnapshot();

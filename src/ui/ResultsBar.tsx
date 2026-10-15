@@ -3,27 +3,49 @@ import { Button } from './Button';
 import { cx } from './cx';
 import { abbreviate, formatDuration, fullCount } from './format';
 import { Icon, type IconName } from './Icon';
+import { Menu } from './Menu';
 import { NODE_KIND, type NodeKind } from './nodeKinds';
 import { StatusBadge } from './StatusBadge';
 
 export interface QuickFix {
   label: string;
   icon?: IconName;
+  /** Choices shown in a menu from the chip, e.g. the cases for Case. */
+  options?: { id: string; label: string }[];
 }
 
-export function QuickFixBar({ fixes, onFix }: { fixes: Array<string | QuickFix>; onFix?: (fix: QuickFix) => void }) {
+const MAX_CHIPS = 8;
+
+/** At most eight chips; the rest wait behind More. A fix with options opens a menu of them. */
+export function QuickFixBar({ fixes, onFix }: { fixes: Array<string | QuickFix>; onFix?: (fix: QuickFix, option?: string) => void }) {
+  const all = fixes.map((f) => (typeof f === 'string' ? { label: f } : f));
+  const shown = all.length > MAX_CHIPS ? all.slice(0, MAX_CHIPS - 1) : all;
+  const more = all.slice(shown.length);
+  const chip = (o: QuickFix, p?: { 'aria-haspopup': 'menu'; 'aria-expanded': boolean; onClick: () => void }) => (
+    <button key={o.label} type="button" className="ui-chip" {...(p ?? { onClick: () => onFix?.(o) })}>
+      {o.icon && <Icon name={o.icon} size={14} />}
+      {o.label}
+      {p && <Icon name="chevron-down" size={14} />}
+    </button>
+  );
   return (
     <div className="ui-quickfix" role="toolbar" aria-label="Quick fixes">
       <span className="ui-eyebrow" style={{ marginRight: 'var(--space-1)' }}>Quick fix</span>
-      {fixes.map((f) => {
-        const o = typeof f === 'string' ? { label: f } : f;
-        return (
-          <button key={o.label} type="button" className="ui-chip" onClick={() => onFix?.(o)}>
-            {o.icon && <Icon name={o.icon} size={14} />}
-            {o.label}
-          </button>
-        );
-      })}
+      {shown.map((o) =>
+        o.options ? (
+          <Menu key={o.label} label={o.label} align="start" renderTrigger={(p) => chip(o, p)} items={o.options.map((opt) => ({ label: opt.label, onSelect: () => onFix?.(o, opt.id) }))} />
+        ) : (
+          chip(o)
+        ),
+      )}
+      {more.length > 0 && (
+        <Menu
+          label="More"
+          align="start"
+          renderTrigger={(p) => chip({ label: 'More' }, p)}
+          items={more.flatMap((o) => (o.options ? o.options.map((opt) => ({ label: `${o.label}: ${opt.label}`, onSelect: () => onFix?.(o, opt.id) })) : [{ label: o.label, onSelect: () => onFix?.(o) }]))}
+        />
+      )}
     </div>
   );
 }
