@@ -1,11 +1,11 @@
 import { flow, src, step } from '../../tests/helpers/projects';
 import type { ParseOptions, Source } from '../model';
-import { compile, compileCount, compileDisplayPage, compilePreview, compileProfile, upstreamKey } from './compile';
+import { compile, compileCount, compileDateDetection, compileDisplayPage, compilePreview, compileProfile, upstreamKey } from './compile';
 import { CompileError } from './errors';
 import { SchemaCache } from './schemaCache';
 import { ident, str } from './sql';
 import { sourceRelation } from './sources';
-import { expressionProblem } from './steps';
+import { expressionProblem, regexProblem } from './steps';
 
 const cleanFlow = (steps = [step('s1', 'trimWhitespace', { columns: ['name'] }), step('s2', 'changeCase', { columns: ['name'], mode: 'title' })]) =>
   flow({
@@ -121,6 +121,23 @@ describe('step snapshots', () => {
     ['fillRows', { columns: ['name'], direction: 'down' }],
     ['fillRows', { columns: ['name', 'email'], direction: 'up' }],
     ['promoteHeaders', { renames: [{ from: 'id', to: 'ID' }, { from: 'name', to: 'name' }] }],
+    ['findReplace', { columns: ['email'], find: 'example.com', replace: "o'brien.org", regex: false, matchCase: true }],
+    ['findReplace', { columns: ['email'], find: 'A.B', replace: 'x\\1', regex: false, matchCase: false }],
+    ['findReplace', { columns: ['name', 'email'], find: '\\s+', replace: ' ', regex: true, matchCase: true }],
+    ['extractText', { column: 'email', mode: 'prefix', length: 3, into: 'start' }],
+    ['extractText', { column: 'email', mode: 'suffix', length: 4, into: 'tld' }],
+    ['extractText', { column: 'email', mode: 'between', start: '@', end: '.', into: 'host' }],
+    ['extractText', { column: 'joined', mode: 'regex', pattern: '^([0-9]{4})', group: 1, into: 'year' }],
+    ['padText', { columns: ['id'], length: 5, character: '0', side: 'start' }],
+    ['padText', { columns: ['name'], length: 20, character: '.', side: 'end' }],
+    ['textLength', { column: 'name', into: 'name_length' }],
+    ['parseDates', { columns: ['joined'], formats: ['%d/%m/%Y'], onError: 'empty' }],
+    ['collapseSpaces', { columns: ['name', 'email'] }],
+    ['removeNonPrinting', { columns: ['name'] }],
+    ['emptyToNull', { columns: ['name', 'id'] }],
+    ['parseNumbers', { columns: ['id'], decimal: '.' }],
+    ['parseNumbers', { columns: ['id'], decimal: ',' }],
+    ['parseDates', { columns: ['joined'], formats: ['%Y-%m-%d %H:%M:%S', "%d %b '%y"], onError: 'fail' }],
   ])('%s %j', (type, params) => {
     expect(compile(cleanFlow([step('s', type, params)]), { nodeId: 'clean' }).sql).toMatchSnapshot();
   });
@@ -218,6 +235,27 @@ describe('column step settings', () => {
     expect(invalid('splitByPosition', { column: 'id', positions: [2], into: ['a'] })).toThrow(/one more column/);
     expect(invalid('mergeColumns', { columns: ['name'], into: 'x' })).toThrow(/at least two/);
     expect(invalid('splitByDelimiter', { column: 'id', delimiter: '', into: ['a'] })).toThrow(/delimiter/);
+  });
+
+  it('says how to fix a pattern DuckDB would refuse, before anything runs', () => {
+    expect(regexProblem('^[0-9]+$')).toBeUndefined();
+    expect(regexProblem('\\-')).toBeUndefined();
+    expect(regexProblem('(abc')).toBe('close every ( with a )');
+    expect(regexProblem('[abc')).toBe('close every [ with a ]');
+    expect(regexProblem('*a')).toMatch(/put something before/);
+    expect(regexProblem('a(?=b)')).toMatch(/look-aheads/);
+    expect(regexProblem('(a)\\1')).toMatch(/back-references/);
+    expect(invalid('findReplace', { columns: ['name'], find: '(', regex: true })).toThrow(/close every \(/);
+    expect(invalid('findReplace', { columns: ['name'], find: '(', regex: false })).not.toThrow();
+    expect(invalid('extractText', { column: 'name', mode: 'regex', pattern: '[', into: 'x' })).toThrow(/close every \[/);
+    expect(invalid('padText', { columns: ['id'], length: 3, character: '00' })).toThrow(/one character/);
+  });
+
+  it('detects date formats on a sample of non-empty values, one constant format per SELECT', () => {
+    const sql = compileDateDetection(cleanFlow(), { nodeId: 'clean' }, 'joined', ['%Y-%m-%d', '%d/%m/%Y']);
+    expect(sql).toMatchSnapshot();
+    expect(() => compileDateDetection(cleanFlow(), { nodeId: 'clean' }, 'joined', [])).toThrow(RangeError);
+    expect(invalid('parseDates', { columns: ['joined'], formats: [] })).toThrow(/choose a date format/);
   });
 
   it('row steps say what is missing', () => {

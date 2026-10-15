@@ -6,6 +6,7 @@ import { Inspector } from '../inspector/Inspector';
 import { nodeById, useProject, useProjectStore } from '../model';
 import { openProjectDialog } from '../home/dialogs';
 import { exportProject, goHome, importProject } from '../persistence/workspace';
+import { QuickFixes } from '../quickfix/QuickFixes';
 import { ResultsTable } from '../results/ResultsTable';
 import { useResultsStore } from '../results/state';
 import { ACCEPT } from '../sources/detect';
@@ -60,7 +61,11 @@ function ResultsTitle() {
   if (!node) return <ResultsBar title="Nothing to view yet" kind="output" />;
   const step = project.view.viewedStepIndex;
   const kind: NodeKind = node.type;
-  return <ResultsBar title={<span data-testid="results-title">{step == null ? node.name : `${node.name} · step ${step + 1}`}</span>} kind={kind} />;
+  return (
+    <ResultsBar title={<span data-testid="results-title">{step == null ? node.name : `${node.name} · step ${step + 1}`}</span>} kind={kind}>
+      <QuickFixes />
+    </ResultsBar>
+  );
 }
 
 function Strip() {

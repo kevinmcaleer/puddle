@@ -1,18 +1,15 @@
-import { useState } from 'react';
 import type { ColumnSchema } from '../model';
-import { Button, columnKind, cx, Field, Select, Switch, TextInput, TypeTag } from '../ui';
+import { Button, columnKind, cx, Field, Select, Switch, TypeTag } from '../ui';
 import { FILTER_OPS } from '../compiler';
+import type { Detection } from '../dates';
+import { CommitInput } from './CommitInput';
+import { DateFormatsInput } from './DateFormatsInput';
 import { ExpressionInput } from './ExpressionInput';
 import { fieldErrors, stepForm, type FieldSpec } from './forms';
 
 type Params = Record<string, unknown>;
 
-/** A text input that commits on Enter or blur, so typing doesn't add an undo step per key. Key it by value to reset. */
-export function CommitInput({ value, onCommit, ...rest }: { id?: string; value: string; onCommit: (v: string) => void; mono?: boolean; placeholder?: string; error?: boolean; 'aria-label'?: string }) {
-  const [draft, setDraft] = useState(value);
-  const commit = () => draft !== value && onCommit(draft);
-  return <TextInput {...rest} value={draft} onChange={(e) => setDraft(e.target.value)} onBlur={commit} onKeyDown={(e) => e.key === 'Enter' && commit()} />;
-}
+export { CommitInput };
 
 /** Toggle columns on and off. Columns the step names but its input no longer has are shown as missing. */
 function ColumnsPicker({ id, value, columns, single, onChange }: { id: string; value: string[]; columns: ColumnSchema[]; single?: boolean; onChange: (v: string[]) => void }) {
@@ -113,7 +110,7 @@ function SortKeys({ value, columns, onChange }: { value: SortKey[]; columns: Col
   );
 }
 
-function FieldInput({ field, value, columns, error, onChange }: { field: FieldSpec; value: unknown; columns: ColumnSchema[]; error?: string; onChange: (v: unknown) => void }) {
+function FieldInput({ field, value, params, columns, error, detectDates, onChange }: { field: FieldSpec; value: unknown; params: Params; columns: ColumnSchema[]; error?: string; detectDates?: (column: string) => Promise<Detection>; onChange: (v: unknown) => void }) {
   const id = `step-${field.key}`;
   switch (field.kind) {
     case 'columns':
@@ -158,24 +155,29 @@ function FieldInput({ field, value, columns, error, onChange }: { field: FieldSp
       return <Conditions value={Array.isArray(value) ? (value as Condition[]) : []} columns={columns} onChange={onChange} />;
     case 'sortKeys':
       return <SortKeys value={Array.isArray(value) ? (value as SortKey[]) : []} columns={columns} onChange={onChange} />;
+    case 'dateFormats': {
+      const cols = params.columns;
+      const column = Array.isArray(cols) && typeof cols[0] === 'string' ? cols[0] : '';
+      return <DateFormatsInput id={id} value={Array.isArray(value) ? value.map(String) : []} column={column} detect={detectDates} onChange={onChange} />;
+    }
     case 'renames':
       return <Renames value={Array.isArray(value) ? (value as { from: string; to: string }[]) : []} columns={columns} onChange={onChange} />;
   }
 }
 
 /** The settings form for one step, built from its field list, with field errors shown before anything runs. */
-export function StepForm({ type, params, columns, onChange }: { type: string; params: Params; columns: ColumnSchema[]; onChange: (params: Params) => void }) {
+export function StepForm({ type, params, columns, detectDates, onChange }: { type: string; params: Params; columns: ColumnSchema[]; detectDates?: (column: string) => Promise<Detection>; onChange: (params: Params) => void }) {
   const form = stepForm(type);
   if (!form) return <p className="text-ink-muted">This step type has no settings form.</p>;
   const errors = fieldErrors({ type, params });
   return (
     <div className="flex flex-col gap-3" data-testid="step-form">
-      {form.fields.map((f) =>
+      {form.fields.filter((f) => !f.when || f.when(params)).map((f) =>
         f.kind === 'switch' ? (
-          <FieldInput key={f.key} field={f} value={params[f.key]} columns={columns} onChange={(v) => onChange({ ...params, [f.key]: v })} />
+          <FieldInput key={f.key} field={f} value={params[f.key]} params={params} columns={columns} onChange={(v) => onChange({ ...params, [f.key]: v })} />
         ) : (
           <Field key={f.key} label={f.label} htmlFor={`step-${f.key}`} hint={f.hint} error={errors[f.key]}>
-            <FieldInput field={f} value={params[f.key]} columns={columns} error={errors[f.key]} onChange={(v) => onChange({ ...params, [f.key]: v })} />
+            <FieldInput field={f} value={params[f.key]} params={params} columns={columns} error={errors[f.key]} detectDates={detectDates} onChange={(v) => onChange({ ...params, [f.key]: v })} />
           </Field>
         ),
       )}

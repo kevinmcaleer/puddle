@@ -1,8 +1,14 @@
 import { newId, type ColumnSchema, type Step } from '../model';
 import { stepDef } from '../compiler';
+import type { Detection } from '../dates';
 
 /** One setting in a step's editor form. The generic form renders these; a step needs no React of its own. */
-export type FieldSpec =
+export type FieldSpec = FieldKind & {
+  /** Show the field only when this holds for the step's settings, e.g. one extract mode's options. */
+  when?: (params: Record<string, unknown>) => boolean;
+};
+
+type FieldKind =
   | { key: string; label: string; kind: 'columns'; hint?: string }
   | { key: string; label: string; kind: 'column'; hint?: string }
   | { key: string; label: string; kind: 'text'; hint?: string; mono?: boolean; placeholder?: string }
@@ -17,7 +23,9 @@ export type FieldSpec =
   /** Filter conditions: column, comparison and value per row. */
   | { key: string; label: string; kind: 'conditions'; hint?: string }
   /** Sort keys: column and direction per row. */
-  | { key: string; label: string; kind: 'sortKeys'; hint?: string };
+  | { key: string; label: string; kind: 'sortKeys'; hint?: string }
+  /** strptime formats tried in order, with detected formats and their match rates offered. */
+  | { key: string; label: string; kind: 'dateFormats'; hint?: string };
 
 export type StepGroup = 'Clean' | 'Columns' | 'Rows' | 'Text' | 'Dates';
 
@@ -28,6 +36,10 @@ export interface DefaultsContext {
   available: ColumnSchema[];
   /** The first row arriving at the step, as text, for forms that ask for it with `needsFirstRow`. */
   firstRow?: Record<string, string | null>;
+  /** Date formats detected on a column, for forms that ask for it with `detectsDates`. */
+  dates?: Detection;
+  /** The project locale's decimal mark. */
+  decimal?: '.' | ',';
 }
 
 /** The editor side of a step type: its name in the Add step menu, its group, its form and its defaults. */
@@ -39,6 +51,8 @@ export interface StepForm {
   defaults: (ctx: DefaultsContext) => Record<string, unknown>;
   /** Read the step input's first row before choosing defaults (promote headers). */
   needsFirstRow?: boolean;
+  /** Detect date formats on the first default column before choosing defaults (parse dates). */
+  detectsDates?: boolean;
 }
 
 const FORMS = new Map<string, StepForm>();
@@ -62,6 +76,9 @@ export function labelFor(step: Pick<Step, 'type' | 'params' | 'label' | 'customL
   if (def && parsed?.success) return def.label(parsed.data);
   return stepForm(step.type)?.title ?? step.label;
 }
+
+/** The same step with its label recomputed from its settings, unless it was renamed. */
+export const relabel = (step: Step): Step => ({ ...step, label: labelFor(step) });
 
 /** A new step of this type with defaults drawn from the selected columns. */
 export function newStep(type: string, ctx: DefaultsContext): Step {
