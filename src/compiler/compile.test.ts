@@ -1,6 +1,6 @@
 import { flow, src, step } from '../../tests/helpers/projects';
 import type { ParseOptions, Source } from '../model';
-import { compile, compileCount, compilePreview, upstreamKey } from './compile';
+import { compile, compileCount, compileDisplayPage, compilePreview, compileProfile, upstreamKey } from './compile';
 import { CompileError } from './errors';
 import { SchemaCache } from './schemaCache';
 import { ident, str } from './sql';
@@ -159,5 +159,19 @@ describe('SchemaCache', () => {
     await cache.get(p, { nodeId: 'src' });
     await cache.get(p, { nodeId: 'clean', stepIndex: 0 });
     expect(cache.size).toBe(2);
+  });
+});
+
+describe('results table queries', () => {
+  it('casts each column to text for display and pages with LIMIT and OFFSET', () => {
+    const sql = compileDisplayPage(cleanFlow(), { nodeId: 'out' }, ['id', 'na"me'], 2, 100);
+    expect(sql).toContain('SELECT CAST("id" AS VARCHAR) AS "id", CAST("na""me" AS VARCHAR) AS "na""me" FROM (WITH');
+    expect(sql.endsWith('LIMIT 100 OFFSET 200')).toBe(true);
+    expect(compileDisplayPage(cleanFlow(), { nodeId: 'out' }, [])).toMatch(/^SELECT \* FROM \(/);
+    expect(() => compileDisplayPage(cleanFlow(), { nodeId: 'out' }, [], -1)).toThrow(RangeError);
+  });
+
+  it('profiles through SUMMARIZE', () => {
+    expect(compileProfile(cleanFlow(), { nodeId: 'out' })).toMatchSnapshot();
   });
 });

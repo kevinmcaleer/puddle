@@ -1,7 +1,7 @@
 import { hashValue, inputEdges, nodeById, topoSort, upstreamIds, type GraphNode, type Project } from '../model';
 import { CompileError } from './errors';
 import { sourceRelation } from './sources';
-import { cteName, num } from './sql';
+import { cteName, ident, num } from './sql';
 import { stepParams } from './steps';
 
 export const PAGE_SIZE = 500;
@@ -80,6 +80,21 @@ export function compile(project: Project, target: Target): Compiled {
 export function compilePreview(project: Project, target: Target, page = 0, pageSize = PAGE_SIZE): string {
   if (!Number.isInteger(page) || page < 0) throw new RangeError(`Bad page: ${page}`);
   return `${compile(project, target).sql}\nLIMIT ${num(pageSize)} OFFSET ${num(page * pageSize)}`;
+}
+
+/**
+ * One page of the results table with every column cast to text, so the grid shows exactly what DuckDB
+ * would print (dates, decimals, nested values) instead of Arrow's raw encodings. Nulls stay null.
+ */
+export function compileDisplayPage(project: Project, target: Target, columns: string[], page = 0, pageSize = PAGE_SIZE): string {
+  if (!Number.isInteger(page) || page < 0) throw new RangeError(`Bad page: ${page}`);
+  const select = columns.length ? columns.map((c) => `CAST(${ident(c)} AS VARCHAR) AS ${ident(c)}`).join(', ') : '*';
+  return `SELECT ${select} FROM (${compile(project, target).sql})\nLIMIT ${num(pageSize)} OFFSET ${num(page * pageSize)}`;
+}
+
+/** Per-column profile for the quality bars: the share of empty values, from SUMMARIZE. */
+export function compileProfile(project: Project, target: Target): string {
+  return `SELECT column_name, CAST(null_percentage AS DOUBLE) AS null_pct, approx_unique FROM (SUMMARIZE SELECT * FROM (${compile(project, target).sql}))`;
 }
 
 /** The target's full row count. */

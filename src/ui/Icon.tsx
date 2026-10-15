@@ -1,6 +1,6 @@
 import type { LucideIcon } from 'lucide-react';
 import {
-  Blend, Calendar, CaseSensitive, Check, ChevronDown, ChevronRight, ChevronUp, Clock, Code, Download, Ellipsis, Eye,
+  Blend, Calendar, ClipboardPaste, CaseSensitive, Check, ChevronDown, ChevronRight, ChevronUp, Clock, Code, Download, Ellipsis, Eye,
   File, FileText, GripVertical, Info, ListPlus, Monitor, Moon, PanelBottomClose, PanelBottomOpen, Pin, Plus, Redo2,
   Search, ShieldCheck, SlidersHorizontal, Sun, TriangleAlert, Type, Undo2, Workflow, X,
 } from 'lucide-react';
@@ -42,6 +42,7 @@ const LUCIDE = {
   monitor: Monitor,
   'panel-close': PanelBottomClose,
   'panel-open': PanelBottomOpen,
+  paste: ClipboardPaste,
 } satisfies Record<string, LucideIcon>;
 
 export type IconName = keyof typeof LUCIDE | 'trim';

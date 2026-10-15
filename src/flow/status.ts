@@ -1,0 +1,124 @@
+import { create } from 'zustand';
+import { compile, CompileError, compileCount, SchemaCache, upstreamKey } from '../compiler';
+import { tableRows, toEngineError, type EngineClient } from '../engine';
+import { inputEdges, topoSort, type ColumnSchema, type Project } from '../model';
+
+/**
+ * What the canvas knows about each node's output:
+ * - ok: it compiles and DuckDB can describe it (rows arrive later from a background count);
+ * - unwired: it has no input yet, which isn't an error;
+ * - error: this node is where the flow breaks (bad step, missing column, unreadable file);
+ * - blocked: something upstream is broken, so this node dims.
+ */
+export type NodeStatus =
+  | { state: 'pending' }
+  | { state: 'ok'; columns: ColumnSchema[]; rows?: number }
+  | { state: 'unwired' }
+  | { state: 'error'; message: string }
+  | { state: 'blocked' };
+
+interface Entry {
+  key: string;
+  status: NodeStatus;
+}
+
+interface FlowState {
+  nodes: Record<string, Entry>;
+}
+
+export const useFlowStore = create<FlowState>(() => ({ nodes: {} }));
+
+const PENDING: NodeStatus = { state: 'pending' };
+
+// The fallback is a constant: a fresh object per call would make the selector loop forever.
+export const useNodeStatus = (nodeId: string): NodeStatus => useFlowStore((s) => s.nodes[nodeId]?.status ?? PENDING);
+
+let schemaCache: SchemaCache | null = null;
+let cacheEngine: EngineClient | null = null;
+const counts = new Map<string, Promise<number>>();
+
+export function schemaCacheFor(engine: EngineClient): SchemaCache {
+  if (cacheEngine !== engine) {
+    cacheEngine = engine;
+    schemaCache = new SchemaCache((sql) => engine.describe(sql));
+    counts.clear();
+  }
+  return schemaCache!;
+}
+
+/** Full row count for a node, cached by its upstream key and run at background priority. */
+export function countRows(engine: EngineClient, project: Project, nodeId: string, stepIndex?: number): Promise<number> {
+  const key = upstreamKey(project, { nodeId, stepIndex });
+  let hit = counts.get(key);
+  if (!hit) {
+    hit = engine.query(compileCount(project, { nodeId, stepIndex }), { priority: 'background' }).then((r) => Number(tableRows(r.table)[0]!.n));
+    counts.set(key, hit);
+    hit.catch(() => counts.delete(key));
+  }
+  return hit;
+}
+
+/** Forget cached schemas and counts, e.g. after a source file is re-registered. */
+export function invalidateCaches() {
+  schemaCache?.clear();
+  counts.clear();
+  useFlowStore.setState({ nodes: {} });
+}
+
+let generation = 0;
+
+/** Re-evaluate every node whose upstream changed. Nodes whose key is unchanged keep their status. */
+export async function evaluateFlow(engine: EngineClient, project: Project): Promise<void> {
+  const gen = ++generation;
+  const cache = schemaCacheFor(engine);
+  let order: string[];
+  try {
+    order = topoSort(project);
+  } catch {
+    return;
+  }
+  const prev = useFlowStore.getState().nodes;
+  const next: Record<string, Entry> = {};
+  const publish = () => gen === generation && useFlowStore.setState({ nodes: { ...next } });
+
+  for (const id of order) {
+    const key = upstreamKey(project, { nodeId: id });
+    const inputs = inputEdges(project, id).map((e) => next[e.from.nodeId]?.status.state);
+    const kept = prev[id];
+    if (kept && kept.key === key && kept.status.state !== 'pending') {
+      next[id] = kept;
+      continue;
+    }
+    if (inputs.some((s) => s === 'error' || s === 'blocked' || s === 'unwired')) {
+      next[id] = { key, status: inputs.includes('unwired') ? { state: 'unwired' } : { state: 'blocked' } };
+      continue;
+    }
+    try {
+      compile(project, { nodeId: id });
+    } catch (e) {
+      const unwired = e instanceof CompileError && /has no input/.test(e.message);
+      next[id] = { key, status: unwired ? { state: 'unwired' } : { state: 'error', message: (e as Error).message } };
+      continue;
+    }
+    try {
+      const columns = await cache.get(project, { nodeId: id });
+      if (gen !== generation) return;
+      next[id] = { key, status: { state: 'ok', columns } };
+      void countRows(engine, project, id).then(
+        (rows) => {
+          const cur = useFlowStore.getState().nodes[id];
+          if (cur?.key !== key || cur.status.state !== 'ok') return;
+          const entry = { key, status: { ...cur.status, rows } };
+          if (gen === generation) next[id] = entry;
+          useFlowStore.setState((s) => ({ nodes: { ...s.nodes, [id]: entry } }));
+        },
+        () => undefined,
+      );
+    } catch (e) {
+      if (gen !== generation) return;
+      next[id] = { key, status: { state: 'error', message: toEngineError(e).message } };
+    }
+    publish();
+  }
+  publish();
+}
