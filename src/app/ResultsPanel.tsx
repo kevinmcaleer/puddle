@@ -57,7 +57,7 @@ export function ResultsPanel({ bar, children }: { bar: ReactNode; children: Reac
         />
       </div>
       {!collapsed && (
-        <div className="min-h-0 overflow-auto" style={{ height }}>
+        <div className="min-h-0 overflow-hidden" style={{ height }}>
           {children}
         </div>
       )}

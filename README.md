@@ -27,10 +27,15 @@ Every feature ships with its own tests, and every bug fix with a regression test
 |---|---|
 | `src/design-system/` | Tokens, Tailwind preset and component CSS, vendored from the Puddle design system |
 | `src/ui/` | The design system's components in TypeScript (`Button`, `NodeCard`, `StepList`, `RuleRow` and the rest) |
-| `src/app/` | The app shell: toolbar, canvas, inspector, results dock, status strip, theme |
+| `src/app/` | The app shell: toolbar actions, inspector and results docks, status strip, theme, engine boot, per-tab session state |
 | `src/engine/` | DuckDB-WASM in a Web Worker and the typed `EngineClient` (priorities, cancellation, plain-word errors) |
 | `src/model/` | The project graph: Zod schemas, wiring rules, undo and redo |
 | `src/compiler/` | The pure graph-to-SQL compiler, step registry and schema cache |
+| `src/sources/` | Adding sources: format detection, file handles, clipboard text |
+| `src/canvas/` | The node canvas on React Flow: nodes, wires, auto layout |
+| `src/flow/` | Each node's live status (columns, row count, broken, dimmed), kept in step with the project |
+| `src/inspector/` | The right-hand panel: node details and source read options |
+| `src/results/` | The results table on Glide Data Grid: paging, headers with type and quality |
 | `tests/` | Engine integration tests, fixtures and helpers |
 | `e2e/` | Playwright tests |
 
