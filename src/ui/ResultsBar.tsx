@@ -92,11 +92,13 @@ export interface StatusStripProps {
   ms?: number;
   rules?: { pass: number; warn: number; fail: number };
   sample?: number;
+  /** About the selected column, e.g. its profile. */
+  detail?: ReactNode;
   /** Shown at the right-hand end, e.g. engine state. */
   end?: ReactNode;
 }
 
-export function StatusStrip({ rows, cols, ms, rules, sample, end }: StatusStripProps) {
+export function StatusStrip({ rows, cols, ms, rules, sample, detail, end }: StatusStripProps) {
   const parts: ReactNode[] = [];
   if (rows != null) parts.push(<span key="rows">{fullCount(rows)} rows</span>);
   if (cols != null) parts.push(<span key="cols">{cols} cols</span>);
@@ -109,6 +111,7 @@ export function StatusStrip({ rows, cols, ms, rules, sample, end }: StatusStripP
         <StatusBadge status={rules.fail ? 'fail' : 'neutral'}>{rules.fail} fail</StatusBadge>
       </span>,
     );
+  if (detail) parts.push(<span key="detail">{detail}</span>);
   return (
     <div className="ui-strip" role="status">
       {parts.flatMap((p, i) => (i ? [<span key={`sep${i}`} className="ui-strip__sep" />, p] : [p]))}

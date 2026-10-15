@@ -48,7 +48,7 @@ export async function refreshProjects() {
 function show(project: Project) {
   invalidateCaches();
   useSession.setState({ selectedNodeId: null, selectedNodeIds: [], selectedStepId: null, selectedColumns: [], notice: null });
-  useResultsStore.getState().set({ rows: undefined, cols: undefined, ms: undefined });
+  useResultsStore.getState().set({ rows: undefined, cols: undefined, ms: undefined, profile: undefined });
   useProjectStore.getState().load(project);
   remember(project.id);
   useWorkspace.setState({ screen: 'editor', error: null });

@@ -103,9 +103,22 @@ export function compileDisplayPage(project: Project, target: Target, columns: st
   return `SELECT ${select} FROM (${compile(project, target).sql})\nLIMIT ${num(pageSize)} OFFSET ${num(page * pageSize)}`;
 }
 
-/** Per-column profile for the quality bars: the share of empty values, from SUMMARIZE. */
+/** Per-column profile from SUMMARIZE: the share of empty values (the quality bars), about how many distinct values, and the smallest and largest. */
 export function compileProfile(project: Project, target: Target): string {
-  return `SELECT column_name, CAST(null_percentage AS DOUBLE) AS null_pct, approx_unique FROM (SUMMARIZE SELECT * FROM (${compile(project, target).sql}))`;
+  return `SELECT column_name, CAST(null_percentage AS DOUBLE) AS null_pct, approx_unique, CAST(min AS VARCHAR) AS min, CAST(max AS VARCHAR) AS max FROM (SUMMARIZE SELECT * FROM (${compile(project, target).sql}))`;
+}
+
+/**
+ * What text columns look like: per column i, `n<i>` non-empty values and how many of them read as a number
+ * (`num<i>`) or a date (`date<i>`), so a column of numbers stored as text can say so.
+ */
+export function compileTypeSniff(project: Project, target: Target, columns: string[]): string {
+  if (!columns.length) throw new RangeError('No columns to look at.');
+  const parts = columns.flatMap((c, i) => {
+    const v = `nullif(trim(CAST(${ident(c)} AS VARCHAR)), '')`;
+    return [`count(${v}) AS ${ident(`n${i}`)}`, `count(TRY_CAST(${v} AS DOUBLE)) AS ${ident(`num${i}`)}`, `count(TRY_CAST(${v} AS DATE)) AS ${ident(`date${i}`)}`];
+  });
+  return `SELECT ${parts.join(', ')} FROM (${compile(project, target).sql})`;
 }
 
 /** The target's full row count. */

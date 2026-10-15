@@ -4,16 +4,17 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useEngineStore } from '../app/engine';
 import { useSession } from '../app/session';
 import { useTheme } from '../app/theme';
-import { compileDisplayPage, compileProfile, PAGE_SIZE, ruleColumns, upstreamKey, type Target } from '../compiler';
+import { compileDisplayPage, compileProfile, compileTypeSniff, PAGE_SIZE, ruleColumns, upstreamKey, type Target } from '../compiler';
 import { isCancelled, tableRows, toEngineError, type EngineClient } from '../engine';
 import { countRows, schemaCacheFor, useNodeStatus } from '../flow/status';
 import { nodeById, type ColumnSchema, type Project } from '../model';
-import { Banner, columnKind, glideTheme, type Quality } from '../ui';
+import { Banner, columnKind, glideTheme } from '../ui';
 import { failingCells, nullTheme, resultCell } from './cells';
 import { HEADER_HEIGHT, headerColors, makeDrawHeader } from './header';
 import { PageLoader, type Row } from './pages';
 import { detachedMessage } from '../sources/attach';
 import { ReattachButton } from '../sources/ReattachButton';
+import { parseProfile, parseTypeSniff, qualityOf, type ColumnProfile } from './profile';
 import { useResultsStore } from './state';
 
 /** Re-read token colours when the theme preference or the OS scheme changes. */
@@ -39,15 +40,19 @@ function createLoader(engine: EngineClient, project: Project, target: Target, co
   }, PAGE_SIZE);
 }
 
-/** Profile each column for the header quality bars, at background priority. */
-async function loadProfile(engine: EngineClient, project: Project, target: Target): Promise<Record<string, Quality>> {
+/**
+ * Profile each column at background priority, after the grid appears: SUMMARIZE first (the quality bars), then
+ * what text columns look like. `onUpdate` gets each stage as it lands.
+ */
+async function loadProfile(engine: EngineClient, project: Project, target: Target, columns: ColumnSchema[], onUpdate: (p: Record<string, ColumnProfile>) => void) {
   const r = await engine.query(compileProfile(project, target), { priority: 'background', supersede: 'profile' });
-  const out: Record<string, Quality> = {};
-  for (const row of tableRows(r.table)) {
-    const empty = Number(row.null_pct ?? 0) / 100;
-    out[String(row.column_name)] = { valid: 1 - empty, empty, error: 0 };
-  }
-  return out;
+  const profile = parseProfile(tableRows(r.table));
+  onUpdate(profile);
+  const text = columns.filter((c) => columnKind(c.type) === 'text').map((c) => c.name);
+  if (!text.length) return;
+  const sniff = await engine.query(compileTypeSniff(project, target, text), { priority: 'background', supersede: 'profile' });
+  const looks = parseTypeSniff(tableRows(sniff.table)[0] ?? {}, text);
+  onUpdate(Object.fromEntries(Object.entries(profile).map(([c, p]) => [c, looks[c] ? { ...p, looksLike: looks[c] } : p])));
 }
 
 const EMPTY_SELECTION: GridSelection = { columns: CompactSelection.empty(), rows: CompactSelection.empty() };
@@ -56,7 +61,7 @@ const EMPTY_SELECTION: GridSelection = { columns: CompactSelection.empty(), rows
 function Grid({ engine, project, target, columns }: { engine: EngineClient; project: Project; target: Target; columns: ColumnSchema[] }) {
   const [loader] = useState(() => createLoader(engine, project, target, columns.map((c) => c.name)));
   const [loaded, setLoaded] = useState(0);
-  const [profile, setProfile] = useState<Record<string, Quality>>({});
+  const [profile, setProfile] = useState<Record<string, ColumnProfile>>({});
   const [total, setTotal] = useState<number | undefined>();
   const [selection, setSelection] = useState<GridSelection>(EMPTY_SELECTION);
   const themeTick = useThemeTick();
@@ -91,7 +96,7 @@ function Grid({ engine, project, target, columns }: { engine: EngineClient; proj
   useEffect(() => {
     let live = true;
     const off = loader.subscribe(() => setLoaded(loader.loadedRows));
-    useResultsStore.getState().set({ rows: undefined, cols: columns.length, ms: undefined });
+    useResultsStore.getState().set({ rows: undefined, cols: columns.length, ms: undefined, profile: undefined });
     useSession.getState().setSelectedColumns([]);
     void loader.ensure(0, PAGE_SIZE).catch(() => undefined);
     countRows(engine, project, target.nodeId, target.stepIndex, target.failingRuleId).then(
@@ -102,10 +107,11 @@ function Grid({ engine, project, target, columns }: { engine: EngineClient; proj
       },
       () => undefined,
     );
-    loadProfile(engine, project, target).then(
-      (p) => live && setProfile(p),
-      () => undefined,
-    );
+    loadProfile(engine, project, target, columns, (p) => {
+      if (!live) return;
+      setProfile(p);
+      useResultsStore.getState().set({ profile: p });
+    }).catch(() => undefined);
     return () => {
       live = false;
       off();
@@ -129,7 +135,7 @@ function Grid({ engine, project, target, columns }: { engine: EngineClient; proj
     [loader, kinds, subtle, loaded],
   );
 
-  const drawHeader = useMemo(() => makeDrawHeader((i) => ({ kind: kinds[i] ?? 'text', quality: profile[columns[i]?.name ?? ''] }), colors), [kinds, profile, columns, colors]);
+  const drawHeader = useMemo(() => makeDrawHeader((i) => ({ kind: kinds[i] ?? 'text', quality: qualityOf(profile[columns[i]?.name ?? '']) }), colors), [kinds, profile, columns, colors]);
 
   const onVisible = useCallback((r: Rectangle) => void loader.ensure(r.y, r.height + 20).catch(() => undefined), [loader]);
 
