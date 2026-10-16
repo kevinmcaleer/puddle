@@ -278,4 +278,44 @@ describe('kept results', () => {
     expect(knownKept.get('more')?.key).toBe(upstreamKey(changed, { nodeId: 'more' }));
     expect(await preview(changed, 'out')).toEqual(await preview(unkept(changed), 'out'));
   });
+
+  it('keeps an Append, and an Append reads a kept input, matching a run with nothing kept', async () => {
+    const stacked = flow({
+      sources: [cust, customers],
+      nodes: [
+        { id: 'a1', type: 'source', sourceId: 'cust' },
+        { id: 'b1', type: 'source', sourceId: 'customers' },
+        { id: 'b', type: 'transform', steps: [step('u', 'changeCase', { columns: ['name'], mode: 'upper' })] },
+        { id: 'a', type: 'append', appendSpec: { match: 'name', tagRows: true, tagColumn: 'from' } },
+        { id: 'out', type: 'output' },
+      ],
+      wires: [['a1', 'a', 0], ['b1', 'b'], ['b', 'a', 1], ['a', 'out']],
+    });
+
+    // A kept input: the Append reads its table and the other input's file.
+    const keptInput = setKeepResult(stacked, 'b', true);
+    await settle(keptInput);
+    log.length = 0;
+    const rows = await preview(keptInput, 'out');
+    expect(log.filter((q) => q.includes('shop-customers') || q.includes('src_customers'))).toEqual([]);
+    expect(log.some((q) => q.includes('"kept_b"'))).toBe(true);
+    expect(rows).toEqual(await preview(unkept(keptInput), 'out'));
+    expect(rows).toHaveLength(9);
+
+    // The Append itself kept: nothing upstream runs downstream of it; a change to an input rebuilds it.
+    const keptAppend = setKeepResult(stacked, 'a', true);
+    await settle(keptAppend);
+    expect(await tables()).toEqual(['kept_a']);
+    log.length = 0;
+    expect(await preview(keptAppend, 'out')).toEqual(await preview(unkept(keptAppend), 'out'));
+    expect(log.filter((q) => q.includes('read_csv') && !q.includes('kept_'))).toHaveLength(1); // only the unkept run
+    const renamed = { ...keptAppend, nodes: keptAppend.nodes.map((n) => (n.id === 'b' ? { ...n, name: 'Shop' } : n)) };
+    log.length = 0;
+    await settle(renamed);
+    // The tag column holds input names, so renaming an input rebuilds the table.
+    expect(log.filter((q) => q.startsWith('CREATE OR REPLACE TABLE "kept_a"'))).toHaveLength(1);
+    const after = await preview(renamed, 'out');
+    expect(after).toEqual(await preview(unkept(renamed), 'out'));
+    expect(after.map((r) => r.from)).toContain('Shop');
+  });
 });
