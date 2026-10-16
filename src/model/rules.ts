@@ -15,3 +15,11 @@ export function removeRule(project: Project, nodeId: string, ruleId: string): Pr
   const next = withRules(project, nodeId, (rules) => rules.filter((r) => r.id !== ruleId));
   return next.view.failingRuleId === ruleId ? { ...next, view: { ...next.view, failingRuleId: undefined } } : next;
 }
+
+/** Stop suggesting a rule for a node. Kept with the project, so it stays dismissed after a reload. */
+export function dismissSuggestion(project: Project, nodeId: string, key: string): Project {
+  return {
+    ...project,
+    nodes: project.nodes.map((n) => (n.id === nodeId && !n.dismissedSuggestions?.includes(key) ? { ...n, dismissedSuggestions: [...(n.dismissedSuggestions ?? []), key] } : n)),
+  };
+}

@@ -47,6 +47,10 @@ describe('rule types', () => {
     ['inSet', messy, { column: 'city', values: ['London', 'Paris'], matchCase: true }, 2],
     ['inRange', cust, { column: 'id', min: '2', max: '3' }, 2],
     ['inRange', cust, { column: 'id', min: '', max: '1' }, 3],
+    ['readsAs', cust, { column: 'joined', as: 'date' }, 1],
+    ['readsAs', cust, { column: 'id', as: 'number' }, 0],
+    ['readsAs', cust, { column: 'email', as: 'date' }, 3],
+    ['readsAs', messy, { column: 'price', as: 'number' }, 5],
   ] as const)('%s %j fails %#', async (type, source, params, expected) => {
     expect(await failures(source, type, params)).toEqual({ failures: expected, total: source === cust ? 4 : 5 });
   });

@@ -8,5 +8,5 @@ export { addStep, canGroup, canUngroup, groupNodes, moveStep, removeStep, rename
 export { addNode, addSource, moveNodes, nextNodeName, removeNodes, setCollapsed, setParseOptions, updateSource } from './edits';
 export { useProject, useProjectStore, type ProjectState } from './store';
 export { placeStep, type Placed } from './quickfix';
-export { addRule, removeRule, updateRule } from './rules';
+export { addRule, dismissSuggestion, removeRule, updateRule } from './rules';
 export { logExport, setOutputSpec } from './exports';

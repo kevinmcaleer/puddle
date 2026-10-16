@@ -1,7 +1,7 @@
 import { flow, src, step } from '../../tests/helpers/projects';
 import type { ParseOptions, Source } from '../model';
 import { rulePredicate } from './rules';
-import { compile, compileCount, compileDateDetection, compileRules, compileDisplayPage, compilePreview, compileProfile, compileTypeSniff, upstreamKey } from './compile';
+import { compile, compileCount, compileDateDetection, compileRules, compileDisplayPage, compileSuggestionChecks, compilePreview, compileProfile, compileTypeSniff, upstreamKey } from './compile';
 import { CompileError } from './errors';
 import { SchemaCache } from './schemaCache';
 import { ident, setExtensionRepository, str } from './sql';
@@ -245,6 +245,16 @@ describe('results table queries', () => {
     expect(compileProfile(cleanFlow(), { nodeId: 'out' })).toMatchSnapshot();
   });
 
+  it('confirms suggested rules with exact counts, only those asked for per column', () => {
+    const sql = compileSuggestionChecks(cleanFlow(), { nodeId: 'out' }, [
+      { column: 'id', blank: true, distinct: true },
+      { column: 'na"me', edges: true, values: true },
+    ]);
+    expect(sql).toMatchSnapshot();
+    expect(sql).not.toContain('"edges0"');
+    expect(sql).not.toContain('"distinct1"');
+  });
+
   it('checks what text columns look like, one set of counts per column', () => {
     expect(compileTypeSniff(cleanFlow(), { nodeId: 'out' }, ['joined', 'na"me'])).toMatchSnapshot();
     expect(() => compileTypeSniff(cleanFlow(), { nodeId: 'out' }, [])).toThrow(RangeError);
@@ -318,6 +328,8 @@ describe('quality rules', () => {
     ['inSet', { column: 'name', values: ['Ann'], matchCase: false }],
     ['inRange', { column: 'id', min: '1', max: '10' }],
     ['inRange', { column: 'joined', min: '2020-01-01', max: '' }],
+    ['readsAs', { column: 'joined', as: 'date' }],
+    ['readsAs', { column: 'na"me', as: 'number' }],
   ])('%s %j', (type, params) => {
     expect(rulePredicate({ type, params, label: type })).toMatchSnapshot();
   });

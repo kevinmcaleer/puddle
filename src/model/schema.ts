@@ -94,6 +94,8 @@ const NodeBase = {
   position: PositionZ.default({ x: 0, y: 0 }),
   collapsed: z.boolean().optional(),
   rules: z.array(RuleZ).default([]),
+  /** Suggested rules dismissed for this node, by suggestion key (rule type and column), so they stay dismissed. */
+  dismissedSuggestions: z.array(z.string()).optional(),
   /** Materialise as a table for reuse (Phase 2). */
   pinnedResult: z.boolean().optional(),
 };

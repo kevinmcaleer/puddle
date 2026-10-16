@@ -1,4 +1,4 @@
-export { compile, compileCount, compileDateDetection, compileRules, compileDisplayPage, compilePreview, compileProfile, compileTypeSniff, PAGE_SIZE, upstreamKey, type Compiled, type Target } from './compile';
+export { compile, compileCount, compileDateDetection, compileRules, compileDisplayPage, compileSuggestionChecks, compilePreview, compileProfile, compileTypeSniff, PAGE_SIZE, upstreamKey, type Compiled, type SuggestionCheck, type Target } from './compile';
 export { CompileError } from './errors';
 export { SchemaCache } from './schemaCache';
 export { sourceFileName, sourceRelation, sourceTableName } from './sources';
