@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import { Button } from './Button';
 import { cx } from './cx';
-import { abbreviate, formatDuration, fullCount } from './format';
+import { abbreviate, formatBytes, formatDuration, fullCount } from './format';
 import { Icon, type IconName } from './Icon';
 import { Menu } from './Menu';
 import { NODE_KIND, type NodeKind } from './nodeKinds';
@@ -92,13 +92,15 @@ export interface StatusStripProps {
   ms?: number;
   rules?: { pass: number; warn: number; fail: number };
   sample?: number;
+  /** Memory used by every kept result, in bytes. */
+  kept?: number;
   /** About the selected column, e.g. its profile. */
   detail?: ReactNode;
   /** Shown at the right-hand end, e.g. engine state. */
   end?: ReactNode;
 }
 
-export function StatusStrip({ rows, cols, ms, rules, sample, detail, end }: StatusStripProps) {
+export function StatusStrip({ rows, cols, ms, rules, sample, kept, detail, end }: StatusStripProps) {
   const parts: ReactNode[] = [];
   if (rows != null) parts.push(<span key="rows">{fullCount(rows)} rows</span>);
   if (cols != null) parts.push(<span key="cols">{cols} cols</span>);
@@ -112,6 +114,12 @@ export function StatusStrip({ rows, cols, ms, rules, sample, detail, end }: Stat
       </span>,
     );
   if (detail) parts.push(<span key="detail">{detail}</span>);
+  if (kept)
+    parts.push(
+      <span key="kept" data-testid="kept-total" title="Memory used by kept results">
+        {formatBytes(kept)} kept
+      </span>,
+    );
   return (
     <div className="ui-strip" role="status">
       {parts.flatMap((p, i) => (i ? [<span key={`sep${i}`} className="ui-strip__sep" />, p] : [p]))}

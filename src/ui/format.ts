@@ -12,3 +12,15 @@ export const fullCount = (n: number) => n.toLocaleString('en-GB');
 export function formatDuration(ms: number): string {
   return ms < 1000 ? `${Math.round(ms)} ms` : `${(ms / 1000).toFixed(1)} s`;
 }
+
+/** Memory and file sizes in binary units, as DuckDB reports them: 512 B, 4.2 KB, 5.1 MB, 1.3 GB. */
+export function formatBytes(bytes: number): string {
+  const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+  let n = Math.max(0, bytes);
+  let u = 0;
+  while (n >= 1024 && u < units.length - 1) {
+    n /= 1024;
+    u++;
+  }
+  return u === 0 ? `${Math.round(n)} B` : `${n.toFixed(1).replace(/\.0$/, '')} ${units[u]}`;
+}
