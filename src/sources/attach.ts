@@ -5,20 +5,23 @@ import { rememberFile, sourceFile } from './add';
 import { markAttached, useAttachments, type Attachment } from './attachments';
 import { formatFromName, SourceError } from './detect';
 import { headHash } from './hash';
+import { loadUrlSource, urlFetched } from './url';
 
 /**
  * Work out each source's attachment when a project opens. Pasted text is stored in the project, so it is
  * registered again straight away; files already chosen in this tab stay attached; every other file is detached.
+ * URL sources not yet fetched in this tab are fetched again in the background, with no re-attach step.
  */
 export async function attachProject(project: Project): Promise<void> {
   const next: Record<string, Attachment> = {};
-  for (const s of project.sources) next[s.id] = s.kind === 'clipboard' || sourceFile(s.id) ? 'attached' : 'detached';
+  for (const s of project.sources) next[s.id] = s.kind === 'clipboard' || sourceFile(s.id) || (s.kind === 'url' && urlFetched(s.id)) ? 'attached' : 'detached';
   const clipboard = project.sources.filter((s) => s.kind === 'clipboard' && s.clipboard);
   if (clipboard.length) {
     const engine = await whenEngine();
     for (const s of clipboard) await engine.registerText(sourceFileName(s), s.clipboard!.text);
   }
   useAttachments.setState({ sources: next });
+  for (const s of project.sources) if (s.kind === 'url' && !urlFetched(s.id)) void loadUrlSource(s);
 }
 
 /**

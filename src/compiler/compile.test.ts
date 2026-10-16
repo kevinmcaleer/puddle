@@ -181,6 +181,14 @@ describe('upstreamKey', () => {
     expect(upstreamKey({ ...p, sources: [src({ id: 'cust', format: 'csv', parseOptions: { delimiter: ';' } })] }, { nodeId: 'clean' })).not.toBe(key);
     expect(upstreamKey({ ...p, sources: [src({ id: 'cust', format: 'csv', file: { originalName: 'c.csv', size: 1, lastModified: 0, headHash: 'abc' } })] }, { nodeId: 'clean' })).not.toBe(key);
   });
+
+  it('changes when a URL source’s address or fetched file changes', () => {
+    const at = (href: string, headHash?: string) => upstreamKey({ ...cleanFlow(), sources: [src({ id: 'cust', format: 'csv', kind: 'url', url: { href, headHash } })] }, { nodeId: 'clean' });
+    const key = at('https://x.org/a.csv', 'h1');
+    expect(at('https://x.org/a.csv', 'h1')).toBe(key);
+    expect(at('https://x.org/a.csv', 'h2')).not.toBe(key);
+    expect(at('https://x.org/b.csv', 'h1')).not.toBe(key);
+  });
 });
 
 describe('SchemaCache', () => {

@@ -21,11 +21,16 @@ const BY_EXTENSION: Record<string, SourceFormat> = {
 
 export const ACCEPT = '.csv,.txt,.tsv,.tab,.json,.ndjson,.jsonl,.parquet,.pq';
 
+const extensionOf = (name: string) => /\.([^.]+)$/.exec(name)?.[1]?.toLowerCase() ?? '';
+
+/** The format a file name's extension names, or undefined when Puddle doesn't know it. */
+export const knownFormat = (name: string): SourceFormat | undefined => BY_EXTENSION[extensionOf(name)];
+
 /** Pick the format from a file name, or say plainly why it can't be loaded. */
 export function formatFromName(name: string): SourceFormat {
-  const ext = /\.([^.]+)$/.exec(name)?.[1]?.toLowerCase() ?? '';
-  const format = BY_EXTENSION[ext];
+  const format = knownFormat(name);
   if (format) return format;
+  const ext = extensionOf(name);
   if (ext === 'xlsx' || ext === 'xls') throw new SourceError(`${name} is an Excel file. Excel sources arrive in a later version; save the sheet as CSV and add that instead.`);
   throw new SourceError(`${name} isn't a format Puddle reads. Add a CSV, TSV, JSON, NDJSON or Parquet file.`);
 }

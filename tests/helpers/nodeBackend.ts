@@ -37,6 +37,12 @@ export async function createNodeBackend(opts: { beforeQuery?: (sql: string) => P
     async registerFile(name, file) {
       db.registerFileBuffer(name, new Uint8Array(await file.arrayBuffer()));
     },
+    // The Node build has no HTTP file system here, so an address is fetched whole (tests serve it locally).
+    async registerUrl(name, url) {
+      const res = await fetch(url);
+      if (!res.ok) throw new Error(`HTTP ${res.status} for ${url}`);
+      db.registerFileBuffer(name, new Uint8Array(await res.arrayBuffer()));
+    },
     async registerBuffer(name, data) {
       db.registerFileBuffer(name, data);
     },

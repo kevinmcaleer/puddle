@@ -74,6 +74,14 @@ describe('project files', () => {
     expect(text).not.toMatch(/Ada Lovelace/);
   });
 
+  it('keeps a URL source’s address and head hash, and still opens one saved with only the address', () => {
+    const p = createProject('Web');
+    const url = { ...p, sources: [{ id: 's1', name: 'a.csv', kind: 'url' as const, format: 'csv' as const, url: { href: 'https://x.org/a.csv', headHash: 'abc', size: 9 }, parseOptions: {}, detectedSchema: [] }] };
+    expect(readProjectFile(writeProjectFile(url)).sources[0]!.url).toEqual({ href: 'https://x.org/a.csv', headHash: 'abc', size: 9 });
+    const bare = { ...url, sources: [{ ...url.sources[0]!, url: { href: 'https://x.org/a.csv' } }] };
+    expect(readProjectFile(writeProjectFile(bare)).sources[0]!.url).toEqual({ href: 'https://x.org/a.csv' });
+  });
+
   it('names the file after the project', () => {
     expect(projectFileName({ name: 'Orders clean-up' })).toBe('orders-clean-up.puddle.json');
     expect(projectFileName({ name: 'Café / 2026 report' })).toBe('cafe-2026-report.puddle.json');

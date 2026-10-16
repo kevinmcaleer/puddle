@@ -48,6 +48,8 @@ export interface DuckBackend {
   query(sql: string, signal: AbortSignal): Promise<Table>;
   /** Register a File so DuckDB reads it by byte range, never copying it into JS memory. */
   registerFile(name: string, file: File): Promise<void>;
+  /** Register a web address DuckDB reads by HTTP range requests (the server must allow them and CORS). */
+  registerUrl(name: string, url: string): Promise<void>;
   /** Register small in-memory content (clipboard text, fixtures). */
   registerBuffer(name: string, data: Uint8Array): Promise<void>;
   dropFile(name: string): Promise<void>;
