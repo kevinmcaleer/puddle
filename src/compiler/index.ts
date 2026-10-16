@@ -31,6 +31,7 @@ export { appendColumns, appendProblems, compileAppend, type AppendColumn, type A
 export { compileQuery, CRITERIA_OPS, crossJoinedTables, joinPlan, QUERY_JOIN_TYPES, queryColumns, queryProblems, tableAlias, type QueryColumn, type QueryJoinStep, type QueryProblem, type QueryTable } from './query';
 export { knownSchemas, SchemaBook } from './schemaBook';
 export { cleanCustomSql, customSqlProblem, INPUT_NAME, lexSql, SqlRefusal, type SqlToken, type SqlTokenKind } from './customSql';
+export { renameSqlColumns, sqlColumnRefs } from './columnRefs';
 export { describeType, typeFamily, typesFit } from './types';
 export { SchemaCache } from './schemaCache';
 export { dropTable, sourceFileName, sourceRelation, sourceTableName } from './sources';

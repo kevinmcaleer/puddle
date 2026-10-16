@@ -30,6 +30,8 @@ import { addFiles, addNodeAfterSelection, chooseFiles as pickSourceFiles, addPas
 import { useEngineStore, type EngineStatus } from './engine';
 import { ResultsPanel } from './ResultsPanel';
 import { ShortcutsDialog } from './ShortcutsDialog';
+import { openTemplates } from '../templates/actions';
+import { TemplateDialogs } from '../templates/TemplateDialogs';
 import { shortcutText, withShortcut, type GlobalShortcutId } from './shortcuts';
 import { useShortcuts } from './useShortcuts';
 import { useSession } from './session';
@@ -225,6 +227,7 @@ export function AppShell() {
               { label: 'Lookup', icon: 'join', hint: 'Bring columns across', onSelect: () => addNodeAfterSelection('lookup') },
               { label: 'Query', icon: 'query', hint: 'Design with tables', onSelect: () => addNodeAfterSelection('query') },
               { label: 'Output', icon: 'output', shortcut: shortcutText('add-output'), onSelect: () => addNodeAfterSelection('output') },
+              { label: 'From template', icon: 'template', hint: 'Saved steps', onSelect: openTemplates },
             ]}
           />
           <Button variant="ghost" icon="layout" title={withShortcut('Auto layout', 'layout')} onClick={layoutFlow} disabled={!project.nodes.length}>Auto layout</Button>
@@ -321,6 +324,7 @@ export function AppShell() {
       </div>
       <UrlDialog onChooseFile={chooseFiles} />
       <ShortcutsDialog />
+      <TemplateDialogs />
     </ReactFlowProvider>
   );
 }

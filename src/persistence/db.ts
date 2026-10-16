@@ -1,8 +1,9 @@
 import type { Project } from '../model';
+import type { Template } from '../templates/template';
 
 const DB = 'puddle';
-/** 2 added the handles store. */
-const VERSION = 2;
+/** 2 added the handles store, 3 the templates store. */
+const VERSION = 3;
 const PROJECTS = 'projects';
 /**
  * Chromium's file handles, by project and source, so a reopened project's files reconnect with a permission click.
@@ -17,6 +18,9 @@ export interface StoredHandle<H = unknown> {
   sourceId: string;
   handle: H;
 }
+
+/** Node templates, outside any project so every project can use them. Kept as saved; read through migrateTemplate. */
+const TEMPLATES = 'templates';
 
 const handleKey = (projectId: string, sourceId: string) => `${projectId}\u0000${sourceId}`;
 
@@ -38,6 +42,7 @@ function open(): Promise<IDBDatabase> {
       const db = req.result;
       if (!db.objectStoreNames.contains(PROJECTS)) db.createObjectStore(PROJECTS, { keyPath: 'id' });
       if (!db.objectStoreNames.contains(HANDLES)) db.createObjectStore(HANDLES, { keyPath: 'key' }).createIndex('projectId', 'projectId');
+      if (!db.objectStoreNames.contains(TEMPLATES)) db.createObjectStore(TEMPLATES, { keyPath: 'id' });
     };
     req.onsuccess = () => {
       // Let a newer Puddle in another tab upgrade the database; this tab reopens it on its next save.
@@ -112,3 +117,10 @@ export async function copyHandles(fromProjectId: string, toProjectId: string): P
   const handles = await loadHandles(fromProjectId);
   for (const [sourceId, handle] of handles) await saveHandle(toProjectId, sourceId, handle);
 }
+
+export const saveTemplate = (template: Template) => run('readwrite', (s) => s.put(template), TEMPLATES).then(() => undefined);
+
+export const deleteTemplate = (id: string) => run('readwrite', (s) => s.delete(id), TEMPLATES).then(() => undefined);
+
+/** Every stored template as it was saved, in any format version: callers upgrade them with migrateTemplate. */
+export const loadTemplates = () => run<unknown[]>('readonly', (s) => s.getAll(), TEMPLATES);

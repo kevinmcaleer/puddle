@@ -7,6 +7,8 @@ export interface StepListItem {
   label: ReactNode;
   disabled?: boolean;
   error?: string;
+  /** Shown on hover when there's no error, e.g. why the step is off. */
+  note?: string;
 }
 
 /**
@@ -72,7 +74,7 @@ export function StepList({
             setDragging(null);
           }}
           onDragEnd={() => setDragging(null)}
-          title={s.error}
+          title={s.error ?? s.note}
         >
           <Icon name="grip" size={14} className="ui-step__grip" />
           <span className="ui-step__n">{i + 1}</span>

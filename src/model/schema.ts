@@ -78,6 +78,8 @@ export const StepZ = z.object({
   /** True once someone renamed the step; its label then stops following its settings. */
   customLabel: z.boolean().optional(),
   enabled: z.boolean().default(true),
+  /** Why the step arrived turned off, e.g. a template step whose column the input lacks. Cleared when it's turned on. */
+  disabledReason: z.string().optional(),
   params: z.record(z.string(), z.unknown()).default({}),
   notes: z.string().optional(),
   origin: StepOriginZ.optional(),

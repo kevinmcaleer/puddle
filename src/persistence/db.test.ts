@@ -1,6 +1,7 @@
 import 'fake-indexeddb/auto';
 import { createProject } from '../model';
-import { closeDb, copyHandles, deleteHandles, deleteProject, listProjects, loadHandles, loadProject, saveHandle, saveProject } from './db';
+import { createTemplate } from '../templates/template';
+import { closeDb, copyHandles, deleteHandles, deleteProject, deleteTemplate, listProjects, loadHandles, loadProject, loadTemplates, saveHandle, saveProject, saveTemplate } from './db';
 
 afterEach(async () => {
   await closeDb();
@@ -91,5 +92,33 @@ describe('IndexedDB file handles', () => {
     expect((await loadProject('old'))!.name).toBe('From v1');
     await saveHandle('old', 's1', handle('a.csv'));
     expect((await loadHandles('old')).size).toBe(1);
+  });
+
+  it('keeps templates apart from projects: saved, replaced and deleted by id', async () => {
+    const t = createTemplate({ name: 'Tidy names', steps: [{ id: 'st1', type: 'trimWhitespace', label: 'Trimmed name', enabled: true, params: { columns: ['name'] } }], expectedColumns: [{ name: 'name', type: 'VARCHAR' }] });
+    await saveTemplate(t);
+    await saveTemplate({ ...t, name: 'Tidy contact names' });
+    expect(await loadTemplates()).toEqual([{ ...t, name: 'Tidy contact names' }]);
+    expect(await listProjects()).toEqual([]);
+    await deleteTemplate(t.id);
+    expect(await loadTemplates()).toEqual([]);
+  });
+
+  it('keeps projects and handles saved by version 2 when it adds the templates store', async () => {
+    await closeDb();
+    await new Promise<void>((resolve, reject) => {
+      const req = indexedDB.open('puddle', 2);
+      req.onupgradeneeded = () => {
+        req.result.createObjectStore('projects', { keyPath: 'id' }).put({ ...createProject('From v2'), id: 'old' });
+        req.result.createObjectStore('handles', { keyPath: 'key' }).createIndex('projectId', 'projectId');
+      };
+      req.onsuccess = () => {
+        req.result.close();
+        resolve();
+      };
+      req.onerror = () => reject(req.error);
+    });
+    expect((await loadProject('old'))!.name).toBe('From v2');
+    expect(await loadTemplates()).toEqual([]);
   });
 });

@@ -1,0 +1,15 @@
+{
+  "id": "tplOld",
+  "name": "Tidy contact names",
+  "description": "Trims and title-cases names, lower-cases emails.",
+  "createdAt": "2026-03-01T09:00:00.000Z",
+  "updatedAt": "2026-03-01T09:00:00.000Z",
+  "steps": [
+    { "id": "s1", "type": "trimWhitespace", "label": "Trimmed name, email", "params": { "columns": ["name", "email"] } },
+    { "id": "s2", "type": "changeCase", "label": "Changed name to title case", "enabled": true, "params": { "columns": ["name"], "mode": "title" } }
+  ],
+  "expectedColumns": [
+    { "name": "name", "type": "VARCHAR" },
+    { "name": "email", "type": "VARCHAR" }
+  ]
+}

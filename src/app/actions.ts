@@ -2,7 +2,7 @@ import { autoLayout } from '../canvas/layout';
 import { neighbour, type Direction } from '../canvas/navigate';
 import { suggestJoinKey, suggestLookupColumns } from '../compiler';
 import { useFlowStore } from '../flow/status';
-import { addNode, canGroup, groupNodes, inputEdges, moveQueryTable, nodeById, setJoinSpec, setLookupSpec, useProjectStore, type AddableNodeType, type ColumnSchema, type Source, type SourceFormat } from '../model';
+import { addNode, canGroup, groupNodes, inputEdges, moveQueryTable, nodeById, setJoinSpec, setLookupSpec, useProjectStore, type AddableNodeType, type ColumnSchema, type Project, type Source, type SourceFormat } from '../model';
 import { addClipboardSource, addFileSource } from '../sources/add';
 import { pickFiles, type PickedFile } from '../sources/handles';
 import { addUrlSource } from '../sources/url';
@@ -78,6 +78,17 @@ const columnsOf = (nodeId: string) => {
   return status?.state === 'ok' ? status.columns : NO_COLUMNS;
 };
 
+/** Where a new node fed by these nodes goes: right of them (level with them), or right of everything when there are none, so new nodes never stack. */
+export function positionAfter(project: Project, feeds: string[]) {
+  const nodes = project.nodes;
+  const inputs = feeds.flatMap((id) => nodeById(project, id) ?? []);
+  return inputs.length
+    ? { x: Math.max(...inputs.map((n) => n.position.x)) + 296, y: Math.round(inputs.reduce((y, n) => y + n.position.y, 0) / inputs.length) }
+    : nodes.length
+      ? { x: Math.max(...nodes.map((n) => n.position.x)) + 296, y: Math.min(...nodes.map((n) => n.position.y)) }
+      : { x: 80, y: 80 };
+}
+
 /**
  * Add a node to the right of the selected node, wired to it. A Join takes the first two selected nodes, in
  * the order they were selected, as its left and right inputs, matched on a column they share when there is one;
@@ -90,14 +101,7 @@ export function addNodeAfterSelection(type: AddableNodeType) {
   const after = selected ? nodeById(history.present, selected) : undefined;
   const several = selectedNodeIds.length > 1 && (type === 'join' || type === 'append' || type === 'lookup' || type === 'query');
   const feeds = several ? (type === 'join' || type === 'lookup' ? selectedNodeIds.slice(0, 2) : selectedNodeIds) : after?.id;
-  const nodes = history.present.nodes;
-  const inputs = (Array.isArray(feeds) ? feeds : after ? [after.id] : []).flatMap((id) => nodeById(history.present, id) ?? []);
-  // Right of the inputs (level with them), or right of everything when nothing is selected, so new nodes never stack.
-  const position = inputs.length
-    ? { x: Math.max(...inputs.map((n) => n.position.x)) + 296, y: Math.round(inputs.reduce((y, n) => y + n.position.y, 0) / inputs.length) }
-    : nodes.length
-      ? { x: Math.max(...nodes.map((n) => n.position.x)) + 296, y: Math.min(...nodes.map((n) => n.position.y)) }
-      : { x: 80, y: 80 };
+  const position = positionAfter(history.present, Array.isArray(feeds) ? feeds : after ? [after.id] : []);
   let added: string | undefined;
   apply((p) => {
     let next = addNode(p, type, position, feeds);
