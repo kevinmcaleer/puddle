@@ -63,6 +63,8 @@ export interface DuckBackend {
   /** Register small in-memory content (clipboard text, fixtures). */
   registerBuffer(name: string, data: Uint8Array): Promise<void>;
   dropFile(name: string): Promise<void>;
+  /** Create table `name` from an Arrow IPC stream (Excel sheets read by SheetJS). The table must not exist yet. */
+  insertArrow(name: string, ipc: Uint8Array): Promise<void>;
   /** A file for COPY ... TO to write into, handed back as a Blob once written. */
   openOutput(name: string): Promise<OutputFile>;
   close(): Promise<void>;

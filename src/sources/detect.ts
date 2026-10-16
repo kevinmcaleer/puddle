@@ -17,9 +17,10 @@ const BY_EXTENSION: Record<string, SourceFormat> = {
   jsonl: 'ndjson',
   parquet: 'parquet',
   pq: 'parquet',
+  xlsx: 'xlsx',
 };
 
-export const ACCEPT = '.csv,.txt,.tsv,.tab,.json,.ndjson,.jsonl,.parquet,.pq';
+export const ACCEPT = '.csv,.txt,.tsv,.tab,.json,.ndjson,.jsonl,.parquet,.pq,.xlsx';
 
 const extensionOf = (name: string) => /\.([^.]+)$/.exec(name)?.[1]?.toLowerCase() ?? '';
 
@@ -31,8 +32,8 @@ export function formatFromName(name: string): SourceFormat {
   const format = knownFormat(name);
   if (format) return format;
   const ext = extensionOf(name);
-  if (ext === 'xlsx' || ext === 'xls') throw new SourceError(`${name} is an Excel file. Excel sources arrive in a later version; save the sheet as CSV and add that instead.`);
-  throw new SourceError(`${name} isn't a format Puddle reads. Add a CSV, TSV, JSON, NDJSON or Parquet file.`);
+  if (ext === 'xls') throw new SourceError(`${name} is in the old Excel format (.xls), which Puddle doesn’t read. Open it in Excel and save it as .xlsx or CSV, then add that.`);
+  throw new SourceError(`${name} isn't a format Puddle reads. Add a CSV, TSV, JSON, NDJSON, Parquet or Excel (.xlsx) file.`);
 }
 
 /** Guess the format of pasted text: JSON, NDJSON, tab-separated (spreadsheets paste as TSV) or CSV. */

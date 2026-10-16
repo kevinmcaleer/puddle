@@ -16,6 +16,8 @@ export const ParseOptionsZ = z
     nullStrings: z.array(z.string()),
     sheet: z.string(),
     headerRow: z.number().int().nonnegative(),
+    /** Excel: an A1 cell range to read, such as B3:F200. */
+    range: z.string(),
   })
   .partial();
 

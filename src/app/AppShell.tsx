@@ -20,6 +20,7 @@ import { compareWith, isPinShortcut, offeredNode, togglePin, viewHere } from '..
 import { ResultsTable } from '../results/ResultsTable';
 import { useResultsStore } from '../results/state';
 import { ACCEPT } from '../sources/detect';
+import { useExcelSources } from '../sources/excel';
 import { UrlDialog } from '../sources/UrlDialog';
 import { openUrlDialog } from '../sources/urlDialog';
 import { cardKind } from '../canvas/kind';
@@ -190,6 +191,7 @@ export function AppShell() {
   const designerId = useSession((s) => s.designerNodeId);
   const designing = designerId ? nodeById(project, designerId) : undefined;
   const fileInput = useRef<HTMLInputElement>(null);
+  useExcelSources();
   useFlowEvaluation();
   useShortcuts();
 

@@ -7,6 +7,8 @@ import { keptLabel, keptView, useKeptEntry } from '../flow/kept';
 import { summarise, useRuleStore } from '../flow/rules';
 import { useNodeStatus } from '../flow/status';
 import { hasNumberedInputs, inputPorts, useProject, type GraphNode } from '../model';
+import { useAttachments } from '../sources/attachments';
+import { isExcelSource, useExcelReads } from '../sources/excel';
 import { urlProblem, useUrlFetches } from '../sources/url';
 import { NodeCard } from '../ui';
 import { cardKind } from './kind';
@@ -39,11 +41,24 @@ export function PuddleNode({ data, selected }: NodeProps<PuddleFlowNode>) {
   const rule = blocked && own?.status !== 'fail' ? { status: 'fail' as const, label: 'Export blocked' } : own;
   const source = node.type === 'source' ? project.sources.find((s) => s.id === node.sourceId) : undefined;
   const fetch = useUrlFetches((s) => (source?.kind === 'url' ? s.fetches[source.id] : undefined));
-  // A URL source being fetched is dimmed until its file arrives; one that can't be fetched says why.
-  const fetching = source?.kind === 'url' && fetch?.state !== 'failed';
-  const detached = source?.kind === 'url' && source.url ? (fetching ? undefined : urlProblem(fetch, source.url.href).message) : 'File not connected. Choose it again in the inspector.';
+  const excel = useExcelReads((s) => (source && isExcelSource(source) ? s.reads[source.id] : undefined));
+  const fileChosen = useAttachments((s) => (source ? (s.sources[source.id] ?? 'detached') !== 'detached' : false));
+  // An Excel sheet whose file is chosen but not read yet (or that can't be read): reading, or why not.
+  const sheetPending = !!source && isExcelSource(source) && fileChosen;
+  // A URL source being fetched, or a sheet being read, is dimmed until its data arrives; one that can't be read says why.
+  const fetching = (source?.kind === 'url' && fetch?.state !== 'failed') || (sheetPending && excel?.state !== 'failed');
+  const detached =
+    source?.kind === 'url' && source.url
+      ? fetching
+        ? undefined
+        : urlProblem(fetch, source.url.href).message
+      : sheetPending
+        ? excel?.state === 'failed'
+          ? excel.message
+          : undefined
+        : 'File not connected. Choose it again in the inspector.';
   return (
-    <div data-testid={`node-${node.name}`} data-status={status.state} data-rules={rule?.status} data-export={node.type === 'output' && ok ? (blocked ? 'blocked' : 'ready') : undefined} data-fetch={fetch?.state}>
+    <div data-testid={`node-${node.name}`} data-status={status.state} data-rules={rule?.status} data-export={node.type === 'output' && ok ? (blocked ? 'blocked' : 'ready') : undefined} data-fetch={fetch?.state} data-sheet={excel?.state}>
       <NodeCard
         kind={cardKind(node.type)}
         name={node.name}

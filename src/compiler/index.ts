@@ -30,7 +30,7 @@ export { knownSchemas, SchemaBook } from './schemaBook';
 export { cleanCustomSql, customSqlProblem, INPUT_NAME, lexSql, SqlRefusal, type SqlToken, type SqlTokenKind } from './customSql';
 export { describeType, typeFamily, typesFit } from './types';
 export { SchemaCache } from './schemaCache';
-export { sourceFileName, sourceRelation, sourceTableName } from './sources';
+export { dropTable, sourceFileName, sourceRelation, sourceTableName } from './sources';
 export { bool, cteName, ident, list, num, stepFailure, str, strList } from './sql';
 export * from './steps';
 export { defineRule, PATTERN_PRESETS, ruleColumns, ruleDef, ruleParams, rulePredicate, ruleTypes, type PatternPreset, type RuleDef } from './rules';

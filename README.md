@@ -18,6 +18,8 @@ npm run e2e        # Playwright against a production build (run `npx playwright 
 npm run fetch-extensions  # optional: serve DuckDB's json and parquet extensions locally
 ```
 
+SheetJS, which reads Excel workbooks, is vendored as `vendor/xlsx-0.20.3.tgz`: its current releases are published on cdn.sheetjs.com, not the npm registry (where `xlsx` stopped at 0.18.5, which has known vulnerabilities). `npm ci` installs it from that file, so installs need no access to the CDN. To upgrade, replace the tarball with a newer one from cdn.sheetjs.com and run `npm install --save-exact xlsx@file:vendor/<tarball>`.
+
 ## Tests
 
 Every feature ships with its own tests, and every bug fix with a regression test, so later changes can't silently break earlier work. CI (`.github/workflows/ci.yml`) runs lint, typecheck, the unit and engine tests, and the Playwright suite on every pull request. It also builds the Docker image for amd64 and arm64 and runs `npm run e2e:container` against it: isolation headers, JSON and Parquet from the self-hosted extensions, and offline use.
@@ -36,7 +38,8 @@ A Docker image (nginx serving the static build) behind a Cloudflare Tunnel at pu
 | `src/engine/` | DuckDB-WASM in a Web Worker and the typed `EngineClient` (priorities, cancellation, Stop, plain-word errors) |
 | `src/model/` | The project graph: Zod schemas, wiring rules, step edits, grouping, undo and redo |
 | `src/compiler/` | The pure graph-to-SQL compiler (steps, joins and lookups over two inputs, appends over any number, and queries from the query designer), step registry, schema cache and the schema book those nodes read their inputs’ columns from |
-| `src/sources/` | Adding sources: format detection, file handles, clipboard text, web addresses (fetched again on reopen), and choosing files again on reopen (on Chromium, reconnecting them with one permission click through stored file handles) |
+| `src/sources/` | Adding sources: format detection, file handles, clipboard text, web addresses (fetched again on reopen), choosing files again on reopen (on Chromium, reconnecting them with one permission click through stored file handles), and Excel sources (sheet, header row and range, kept loaded as DuckDB tables) |
+| `src/excel/` | SheetJS in a Web Worker: reading `.xlsx` sheets into typed columns and Arrow tables for DuckDB. The worker is shared by everything that reads or writes workbooks |
 | `src/persistence/` | IndexedDB autosave, `.puddle.json` export and import, format migrations |
 | `src/home/` | The projects home screen and the rename and delete dialogs |
 | `src/canvas/` | The node canvas on React Flow: nodes, wires, auto layout |
@@ -51,7 +54,7 @@ A Docker image (nginx serving the static build) behind a Cloudflare Tunnel at pu
 | `src/inspector/` | The right-hand panel: source read options, applied steps, step settings and node notes |
 | `src/notes/` | The project notes panel: Markdown written and previewed, rendered with raw HTML off and links in a new tab |
 | `src/results/` | The results table on Glide Data Grid: paging, headers with type and quality |
-| `tests/` | Engine integration tests, fixtures and helpers |
+| `tests/` | Engine integration tests, fixtures and helpers (`scripts/make-excel-fixtures.mjs` writes the Excel fixture) |
 | `e2e/` | Playwright tests |
 
 Adding a step type means one `defineStep` in `src/compiler/steps/` (Zod params, past-tense label, compile function), one `defineStepForm` in `src/steps/` (title, group, fields, defaults) and one test fixture.
