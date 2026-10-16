@@ -1,7 +1,7 @@
 import type { LucideIcon } from 'lucide-react';
 import {
   Blend, Calendar, ClipboardPaste, CaseSensitive, Check, ChevronDown, ChevronRight, ChevronUp, Clock, Code, Download, Ellipsis, Eye,
-  File, FileText, GripVertical, Info, Link, ListPlus, Monitor, Moon, PanelBottomClose, PanelBottomOpen, Pin, Plus, Redo2, RefreshCw,
+  File, FileText, GripVertical, Info, Keyboard, Link, ListPlus, Monitor, Moon, PanelBottomClose, PanelBottomOpen, PanelRightClose, PanelRightOpen, Pin, Plus, Redo2, RefreshCw,
   Search, ShieldCheck, SlidersHorizontal, Sun, TriangleAlert, Type, Undo2, Workflow, X,
 } from 'lucide-react';
 import { cx } from './cx';
@@ -45,6 +45,9 @@ const LUCIDE = {
   paste: ClipboardPaste,
   link: Link,
   refresh: RefreshCw,
+  keyboard: Keyboard,
+  'sidebar-close': PanelRightClose,
+  'sidebar-open': PanelRightOpen,
 } satisfies Record<string, LucideIcon>;
 
 export type IconName = keyof typeof LUCIDE | 'trim';

@@ -1,6 +1,7 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useEngineStore } from '../app/engine';
 import { useSession } from '../app/session';
+import { withShortcut } from '../app/shortcuts';
 import { compileDisplayPage, upstreamKey, type Condition } from '../compiler';
 import { detectDateFormats, type Detection } from '../dates';
 import { tableRows } from '../engine/client';
@@ -77,7 +78,22 @@ function AddStepMenu({ node, after }: { node: TransformNode; after: number }) {
         },
       })),
   );
-  return <Menu label="Add step" button={{ variant: 'ghost', size: 'sm', icon: 'plus' }} items={items} />;
+  // The / shortcut opens the menu with its search focused, until it next closes.
+  const pending = useSession((s) => s.addStepPending);
+  const [open, setOpen] = useState(false);
+  return (
+    <Menu
+      label="Add step"
+      button={{ variant: 'ghost', size: 'sm', icon: 'plus', title: withShortcut('Add step', 'add-step') }}
+      items={items}
+      search="Search steps"
+      open={open || pending}
+      onOpenChange={(next) => {
+        setOpen(next);
+        if (!next) useSession.getState().clearAddStep();
+      }}
+    />
+  );
 }
 
 function StepSettings({ node, index, error }: { node: TransformNode; index: number; error?: string }) {

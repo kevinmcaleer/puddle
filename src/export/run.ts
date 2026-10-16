@@ -156,6 +156,15 @@ export async function exportNode(nodeId: string, override = false): Promise<void
   }
 }
 
+/** Export the Output node the results table shows (the E shortcut); a blocked one stays blocked. */
+export async function exportViewed(): Promise<void> {
+  const project = useProjectStore.getState().history.present;
+  const node = project.view.viewedNodeId ? nodeById(project, project.view.viewedNodeId) : undefined;
+  if (node?.type !== 'output') return useSession.getState().notify({ tone: 'info', text: 'View an Output node to export it.' });
+  if (useFlowStore.getState().nodes[node.id]?.status.state !== 'ok') return useSession.getState().notify({ tone: 'warn', text: `${node.name} can’t run yet, so there’s nothing to export.` });
+  return exportNode(node.id);
+}
+
 /** Export every Output node that can run and isn't blocked; blocked ones are named, never overridden. */
 export async function exportAll(): Promise<void> {
   const project = useProjectStore.getState().history.present;

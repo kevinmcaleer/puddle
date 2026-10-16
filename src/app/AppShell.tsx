@@ -1,5 +1,5 @@
 import { ReactFlowProvider } from '@xyflow/react';
-import { useEffect, useRef } from 'react';
+import { useRef } from 'react';
 import { Canvas } from '../canvas/Canvas';
 import { useFlowEvaluation } from '../flow/useFlowEvaluation';
 import { Inspector } from '../inspector/Inspector';
@@ -13,7 +13,7 @@ import { ruleTally, useRuleStore } from '../flow/rules';
 import { sampledUpstream, useSample, useViewProject } from '../flow/sample';
 import { SampleBanner } from '../results/SampleBanner';
 import { describeProfile } from '../results/profile';
-import { exportAll, ExportBlockedBanner, ExportButton } from '../export';
+import { exportAll, ExportBlockedBanner, ExportButton, exportViewed } from '../export';
 import { ResultsTable } from '../results/ResultsTable';
 import { useResultsStore } from '../results/state';
 import { ACCEPT } from '../sources/detect';
@@ -21,9 +21,12 @@ import { UrlDialog } from '../sources/UrlDialog';
 import { openUrlDialog } from '../sources/urlDialog';
 import { Button, Menu, ResultsBar, StatusBadge, StatusStrip, Toolbar, type NodeKind } from '../ui';
 import { ActivityControl } from './ActivityControl';
-import { addFiles, addNodeAfterSelection, chooseFiles as pickSourceFiles, addPastedText, layoutFlow, pasteFromClipboard } from './actions';
+import { addFiles, addNodeAfterSelection, chooseFiles as pickSourceFiles, addPastedText, groupSelection, layoutFlow, pasteFromClipboard, searchAddStep, selectNeighbour, viewSelected } from './actions';
 import { useEngineStore, type EngineStatus } from './engine';
 import { ResultsPanel } from './ResultsPanel';
+import { ShortcutsDialog } from './ShortcutsDialog';
+import { shortcutText, withShortcut, type GlobalShortcutId } from './shortcuts';
+import { useShortcuts } from './useShortcuts';
 import { useSession } from './session';
 import { THEME_ICON, THEME_LABEL, useTheme } from './theme';
 
@@ -36,34 +39,6 @@ function EngineBadge({ status }: { status: EngineStatus }) {
       DuckDB {version} · {bundle}
     </span>
   );
-}
-
-const isTyping = (t: EventTarget | null) => t instanceof HTMLElement && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName));
-
-/** Undo and redo from the keyboard, and pasting rows onto the canvas, anywhere outside a text field. */
-function useShortcuts() {
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (isTyping(e.target) || !(e.ctrlKey || e.metaKey) || e.key.toLowerCase() !== 'z' && e.key.toLowerCase() !== 'y') return;
-      e.preventDefault();
-      const { undo, redo } = useProjectStore.getState();
-      if (e.key.toLowerCase() === 'y' || e.shiftKey) redo();
-      else undo();
-    };
-    const onPaste = (e: ClipboardEvent) => {
-      if (isTyping(e.target)) return;
-      const text = e.clipboardData?.getData('text/plain');
-      if (!text) return;
-      e.preventDefault();
-      void addPastedText(text);
-    };
-    window.addEventListener('keydown', onKey);
-    window.addEventListener('paste', onPaste);
-    return () => {
-      window.removeEventListener('keydown', onKey);
-      window.removeEventListener('paste', onPaste);
-    };
-  }, []);
 }
 
 function ResultsTitle() {
@@ -132,12 +107,37 @@ export function AppShell() {
   const canRedo = useProjectStore((s) => s.history.future.length > 0);
   const theme = useTheme();
   const notesOpen = useSession((s) => s.notesOpen);
+  const inspectorOpen = useSession((s) => s.inspectorOpen);
   const fileInput = useRef<HTMLInputElement>(null);
+  const canvas = useRef<HTMLElement>(null);
   useFlowEvaluation();
-  useShortcuts();
 
   const importInput = useRef<HTMLInputElement>(null);
   const chooseFiles = () => void pickSourceFiles(() => fileInput.current?.click());
+
+  const session = useSession.getState;
+  const actions: Record<GlobalShortcutId, () => void> = {
+    help: () => session().setShortcutsOpen(true),
+    undo,
+    redo,
+    'toggle-inspector': () => session().setInspectorOpen(!session().inspectorOpen),
+    'add-source': chooseFiles,
+    'add-transform': () => addNodeAfterSelection('transform'),
+    'add-output': () => addNodeAfterSelection('output'),
+    layout: () => project.nodes.length > 0 && layoutFlow(),
+    group: groupSelection,
+    'focus-canvas': () => canvas.current?.focus(),
+    'select-upstream': () => selectNeighbour('upstream'),
+    'select-downstream': () => selectNeighbour('downstream'),
+    'select-above': () => selectNeighbour('above'),
+    'select-below': () => selectNeighbour('below'),
+    view: viewSelected,
+    export: () => void exportViewed(),
+    'export-all': () => void exportAll(),
+    'toggle-results': () => session().setResultsOpen(!session().resultsOpen),
+    'add-step': searchAddStep,
+  };
+  useShortcuts(actions, (text) => void addPastedText(text));
 
   return (
     <ReactFlowProvider>
@@ -155,7 +155,7 @@ export function AppShell() {
             label="Add source"
             button={{ variant: 'primary', icon: 'plus' }}
             items={[
-              { label: 'Choose files', icon: 'source', hint: 'CSV, TSV, JSON, Parquet', onSelect: chooseFiles },
+              { label: 'Choose files', icon: 'source', hint: 'CSV, TSV, JSON, Parquet', shortcut: shortcutText('add-source'), onSelect: chooseFiles },
               { label: 'From URL', icon: 'link', hint: 'https address', onSelect: () => openUrlDialog() },
               { label: 'Paste from clipboard', icon: 'paste', onSelect: () => void pasteFromClipboard() },
             ]}
@@ -164,16 +164,16 @@ export function AppShell() {
             label="Add node"
             button={{ icon: 'transform' }}
             items={[
-              { label: 'Transform', icon: 'transform', onSelect: () => addNodeAfterSelection('transform') },
+              { label: 'Transform', icon: 'transform', shortcut: shortcutText('add-transform'), onSelect: () => addNodeAfterSelection('transform') },
               { label: 'Join', icon: 'join', hint: 'Two inputs', onSelect: () => addNodeAfterSelection('join') },
               { label: 'Append', icon: 'append', hint: 'Stack rows', onSelect: () => addNodeAfterSelection('append') },
-              { label: 'Output', icon: 'output', onSelect: () => addNodeAfterSelection('output') },
+              { label: 'Output', icon: 'output', shortcut: shortcutText('add-output'), onSelect: () => addNodeAfterSelection('output') },
             ]}
           />
-          <Button variant="ghost" icon="layout" onClick={layoutFlow} disabled={!project.nodes.length}>Auto layout</Button>
-          <Button variant="ghost" icon="export" disabled={!project.nodes.some((n) => n.type === 'output')} onClick={() => void exportAll()}>Export all</Button>
-          <Button variant="ghost" icon="undo" iconOnly aria-label="Undo" title="Undo (Ctrl+Z)" disabled={!canUndo} onClick={undo} />
-          <Button variant="ghost" icon="redo" iconOnly aria-label="Redo" title="Redo (Ctrl+Shift+Z)" disabled={!canRedo} onClick={redo} />
+          <Button variant="ghost" icon="layout" title={withShortcut('Auto layout', 'layout')} onClick={layoutFlow} disabled={!project.nodes.length}>Auto layout</Button>
+          <Button variant="ghost" icon="export" title={withShortcut('Export all', 'export-all')} disabled={!project.nodes.some((n) => n.type === 'output')} onClick={() => void exportAll()}>Export all</Button>
+          <Button variant="ghost" icon="undo" iconOnly aria-label="Undo" title={withShortcut('Undo', 'undo')} disabled={!canUndo} onClick={undo} />
+          <Button variant="ghost" icon="redo" iconOnly aria-label="Redo" title={withShortcut('Redo', 'redo')} disabled={!canRedo} onClick={redo} />
           <Button
             variant="ghost"
             icon="notes"
@@ -193,6 +193,25 @@ export function AppShell() {
             title={THEME_LABEL[theme.preference]}
             data-testid="theme-toggle"
             onClick={theme.cycle}
+          />
+          <Button
+            variant="ghost"
+            icon={inspectorOpen ? 'sidebar-close' : 'sidebar-open'}
+            iconOnly
+            aria-label={inspectorOpen ? 'Hide inspector' : 'Show inspector'}
+            title={withShortcut(inspectorOpen ? 'Hide inspector' : 'Show inspector', 'toggle-inspector')}
+            aria-expanded={inspectorOpen}
+            data-testid="inspector-toggle"
+            onClick={() => session().setInspectorOpen(!inspectorOpen)}
+          />
+          <Button
+            variant="ghost"
+            icon="keyboard"
+            iconOnly
+            aria-label="Keyboard shortcuts"
+            title={withShortcut('Keyboard shortcuts', 'help')}
+            data-testid="shortcuts-toggle"
+            onClick={() => session().setShortcutsOpen(true)}
           />
         </Toolbar>
         <input
@@ -221,12 +240,12 @@ export function AppShell() {
           }}
         />
 
-        <div className="grid min-h-0 grid-cols-[minmax(0,1fr)_var(--size-inspector)]">
-          <main className="min-h-0" aria-label="Canvas">
+        <div className={inspectorOpen ? 'grid min-h-0 grid-cols-[minmax(0,1fr)_var(--size-inspector)]' : 'grid min-h-0 grid-cols-[minmax(0,1fr)]'}>
+          <main ref={canvas} tabIndex={-1} className="min-h-0 focus-visible:outline-none" aria-label="Canvas">
             <Canvas onAddSource={chooseFiles} />
           </main>
 
-          {notesOpen ? (
+          {!inspectorOpen ? null : notesOpen ? (
             <aside className="min-h-0 overflow-hidden border-l border-line bg-surface-panel" aria-label="Project notes">
               <NotesPanel />
             </aside>
@@ -244,6 +263,7 @@ export function AppShell() {
         <Strip />
       </div>
       <UrlDialog onChooseFile={chooseFiles} />
+      <ShortcutsDialog />
     </ReactFlowProvider>
   );
 }

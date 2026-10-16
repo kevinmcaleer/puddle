@@ -1,13 +1,16 @@
 import { useCallback, useRef, useState, type KeyboardEvent, type PointerEvent, type ReactNode } from 'react';
 import { Button } from '../ui';
+import { useSession } from './session';
+import { withShortcut } from './shortcuts';
 
 const MIN = 120;
 const DEFAULT = 280;
 
-/** The results table dock: resizable from its top edge (drag or arrow keys) and collapsible. */
+/** The results table dock: resizable from its top edge (drag or arrow keys) and collapsible (R). */
 export function ResultsPanel({ bar, children }: { bar: ReactNode; children: ReactNode }) {
   const [height, setHeight] = useState(DEFAULT);
-  const [collapsed, setCollapsed] = useState(false);
+  const collapsed = !useSession((s) => s.resultsOpen);
+  const setCollapsed = (c: boolean) => useSession.getState().setResultsOpen(!c);
   const drag = useRef<{ y: number; h: number } | null>(null);
 
   const clamp = useCallback((h: number) => Math.max(MIN, Math.min(h, window.innerHeight * 0.75)), []);
@@ -52,8 +55,9 @@ export function ResultsPanel({ bar, children }: { bar: ReactNode; children: Reac
           icon={collapsed ? 'panel-open' : 'panel-close'}
           aria-label={collapsed ? 'Show results' : 'Hide results'}
           aria-expanded={!collapsed}
+          title={withShortcut(collapsed ? 'Show results' : 'Hide results', 'toggle-results')}
           className="mr-3"
-          onClick={() => setCollapsed((c) => !c)}
+          onClick={() => setCollapsed(!collapsed)}
         />
       </div>
       {!collapsed && (
