@@ -1,21 +1,43 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
+import { ruleRefs, ruleScope, type NodeNames } from '../compiler';
 import { useSession } from '../app/session';
 import { stopped } from '../engine/errors';
 import { useRuleStore, type RuleResult } from '../flow/rules';
 import { runAgain } from '../flow/rerun';
 import { sampledUpstream, useSample } from '../flow/sample';
-import { useNodeStatus } from '../flow/status';
-import { addRule, dismissSuggestion, newId, removeRule, updateRule, useProject, useProjectStore, type GraphNode, type Rule } from '../model';
+import { useFlowStore, useNodeStatus } from '../flow/status';
+import { addRule, dismissSuggestion, newId, nodeById, removeRule, updateRule, useProject, useProjectStore, type GraphNode, type Project, type Rule } from '../model';
 import { newRule, ruleErrors, ruleForm, ruleForms, ruleLabel, showFailing, useSuggestions, type Suggestion } from '../rules';
-import { FormFields } from '../steps/StepForm';
-import { Button, Field, Menu, RuleRow, Section, Select, Switch } from '../ui';
+import { FormFields, type OtherNode } from '../steps/StepForm';
+import { Button, Field, fullCount, Menu, RuleRow, Section, Select, Switch } from '../ui';
 
 const apply = (edit: Parameters<ReturnType<typeof useProjectStore.getState>['apply']>[0]) => useProjectStore.getState().apply(edit);
 const NONE: Record<string, RuleResult> = {};
 const STOPPED = stopped().message;
 
+/** Node names for rule labels, read from the project as it is now (so a renamed node shows its new name). */
+const namesIn = (project: Project): NodeNames => (id) => nodeById(project, id)?.name;
+
+/** Every other node, with its columns once described, for rules that read another node. */
+function useOtherNodes(nodeId: string): OtherNode[] {
+  const project = useProject();
+  const statuses = useFlowStore((s) => s.nodes);
+  return useMemo(
+    () =>
+      project.nodes
+        .filter((n) => n.id !== nodeId)
+        .map((n) => {
+          const st = statuses[n.id]?.status;
+          return { id: n.id, name: n.name, columns: st?.state === 'ok' ? st.columns : [] };
+        }),
+    [project.nodes, statuses, nodeId],
+  );
+}
+
 function RuleSettings({ node, rule }: { node: GraphNode; rule: Rule }) {
   const status = useNodeStatus(node.id);
+  const project = useProject();
+  const others = useOtherNodes(node.id);
   const columns = status.state === 'ok' ? status.columns : [];
   const form = ruleForm(rule.type);
   const update = (patch: Partial<Rule>) => apply((p) => updateRule(p, node.id, rule.id, patch));
@@ -40,7 +62,8 @@ function RuleSettings({ node, rule }: { node: GraphNode; rule: Rule }) {
           params={rule.params}
           errors={ruleErrors(rule)}
           columns={columns}
-          onChange={(params) => update({ params, label: ruleLabel({ type: rule.type, params }) })}
+          nodes={others}
+          onChange={(params) => update({ params, label: ruleLabel({ type: rule.type, params }, namesIn(project)) })}
         />
       )}
       <div>
@@ -79,11 +102,12 @@ export function RulesPanel({ node }: { node: GraphNode }) {
   const sample = useSample(project);
   const onSample = node.rules.some((r) => r.enabled) && sampledUpstream(project, node.id, sample).length > 0;
   const stopped = Object.values(results).some((r) => r.state === 'error' && r.message === STOPPED);
+  const names = namesIn(project);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const items = ruleForms().map((f) => ({
     label: f.title,
     onSelect: () => {
-      const rule = newRule(f.type, { selected: useSession.getState().selectedColumns, available: status.state === 'ok' ? status.columns : [] });
+      const rule = newRule(f.type, { selected: useSession.getState().selectedColumns, available: status.state === 'ok' ? status.columns : [] }, namesIn(project));
       apply((p) => addRule(p, node.id, rule));
       setSelectedId(rule.id);
     },
@@ -106,10 +130,16 @@ export function RulesPanel({ node }: { node: GraphNode }) {
         <div className="flex flex-col" data-testid="rules">
           {node.rules.map((r) => {
             const res = results[r.id];
+            const table = ruleScope(r) === 'table';
+            const custom = r.type === 'expression' && typeof r.params.expression === 'string' && r.params.expression.trim();
             return (
-              <div key={r.id}>
+              <div key={r.id} data-testid={`rule-${r.type}`}>
                 <RuleRow
-                  name={r.label}
+                  // A rule naming another node shows that node's name as it is now.
+                  name={custom ? 'Custom expression' : ruleRefs(r).length ? ruleLabel(r, names) : r.label}
+                  expr={custom || undefined}
+                  metric={table && res?.state === 'ok' ? `${fullCount(res.total)} ${res.total === 1 ? 'row' : 'rows'}` : undefined}
+                  noFailingRows={table ? 'This rule is about the whole table, so there are no failing rows to show.' : undefined}
                   severity={r.severity}
                   disabled={!r.enabled}
                   pending={!res || res.state === 'pending'}

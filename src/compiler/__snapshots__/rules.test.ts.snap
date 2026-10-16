@@ -1,0 +1,23 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`rule predicates > expression {"expression":"total >= 0 AND status <> 'void'"} 1`] = `"(total >= 0 AND status <> 'void')"`;
+
+exports[`rule predicates > length {"column":"name","op":"atLeast","n":1} 1`] = `""name" IS NULL OR length(CAST("name" AS VARCHAR)) >= 1"`;
+
+exports[`rule predicates > length {"column":"name","op":"atMost","n":50} 1`] = `""name" IS NULL OR length(CAST("name" AS VARCHAR)) <= 50"`;
+
+exports[`rule predicates > length {"column":"name","op":"exactly","n":3} 1`] = `""name" IS NULL OR length(CAST("name" AS VARCHAR)) = 3"`;
+
+exports[`rule predicates > readsAs {"column":"v","as":"boolean"} 1`] = `"coalesce(trim(CAST("v" AS VARCHAR)), '') = '' OR (TRY_CAST(trim(CAST("v" AS VARCHAR)) AS BOOLEAN) IS NOT NULL)"`;
+
+exports[`rule predicates > readsAs {"column":"v","as":"decimal"} 1`] = `"coalesce(trim(CAST("v" AS VARCHAR)), '') = '' OR (regexp_full_match(trim(CAST("v" AS VARCHAR)), '[+-]?([0-9]+([.][0-9]*)?|[.][0-9]+)'))"`;
+
+exports[`rule predicates > readsAs {"column":"v","as":"integer"} 1`] = `"coalesce(trim(CAST("v" AS VARCHAR)), '') = '' OR (regexp_full_match(trim(CAST("v" AS VARCHAR)), '[+-]?[0-9]+') AND TRY_CAST(trim(CAST("v" AS VARCHAR)) AS HUGEINT) IS NOT NULL)"`;
+
+exports[`rule predicates > rowCount {"mode":"atLeast","n":5} 1`] = `"count(*) >= 5"`;
+
+exports[`rules that read other nodes, compiled > batches row rules and table rules into one pass, and reads the other node as a subquery 1`] = `
+"SELECT count(*) AS total, count(*) FILTER (WHERE NOT coalesce("r0", false)) AS "f0", CASE WHEN coalesce((count(*) >= 2), false) THEN 0 ELSE 1 END AS "f1", count(*) FILTER (WHERE NOT coalesce("r2", false)) AS "f2" FROM (SELECT (NOT (coalesce(trim(CAST("customer_id" AS VARCHAR)), '') = '')) AS "r0", ("customer_id" IS NULL OR "customer_id" IN (SELECT "customer_id" FROM (WITH "n_c" AS (SELECT * FROM read_csv('src_customers.csv'))
+SELECT * FROM "n_c") WHERE "customer_id" IS NOT NULL)) AS "r2" FROM (WITH "n_o" AS (SELECT * FROM read_csv('src_orders.csv'))
+SELECT * FROM "n_o"))"
+`;

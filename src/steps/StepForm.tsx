@@ -88,11 +88,19 @@ function SortKeys({ value, columns, onChange }: { value: SortKey[]; columns: Col
   );
 }
 
+/** Another node a rule can read, with its columns (empty until it has been described). */
+export interface OtherNode {
+  id: string;
+  name: string;
+  columns: ColumnSchema[];
+}
+
 function FieldInput({
   field,
   value,
   params,
   columns,
+  nodes = [],
   error,
   detectDates,
   readRows,
@@ -103,6 +111,7 @@ function FieldInput({
   value: unknown;
   params: Params;
   columns: ColumnSchema[];
+  nodes?: OtherNode[];
   error?: string;
   detectDates?: (column: string) => Promise<Detection>;
   readRows?: ReadTransposeRows;
@@ -166,6 +175,17 @@ function FieldInput({
     case 'pivot':
       // Drawn by FormFields: the pivot editor edits all of the step's settings, not one of them.
       return null;
+    case 'node': {
+      const current = String(value ?? '');
+      const options = [{ value: '', label: 'Pick a node' }, ...nodes.map((n) => ({ value: n.id, label: n.name }))];
+      if (current && !nodes.some((n) => n.id === current)) options.push({ value: current, label: 'A node that no longer exists' });
+      return <Select id={id} options={options} value={current} onChange={(e) => onChange(e.target.value)} />;
+    }
+    case 'nodeColumn': {
+      const other = nodes.find((n) => n.id === params[field.node]);
+      if (!other) return <p className="text-label text-ink-muted">Pick a node first.</p>;
+      return <ColumnsPicker id={id} single value={typeof value === 'string' && value ? [value] : []} columns={other.columns} onChange={(v) => onChange(v[0] ?? '')} />;
+    }
     case 'transposeRows':
       return <TransposeRows params={params} columns={columns} read={readRows} onChange={onParams} />;
   }
@@ -197,6 +217,10 @@ function ExpectedType({ expects, problem }: { expects: ExpectedKind; problem?: s
 }
 
 /** A form built from a field list, with field errors shown before anything runs. Steps and rules share it. */
+/** Picking another node clears the columns picked from the one before. */
+const columnsOfNode = (fields: FieldSpec[], nodeKey: string): Params =>
+  Object.fromEntries(fields.flatMap((f) => (f.kind === 'nodeColumn' && f.node === nodeKey ? [[f.key, '']] : [])));
+
 export function FormFields({
   fields,
   params,
@@ -204,6 +228,7 @@ export function FormFields({
   columns,
   detectDates,
   readPivotValues,
+  nodes,
   readRows,
   onChange,
   testId,
@@ -214,6 +239,8 @@ export function FormFields({
   columns: ColumnSchema[];
   detectDates?: (column: string) => Promise<Detection>;
   readPivotValues?: ReadPivotValues;
+  /** Other nodes, for fields that pick one (rules that read another node). */
+  nodes?: OtherNode[];
   readRows?: ReadTransposeRows;
   onChange: (params: Params) => void;
   testId?: string;
@@ -227,7 +254,18 @@ export function FormFields({
           <FieldInput key={f.key} field={f} value={params[f.key]} params={params} columns={columns} onChange={(v) => onChange({ ...params, [f.key]: v })} onParams={onChange} />
         ) : (
           <Field key={f.key} label={f.label} htmlFor={`step-${f.key}`} hint={f.liveHint?.(params) ?? f.hint} error={f.kind === 'sql' ? undefined : errors[f.key]}>
-            <FieldInput field={f} value={params[f.key]} params={params} columns={columns} error={errors[f.key]} detectDates={detectDates} readRows={readRows} onChange={(v) => onChange({ ...params, [f.key]: v })} onParams={onChange} />
+            <FieldInput
+              field={f}
+              value={params[f.key]}
+              params={params}
+              columns={columns}
+              nodes={nodes}
+              error={errors[f.key]}
+              detectDates={detectDates}
+              readRows={readRows}
+              onChange={(v) => onChange({ ...params, [f.key]: v, ...(f.kind === 'node' ? columnsOfNode(fields, f.key) : {}) })}
+              onParams={onChange}
+            />
             {f.problem?.(params, columns) && (
               <Banner tone="warn" title="This won’t run as it is">
                 {f.problem(params, columns)}

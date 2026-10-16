@@ -42,7 +42,11 @@ type FieldKind =
   /** The pivot editor: field list and four drop zones, editing the whole of the step's settings. */
   | { key: string; label: string; kind: 'pivot'; hint?: string }
   /** How many rows Transpose was set up for, with a way to read them again. */
-  | { key: string; label: string; kind: 'transposeRows'; hint?: string };
+  | { key: string; label: string; kind: 'transposeRows'; hint?: string }
+  /** Another node on the canvas (rules that read one): its id. */
+  | { key: string; label: string; kind: 'node'; hint?: string }
+  /** A column of the node picked in the field named by `node`. */
+  | { key: string; label: string; kind: 'nodeColumn'; node: string; hint?: string };
 
 export type StepGroup = 'Clean' | 'Columns' | 'Rows' | 'Text' | 'Dates' | 'Numbers' | 'Reshape' | 'Advanced';
 
