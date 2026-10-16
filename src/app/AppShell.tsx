@@ -10,12 +10,15 @@ import { exportProject, goHome, importProject } from '../persistence/workspace';
 import { QuickFixes } from '../quickfix/QuickFixes';
 import { showFailing } from '../rules';
 import { ruleTally, useRuleStore } from '../flow/rules';
+import { sampledUpstream, useSample, useViewProject } from '../flow/sample';
+import { SampleBanner } from '../results/SampleBanner';
 import { describeProfile } from '../results/profile';
 import { exportAll, ExportBlockedBanner, ExportButton } from '../export';
 import { ResultsTable } from '../results/ResultsTable';
 import { useResultsStore } from '../results/state';
 import { ACCEPT } from '../sources/detect';
 import { Button, Menu, ResultsBar, StatusBadge, StatusStrip, Toolbar, type NodeKind } from '../ui';
+import { ActivityControl } from './ActivityControl';
 import { addFiles, addNodeAfterSelection, addPastedText, layoutFlow, pasteFromClipboard } from './actions';
 import { useEngineStore, type EngineStatus } from './engine';
 import { ResultsPanel } from './ResultsPanel';
@@ -71,6 +74,7 @@ function ResultsTitle() {
   const title = failing ? `${node.name} · failing ${failing.label}` : step == null ? node.name : `${node.name} · step ${step + 1}`;
   return (
     <ResultsBar title={<span data-testid="results-title">{title}</span>} kind={kind} action={node.type === 'output' && !failing ? <ExportButton node={node} /> : undefined}>
+      <SampleBanner />
       {node.type === 'output' && !failing && <ExportBlockedBanner node={node} className="px-3 pb-2" />}
       {failing ? (
         <div className="px-3 pb-2">
@@ -93,11 +97,25 @@ function Strip() {
   const selected = useSession((s) => s.selectedColumns);
   const node = viewed ? nodeById(project, viewed) : undefined;
   const results = useRuleStore((s) => (viewed ? s.nodes[viewed]?.results : undefined));
-  if (!node) return <StatusStrip end={<EngineBadge status={engine} />} />;
+  const sample = useSample(project);
+  const end = (
+    <>
+      <ActivityControl />
+      <EngineBadge status={engine} />
+    </>
+  );
+  if (!node) return <StatusStrip end={end} />;
   const one = selected.length === 1 ? selected[0]! : undefined;
   const p = one ? profile?.[one] : undefined;
-  const detail = one && p ? <span data-testid="column-profile">{one} · {describeProfile(p)}</span> : undefined;
-  return <StatusStrip rows={rows} cols={cols} ms={ms} rules={ruleTally(node.rules, results)} detail={detail} end={<EngineBadge status={engine} />} />;
+  const sampled = sampledUpstream(project, node.id, sample).length > 0;
+  const rules = ruleTally(node.rules, results);
+  const detail = (
+    <>
+      {rules && sampled && <span data-testid="rules-on-sample">Rules checked on the sample</span>}
+      {one && p && <span data-testid="column-profile">{one} · {describeProfile(p)}</span>}
+    </>
+  );
+  return <StatusStrip rows={rows} cols={cols} ms={ms} rules={rules} sample={sampled && sample ? sample.rows : undefined} detail={(rules && sampled) || (one && p) ? detail : undefined} end={end} />;
 }
 
 /**
@@ -106,6 +124,7 @@ function Strip() {
  */
 export function AppShell() {
   const project = useProject();
+  const viewProject = useViewProject();
   const { undo, redo } = useProjectStore();
   const canUndo = useProjectStore((s) => s.history.past.length > 0);
   const canRedo = useProjectStore((s) => s.history.future.length > 0);
@@ -214,7 +233,7 @@ export function AppShell() {
         </div>
 
         <ResultsPanel bar={<ResultsTitle />}>
-          <ResultsTable project={project} />
+          <ResultsTable project={viewProject} />
         </ResultsPanel>
 
         <Strip />

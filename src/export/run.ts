@@ -2,12 +2,13 @@
 import { create } from 'zustand';
 import { useEngineStore } from '../app/engine';
 import { useSession } from '../app/session';
-import { CompileError, compileExport, EXPORT_FORMATS, exportFileName, type ExportFormat } from '../compiler';
-import type { EngineClient } from '../engine';
+import { CompileError, compileExport, compileRules, EXPORT_FORMATS, exportFileName, type ExportFormat } from '../compiler';
+import { isStopped, tableRows, toEngineError, type EngineClient } from '../engine';
 import { describeBlock, exportGate, type Gate } from '../flow/gate';
-import { useRuleStore } from '../flow/rules';
+import { useRuleStore, type RuleResult } from '../flow/rules';
+import { currentSample, sampledUpstream, type Sample } from '../flow/sample';
 import { useFlowStore } from '../flow/status';
-import { logExport, newId, nodeById, topoSort, useProjectStore, type ExportLogEntry, type Project } from '../model';
+import { logExport, newId, nodeById, topoSort, upstreamIds, useProjectStore, type ExportLogEntry, type Project } from '../model';
 import { copyText, saveBlob } from './deliver';
 
 /** Clipboard exports above this size are refused: pasting them would hang most spreadsheets anyway. */
@@ -38,7 +39,10 @@ export async function runExport(
   const spec = node.outputSpec;
   const fileName = exportFileName(node.name, spec);
   // A fresh name each time, so two exports never write to the same file.
-  const { blob, rows } = await engine.exportFile(`${newId('x')}.${EXPORT_FORMATS[spec.format].ext}`, (path) => compileExport(project, nodeId, path), { priority: 'preview' });
+  const { blob, rows } = await engine.exportFile(`${newId('x')}.${EXPORT_FORMATS[spec.format].ext}`, (path) => compileExport(project, nodeId, path), {
+    priority: 'preview',
+    label: `Exporting ${node.name}`,
+  });
   if (spec.format === 'clipboard' && blob.size > CLIPBOARD_LIMIT)
     throw new Error(`That’s too much to copy (${Math.round(blob.size / 1024 / 1024)} MB). Export it as a file instead.`);
   await deliver(blob, fileName, spec.format);
@@ -53,18 +57,42 @@ export async function runExport(
   };
 }
 
+/**
+ * The quality gate an export goes through. Rule results on screen come from the sample in sample mode, and a
+ * sample passing says nothing about the rest, so the upstream rules are checked again on the full data first.
+ */
+export async function exportGateFor(engine: EngineClient, project: Project, nodeId: string, sample: Sample | null): Promise<Gate> {
+  const stored = useRuleStore.getState().nodes;
+  if (!sampledUpstream(project, nodeId, sample).length) return exportGate(project, nodeId, stored);
+  const results: Record<string, { results: Record<string, RuleResult> }> = {};
+  for (const id of topoSort(project, upstreamIds(project, nodeId))) {
+    const rules = nodeById(project, id)?.rules.filter((r) => r.enabled && r.severity === 'fail') ?? [];
+    if (!rules.length) continue;
+    const entry: Record<string, RuleResult> = {};
+    try {
+      const r = tableRows((await engine.query(compileRules(project, id, rules), { priority: 'preview', label: 'Checking rules on the full data' })).table)[0]!;
+      rules.forEach((rule, i) => (entry[rule.id] = { state: 'ok', failures: Number(r[`f${i}`]), total: Number(r.total) }));
+    } catch (e) {
+      if (isStopped(e)) throw e;
+      for (const rule of rules) entry[rule.id] = { state: 'error', message: e instanceof CompileError ? e.message : toEngineError(e).message };
+    }
+    results[id] = { results: entry };
+  }
+  return exportGate(project, nodeId, results);
+}
+
 const deliverToBrowser: Delivery = async (blob, fileName, format) => {
   if (format === 'clipboard') await copyText(await blob.text());
   else saveBlob(blob, fileName);
 };
 
-/** Output nodes being exported right now, so their buttons show it. */
-export const useExporting = create<{ nodes: Record<string, true> }>(() => ({ nodes: {} }));
+/** Output nodes being exported right now, with when each started, so their buttons show the time taken. */
+export const useExporting = create<{ nodes: Record<string, number> }>(() => ({ nodes: {} }));
 
 const busy = (nodeId: string, on: boolean) =>
   useExporting.setState((s) => {
     const nodes = { ...s.nodes };
-    if (on) nodes[nodeId] = true;
+    if (on) nodes[nodeId] = Date.now();
     else delete nodes[nodeId];
     return { nodes };
   });
@@ -72,15 +100,36 @@ const busy = (nodeId: string, on: boolean) =>
 const messageOf = (e: unknown) => (e instanceof Error ? e.message : String(e));
 
 const done = (entry: Omit<ExportLogEntry, 'id'>) =>
-  entry.format === 'clipboard' ? `Copied ${entry.rows} ${entry.rows === 1 ? 'row' : 'rows'} from ${entry.nodeName}.` : `Exported ${entry.fileName} (${entry.rows} ${entry.rows === 1 ? 'row' : 'rows'}).`;
+  entry.cancelled
+    ? `Stopped exporting ${entry.nodeName}. Nothing was saved.`
+    : entry.format === 'clipboard' ? `Copied ${entry.rows} ${entry.rows === 1 ? 'row' : 'rows'} from ${entry.nodeName}.` : `Exported ${entry.fileName} (${entry.rows} ${entry.rows === 1 ? 'row' : 'rows'}).`;
 
 async function exportOne(nodeId: string, override: boolean): Promise<Omit<ExportLogEntry, 'id'>> {
   const engine = useEngineStore.getState().engine;
   if (!engine) throw new Error('The data engine is still starting.');
   const project = useProjectStore.getState().history.present;
+  const node = nodeById(project, nodeId);
   busy(nodeId, true);
   try {
-    const entry = await runExport(engine, project, nodeId, { gate: exportGate(project, nodeId, useRuleStore.getState().nodes), override, deliver: deliverToBrowser });
+    const gate = await exportGateFor(engine, project, nodeId, currentSample(project));
+    if (gate.state === 'blocked' && !override && sampledUpstream(project, nodeId, currentSample(project)).length)
+      throw new Error(`Export blocked on the full data. ${gate.blocking.map(describeBlock).join(' ')} Run on full data to see the failing rows, or to export anyway.`);
+    const entry = await runExport(engine, project, nodeId, { gate, override, deliver: deliverToBrowser });
+    useProjectStore.getState().amend((p) => logExport(p, entry));
+    return entry;
+  } catch (e) {
+    // A stopped export leaves nothing behind (DuckDB's file is discarded before any download) and is logged as cancelled.
+    if (!isStopped(e) || node?.type !== 'output') throw e;
+    const spec = node.outputSpec;
+    const entry: Omit<ExportLogEntry, 'id'> = {
+      at: new Date().toISOString(),
+      nodeId,
+      nodeName: node.name,
+      format: spec.format,
+      fileName: spec.format === 'clipboard' ? 'Clipboard' : exportFileName(node.name, spec),
+      rows: 0,
+      cancelled: true,
+    };
     useProjectStore.getState().amend((p) => logExport(p, entry));
     return entry;
   } finally {
@@ -112,7 +161,12 @@ export async function exportAll(): Promise<void> {
     else if (gate.state === 'checking') skipped.push(`${node.name} is still checking rules`);
     else {
       try {
-        exported.push((await exportOne(node.id, false)).fileName);
+        const entry = await exportOne(node.id, false);
+        if (entry.cancelled) {
+          skipped.push(`${node.name} was stopped`);
+          break;
+        }
+        exported.push(entry.fileName);
       } catch (e) {
         skipped.push(`${node.name}: ${messageOf(e)}`);
       }

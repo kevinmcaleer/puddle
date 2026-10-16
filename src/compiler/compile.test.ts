@@ -163,6 +163,24 @@ describe('errors', () => {
   });
 });
 
+describe('sample mode', () => {
+  it('reads only the first rows of a sampled source, and nothing else changes', () => {
+    const p = cleanFlow();
+    const sampled = { ...p, sources: p.sources.map((s) => ({ ...s, sampleRows: 1000 })) };
+    const sql = compile(sampled, { nodeId: 'clean' }).sql;
+    expect(sql).toContain(`"n_src" AS (SELECT * FROM read_csv('src_cust.csv') LIMIT 1000)`);
+    expect(sql.replace(' LIMIT 1000', '')).toBe(compile(p, { nodeId: 'clean' }).sql);
+    expect(sql).toMatchSnapshot();
+  });
+
+  it('gives sampled results their own cache key', () => {
+    const p = cleanFlow();
+    const sampled = { ...p, sources: p.sources.map((s) => ({ ...s, sampleRows: 1000 })) };
+    expect(upstreamKey(sampled, { nodeId: 'clean' })).not.toBe(upstreamKey(p, { nodeId: 'clean' }));
+    expect(upstreamKey({ ...p, sources: p.sources.map((s) => ({ ...s, sampleRows: 10 })) }, { nodeId: 'clean' })).not.toBe(upstreamKey(sampled, { nodeId: 'clean' }));
+  });
+});
+
 describe('upstreamKey', () => {
   it('ignores names, notes, positions and downstream edits', () => {
     const p = cleanFlow();

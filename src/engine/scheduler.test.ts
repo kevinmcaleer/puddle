@@ -1,4 +1,4 @@
-import { EngineError, isCancelled } from './errors';
+import { EngineError, isCancelled, isStopped } from './errors';
 import { Scheduler } from './scheduler';
 
 /** A job that finishes when released, and notices aborts the way DuckDB's cancelSent does. */
@@ -83,6 +83,55 @@ describe('Scheduler', () => {
     const s = new Scheduler();
     await expect(s.submit(async () => 1, { signal: AbortSignal.abort() })).rejects.toSatisfy(isCancelled);
     await expect(s.submit(async () => { throw new Error('Parser Error: syntax error at or near "SELEC"'); })).rejects.toBeInstanceOf(EngineError);
+    expect(s.size).toBe(0);
+  });
+
+  it('reports the running job, with its label and start time, and goes idle after', async () => {
+    let t = 1000;
+    const s = new Scheduler(() => t);
+    const seen: (string | null)[] = [];
+    s.subscribe((a) => seen.push(a ? `${a.label}@${a.startedAt}` : null));
+    const log: string[] = [];
+    const count = gate(7, log, 'count');
+    const done = s.submit(count.run, { priority: 'background', label: 'Counting rows' });
+    await tick();
+    expect(s.activity).toEqual({ label: 'Counting rows', priority: 'background', startedAt: 1000 });
+    t = 2000;
+    count.release();
+    await expect(done).resolves.toBe(7);
+    await s.submit(async () => 1);
+    expect(seen).toEqual(['Counting rows@1000', null, 'Running a query@2000', null]);
+    expect(s.activity).toBeNull();
+  });
+
+  it('Stop cancels the running job in DuckDB and drops the queue, each rejecting as stopped', async () => {
+    const s = new Scheduler();
+    const log: string[] = [];
+    const slow = gate('rows', log, 'slow');
+    const running = s.submit(slow.run, { label: 'Exporting' });
+    const queued = s.submit(async () => 'never', { priority: 'background' });
+    await tick();
+    expect(s.stop()).toBe(2);
+    await expect(running).rejects.toSatisfy(isStopped);
+    await expect(queued).rejects.toSatisfy(isStopped);
+    await expect(running).rejects.toMatchObject({ message: 'Stopped before it finished.' });
+    expect(log).toEqual(['start slow', 'abort slow']);
+    // The engine stays usable.
+    await expect(s.submit(async () => 'next')).resolves.toBe('next');
+    expect(s.size).toBe(0);
+    expect(s.activity).toBeNull();
+  });
+
+  it('a stopped background job is not requeued even if a preview pre-empted it', async () => {
+    const s = new Scheduler();
+    const log: string[] = [];
+    const profile = gate('profile', log, 'profile');
+    const bg = s.submit(profile.run, { priority: 'background' });
+    await tick();
+    const preview = s.submit(async () => 'rows');
+    s.stop();
+    await expect(bg).rejects.toSatisfy(isStopped);
+    await expect(preview).rejects.toSatisfy(isStopped);
     expect(s.size).toBe(0);
   });
 });

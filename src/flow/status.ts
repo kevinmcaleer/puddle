@@ -16,7 +16,7 @@ export type NodeStatus =
   | { state: 'detached' }
   | { state: 'ok'; columns: ColumnSchema[]; rows?: number }
   | { state: 'unwired' }
-  | { state: 'error'; message: string }
+  | { state: 'error'; message: string; /** Stop was pressed before it finished; Run again retries. */ stopped?: boolean }
   | { state: 'blocked' };
 
 interface Entry {
@@ -54,7 +54,7 @@ export function countRows(engine: EngineClient, project: Project, nodeId: string
   const key = upstreamKey(project, target);
   let hit = counts.get(key);
   if (!hit) {
-    hit = engine.query(compileCount(project, target), { priority: 'background' }).then((r) => Number(tableRows(r.table)[0]!.n));
+    hit = engine.query(compileCount(project, target), { priority: 'background', label: 'Counting rows' }).then((r) => Number(tableRows(r.table)[0]!.n));
     counts.set(key, hit);
     hit.catch(() => counts.delete(key));
   }
@@ -125,7 +125,8 @@ export async function evaluateFlow(engine: EngineClient, project: Project, isDet
       );
     } catch (e) {
       if (gen !== generation) return;
-      next[id] = { key, status: { state: 'error', message: toEngineError(e).message } };
+      const err = toEngineError(e);
+      next[id] = { key, status: { state: 'error', message: err.message, ...(err.code === 'stopped' ? { stopped: true } : {}) } };
     }
     publish();
   }

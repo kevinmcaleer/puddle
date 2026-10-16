@@ -33,14 +33,14 @@ A Docker image (nginx serving the static build) behind a Cloudflare Tunnel at pu
 | `src/design-system/` | Tokens, Tailwind preset and component CSS, vendored from the Puddle design system |
 | `src/ui/` | The design system's components in TypeScript (`Button`, `NodeCard`, `StepList`, `RuleRow` and the rest) |
 | `src/app/` | The app shell: toolbar actions, inspector and results docks, status strip, theme, engine boot, per-tab session state |
-| `src/engine/` | DuckDB-WASM in a Web Worker and the typed `EngineClient` (priorities, cancellation, plain-word errors) |
+| `src/engine/` | DuckDB-WASM in a Web Worker and the typed `EngineClient` (priorities, cancellation, Stop, plain-word errors) |
 | `src/model/` | The project graph: Zod schemas, wiring rules, step edits, grouping, undo and redo |
 | `src/compiler/` | The pure graph-to-SQL compiler, step registry and schema cache |
 | `src/sources/` | Adding sources: format detection, file handles, clipboard text, and choosing files again on reopen |
 | `src/persistence/` | IndexedDB autosave, `.puddle.json` export and import, format migrations |
 | `src/home/` | The projects home screen and the rename and delete dialogs |
 | `src/canvas/` | The node canvas on React Flow: nodes, wires, auto layout |
-| `src/flow/` | Each node's live status (columns, row count, broken, dimmed), kept in step with the project |
+| `src/flow/` | Each node's live status (columns, row count, broken, dimmed), kept in step with the project; sample mode above the row threshold |
 | `src/steps/` | Each step type's editor form (`defineStepForm`): its Add step menu entry, fields and defaults; the expression editor |
 | `src/dates/` | Date format detection: candidate `strptime` formats, ranking by match rate, day and month ambiguity |
 | `src/quickfix/` | The quick-fix bar: one click on the selected columns adds one step where the viewed data is |

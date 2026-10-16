@@ -38,6 +38,11 @@ export const SourceZ = z.object({
   format: SourceFormatZ,
   parseOptions: ParseOptionsZ.default({}),
   detectedSchema: z.array(ColumnSchemaZ).default([]),
+  /**
+   * Sample mode: read only the first this-many rows. Set only on the in-memory copy that previews, profiles and
+   * rules compile from (flow/sample.ts); the project itself never has it, so exports always read everything.
+   */
+  sampleRows: z.number().int().positive().optional(),
 });
 
 /**
@@ -137,6 +142,8 @@ export const ExportLogEntryZ = z.object({
   fileName: z.string(),
   rows: z.number().int().nonnegative(),
   overridden: z.array(z.object({ nodeName: z.string(), rule: z.string() })).optional(),
+  /** Stop was pressed: nothing was saved. */
+  cancelled: z.boolean().optional(),
 });
 
 export const ProjectZ = z.object({
