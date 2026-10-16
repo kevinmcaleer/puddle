@@ -4,6 +4,7 @@ import { CompileError, PendingSchemaError, UnwiredError } from './errors';
 import { compileJoin, joinCondition, joinProblems } from './join';
 import { compileLookup, firstMatches, lookupCondition, lookupProblems } from './lookup';
 import { keptTable, knownKept, type KeptBook } from './keptBook';
+import { compileQuery, queryProblems } from './query';
 import { knownSchemas, type SchemaBook } from './schemaBook';
 import { sourceRelation } from './sources';
 import { cteName, ident, num, str } from './sql';
@@ -30,7 +31,7 @@ export interface Compiled {
 }
 
 export interface CompileOptions {
-  /** Where Join, Append and Lookup nodes read their inputs' columns. The app's shared book by default. */
+  /** Where Join, Append, Lookup and Query nodes read their inputs' columns. The app's shared book by default. */
   schemas?: SchemaBook;
   /** Kept results the compiler may read from. The app's shared book by default. */
   kept?: KeptBook;
@@ -39,7 +40,7 @@ export interface CompileOptions {
 }
 
 /** Node kinds that compile from their inputs' columns, so those must be described first (see SchemaCache.prepare). */
-export const needsInputSchemas = (node: GraphNode) => node.type === 'join' || node.type === 'append' || node.type === 'lookup';
+export const needsInputSchemas = (node: GraphNode) => node.type === 'join' || node.type === 'append' || node.type === 'lookup' || node.type === 'query';
 
 /** One wired input of a node: its port, the node feeding it, and that node's CTE. */
 interface WiredInput {
@@ -180,6 +181,17 @@ function build(project: Project, target: Target, book: SchemaBook, options: Comp
         out.set(n.id, name);
         break;
       }
+      case 'query': {
+        const wired = wiredInputs(project, n, out);
+        if (!wired.length) throw new UnwiredError(`${n.name} has no tables. Connect a wire into it, or add a table in the query designer.`, n.id, 0);
+        const tables = wired.map((w) => ({ port: w.port as number, cte: w.cte, label: nodeById(project, w.fromId)!.name, columns: inputColumns(project, n, w, book) }));
+        const problem = queryProblems(n.querySpec, tables)[0];
+        if (problem) throw new CompileError(problem.message, n.id, undefined, problem.port == null ? undefined : [problem.port]);
+        const name = cteName(n.id);
+        ctes.push(`${name} AS (${compileQuery(n.querySpec, tables)})`);
+        out.set(n.id, name);
+        break;
+      }
       case 'output':
         out.set(n.id, inputCte(project, n, out));
         break;
@@ -270,6 +282,8 @@ export function upstreamKey(project: Project, target: Target): string {
       if (n.type === 'lookup') return { id: n.id, type: n.type, inputs, lookup: n.lookupSpec };
       // The source column holds each input's node name, so names matter only when it's on.
       if (n.type === 'append') return { id: n.id, type: n.type, inputs, append: n.appendSpec, ...(n.appendSpec.tagRows ? { labels: inputEdges(project, n.id).map((e) => nodeById(project, e.from.nodeId)?.name) } : {}) };
+      // Where tables sit in the designer doesn't change the rows.
+      if (n.type === 'query') return { id: n.id, type: n.type, inputs, query: { ...n.querySpec, tables: undefined } };
       return { id: n.id, type: n.type, inputs };
     })
     .sort((a, b) => (a.id < b.id ? -1 : 1));

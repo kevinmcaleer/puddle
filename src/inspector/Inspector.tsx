@@ -10,6 +10,7 @@ import { LookupPanel } from './LookupPanel';
 import { KeepPanel } from './KeepPanel';
 import { NodeNotes } from './NodeNotes';
 import { OutputPanel } from './OutputPanel';
+import { QueryPanel } from './QueryPanel';
 import { RulesPanel } from './RulesPanel';
 import { TransformPanel } from './TransformPanel';
 import { useAttachments } from '../sources/attachments';
@@ -169,6 +170,16 @@ export function Inspector() {
       <>
         <LookupPanel node={node} />
         <KeepPanel key={node.id} node={node} />
+        <Columns nodeId={node.id} />
+        <RulesPanel node={node} />
+        <NodeNotes node={node} />
+      </>
+    );
+
+  if (node.type === 'query')
+    return (
+      <>
+        <QueryPanel node={node} />
         <Columns nodeId={node.id} />
         <RulesPanel node={node} />
         <NodeNotes node={node} />

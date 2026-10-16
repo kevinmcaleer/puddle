@@ -1,7 +1,7 @@
 import { autoLayout } from '../canvas/layout';
 import { suggestJoinKey, suggestLookupColumns } from '../compiler';
 import { useFlowStore } from '../flow/status';
-import { addNode, nodeById, setJoinSpec, setLookupSpec, useProjectStore, type AddableNodeType, type ColumnSchema, type Source, type SourceFormat } from '../model';
+import { addNode, inputEdges, moveQueryTable, nodeById, setJoinSpec, setLookupSpec, useProjectStore, type AddableNodeType, type ColumnSchema, type Source, type SourceFormat } from '../model';
 import { addClipboardSource, addFileSource } from '../sources/add';
 import { pickFiles, type PickedFile } from '../sources/handles';
 import { addUrlSource } from '../sources/url';
@@ -81,14 +81,14 @@ const columnsOf = (nodeId: string) => {
  * Add a node to the right of the selected node, wired to it. A Join takes the first two selected nodes, in
  * the order they were selected, as its left and right inputs, matched on a column they share when there is one;
  * a Lookup takes them as its main and lookup inputs the same way; an Append takes every selected node as its
- * inputs 1, 2, 3 in that order.
+ * inputs 1, 2, 3 in that order, and so does a Query, as its tables. A new Query opens in the query designer.
  */
 export function addNodeAfterSelection(type: AddableNodeType) {
   const { apply, history } = useProjectStore.getState();
   const { selectedNodeId: selected, selectedNodeIds } = useSession.getState();
   const after = selected ? nodeById(history.present, selected) : undefined;
-  const several = selectedNodeIds.length > 1 && (type === 'join' || type === 'append' || type === 'lookup');
-  const feeds = several ? (type === 'append' ? selectedNodeIds : selectedNodeIds.slice(0, 2)) : after?.id;
+  const several = selectedNodeIds.length > 1 && (type === 'join' || type === 'append' || type === 'lookup' || type === 'query');
+  const feeds = several ? (type === 'join' || type === 'lookup' ? selectedNodeIds.slice(0, 2) : selectedNodeIds) : after?.id;
   const nodes = history.present.nodes;
   const inputs = (Array.isArray(feeds) ? feeds : after ? [after.id] : []).flatMap((id) => nodeById(history.present, id) ?? []);
   // Right of the inputs (level with them), or right of everything when nothing is selected, so new nodes never stack.
@@ -107,9 +107,13 @@ export function addNodeAfterSelection(type: AddableNodeType) {
     if (key && type === 'join') next = setJoinSpec(next, added, { keys: [key] });
     // A Lookup also starts bringing across the lookup's other columns that the main input doesn't have yet.
     if (key && type === 'lookup') next = setLookupSpec(next, added, { keys: [{ main: key.left, lookup: key.right }], columns: suggestLookupColumns(pair![0], pair![1], key.right) });
+    // A Query's tables start side by side in the designer, in input order.
+    if (type === 'query') for (const [i, e] of inputEdges(next, added).entries()) next = moveQueryTable(next, added, e.to.port as number, { x: 24 + i * 264, y: 24 });
     return next;
   });
-  if (added) useSession.getState().select(added);
+  if (!added) return;
+  if (type === 'query') useSession.getState().openDesigner(added);
+  else useSession.getState().select(added);
 }
 
 export const layoutFlow = () => useProjectStore.getState().apply(autoLayout);

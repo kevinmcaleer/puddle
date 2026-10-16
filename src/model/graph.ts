@@ -30,10 +30,16 @@ const LOOKUP_PORTS: InputPort[] = [
 /** Smallest number of inputs an Append shows, so a new one offers two. */
 export const APPEND_MIN_PORTS = 2;
 
+/** A Query works on one table, so a new one offers one input (and a spare once it's wired). */
+export const QUERY_MIN_PORTS = 1;
+
+/** Nodes whose inputs are numbered from 0 and grow as they're wired: Append and Query. */
+export const hasNumberedInputs = (node: GraphNode) => node.type === 'append' || node.type === 'query';
+
 /**
  * The inputs a node takes, in the order they sit down its left edge. Each takes at most one wire, and the
  * node compiles once every input that isn't optional is wired. An Append numbers its inputs from 0 and always
- * offers one more after the last wired one; one left empty in the middle keeps its place, so the order of the
+ * offers one more after the last wired one (so does a Query, whose inputs are its tables); one left empty in the middle keeps its place, so the order of the
  * others never shifts.
  */
 export function inputPorts(project: Project, node: GraphNode): InputPort[] {
@@ -44,9 +50,11 @@ export function inputPorts(project: Project, node: GraphNode): InputPort[] {
       return JOIN_PORTS;
     case 'lookup':
       return LOOKUP_PORTS;
-    case 'append': {
+    case 'append':
+    case 'query': {
       const wired = project.edges.filter((e) => e.to.nodeId === node.id && typeof e.to.port === 'number').map((e) => e.to.port as number);
-      const count = Math.max(APPEND_MIN_PORTS, wired.length ? Math.max(...wired) + 2 : 0);
+      const min = node.type === 'append' ? APPEND_MIN_PORTS : QUERY_MIN_PORTS;
+      const count = Math.max(min, wired.length ? Math.max(...wired) + 2 : 0);
       return Array.from({ length: count }, (_, i) => ({ id: i, label: `Input ${i + 1}`, optional: true }));
     }
     default:

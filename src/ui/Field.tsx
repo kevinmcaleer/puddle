@@ -29,11 +29,11 @@ export function Select({ options, className, ...rest }: SelectHTMLAttributes<HTM
   );
 }
 
-export function Switch({ checked, defaultChecked, onChange, label, id }: { checked?: boolean; defaultChecked?: boolean; onChange?: (on: boolean) => void; label?: string; id?: string }) {
+export function Switch({ checked, defaultChecked, onChange, label, id, 'aria-label': ariaLabel }: { checked?: boolean; defaultChecked?: boolean; onChange?: (on: boolean) => void; label?: string; id?: string; 'aria-label'?: string }) {
   const [own, setOwn] = useState(!!defaultChecked);
   const on = onChange ? !!checked : own;
   const toggle = () => (onChange ? onChange(!on) : setOwn(!on));
-  const sw = <button type="button" role="switch" id={id} aria-checked={on} aria-label={label ? undefined : 'Toggle'} className="ui-switch" onClick={toggle} />;
+  const sw = <button type="button" role="switch" id={id} aria-checked={on} aria-label={label ? undefined : (ariaLabel ?? 'Toggle')} className="ui-switch" onClick={toggle} />;
   return label ? (
     <label className="ui-switch-row">
       {sw}

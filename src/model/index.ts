@@ -9,6 +9,7 @@ export { addNode, addSource, moveNodes, nextNodeName, removeNodes, setCollapsed,
 export { setJoinSpec, swapJoinInputs } from './join';
 export { setAppendSpec, swapAppendInputs } from './append';
 export { setLookupSpec, swapLookupInputs } from './lookup';
+export { addQueryField, addQueryJoin, addQueryTable, moveQueryField, moveQueryTable, removeQueryField, removeQueryJoin, removeQueryTable, setQueryJoinKind, setQuerySpec, updateQueryField } from './query';
 export { useProject, useProjectStore, type ProjectState } from './store';
 export { placeStep, type Placed } from './quickfix';
 export { addRule, dismissSuggestion, removeRule, updateRule } from './rules';

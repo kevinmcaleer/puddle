@@ -7,6 +7,7 @@ const PLACEHOLDER: Record<GraphNode['type'], string> = {
   join: 'What the two tables are and why they match on these keys.',
   append: 'What the stacked tables have in common.',
   lookup: 'What is looked up, and why these keys find it.',
+  query: 'What this query answers, and why its tables join this way.',
   output: 'Who uses this export, and where it goes.',
 };
 
