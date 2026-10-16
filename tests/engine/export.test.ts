@@ -93,6 +93,8 @@ describe('the quality gate', () => {
 
     const entry = await runExport(engine, p, 'out', { gate, override: true, deliver });
     expect(entry).toMatchObject({ nodeName: 'Customers', format: 'csv', fileName: 'Customers.csv', rows: 4, overridden: [{ nodeName: 'in', rule: failing.label }, { nodeName: 'Customers', rule: failing.label }] });
+    // The ids let a quality report match an override to its rule even after a rename.
+    expect(entry.overridden!.map((o) => [o.nodeId, o.ruleId])).toEqual([['in', 'spaces'], ['out', 'spaces']]);
     expect(delivered).toEqual([{ name: 'Customers.csv', size: expect.any(Number) }]);
   });
 

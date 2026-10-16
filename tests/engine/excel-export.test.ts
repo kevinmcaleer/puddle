@@ -111,7 +111,7 @@ describe('Excel exports', () => {
     await expect(runExport(engine, q, 'out', { gate: blocked, deliver })).rejects.toThrow(ExportBlocked);
     expect(delivered).toHaveLength(0);
     const entry = await runExport(engine, q, 'out', { gate: blocked, override: true, deliver });
-    expect(entry).toMatchObject({ format: 'xlsx', rows: 2, overridden: expect.arrayContaining([{ nodeName: 'in', rule: failing.label }]) });
+    expect(entry).toMatchObject({ format: 'xlsx', rows: 2, overridden: expect.arrayContaining([{ nodeName: 'in', rule: failing.label, nodeId: 'in', ruleId: 'spaces' }]) });
     expect(readSheet(await book()).columns[0]!.values).toEqual(['  Ann ', 'Bob']);
   });
 

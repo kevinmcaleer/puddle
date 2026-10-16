@@ -262,7 +262,8 @@ export const ExportLogEntryZ = z.object({
   format: OutputSpecZ.shape.format,
   fileName: z.string(),
   rows: z.number().int().nonnegative(),
-  overridden: z.array(z.object({ nodeName: z.string(), rule: z.string() })).optional(),
+  /** The failing rules exported past; the ids (absent on older entries) let a quality report match them to the rule. */
+  overridden: z.array(z.object({ nodeName: z.string(), rule: z.string(), nodeId: z.string().optional(), ruleId: z.string().optional() })).optional(),
   /** Stop was pressed: nothing was saved. */
   cancelled: z.boolean().optional(),
 });

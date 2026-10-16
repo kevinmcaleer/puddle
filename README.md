@@ -26,7 +26,7 @@ Every feature ships with its own tests, and every bug fix with a regression test
 
 ## Deploying
 
-A Docker image (nginx serving the static build) behind a Cloudflare Tunnel at puddle.kevspowertools.com. See [deploy/README.md](deploy/README.md).
+A Docker image (nginx serving the static build) behind a Cloudflare Tunnel at puddle.kevspowertools.com. `docker compose up -d` runs it on <http://localhost:8088>, and `docker compose --profile tunnel up -d` adds the tunnel. See [deploy/README.md](deploy/README.md).
 
 ## Layout
 
@@ -41,6 +41,7 @@ A Docker image (nginx serving the static build) behind a Cloudflare Tunnel at pu
 | `src/sources/` | Adding sources: format detection, file handles, clipboard text, web addresses (fetched again on reopen), choosing files again on reopen (on Chromium, reconnecting them with one permission click through stored file handles), and Excel sources (sheet, header row and range, kept loaded as DuckDB tables) |
 | `src/excel/` | SheetJS in a Web Worker: reading `.xlsx` sheets into typed columns and Arrow tables for DuckDB, and writing Excel exports from Arrow batches. Excel's limits and sheet-name rules live in `limits.ts`, which doesn't load SheetJS |
 | `src/persistence/` | IndexedDB autosave, `.puddle.json` export and import, format migrations |
+| `src/sync/` | Optional project sync through one provider-agnostic layer (`SyncProvider`): sync states, the offline queue, conflict choices and "Open from"; GitHub Gist is the first provider. Credentials and sync links stay in IndexedDB on this device; the synced file is the `.puddle.json` less pasted rows |
 | `src/templates/` | Node templates: a Transform node's steps saved outside any project (IndexedDB, upgraded through the project migrations), the library dialog, and the column mapping that renames a template's columns for a new input and turns off steps whose columns are missing |
 | `src/home/` | The projects home screen and the rename and delete dialogs |
 | `src/canvas/` | The node canvas on React Flow: nodes, wires, auto layout |
@@ -49,6 +50,7 @@ A Docker image (nginx serving the static build) behind a Cloudflare Tunnel at pu
 | `src/dates/` | Date format detection: candidate `strptime` formats, ranking by match rate, day and month ambiguity |
 | `src/quickfix/` | The quick-fix bar: one click on the selected columns adds one step where the viewed data is |
 | `src/rules/` | Quality rule forms and labels; rules compile in `src/compiler/rules.ts` and are checked per node by `src/flow/rules.ts` |
+| `src/report/` | Quality reports: what the rules found (counts, overrides from the export log, sources with row counts and head hashes, opt-in failing rows) written as Markdown, JSON or one self-contained HTML file, and the export dialog |
 | `src/pwa/` | The service worker (precached app, engine and extensions for offline use), its precache list and the web app manifest |
 | `src/export/` | Exports from Output nodes: the quality gate, `COPY ... TO` into DuckDB's in-memory file system (Excel workbooks instead go through the Excel worker), download or clipboard, and the export log |
 | `src/query/` | The query designer, in place of the canvas for a Query node: its tables and the join lines dragged between their fields, and the grid of fields with names, sorting, criteria and Show |

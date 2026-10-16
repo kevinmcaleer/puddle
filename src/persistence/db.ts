@@ -2,8 +2,8 @@ import type { Project } from '../model';
 import type { Template } from '../templates/template';
 
 const DB = 'puddle';
-/** 2 added the handles store, 3 the templates store. */
-const VERSION = 3;
+/** 2 added the handles store; 3 the sync credentials and links; 4 the templates store. */
+const VERSION = 4;
 const PROJECTS = 'projects';
 /**
  * Chromium's file handles, by project and source, so a reopened project's files reconnect with a permission click.
@@ -19,6 +19,10 @@ export interface StoredHandle<H = unknown> {
   handle: H;
 }
 
+/** Sync credentials (such as a GitHub token), by provider. On this device only: never in a project or a synced file. */
+const CREDENTIALS = 'credentials';
+/** Which remote copy each synced project keeps, and the revision last pulled or pushed, by project. */
+const SYNC_LINKS = 'syncLinks';
 /** Node templates, outside any project so every project can use them. Kept as saved; read through migrateTemplate. */
 const TEMPLATES = 'templates';
 
@@ -42,6 +46,8 @@ function open(): Promise<IDBDatabase> {
       const db = req.result;
       if (!db.objectStoreNames.contains(PROJECTS)) db.createObjectStore(PROJECTS, { keyPath: 'id' });
       if (!db.objectStoreNames.contains(HANDLES)) db.createObjectStore(HANDLES, { keyPath: 'key' }).createIndex('projectId', 'projectId');
+      if (!db.objectStoreNames.contains(CREDENTIALS)) db.createObjectStore(CREDENTIALS, { keyPath: 'provider' });
+      if (!db.objectStoreNames.contains(SYNC_LINKS)) db.createObjectStore(SYNC_LINKS, { keyPath: 'projectId' });
       if (!db.objectStoreNames.contains(TEMPLATES)) db.createObjectStore(TEMPLATES, { keyPath: 'id' });
     };
     req.onsuccess = () => {
@@ -117,6 +123,43 @@ export async function copyHandles(fromProjectId: string, toProjectId: string): P
   const handles = await loadHandles(fromProjectId);
   for (const [sourceId, handle] of handles) await saveHandle(toProjectId, sourceId, handle);
 }
+
+/** A sync provider's stored credential. */
+export interface StoredCredential {
+  provider: string;
+  secret: string;
+  /** Who it signs in as, shown in the sync dialog. */
+  account: string;
+}
+
+export const saveCredential = (c: StoredCredential) => run('readwrite', (s) => s.put(c), CREDENTIALS).then(() => undefined);
+
+export const loadCredential = (provider: string) =>
+  run<StoredCredential | undefined>('readonly', (s) => s.get(provider) as IDBRequest<StoredCredential | undefined>, CREDENTIALS);
+
+export const deleteCredential = (provider: string) => run('readwrite', (s) => s.delete(provider), CREDENTIALS).then(() => undefined);
+
+/** Where a project syncs to. Kept on this device, apart from the project, so its file never carries it. */
+export interface StoredSyncLink {
+  projectId: string;
+  provider: string;
+  /** The remote file's id; none until the first push creates it. */
+  remoteId?: string;
+  /** The remote revision last pulled or pushed: a push from any other revision is a conflict. */
+  revision?: string;
+  remoteUpdatedAt?: string;
+  /** Hash of the synced text last pulled or pushed: the project has changes to push when it differs. */
+  syncedHash?: string;
+}
+
+export const saveSyncLink = (link: StoredSyncLink) => run('readwrite', (s) => s.put(link), SYNC_LINKS).then(() => undefined);
+
+export const loadSyncLink = (projectId: string) =>
+  run<StoredSyncLink | undefined>('readonly', (s) => s.get(projectId) as IDBRequest<StoredSyncLink | undefined>, SYNC_LINKS);
+
+export const listSyncLinks = () => run<StoredSyncLink[]>('readonly', (s) => s.getAll() as IDBRequest<StoredSyncLink[]>, SYNC_LINKS);
+
+export const deleteSyncLink = (projectId: string) => run('readwrite', (s) => s.delete(projectId), SYNC_LINKS).then(() => undefined);
 
 export const saveTemplate = (template: Template) => run('readwrite', (s) => s.put(template), TEMPLATES).then(() => undefined);
 

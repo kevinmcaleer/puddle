@@ -13,7 +13,7 @@ export { NodeCard, type NodeCardProps, type NodeStepSummary } from './Node';
 export { NODE_KIND, type NodeKind } from './nodeKinds';
 export { FieldChip, PivotZone } from './Pivot';
 export { ColumnHeader, QualityBar, type Quality } from './QualityBar';
-export { QuickFixBar, ResultsBar, StatusStrip, type QuickFix, type StatusStripProps } from './ResultsBar';
+export { QuickFixBar, ResultsBar, StatusStrip, type QuickFix, type StatusStripProps, type SyncState } from './ResultsBar';
 export { RuleRow } from './RuleRow';
 export { SchemaPopover } from './SchemaPopover';
 export { Section, Tabs, type TabItem } from './Section';

@@ -1,0 +1,35 @@
+# Puddle as a Docker Compose stack. From the repository root:
+#   docker compose up -d                      # Puddle on http://localhost:8088
+#   docker compose --profile tunnel up -d     # also a Cloudflare Tunnel (needs CLOUDFLARE_TUNNEL_TOKEN)
+# Settings come from the environment or a .env file next to this one. See deploy/README.md.
+services:
+  puddle:
+    # Uses the image built from the Dockerfile (`docker build -t puddle .`), and builds it if it's missing.
+    # Set PUDDLE_IMAGE=ghcr.io/kevinmcaleer/puddle:latest to run the image CI publishes instead.
+    image: ${PUDDLE_IMAGE:-puddle:latest}
+    build:
+      context: .
+      args:
+        FETCH_EXTENSIONS: ${FETCH_EXTENSIONS:-1}
+    restart: unless-stopped
+    read_only: true
+    # nginx keeps its pid and temporary files here.
+    tmpfs: [/tmp]
+    ports: ['${PUDDLE_PORT:-8088}:8080']
+    healthcheck:
+      test: ['CMD', 'wget', '-q', '-O', '/dev/null', 'http://127.0.0.1:8080/healthz']
+      interval: 30s
+      timeout: 3s
+      start_period: 5s
+      retries: 3
+
+  cloudflared:
+    profiles: [tunnel]
+    image: cloudflare/cloudflared:latest
+    restart: unless-stopped
+    command: tunnel --no-autoupdate run
+    environment:
+      TUNNEL_TOKEN: ${CLOUDFLARE_TUNNEL_TOKEN:-}
+    depends_on:
+      puddle:
+        condition: service_healthy
