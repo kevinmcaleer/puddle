@@ -2,14 +2,20 @@ import { hashValue, type Project } from '../model';
 import { readProjectFile, writeProjectFile } from '../persistence/migrate';
 
 /**
- * The project as it syncs: the `.puddle.json` export, less pasted data. Pasted rows are data, and no data leaves
- * the browser, so a pasted source syncs as its name and columns only and keeps its rows in this browser.
+ * The project as it syncs: the `.puddle.json` export, less pasted data and request header values. Pasted rows are
+ * data, and no data leaves the browser, so a pasted source syncs as its name and columns only and keeps its rows in
+ * this browser. A URL source's header values may be credentials (anyone with a secret Gist's link can read it), so
+ * each header syncs by name with an empty value and keeps its value in this browser.
  */
 function syncable(project: Project): Project {
   const sources = project.sources.map((s) => {
-    if (!s.clipboard) return s;
-    const { clipboard: _, ...rest } = s;
-    return rest;
+    let out = s;
+    if (out.clipboard) {
+      const { clipboard: _, ...rest } = out;
+      out = rest;
+    }
+    if (out.url?.headers) out = { ...out, url: { ...out.url, headers: Object.fromEntries(Object.keys(out.url.headers).map((name) => [name, ''])) } };
+    return out;
   });
   return { ...project, sources };
 }
@@ -28,11 +34,24 @@ export function syncHash(project: Project): string {
 
 /**
  * Read a synced file. With `local`, the version of the same project in this browser, its pasted sources keep the
- * rows they have here.
+ * rows they have here, and its URL sources the header values they have here (for headers the remote still names).
  */
 export function readSynced(text: string, local?: Project): Project {
   const remote = readProjectFile(text);
   if (!local) return remote;
-  const pasted = new Map(local.sources.filter((s) => s.clipboard).map((s) => [s.id, s.clipboard!]));
-  return { ...remote, sources: remote.sources.map((s) => (s.kind === 'clipboard' && !s.clipboard && pasted.has(s.id) ? { ...s, clipboard: pasted.get(s.id)! } : s)) };
+  const byId = new Map(local.sources.map((s) => [s.id, s]));
+  return {
+    ...remote,
+    sources: remote.sources.map((s) => {
+      const here = byId.get(s.id);
+      let out = s;
+      if (out.kind === 'clipboard' && !out.clipboard && here?.clipboard) out = { ...out, clipboard: here.clipboard };
+      const kept = here?.url?.headers;
+      if (out.url?.headers && kept) {
+        const headers = Object.fromEntries(Object.entries(out.url.headers).map(([name, value]) => [name, value || (kept[name] ?? '')]));
+        out = { ...out, url: { ...out.url, headers } };
+      }
+      return out;
+    }),
+  };
 }

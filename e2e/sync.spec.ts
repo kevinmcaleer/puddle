@@ -49,6 +49,14 @@ test('a project synced in one browser opens from the Gist in another, without it
   await addFiles(page, [fixture('customers.csv')]);
   await pasteText(page, 'sku\tqty\nPASTED-ROW-7\t3\n');
   await expect(node(page, 'Pasted data')).toHaveAttribute('data-status', 'ok');
+  // A URL source with a saved request header, as an older or imported project may carry.
+  await page.evaluate(() => {
+    const store = (globalThis.__puddle as unknown as { store: { getState(): { apply(edit: (p: { sources: unknown[] }) => unknown): void } } }).store;
+    store.getState().apply((p) => ({
+      ...p,
+      sources: [...p.sources, { id: 's_api', name: 'api.csv', kind: 'url', url: { href: 'https://example.com/api.csv', headers: { Authorization: 'Bearer HEADER-SECRET-9' } }, format: 'csv', parseOptions: {}, detectedSchema: [] }],
+    }));
+  });
   await rename(page, 'Orders sync');
   await startSyncing(page);
 
@@ -63,6 +71,10 @@ test('a project synced in one browser opens from the Gist in another, without it
   expect(file.content).not.toContain('PASTED-ROW-7');
   expect(file.content).not.toContain('Ada');
   expect(file.content).not.toContain(TOKEN);
+  // Request headers sync by name only; the value stays in this browser.
+  expect(file.content).not.toContain('HEADER-SECRET-9');
+  expect(file.content).toContain('"Authorization": ""');
+  expect(await store(page, 'projects')).toContain('HEADER-SECRET-9');
   // The token is kept in this browser, apart from the project.
   expect(await store(page, 'credentials')).toContain(TOKEN);
   expect(await store(page, 'projects')).not.toContain(TOKEN);

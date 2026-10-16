@@ -114,6 +114,7 @@ function setup() {
   return { sync, remote, links, saved, notices, replaced, state: () => state, show, edit, setOnline: (v: boolean) => void (online = v) };
 }
 
+const withHeader: Source = { id: 's_url', name: 'orders.csv', kind: 'url', url: { href: 'https://example.com/orders.csv', headers: { Authorization: 'Bearer HEADER-SECRET' } }, format: 'csv', parseOptions: {}, detectedSchema: [] };
 const pasted: Source = { id: 's_paste', name: 'Pasted data', kind: 'clipboard', clipboard: { text: 'a\n1\n' }, format: 'csv', parseOptions: {}, detectedSchema: [] };
 
 beforeEach(() => vi.useFakeTimers());
@@ -158,12 +159,13 @@ describe('sync controller', () => {
     expect(t.state().status).toBe('synced');
   });
 
-  it('never pushes pasted rows', async () => {
+  it('never pushes pasted rows or request header values', async () => {
     const t = setup();
-    const project = addSource(createProject('Pasted'), pasted, { x: 0, y: 0 });
+    const project = addSource(addSource(createProject('Pasted'), pasted, { x: 0, y: 0 }), withHeader, { x: 0, y: 200 });
     await t.show(project);
     await t.sync.link('gist');
     expect(t.remote.files.get('g1')!.text).not.toContain('a\\n1\\n');
+    expect(t.remote.files.get('g1')!.text).not.toContain('HEADER-SECRET');
     expect(JSON.parse(t.remote.files.get('g1')!.text).sources[0]).not.toHaveProperty('clipboard');
   });
 
@@ -241,9 +243,9 @@ describe('sync controller', () => {
     expect(t.remote.files.get('g1')!.text).toContain('mine');
   });
 
-  it('take remote replaces this browser’s version, keeping its pasted rows', async () => {
+  it('take remote replaces this browser’s version, keeping its pasted rows and header values', async () => {
     const t = setup();
-    const project = addSource(createProject('Pasted'), pasted, { x: 0, y: 0 });
+    const project = addSource(addSource(createProject('Pasted'), pasted, { x: 0, y: 0 }), withHeader, { x: 0, y: 200 });
     await t.show(project);
     await t.sync.link('gist');
     t.remote.editElsewhere('g1', later(project, { notes: 'theirs' }));
@@ -253,6 +255,7 @@ describe('sync controller', () => {
     const now = t.saved.get(project.id)!;
     expect(now.notes).toBe('theirs');
     expect(now.sources[0]!.clipboard).toEqual(pasted.clipboard);
+    expect(now.sources[1]!.url!.headers).toEqual({ Authorization: 'Bearer HEADER-SECRET' });
     expect(t.links.get(project.id)).toMatchObject({ revision: 'r2', syncedHash: syncHash(now) });
     expect(t.state().status).toBe('synced');
   });

@@ -4,7 +4,7 @@ import { writeProjectFile } from '../persistence/migrate';
 import { readSynced, syncHash, syncText } from './file';
 
 const pasted: Source = { id: 's_paste', name: 'Pasted data', kind: 'clipboard', clipboard: { text: 'sku\tqty\nSECRET-ROW\t3\n' }, format: 'tsv', parseOptions: {}, detectedSchema: [{ name: 'sku', type: 'VARCHAR' }] };
-const url: Source = { id: 's_url', name: 'orders.csv', kind: 'url', url: { href: 'https://example.com/orders.csv' }, format: 'csv', parseOptions: {}, detectedSchema: [] };
+const url: Source = { id: 's_url', name: 'orders.csv', kind: 'url', url: { href: 'https://example.com/orders.csv', headers: { Authorization: 'Bearer SECRET-HEADER-VALUE', 'X-Api-Key': 'key-123' } }, format: 'csv', parseOptions: {}, detectedSchema: [] };
 
 const withSources = (): Project => addSource(addSource(createProject('Synced'), pasted, { x: 0, y: 0 }), url, { x: 0, y: 200 });
 
@@ -20,7 +20,14 @@ describe('the synced file', () => {
     const { sources: _a, ...rest } = JSON.parse(writeProjectFile(project)) as Project;
     const { sources: _b, ...syncedRest } = synced;
     expect(syncedRest).toEqual(rest);
-    expect(synced.sources.find((s) => s.id === 's_url')).toEqual(url);
+    expect(synced.sources.find((s) => s.id === 's_url')).toEqual({ ...url, url: { ...url.url, headers: { Authorization: '', 'X-Api-Key': '' } } });
+  });
+
+  it('keeps request header names but never their values', () => {
+    const text = syncText(withSources());
+    expect(text).not.toContain('SECRET-HEADER-VALUE');
+    expect(text).not.toContain('key-123');
+    expect(text).toContain('"Authorization": ""');
   });
 
   it('leaves the project itself alone', () => {
@@ -33,11 +40,13 @@ describe('the synced file', () => {
     const project = withSources();
     const back = readSynced(syncText(project), project);
     expect(back).toEqual(project);
-    // Another browser has no rows to give it.
-    expect(readSynced(syncText(project)).sources[0]!.clipboard).toBeUndefined();
+    // Another browser has no rows or header values to give it.
+    const elsewhere = readSynced(syncText(project));
+    expect(elsewhere.sources[0]!.clipboard).toBeUndefined();
+    expect(elsewhere.sources[1]!.url!.headers).toEqual({ Authorization: '', 'X-Api-Key': '' });
   });
 
-  it('hashes the same whether or not the pasted rows are here', () => {
+  it('hashes the same whether or not the pasted rows and header values are here', () => {
     const project = withSources();
     expect(syncHash(readSynced(syncText(project)))).toBe(syncHash(project));
     expect(syncHash({ ...project, name: 'Renamed' })).not.toBe(syncHash(project));
