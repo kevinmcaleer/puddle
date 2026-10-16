@@ -5,7 +5,7 @@ import { rulePredicate } from './rules';
 import { compile, compileCount, compileDateDetection, compileRules, compileDisplayPage, compileSuggestionChecks, compilePreview, compileProfile, compileTypeSniff, upstreamKey } from './compile';
 import { CompileError, UnwiredError } from './errors';
 import { SchemaCache } from './schemaCache';
-import { ident, setExtensionRepository, str } from './sql';
+import { disableOptimizers, ident, setExtensionRepository, str } from './sql';
 import { dropTable, sourceRelation, sourceTableName } from './sources';
 import { expressionProblem, regexProblem } from './steps';
 
@@ -414,5 +414,9 @@ describe('engine settings', () => {
       "SET custom_extension_repository = 'https://x.example/it''s'",
       "SET autoinstall_extension_repository = 'https://x.example/it''s'",
     ]);
+  });
+
+  it('turns optimizers off by name, as one quoted list', () => {
+    expect(disableOptimizers(['cte_inlining', 'common_subplan'])).toBe("SET disabled_optimizers = 'cte_inlining,common_subplan'");
   });
 });

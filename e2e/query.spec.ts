@@ -134,8 +134,9 @@ test('a table moved in the designer stays where it was put, with its join lines 
   await page.mouse.down();
   await page.mouse.move(at.x + 200, at.y + at.height / 2 + 60, { steps: 5 });
   await page.mouse.up();
-  const moved = await tablePlace(page, 1);
-  expect(moved).toEqual({ port: 1, x: before.x + 160, y: before.y + 60 });
+  const moved = { port: 1, x: before.x + 160, y: before.y + 60 };
+  // The move is kept once the table is let go, which a browser may handle after the mouse call returns.
+  await expect.poll(() => tablePlace(page, 1)).toEqual(moved);
   // The join line follows the table down.
   const path = page.getByTestId('query-join-line').locator('path').first();
   await expect.poll(async () => Math.round((await path.boundingBox())!.height)).toBeGreaterThan(50);
