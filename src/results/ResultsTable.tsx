@@ -18,6 +18,7 @@ import { DetachedMessage } from '../sources/ReconnectBanner';
 import { ReattachButton } from '../sources/ReattachButton';
 import { UrlProblemBanner } from '../sources/UrlPanel';
 import { parseProfile, parseTypeSniff, qualityOf, type ColumnProfile } from './profile';
+import { cardKind } from '../canvas/kind';
 import { closeCompare, comparedNode } from './pin';
 import { useResultsStore } from './state';
 
@@ -324,14 +325,14 @@ function Compare({ engine, project, target, compareId }: { engine: EngineClient 
   return (
     <div className="grid h-full grid-cols-2 divide-x divide-line" data-testid="results-compare">
       <section className="flex min-h-0 min-w-0 flex-col" aria-label={`Results of ${viewed.name}`} data-testid="pane-main">
-        <PaneTitle kind={viewed.type} name={`${viewed.name}${step}`} />
+        <PaneTitle kind={cardKind(viewed.type)} name={`${viewed.name}${step}`} />
         <div className="min-h-0 flex-1">
           <NodeResult engine={engine} project={project} target={target} pane="main" sync={sync} other={columns.compare} onColumns={onColumns} />
         </div>
       </section>
       <section className="flex min-h-0 min-w-0 flex-col" aria-label={`Results of ${compared.name}`} data-testid="pane-compare">
         <PaneTitle
-          kind={compared.type}
+          kind={cardKind(compared.type)}
           name={compared.name}
           action={<Button variant="ghost" size="sm" iconOnly icon="cross" aria-label="Stop comparing" title="Stop comparing" onClick={closeCompare} />}
         />

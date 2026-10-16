@@ -1,8 +1,8 @@
 import type { LucideIcon } from 'lucide-react';
 import {
-  Blend, Calendar, ClipboardPaste, CaseSensitive, Check, ChevronDown, ChevronRight, ChevronUp, Clock, Code, Columns2, Download, Ellipsis, Eye,
+  ArrowLeft, Blend, Calendar, ClipboardPaste, CaseSensitive, Check, ChevronDown, ChevronRight, ChevronUp, Clock, Code, Columns2, Download, Ellipsis, Eye,
   File, FileText, GripVertical, Info, Link, ListPlus, Monitor, Moon, PanelBottomClose, PanelBottomOpen, Pin, Plus, Redo2, RefreshCw,
-  Search, ShieldCheck, SlidersHorizontal, Sun, TriangleAlert, Type, Undo2, Workflow, X,
+  Search, ShieldCheck, SlidersHorizontal, Sun, TableProperties, TriangleAlert, Type, Undo2, Workflow, X,
 } from 'lucide-react';
 import { cx } from './cx';
 
@@ -12,6 +12,7 @@ const LUCIDE = {
   transform: SlidersHorizontal,
   join: Blend,
   append: ListPlus,
+  query: TableProperties,
   check: ShieldCheck,
   output: Eye,
   eye: Eye,
@@ -20,6 +21,7 @@ const LUCIDE = {
   'chevron-down': ChevronDown,
   'chevron-right': ChevronRight,
   'chevron-up': ChevronUp,
+  'arrow-left': ArrowLeft,
   grip: GripVertical,
   tick: Check,
   cross: X,

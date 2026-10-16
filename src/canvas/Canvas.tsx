@@ -34,9 +34,17 @@ const edgeTypes = { wire: WireEdge };
 function detailFor(node: GraphNode, sources: ReturnType<typeof useProject>['sources'], edges: ReturnType<typeof useProject>['edges']): string | undefined {
   // A Join shows its type under its name.
   if (node.type === 'join') return `Join · ${JOIN_TYPES[node.joinSpec.kind].label}`;
+  if (node.type === 'lookup') {
+    const n = node.lookupSpec.columns.length;
+    return `Lookup · ${n ? `${n} ${n === 1 ? 'column' : 'columns'}` : 'no columns yet'}`;
+  }
   if (node.type === 'append') {
     const n = edges.filter((e) => e.to.nodeId === node.id).length;
     return `Append · ${n} ${n === 1 ? 'input' : 'inputs'}${node.appendSpec.match === 'position' ? ' by position' : ''}`;
+  }
+  if (node.type === 'query') {
+    const n = edges.filter((e) => e.to.nodeId === node.id).length;
+    return `Query · ${n} ${n === 1 ? 'table' : 'tables'}`;
   }
   if (node.type !== 'source') return undefined;
   const s = sources.find((x) => x.id === node.sourceId);
@@ -45,7 +53,7 @@ function detailFor(node: GraphNode, sources: ReturnType<typeof useProject>['sour
   return s.kind === 'clipboard' ? `Source · Pasted ${formatLabel(s.format)}` : `Source · ${formatLabel(s.format)}`;
 }
 
-/** Shown when several nodes are selected: group them into one, or say why they can't be; join two, or append them. */
+/** Shown when several nodes are selected: group them into one, or say why they can't be; join two, look up from one into the other, append them, or query them. */
 function GroupBar({ ids }: { ids: string[] }) {
   const project = useProject();
   const check = canGroup(project, ids);
@@ -70,9 +78,19 @@ function GroupBar({ ids }: { ids: string[] }) {
             Join these two
           </Button>
         )}
+        {combinable && ids.length === 2 && (
+          <Button size="sm" variant="secondary" icon="join" onClick={() => addNodeAfterSelection('lookup')}>
+            Look up from the second
+          </Button>
+        )}
         {combinable && (
           <Button size="sm" variant="secondary" icon="append" onClick={() => addNodeAfterSelection('append')}>
             Append these
+          </Button>
+        )}
+        {combinable && (
+          <Button size="sm" variant="secondary" icon="query" onClick={() => addNodeAfterSelection('query')}>
+            Query these
           </Button>
         )}
       </div>
@@ -212,7 +230,11 @@ export function Canvas({ onAddSource }: { onAddSource: () => void }) {
           useSession.getState().select(n.id);
           viewNode(n.id);
         }}
-        onNodeDoubleClick={(_e, n) => n.data.node.type === 'transform' && apply((p) => setCollapsed(p, n.id, n.data.node.collapsed !== false))}
+        onNodeDoubleClick={(_e, n) => {
+          if (n.data.node.type === 'transform') apply((p) => setCollapsed(p, n.id, n.data.node.collapsed !== false));
+          // A Query opens in its designer, as a query does in Access.
+          if (n.data.node.type === 'query') useSession.getState().openDesigner(n.id);
+        }}
         onPaneClick={() => useSession.getState().select(null)}
         onDelete={({ nodes: delNodes, edges: delEdges }) => {
           // One undo step for the whole deletion, nodes and wires together.
