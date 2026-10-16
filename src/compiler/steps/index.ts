@@ -17,3 +17,4 @@ export { duplicateRows, FILTER_OPS, fillRows, filterRows, headerNames, promoteHe
 export { escapeRegex, extractText, findReplace, padText, regexProblem, textLength } from './text';
 export { hasTime, parseDates } from './dates';
 export { collapseSpaces, emptyToNull, parseNumbers, removeNonPrinting } from './clean';
+export { CUSTOM_SQL_OPENER, customSql, customSqlErrorLine } from './advanced';

@@ -1,5 +1,6 @@
 export { compile, compileCount, compileDateDetection, compileRules, compileDisplayPage, compilePreview, compileProfile, compileTypeSniff, PAGE_SIZE, upstreamKey, type Compiled, type Target } from './compile';
 export { CompileError } from './errors';
+export { cleanCustomSql, customSqlProblem, INPUT_NAME, lexSql, SqlRefusal, type SqlToken, type SqlTokenKind } from './customSql';
 export { SchemaCache } from './schemaCache';
 export { sourceFileName, sourceRelation, sourceTableName } from './sources';
 export { bool, cteName, ident, list, num, str, strList } from './sql';
