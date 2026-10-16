@@ -123,6 +123,27 @@ test('tables come and go from the designer, taking their fields and join lines, 
   await expect(page.getByTestId('query-join-line')).toHaveCount(0);
 });
 
+test('a table follows the pointer when the moves land outside its header', async ({ page }) => {
+  // Regression (WebKit): the moves were heard on the header only, relying on pointer capture to keep them there. In
+  // WebKit they went to whatever was under the pointer, which left the header at once, so the table never moved.
+  // Here the press is on the header and every move, and the release, go to the element under the pointer.
+  await queryShop(page);
+  const before = await tablePlace(page, 1);
+  const head = page.getByTestId('query-table-2').locator('.puddle-qd-table__head');
+  const at = (await head.boundingBox())!;
+  await head.evaluate((el, a) => {
+    const x = a.x + 40;
+    const y = a.y + a.height / 2;
+    const send = (type: string, target: Element, dx: number, dy: number) =>
+      target.dispatchEvent(new PointerEvent(type, { bubbles: true, cancelable: true, composed: true, pointerId: 1, pointerType: 'mouse', isPrimary: true, button: type === 'pointermove' ? -1 : 0, buttons: type === 'pointerup' ? 0 : 1, clientX: x + dx, clientY: y + dy }));
+    const under = (dx: number, dy: number) => document.elementFromPoint(x + dx, y + dy) ?? document.body;
+    send('pointerdown', el, 0, 0);
+    for (let i = 1; i <= 5; i++) send('pointermove', under(32 * i, 12 * i), 32 * i, 12 * i);
+    send('pointerup', under(160, 60), 160, 60);
+  }, at);
+  expect(await tablePlace(page, 1)).toEqual({ port: 1, x: before.x + 160, y: before.y + 60 });
+});
+
 test('a table moved in the designer stays where it was put, with its join lines following', async ({ page }) => {
   await queryShop(page);
   await field(page, 1, 'customer_id').dragTo(field(page, 2, 'customer_id'));
@@ -134,9 +155,8 @@ test('a table moved in the designer stays where it was put, with its join lines 
   await page.mouse.down();
   await page.mouse.move(at.x + 200, at.y + at.height / 2 + 60, { steps: 5 });
   await page.mouse.up();
-  const moved = { port: 1, x: before.x + 160, y: before.y + 60 };
-  // The move is kept once the table is let go, which a browser may handle after the mouse call returns.
-  await expect.poll(() => tablePlace(page, 1)).toEqual(moved);
+  const moved = await tablePlace(page, 1);
+  expect(moved).toEqual({ port: 1, x: before.x + 160, y: before.y + 60 });
   // The join line follows the table down.
   const path = page.getByTestId('query-join-line').locator('path').first();
   await expect.poll(async () => Math.round((await path.boundingBox())!.height)).toBeGreaterThan(50);

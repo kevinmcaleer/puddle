@@ -124,22 +124,32 @@ function TablePane({ node, tables }: { node: QueryNode; tables: DesignerTable[] 
   const startMove = (t: DesignerTable, e: ReactPointerEvent<HTMLDivElement>) => {
     if ((e.target as HTMLElement).closest('button') || e.button !== 0) return;
     const start = { px: e.clientX, py: e.clientY, x: t.x, y: t.y };
-    const header = e.currentTarget;
-    header.setPointerCapture(e.pointerId);
+    const pointer = e.pointerId;
+    // The moves are followed on the window, not only the header: in WebKit the header doesn't always capture the
+    // pointer, and the pointer leaves it as soon as the table lags behind, so the table never moved.
+    try {
+      e.currentTarget.setPointerCapture(pointer);
+    } catch {
+      // Capture is a nicety here; the window still hears the moves.
+    }
     let last = { x: t.x, y: t.y };
     const onMove = (ev: PointerEvent) => {
+      if (ev.pointerId !== pointer) return;
       last = { x: Math.max(0, start.x + ev.clientX - start.px), y: Math.max(0, start.y + ev.clientY - start.py) };
       setMoving({ port: t.port, ...last });
     };
-    const onUp = () => {
-      header.removeEventListener('pointermove', onMove);
-      header.removeEventListener('pointerup', onUp);
+    const onEnd = (ev: PointerEvent) => {
+      if (ev.pointerId !== pointer) return;
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onEnd);
+      window.removeEventListener('pointercancel', onEnd);
       setMoving(null);
-      // One undo step per move, when the table is let go.
-      if (last.x !== t.x || last.y !== t.y) apply((p) => moveQueryTable(p, node.id, t.port, last));
+      // One undo step per move, when the table is let go (a cancelled drag puts it back).
+      if (ev.type === 'pointerup' && (last.x !== t.x || last.y !== t.y)) apply((p) => moveQueryTable(p, node.id, t.port, last));
     };
-    header.addEventListener('pointermove', onMove);
-    header.addEventListener('pointerup', onUp);
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onEnd);
+    window.addEventListener('pointercancel', onEnd);
   };
 
   const dropOnRow = (target: QueryFieldRef) => (e: DragEvent) => {
