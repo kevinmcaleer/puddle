@@ -1,12 +1,12 @@
-import { Handle, Position, type Node, type NodeProps } from '@xyflow/react';
-import type { ReactNode } from 'react';
+import { Handle, Position, useUpdateNodeInternals, type Node, type NodeProps } from '@xyflow/react';
+import { useEffect, type ReactNode } from 'react';
 import { exportGate } from '../flow/gate';
 import { summarise, useRuleStore } from '../flow/rules';
 import { useNodeStatus } from '../flow/status';
 import { inputPorts, useProject, type GraphNode } from '../model';
 import { urlProblem, useUrlFetches } from '../sources/url';
 import { NodeCard } from '../ui';
-import { portBroken, portTop } from './ports';
+import { portBroken, portName, portsHeight, portTop } from './ports';
 
 export type PuddleNodeData = { node: GraphNode; viewed: boolean; label?: ReactNode; detail?: string };
 export type PuddleFlowNode = Node<PuddleNodeData, 'puddle'>;
@@ -19,6 +19,10 @@ export function PuddleNode({ data, selected }: NodeProps<PuddleFlowNode>) {
   const ok = status.state === 'ok' ? status : null;
   const project = useProject();
   const ports = inputPorts(project, node);
+  const numbered = node.type === 'append';
+  // An Append gains an input as its last one is wired: React Flow has to measure the new handle.
+  const updateInternals = useUpdateNodeInternals();
+  useEffect(() => updateInternals(node.id), [updateInternals, node.id, ports.length]);
   const allResults = useRuleStore((s) => s.nodes);
   const own = ok ? summarise(node.rules, allResults[node.id]?.results) : undefined;
   // An Output node shows when a failing rule upstream blocks its export, even with no rules of its own.
@@ -46,6 +50,7 @@ export function PuddleNode({ data, selected }: NodeProps<PuddleFlowNode>) {
         dimmed={status.state === 'blocked' || (status.state === 'detached' && fetching)}
         brokenInput={status.state === 'error'}
         note={node.notes?.trim() || undefined}
+        style={ports.length > 2 ? { minHeight: portsHeight(ports.length) } : undefined}
         renderPorts={({ output }) => (
           <>
             {ports.map((port, i) => (
@@ -56,9 +61,12 @@ export function PuddleNode({ data, selected }: NodeProps<PuddleFlowNode>) {
                 id={String(port.id)}
                 className={portBroken(status, port.id) ? 'ui-port is-broken' : 'ui-port'}
                 style={{ top: portTop(i, ports.length) }}
-                title={ports.length > 1 ? `${port.label} input` : undefined}
-                aria-label={ports.length > 1 ? `${port.label} input` : undefined}
-              />
+                title={ports.length > 1 ? portName(port) : undefined}
+                aria-label={ports.length > 1 ? portName(port) : undefined}
+              >
+                {/* An Append's inputs are numbered on the node, so the order rows stack in is visible. */}
+                {numbered && <span className="ui-metric puddle-port-label">{Number(port.id) + 1}</span>}
+              </Handle>
             ))}
             {output && <Handle type="source" position={Position.Right} className="ui-port" />}
           </>

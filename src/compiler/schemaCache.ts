@@ -1,5 +1,5 @@
 import { inputEdges, nodeById, topoSort, upstreamIds, type ColumnSchema, type Project } from '../model';
-import { compile, upstreamKey, type Target } from './compile';
+import { compile, needsInputSchemas, upstreamKey, type Target } from './compile';
 import { knownSchemas, type SchemaBook } from './schemaBook';
 
 /**
@@ -42,7 +42,7 @@ export class SchemaCache {
   }
 
   /**
-   * Describe the inputs of every Join upstream of the target (both branches), so the target compiles. An
+   * Describe the inputs of every Join or Append upstream of the target (every branch), so the target compiles. An
    * input that can't be described is left out: compiling then says what's wrong upstream.
    */
   async prepare(project: Project, target: Target): Promise<void> {
@@ -53,7 +53,8 @@ export class SchemaCache {
       return;
     }
     for (const id of order) {
-      if (nodeById(project, id)?.type !== 'join') continue;
+      const node = nodeById(project, id);
+      if (!node || !needsInputSchemas(node)) continue;
       for (const e of inputEdges(project, id)) {
         const key = upstreamKey(project, { nodeId: e.from.nodeId });
         if (this.book.get(key)) continue;

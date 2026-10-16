@@ -79,13 +79,15 @@ const columnsOf = (nodeId: string) => {
 
 /**
  * Add a node to the right of the selected node, wired to it. A Join takes the first two selected nodes, in
- * the order they were selected, as its left and right inputs, matched on a column they share when there is one.
+ * the order they were selected, as its left and right inputs, matched on a column they share when there is one;
+ * an Append takes every selected node as its inputs 1, 2, 3 in that order.
  */
 export function addNodeAfterSelection(type: AddableNodeType) {
   const { apply, history } = useProjectStore.getState();
   const { selectedNodeId: selected, selectedNodeIds } = useSession.getState();
   const after = selected ? nodeById(history.present, selected) : undefined;
-  const feeds = type === 'join' && selectedNodeIds.length > 1 ? selectedNodeIds.slice(0, 2) : after?.id;
+  const several = selectedNodeIds.length > 1 && (type === 'join' || type === 'append');
+  const feeds = several ? (type === 'join' ? selectedNodeIds.slice(0, 2) : selectedNodeIds) : after?.id;
   const nodes = history.present.nodes;
   const inputs = (Array.isArray(feeds) ? feeds : after ? [after.id] : []).flatMap((id) => nodeById(history.present, id) ?? []);
   // Right of the inputs (level with them), or right of everything when nothing is selected, so new nodes never stack.
@@ -99,7 +101,7 @@ export function addNodeAfterSelection(type: AddableNodeType) {
     let next = addNode(p, type, position, feeds);
     added = next.nodes[next.nodes.length - 1]!.id;
     // A Join wired to two nodes starts matching on a column they share, such as customer_id.
-    const key = Array.isArray(feeds) && feeds.length === 2 ? suggestJoinKey(columnsOf(feeds[0]!), columnsOf(feeds[1]!)) : undefined;
+    const key = type === 'join' && Array.isArray(feeds) && feeds.length === 2 ? suggestJoinKey(columnsOf(feeds[0]!), columnsOf(feeds[1]!)) : undefined;
     if (key) next = setJoinSpec(next, added, { keys: [key] });
     return next;
   });

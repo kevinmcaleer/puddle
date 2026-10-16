@@ -21,3 +21,4 @@
 .puddle-canvas .react-flow__attribution { display: none; }
 .puddle-wire-popover { position: absolute; z-index: var(--z-popover); pointer-events: none; }
 .puddle-canvas.is-dropping { box-shadow: inset 0 0 0 2px var(--brand); }
+.puddle-canvas .puddle-port-label { position: absolute; right: calc(100% + var(--space-1)); bottom: 100%; pointer-events: none; }

@@ -1,0 +1,29 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`append SQL > by name 1`] = `
+"WITH "n_c" AS (SELECT * FROM read_csv('src_cust.csv')),
+  "n_m" AS (SELECT * FROM read_csv('src_more.csv')),
+  "n_a" AS (SELECT * FROM "n_c" UNION ALL BY NAME SELECT * FROM "n_m")
+SELECT * FROM "n_a""
+`;
+
+exports[`append SQL > by name with a source column 1`] = `
+"WITH "n_c" AS (SELECT * FROM read_csv('src_cust.csv')),
+  "n_m" AS (SELECT * FROM read_csv('src_more.csv')),
+  "n_a" AS (SELECT * EXCLUDE ("from"), "from" FROM (SELECT *, 'c' AS "from" FROM "n_c" UNION ALL BY NAME SELECT *, 'm' AS "from" FROM "n_m"))
+SELECT * FROM "n_a""
+`;
+
+exports[`append SQL > by position 1`] = `
+"WITH "n_c" AS (SELECT * FROM read_csv('src_cust.csv')),
+  "n_m" AS (SELECT * FROM read_csv('src_more.csv')),
+  "n_a" AS (SELECT "id" AS "id", "name" AS "name", NULL AS "phone" FROM "n_c" UNION ALL SELECT "customer_id" AS "id", "full_name" AS "name", "phone" AS "phone" FROM "n_m")
+SELECT * FROM "n_a""
+`;
+
+exports[`append SQL > by position with a source column 1`] = `
+"WITH "n_c" AS (SELECT * FROM read_csv('src_cust.csv')),
+  "n_m" AS (SELECT * FROM read_csv('src_more.csv')),
+  "n_a" AS (SELECT "id" AS "id", "name" AS "name", NULL AS "phone", 'c' AS "source" FROM "n_c" UNION ALL SELECT "customer_id" AS "id", "full_name" AS "name", "phone" AS "phone", 'm' AS "source" FROM "n_m")
+SELECT * FROM "n_a""
+`;
