@@ -8,6 +8,7 @@ export { addStep, canGroup, canUngroup, groupNodes, moveStep, removeStep, rename
 export { addNode, addSource, moveNodes, nextNodeName, removeNodes, setCollapsed, setParseOptions, updateSource, type AddableNodeType } from './edits';
 export { setJoinSpec, swapJoinInputs } from './join';
 export { setAppendSpec, swapAppendInputs } from './append';
+export { setLookupSpec, swapLookupInputs } from './lookup';
 export { useProject, useProjectStore, type ProjectState } from './store';
 export { placeStep, type Placed } from './quickfix';
 export { addRule, dismissSuggestion, removeRule, updateRule } from './rules';

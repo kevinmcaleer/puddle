@@ -22,6 +22,11 @@ const JOIN_PORTS: InputPort[] = [
   { id: 'right', label: 'Right' },
 ];
 
+const LOOKUP_PORTS: InputPort[] = [
+  { id: 'main', label: 'Main' },
+  { id: 'lookup', label: 'Lookup' },
+];
+
 /** Smallest number of inputs an Append shows, so a new one offers two. */
 export const APPEND_MIN_PORTS = 2;
 
@@ -37,6 +42,8 @@ export function inputPorts(project: Project, node: GraphNode): InputPort[] {
       return NO_PORTS;
     case 'join':
       return JOIN_PORTS;
+    case 'lookup':
+      return LOOKUP_PORTS;
     case 'append': {
       const wired = project.edges.filter((e) => e.to.nodeId === node.id && typeof e.to.port === 'number').map((e) => e.to.port as number);
       const count = Math.max(APPEND_MIN_PORTS, wired.length ? Math.max(...wired) + 2 : 0);

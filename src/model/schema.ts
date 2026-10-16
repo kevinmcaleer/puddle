@@ -148,10 +148,30 @@ export const DEFAULT_APPEND_SPEC = { match: 'name', tagRows: false, tagColumn: '
 /** Stacks its inputs' rows, in input order. Inputs are numbered ports; a free one is always offered after the last. */
 export const AppendNodeZ = z.object({ ...NodeBase, type: z.literal('append'), appendSpec: AppendSpecZ.default({ ...DEFAULT_APPEND_SPEC }) });
 
-export const NodeZ = z.discriminatedUnion('type', [SourceNodeZ, TransformNodeZ, JoinNodeZ, AppendNodeZ, OutputNodeZ]);
+/** One pair of columns that must be equal: a column of the main input and one of the lookup input. */
+export const LookupKeyZ = z.object({ main: z.string(), lookup: z.string() });
 
-/** Named input ports. Join uses left and right; nodes with one input, and Append's numbered inputs, use an index. */
-export const NAMED_PORTS = ['left', 'right'] as const;
+export const LookupSpecZ = z.object({
+  /** A main row matches a lookup row when every pair is equal. */
+  keys: z.array(LookupKeyZ).default([]),
+  /** The lookup input's columns brought across, in order. */
+  columns: z.array(z.string()).default([]),
+  /** Added to a brought column whose name the main input already uses. */
+  suffix: z.string().default('_lookup'),
+  /** Fill the brought columns of a main row whose key has no match with `defaultValue`, instead of leaving them empty. */
+  useDefault: z.boolean().default(false),
+  defaultValue: z.string().default(''),
+});
+
+export const DEFAULT_LOOKUP_SPEC = { keys: [], columns: [], suffix: '_lookup', useDefault: false, defaultValue: '' } as const satisfies z.input<typeof LookupSpecZ>;
+
+/** Brings columns across from its lookup input by key, one match per main row, so the main input's row count never changes. */
+export const LookupNodeZ = z.object({ ...NodeBase, type: z.literal('lookup'), lookupSpec: LookupSpecZ.default({ ...DEFAULT_LOOKUP_SPEC, keys: [], columns: [] }) });
+
+export const NodeZ = z.discriminatedUnion('type', [SourceNodeZ, TransformNodeZ, JoinNodeZ, AppendNodeZ, LookupNodeZ, OutputNodeZ]);
+
+/** Named input ports: Join's left and right, Lookup's main and lookup. Nodes with one input, and Append's numbered inputs, use an index. */
+export const NAMED_PORTS = ['left', 'right', 'main', 'lookup'] as const;
 
 export const PortZ = z.union([z.number().int().nonnegative(), z.enum(NAMED_PORTS)]);
 
@@ -225,6 +245,9 @@ export type JoinSpec = z.infer<typeof JoinSpecZ>;
 export type JoinNode = z.infer<typeof JoinNodeZ>;
 export type AppendSpec = z.infer<typeof AppendSpecZ>;
 export type AppendNode = z.infer<typeof AppendNodeZ>;
+export type LookupKey = z.infer<typeof LookupKeyZ>;
+export type LookupSpec = z.infer<typeof LookupSpecZ>;
+export type LookupNode = z.infer<typeof LookupNodeZ>;
 export type Port = z.infer<typeof PortZ>;
 export type GraphNode = z.infer<typeof NodeZ>;
 export type NodeType = GraphNode['type'];

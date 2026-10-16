@@ -2,6 +2,7 @@ import { freePort, hashValue, inputEdge, inputEdges, inputPorts, nodeById, topoS
 import { appendProblems, compileAppend } from './append';
 import { CompileError, PendingSchemaError, UnwiredError } from './errors';
 import { compileJoin, joinCondition, joinProblems } from './join';
+import { compileLookup, firstMatches, lookupCondition, lookupProblems } from './lookup';
 import { knownSchemas, type SchemaBook } from './schemaBook';
 import { sourceRelation } from './sources';
 import { cteName, ident, num, str } from './sql';
@@ -28,12 +29,12 @@ export interface Compiled {
 }
 
 export interface CompileOptions {
-  /** Where Join and Append nodes read their inputs' columns. The app's shared book by default. */
+  /** Where Join, Append and Lookup nodes read their inputs' columns. The app's shared book by default. */
   schemas?: SchemaBook;
 }
 
 /** Node kinds that compile from their inputs' columns, so those must be described first (see SchemaCache.prepare). */
-export const needsInputSchemas = (node: GraphNode) => node.type === 'join' || node.type === 'append';
+export const needsInputSchemas = (node: GraphNode) => node.type === 'join' || node.type === 'append' || node.type === 'lookup';
 
 /** One wired input of a node: its port, the node feeding it, and that node's CTE. */
 interface WiredInput {
@@ -135,6 +136,19 @@ function build(project: Project, target: Target, book: SchemaBook): Built {
         out.set(n.id, name);
         break;
       }
+      case 'lookup': {
+        const [m, l] = wiredInputs(project, n, out);
+        const fail = (p: ReturnType<typeof lookupProblems>[number] | undefined) => {
+          if (p) throw new CompileError(p.message, n.id, undefined, p.side ? [p.side] : undefined);
+        };
+        fail(lookupProblems(n.lookupSpec)[0]);
+        const [main, lookup] = [inputColumns(project, n, m!, book), inputColumns(project, n, l!, book)];
+        fail(lookupProblems(n.lookupSpec, main, lookup)[0]);
+        const name = cteName(n.id);
+        ctes.push(`${name} AS (${compileLookup(n.lookupSpec, { main: m!.cte, lookup: l!.cte }, main, lookup)})`);
+        out.set(n.id, name);
+        break;
+      }
       case 'output':
         out.set(n.id, inputCte(project, n, out));
         break;
@@ -204,7 +218,7 @@ export function compileCount(project: Project, target: Target): string {
 
 /**
  * A key that changes exactly when the target's output could change: node types, wiring (which input each wire
- * goes into), steps up to the target step, join settings, and source formats, options and file identity, on
+ * goes into), steps up to the target step, join, append and lookup settings, and source formats, options and file identity, on
  * every branch upstream. Names, notes and positions are ignored.
  */
 export function upstreamKey(project: Project, target: Target): string {
@@ -222,6 +236,7 @@ export function upstreamKey(project: Project, target: Target): string {
         return { id: n.id, type: n.type, inputs, steps: steps.map((s) => ({ type: s.type, enabled: s.enabled, params: s.params })) };
       }
       if (n.type === 'join') return { id: n.id, type: n.type, inputs, join: n.joinSpec };
+      if (n.type === 'lookup') return { id: n.id, type: n.type, inputs, lookup: n.lookupSpec };
       // The source column holds each input's node name, so names matter only when it's on.
       if (n.type === 'append') return { id: n.id, type: n.type, inputs, append: n.appendSpec, ...(n.appendSpec.tagRows ? { labels: inputEdges(project, n.id).map((e) => nodeById(project, e.from.nodeId)?.name) } : {}) };
       return { id: n.id, type: n.type, inputs };
@@ -311,4 +326,38 @@ export function compileJoinCheck(project: Project, nodeId: string, options: Comp
     `(SELECT count(*) FROM ${r} AS ${R} SEMI JOIN ${l} AS ${L} ON ${on}) AS matched_right`,
   ];
   return `WITH ${ctes.join(',\n  ')}\nSELECT ${parts.join(', ')}`;
+}
+
+/**
+ * How a Lookup matched, in one row: `rows` in its main input (and so out of it), `matched` main rows with a
+ * match, `dup_keys` distinct main keys that match more than one lookup row and the `dup_rows` main rows that
+ * have them, `missing_keys` distinct main keys with no match, and one example of each (`dup_example`,
+ * `missing_example`), the key values joined with commas.
+ */
+export function compileLookupCheck(project: Project, nodeId: string, options: CompileOptions = {}): string {
+  const { node, ctes, out } = build(project, { nodeId }, options.schemas ?? knownSchemas);
+  if (node.type !== 'lookup') throw new CompileError(`${node.name} isn’t a Lookup node.`, node.id);
+  const spec = node.lookupSpec;
+  const input = (port: 'main' | 'lookup') => out.get(inputEdge(project, nodeId, port)!.from.nodeId)!;
+  const [main, lookup] = [input('main'), input('lookup')];
+  const M = ident('m');
+  const R = ident('r');
+  const on = lookupCondition(spec, M, R);
+  const mainKeys = spec.keys.map((k) => `${M}.${ident(k.main)}`);
+  const example = `concat_ws(', ', ${mainKeys.map((k) => `coalesce(CAST(${k} AS VARCHAR), '(empty)')`).join(', ')})`;
+  const dups = ident(`n_${nodeId}_dups`);
+  const lookupKeys = spec.keys.map((k) => ident(k.lookup)).join(', ');
+  const all = [...ctes, `${dups} AS (SELECT ${lookupKeys} FROM ${lookup} GROUP BY ALL HAVING count(*) > 1)`];
+  // firstMatches keeps one lookup row per key, so these joins never multiply main rows.
+  const first = `(${firstMatches(spec, lookup)})`;
+  const parts = [
+    `(SELECT count(*) FROM ${main}) AS "rows"`,
+    `(SELECT count(*) FROM ${main} AS ${M} SEMI JOIN ${first} AS ${R} ON ${on}) AS matched`,
+    `(SELECT count(*) FROM (SELECT DISTINCT ${mainKeys.join(', ')} FROM ${main} AS ${M} SEMI JOIN ${dups} AS ${R} ON ${on})) AS dup_keys`,
+    `(SELECT count(*) FROM ${main} AS ${M} SEMI JOIN ${dups} AS ${R} ON ${on}) AS dup_rows`,
+    `(SELECT ${example} FROM ${main} AS ${M} SEMI JOIN ${dups} AS ${R} ON ${on} LIMIT 1) AS dup_example`,
+    `(SELECT count(*) FROM (SELECT DISTINCT ${mainKeys.join(', ')} FROM ${main} AS ${M} ANTI JOIN ${first} AS ${R} ON ${on})) AS missing_keys`,
+    `(SELECT ${example} FROM ${main} AS ${M} ANTI JOIN ${first} AS ${R} ON ${on} LIMIT 1) AS missing_example`,
+  ];
+  return `WITH ${all.join(',\n  ')}\nSELECT ${parts.join(', ')}`;
 }

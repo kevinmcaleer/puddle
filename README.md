@@ -35,7 +35,7 @@ A Docker image (nginx serving the static build) behind a Cloudflare Tunnel at pu
 | `src/app/` | The app shell: toolbar actions, inspector and results docks, status strip, theme, engine boot, per-tab session state |
 | `src/engine/` | DuckDB-WASM in a Web Worker and the typed `EngineClient` (priorities, cancellation, Stop, plain-word errors) |
 | `src/model/` | The project graph: Zod schemas, wiring rules, step edits, grouping, undo and redo |
-| `src/compiler/` | The pure graph-to-SQL compiler (steps, joins over two inputs and appends over any number), step registry, schema cache and the schema book joins and appends read their inputs’ columns from |
+| `src/compiler/` | The pure graph-to-SQL compiler (steps, joins and lookups over two inputs, appends over any number), step registry, schema cache and the schema book those nodes read their inputs’ columns from |
 | `src/sources/` | Adding sources: format detection, file handles, clipboard text, web addresses (fetched again on reopen), and choosing files again on reopen (on Chromium, reconnecting them with one permission click through stored file handles) |
 | `src/persistence/` | IndexedDB autosave, `.puddle.json` export and import, format migrations |
 | `src/home/` | The projects home screen and the rename and delete dialogs |

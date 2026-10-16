@@ -1,11 +1,11 @@
 // Pure project edits used by the canvas, sources and inspector. Each returns a new project.
 import { freePort, hasOutput, nodeById, removeNode } from './graph';
 import { newId } from './ids';
-import { DEFAULT_APPEND_SPEC, DEFAULT_JOIN_SPEC, type GraphNode, type NodeType, type ParseOptions, type Project, type Source } from './schema';
+import { DEFAULT_APPEND_SPEC, DEFAULT_JOIN_SPEC, DEFAULT_LOOKUP_SPEC, type GraphNode, type NodeType, type ParseOptions, type Project, type Source } from './schema';
 
 type Position = { x: number; y: number };
 
-const KIND_NAME: Record<NodeType, string> = { source: 'Source', transform: 'Transform', join: 'Join', append: 'Append', output: 'Output' };
+const KIND_NAME: Record<NodeType, string> = { source: 'Source', transform: 'Transform', join: 'Join', append: 'Append', lookup: 'Lookup', output: 'Output' };
 
 /** "Transform 3": the next free number for a node type. */
 export function nextNodeName(project: Project, type: NodeType): string {
@@ -30,14 +30,16 @@ function newNode(type: AddableNodeType, base: { id: string; name: string; positi
       return { ...base, type, joinSpec: { ...DEFAULT_JOIN_SPEC, keys: [] } };
     case 'append':
       return { ...base, type, appendSpec: { ...DEFAULT_APPEND_SPEC } };
+    case 'lookup':
+      return { ...base, type, lookupSpec: { ...DEFAULT_LOOKUP_SPEC, keys: [], columns: [] } };
     case 'output':
       return { ...base, type, outputSpec: { format: 'csv', options: {} } };
   }
 }
 
 /**
- * Add a Transform, Join, Append or Output node. `after` names the nodes that feed it, wired into its free
- * inputs in order (a Join's left, then its right; an Append's 1, 2, 3...); nodes with no output, and any
+ * Add a Transform, Join, Append, Lookup or Output node. `after` names the nodes that feed it, wired into its free
+ * inputs in order (a Join's left, then its right; an Append's 1, 2, 3...; a Lookup's main, then its lookup); nodes with no output, and any
  * beyond its inputs, are left unwired.
  */
 export function addNode(project: Project, type: AddableNodeType, position: Position, after?: string | string[], nodeId = newId('n')): Project {
