@@ -23,6 +23,7 @@ import { Banner, Button } from '../ui';
 import { viewNode } from '../results/pin';
 import { hostOf } from '../sources/url';
 import { openSamplesDialog } from '../samples/samplesDialog';
+import { TourOffer } from '../tour/TourOffer';
 import { formatLabel } from './formatLabel';
 import { portBroken, portName } from './ports';
 import { PuddleNode, type PuddleFlowNode } from './PuddleNode';
@@ -306,6 +307,7 @@ export function Canvas({ onAddSource }: { onAddSource: () => void }) {
               <Button variant="primary" icon="plus" onClick={onAddSource}>Add source</Button>
               <Button variant="secondary" icon="eye" onClick={() => openSamplesDialog()}>Try a sample</Button>
             </div>
+            <TourOffer />
           </div>
         </div>
       )}
