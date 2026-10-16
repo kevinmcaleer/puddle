@@ -33,6 +33,20 @@ describe('Menu', () => {
     expect(screen.queryByRole('menu')).toBeNull();
   });
 
+  // Regression: the search was cleared whenever the parent re-rendered with a new onOpenChange, so typing in the
+  // Add step menu lost its filter if anything else updated meanwhile.
+  it('keeps what was typed when the parent re-renders the open menu', () => {
+    const { rerender } = render(<Menu label="Add step" items={items()} search="Search steps" open onOpenChange={() => undefined} />);
+    fireEvent.change(screen.getByLabelText('Search steps'), { target: { value: 'trim' } });
+    rerender(<Menu label="Add step" items={items()} search="Search steps" open onOpenChange={() => undefined} />);
+    expect((screen.getByLabelText('Search steps') as HTMLInputElement).value).toBe('trim');
+    expect(screen.getAllByRole('menuitem').map((b) => b.textContent)).toEqual(['Trim spacesText']);
+    // Closed and opened again, it starts empty.
+    rerender(<Menu label="Add step" items={items()} search="Search steps" open={false} onOpenChange={() => undefined} />);
+    rerender(<Menu label="Add step" items={items()} search="Search steps" open onOpenChange={() => undefined} />);
+    expect((screen.getByLabelText('Search steps') as HTMLInputElement).value).toBe('');
+  });
+
   it('says so when nothing matches', () => {
     render(<Menu label="Add step" items={items()} search="Search steps" />);
     fireEvent.click(screen.getByRole('button', { name: 'Add step' }));
