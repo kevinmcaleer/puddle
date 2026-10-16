@@ -34,13 +34,13 @@ export const FILTER_OPS = {
 export type FilterOp = keyof typeof FILTER_OPS;
 const NO_VALUE: FilterOp[] = ['empty', 'notEmpty'];
 
-const Condition = z
+export const Condition = z
   .object({ column: z.string().min(1, 'pick a column'), op: z.enum(Object.keys(FILTER_OPS) as [FilterOp, ...FilterOp[]]), value: z.string().default('') })
   .refine((c) => NO_VALUE.includes(c.op) || c.value !== '', { path: ['value'], message: 'give a value to compare with' });
-type Condition = z.infer<typeof Condition>;
+export type Condition = z.infer<typeof Condition>;
 
 /** One condition as SQL. Text comparisons ignore case unless asked; values are cast to the column's type by DuckDB. */
-function condition(c: Condition, matchCase: boolean): string {
+export function condition(c: Condition, matchCase: boolean): string {
   const col = ident(c.column);
   const text = matchCase ? `CAST(${col} AS VARCHAR)` : `lower(CAST(${col} AS VARCHAR))`;
   const v = str(matchCase ? c.value : c.value.toLowerCase());
