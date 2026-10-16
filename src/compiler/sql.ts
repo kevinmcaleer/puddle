@@ -38,3 +38,6 @@ export function cteName(nodeId: string, step?: number): string {
 
 /** Point DuckDB's extension installs and autoloads at another repository. */
 export const setExtensionRepository = (url: string) => [`SET custom_extension_repository = ${str(url)}`, `SET autoinstall_extension_repository = ${str(url)}`];
+
+/** Turn off DuckDB optimizers by name, for the rest of the connection (see EngineClient's plan-copy retry). */
+export const disableOptimizers = (names: string[]) => `SET disabled_optimizers = ${str(names.join(','))}`;

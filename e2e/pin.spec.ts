@@ -148,7 +148,17 @@ function wide(rows = 400, cols = 14) {
   return { name: 'wide.csv', mimeType: 'text/csv', buffer: Buffer.from([header.join(','), ...lines].join('\n')) };
 }
 
-test('compared grids scroll together, by row and by matching column', async ({ page }) => {
+/**
+ * Scroll with the wheel in notches of at most 300px. Firefox scrolls a single wheel event by at most a page of the
+ * grid, so one big event moves it only a few rows there; the same distance in notches scrolls alike everywhere.
+ */
+async function wheel(page: Page, dx: number, dy: number) {
+  const steps = Math.ceil(Math.max(Math.abs(dx), Math.abs(dy)) / 300);
+  for (let i = 0; i < steps; i++) await page.mouse.wheel(dx / steps, dy / steps);
+}
+
+/** wide.csv and a Transform after it, compared side by side: the two grids, and a check that they show the same spot. */
+async function compareWide(page: Page) {
   await openApp(page);
   await addFiles(page, [wide()]);
   await expect(node(page, 'wide.csv')).toHaveAttribute('data-status', 'ok');
@@ -169,27 +179,90 @@ test('compared grids scroll together, by row and by matching column', async ({ p
   // Where each grid is scrolled to, once both have settled on the same spot.
   const spot = async (attr: string) => [await main.getAttribute(attr), await other.getAttribute(attr)];
   const together = (attr: string) => expect.poll(async () => { const [a, b] = await spot(attr); return a === b ? a : `${a} vs ${b}`; }, { timeout: 10_000 });
+  return { main, other, together };
+}
+
+test('compared grids scroll together, by row and by matching column', async ({ page }) => {
+  const { main, other, together } = await compareWide(page);
 
   // Scroll the left grid down: the right one follows to the same row.
   const box = (await main.boundingBox())!;
   await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
-  await page.mouse.wheel(0, 1500);
+  await wheel(page, 0, 1500);
   await expect.poll(async () => Number(await main.getAttribute('data-first-row'))).toBeGreaterThan(10);
   await together('data-first-row').toMatch(/^[1-9]\d*$/);
-  const down = Number(await main.getAttribute('data-first-row'));
+  // WebKit scrolls the wheel off the page's own thread, so the left grid can still be on its way: wait until it stays
+  // on one row before taking it as where the person left it.
+  let last = '';
+  await expect
+    .poll(
+      async () => {
+        const now = (await main.getAttribute('data-first-row')) ?? '';
+        const still = now === last;
+        last = now;
+        return still;
+      },
+      { intervals: [300] },
+    )
+    .toBe(true);
+  await together('data-first-row').toBe(last);
+  const down = Number(last);
+
+  // The grid that follows can keep moving after the person stops, as Firefox's smooth scrolling does. Regression:
+  // those late moves were passed back once a short window after following had closed, so the grids took turns
+  // following each other and came to rest on different rows. Only the grid the person scrolled leads.
+  await page.waitForTimeout(400);
+  await other.locator('.dvn-scroller').evaluate((el) => el.scrollBy({ top: 2000 }));
+  await expect.poll(async () => Number(await other.getAttribute('data-first-row'))).toBeGreaterThan(down);
+  await page.waitForTimeout(400);
+  expect(Number(await main.getAttribute('data-first-row'))).toBe(down);
 
   // Scroll it sideways: the right one shows the same column at its left edge.
-  await page.mouse.wheel(600, 0);
+  await wheel(page, 600, 0);
   await expect.poll(async () => (await main.getAttribute('data-first-column')) ?? '').toMatch(/^column_/);
   await together('data-first-column').toMatch(/^column_/);
 
   // And the other way round, straight after the right grid followed the left one. Regression: a scroll that came
   // soon after following was taken for the follow's echo and never reached the other grid.
   const right = (await other.boundingBox())!;
-  await page.mouse.wheel(0, 120);
+  await wheel(page, 0, 120);
   await page.mouse.move(right.x + right.width / 2, right.y + right.height / 2);
-  await page.mouse.wheel(0, -900);
+  await wheel(page, 0, -900);
   await expect.poll(async () => Number(await other.getAttribute('data-first-row'))).toBeLessThan(down);
   await together('data-first-row').toMatch(/^\d+$/);
   expect(Number(await main.getAttribute('data-first-row'))).toBeLessThan(down);
+});
+
+test('a grid that follows lands on the same row and column when the browser rounds where it scrolls to', async ({ page }) => {
+  // Regression (WebKit): the following grid is scrolled to the other's spot by a distance measured on screen, which
+  // can come out a fraction of a pixel short. It then showed the row above ("53 vs 52"). Here every scroll the app
+  // makes lands 0.6px short, as a browser rounding that distance down would.
+  await page.addInitScript(() => {
+    const top = Object.getOwnPropertyDescriptor(Element.prototype, 'scrollTop')!;
+    Object.defineProperty(Element.prototype, 'scrollTop', {
+      configurable: true,
+      get: top.get,
+      set(this: Element, value: number) {
+        top.set!.call(this, this.classList.contains('dvn-scroller') ? value - 0.6 : value);
+      },
+    });
+    const scrollTo = Element.prototype.scrollTo;
+    Element.prototype.scrollTo = function (this: Element, ...args: unknown[]) {
+      const to = args[0];
+      if (this.classList.contains('dvn-scroller') && to && typeof to === 'object') {
+        const { left, top, ...rest } = to as ScrollToOptions;
+        return Reflect.apply(scrollTo, this, [{ ...rest, left: left == null ? left : left - 0.6, top: top == null ? top : top - 0.6 }]);
+      }
+      return Reflect.apply(scrollTo, this, args);
+    } as typeof Element.prototype.scrollTo;
+  });
+  const { main, together } = await compareWide(page);
+  const box = (await main.boundingBox())!;
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await wheel(page, 0, 1500);
+  await expect.poll(async () => Number(await main.getAttribute('data-first-row'))).toBeGreaterThan(10);
+  await together('data-first-row').toMatch(/^[1-9]\d*$/);
+  await wheel(page, 600, 0);
+  await expect.poll(async () => (await main.getAttribute('data-first-column')) ?? '').toMatch(/^column_/);
+  await together('data-first-column').toMatch(/^column_/);
 });

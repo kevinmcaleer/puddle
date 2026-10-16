@@ -1,4 +1,5 @@
-import { defineConfig, devices } from '@playwright/test';
+import { defineConfig } from '@playwright/test';
+import { browserProjects } from './e2e/helpers/browsers';
 
 // Tests against a running Puddle container (see deploy/README.md): headers, self-hosted extensions, offline.
 // PUDDLE_URL defaults to the port CI and the docs use.
@@ -10,5 +11,5 @@ export default defineConfig({
   retries: 0,
   reporter: process.env.CI ? [['github'], ['list']] : 'list',
   use: { baseURL: process.env.PUDDLE_URL ?? 'http://localhost:8088', trace: 'retain-on-failure', serviceWorkers: 'allow' },
-  projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
+  projects: browserProjects(),
 });

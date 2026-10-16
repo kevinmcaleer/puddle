@@ -123,19 +123,67 @@ test('tables come and go from the designer, taking their fields and join lines, 
   await expect(page.getByTestId('query-join-line')).toHaveCount(0);
 });
 
-test('a table moved in the designer stays where it was put, with its join lines following', async ({ page }) => {
+test('a table follows the pointer when the moves land outside its header', async ({ page }) => {
+  // Regression (WebKit): the moves were heard on the header only, relying on pointer capture to keep them there. In
+  // WebKit they went to whatever was under the pointer, which left the header at once, so the table never moved.
+  // Here the press is on the header and every move, and the release, go to the element under the pointer.
   await queryShop(page);
-  await field(page, 1, 'customer_id').dragTo(field(page, 2, 'customer_id'));
-  const table = page.getByTestId('query-table-2');
   const before = await tablePlace(page, 1);
-  const head = table.locator('.puddle-qd-table__head');
+  const head = page.getByTestId('query-table-2').locator('.puddle-qd-table__head');
+  const at = (await head.boundingBox())!;
+  await head.evaluate((el, a) => {
+    const x = a.x + 40;
+    const y = a.y + a.height / 2;
+    const send = (type: string, target: Element, dx: number, dy: number) =>
+      target.dispatchEvent(new PointerEvent(type, { bubbles: true, cancelable: true, composed: true, pointerId: 1, pointerType: 'mouse', isPrimary: true, button: type === 'pointermove' ? -1 : 0, buttons: type === 'pointerup' ? 0 : 1, clientX: x + dx, clientY: y + dy }));
+    const under = (dx: number, dy: number) => document.elementFromPoint(x + dx, y + dy) ?? document.body;
+    send('pointerdown', el, 0, 0);
+    for (let i = 1; i <= 5; i++) send('pointermove', under(32 * i, 12 * i), 32 * i, 12 * i);
+    send('pointerup', under(160, 60), 160, 60);
+  }, at);
+  expect(await tablePlace(page, 1)).toEqual({ port: 1, x: before.x + 160, y: before.y + 60 });
+});
+
+test('a table dragged by its header with the mouse moves with it', async ({ page }) => {
+  await queryShop(page);
+  const before = await tablePlace(page, 1);
+  const head = page.getByTestId('query-table-2').locator('.puddle-qd-table__head');
   const at = (await head.boundingBox())!;
   await page.mouse.move(at.x + 40, at.y + at.height / 2);
   await page.mouse.down();
   await page.mouse.move(at.x + 200, at.y + at.height / 2 + 60, { steps: 5 });
   await page.mouse.up();
+  expect(await tablePlace(page, 1)).toEqual({ port: 1, x: before.x + 160, y: before.y + 60 });
+});
+
+test('a table moved in the designer stays where it was put, with its join lines following', async ({ page }) => {
+  await queryShop(page);
+  await field(page, 1, 'customer_id').dragTo(field(page, 2, 'customer_id'));
+  // The drop has landed (WebKit finishes a native drag after the mouse call returns) before the table is moved.
+  await expect(page.getByTestId('query-join-line')).toHaveCount(1);
+  // In Playwright's WebKit the next press after a native drag never reaches the page: CI recorded the header drag's
+  // moves and release but no pointerdown, so the table couldn't move. A plain mouse drag with no field drag before it
+  // moves the table there (the test above). A click on an empty corner of the designer, as a person's next click
+  // would be, takes that press.
+  await page.getByTestId('query-tables').click({ position: { x: 4, y: 4 } });
+  const table = page.getByTestId('query-table-2');
+  const before = await tablePlace(page, 1);
+  const head = table.locator('.puddle-qd-table__head');
+  const at = (await head.boundingBox())!;
+  // What the page hears during the drag, to say why if the table doesn't move.
+  await page.evaluate(() => {
+    const seen: string[] = [];
+    (globalThis as unknown as { seenPointer: string[] }).seenPointer = seen;
+    for (const type of ['pointerdown', 'pointermove', 'pointerup', 'pointercancel', 'dragstart', 'lostpointercapture'])
+      window.addEventListener(type, (e) => seen.push(`${type}@${(e.target as Element).className || (e.target as Element).tagName}`), true);
+  });
+  await page.mouse.move(at.x + 40, at.y + at.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(at.x + 200, at.y + at.height / 2 + 60, { steps: 5 });
+  await page.mouse.up();
   const moved = await tablePlace(page, 1);
-  expect(moved).toEqual({ port: 1, x: before.x + 160, y: before.y + 60 });
+  const heard = await page.evaluate(() => (globalThis as unknown as { seenPointer: string[] }).seenPointer.join(', '));
+  expect(moved, `pointer events: ${heard}`).toEqual({ port: 1, x: before.x + 160, y: before.y + 60 });
   // The join line follows the table down.
   const path = page.getByTestId('query-join-line').locator('path').first();
   await expect.poll(async () => Math.round((await path.boundingBox())!.height)).toBeGreaterThan(50);

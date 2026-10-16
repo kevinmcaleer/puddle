@@ -15,9 +15,9 @@ test('large results load in pages as the table scrolls', async ({ page }) => {
   await expect(table).toHaveAttribute('data-loaded', '500');
   await expect(page.getByRole('status').filter({ hasText: 'rows' })).toContainText('2,000 rows');
 
-  // Scroll to the bottom: the last page loads, and nothing else is fetched twice.
-  await table.hover();
-  for (let i = 0; i < 30; i++) await page.mouse.wheel(0, 4000);
+  // Scroll to the bottom: the last page loads, and nothing else is fetched twice. The grid's own scroller is moved,
+  // since how far a wheel event scrolls differs between browsers (in Firefox CI it didn't reach the next page).
+  await table.locator('.dvn-scroller').evaluate((el) => el.scrollTo({ top: el.scrollHeight }));
   await expect.poll(async () => Number(await table.getAttribute('data-loaded'))).toBeGreaterThan(500);
 });
 

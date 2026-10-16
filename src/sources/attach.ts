@@ -79,6 +79,12 @@ export async function reattachFile(source: Source, file: File, handle?: FileHand
 }
 
 /** Why a source can't be read, and how to fix it. */
+/** What to tell someone whose browser can't keep files between visits (Firefox, Safari), naming the files to choose again. */
+export function filesNotKeptMessage(names: string[]): string {
+  const list = names.length <= 2 ? names.join(' and ') : `${names.slice(0, 2).join(', ')} and ${names.length - 2} more`;
+  return `This browser can’t keep access to files between visits, so choose ${list} again from ${names.length === 1 ? 'its node' : 'their nodes'}. In Chrome or Edge, Puddle reopens files with one click.`;
+}
+
 export function detachedMessage(source: Source): string {
   const name = source.file?.originalName ?? source.name;
   return `Projects save the steps, not the data, so choose ${name} again to read it.`;

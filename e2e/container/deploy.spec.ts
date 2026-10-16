@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import { readFileSync } from 'node:fs';
-import { addFiles, expectRows, fixture, node, openApp } from '../helpers/app';
+import { addFiles, bringIntoView, expectRows, fixture, node, openApp } from '../helpers/app';
 
 const ISOLATION = { 'cross-origin-opener-policy': 'same-origin', 'cross-origin-embedder-policy': 'require-corp' };
 
@@ -62,6 +62,8 @@ test('JSON and Parquet load and export with no request leaving the site', async 
     const path = await file.path();
     await addFiles(page, [{ name: `back.${ext}`, mimeType: 'application/octet-stream', buffer: readFileSync(path) }]);
     await expect(node(page, `back.${ext}`)).toHaveAttribute('data-status', 'ok', { timeout: 30_000 });
+    // Each file read back lands below the last, soon under the results panel.
+    await bringIntoView(page, `back.${ext}`);
     await node(page, `back.${ext}`).click();
     await expectRows(page, 4);
     await node(page, 'Output 1').click();

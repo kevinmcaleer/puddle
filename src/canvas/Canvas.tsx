@@ -14,7 +14,7 @@ import '@xyflow/react/dist/base.css';
 import { useCallback, useMemo, useState, type DragEvent } from 'react';
 import { addFiles, addNodeAfterSelection } from '../app/actions';
 import { droppedFiles } from '../sources/handles';
-import { ReconnectBanner } from '../sources/ReconnectBanner';
+import { FilesNotKeptBanner, ReconnectBanner } from '../sources/ReconnectBanner';
 import { useSession } from '../app/session';
 import { useFlowStore } from '../flow/status';
 import { JOIN_TYPES, ruleRefs } from '../compiler';
@@ -136,6 +136,10 @@ export function Canvas({ onAddSource }: { onAddSource: () => void }) {
   const notice = useSession((s) => s.notice);
   const statuses = useFlowStore((s) => s.nodes);
   const [dragging, setDragging] = useState<Record<string, { x: number; y: number }>>({});
+  // Each node's size as React Flow measured it. The nodes below are rebuilt on every change to the flow, and a node
+  // handed over without its size is hidden until it is measured again: it blinked out for a frame on each update,
+  // and a click in that frame landed on the pane and cleared the selection (seen in Firefox).
+  const [measured, setMeasured] = useState<Record<string, { width: number; height: number }>>({});
   const [hoveredEdge, setHoveredEdge] = useState<string | null>(null);
   // Selected wires, so Delete removes a wire on its own. Nodes' selection lives in the session.
   const [selectedEdges, setSelectedEdges] = useState<string[]>([]);
@@ -151,11 +155,12 @@ export function Canvas({ onAddSource }: { onAddSource: () => void }) {
       id: n.id,
       type: 'puddle',
       position: dragging[n.id] ?? n.position,
+      measured: measured[n.id],
       selected: selectedNodeIds.includes(n.id),
       data: { node: n, viewed: n.id === viewedId, detail: detailFor(n, project.sources, project.edges), refIn: ends.to.has(n.id), refOut: ends.from.has(n.id) },
     }));
     // eslint-disable-next-line react-hooks/exhaustive-deps -- references are read from project.nodes
-  }, [project.nodes, project.sources, project.edges, dragging, selectedNodeIds, viewedId],
+  }, [project.nodes, project.sources, project.edges, dragging, measured, selectedNodeIds, viewedId],
   );
 
   const edges: PuddleEdge[] = useMemo(
@@ -189,10 +194,13 @@ export function Canvas({ onAddSource }: { onAddSource: () => void }) {
     (changes: NodeChange<PuddleFlowNode>[]) => {
       const moving: Record<string, { x: number; y: number }> = {};
       const done: Record<string, { x: number; y: number }> = {};
+      const sizes: Record<string, { width: number; height: number }> = {};
       for (const c of changes) {
+        if (c.type === 'dimensions' && c.dimensions) sizes[c.id] = c.dimensions;
         if (c.type === 'position' && c.position) (c.dragging ? moving : done)[c.id] = c.position;
         if (c.type === 'position' && !c.position && !c.dragging) done[c.id] = dragging[c.id] ?? project.nodes.find((n) => n.id === c.id)!.position;
       }
+      if (Object.keys(sizes).length) setMeasured((m) => ({ ...m, ...sizes }));
       if (Object.keys(moving).length) setDragging((d) => ({ ...d, ...moving }));
       if (Object.keys(done).length) {
         // One undo step per drag, committed when the drag ends.
@@ -302,6 +310,7 @@ export function Canvas({ onAddSource }: { onAddSource: () => void }) {
 
       <div className="pointer-events-none absolute left-4 right-4 top-4 z-panel mx-auto flex max-w-[560px] flex-col gap-2 [&>*]:pointer-events-auto">
         <ReconnectBanner />
+        <FilesNotKeptBanner />
         {notice && (
           <div data-testid="canvas-notice">
             <Banner tone={notice.tone} action={<Button variant="ghost" size="sm" onClick={() => useSession.getState().notify(null)}>Dismiss</Button>}>

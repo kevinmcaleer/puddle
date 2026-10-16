@@ -1,15 +1,10 @@
 import { expect, test, type Page } from '@playwright/test';
-import { addFiles, cell, fixture, node, openApp } from './helpers/app';
+import { addFiles, addStep, cell, fixture, node, openApp } from './helpers/app';
 
 const steps = (page: Page) => page.getByRole('listbox', { name: 'Applied steps' }).getByRole('option');
 const settings = (page: Page) => page.getByTestId('step-settings');
 const editor = (page: Page) => page.getByTestId('pivot-editor');
 const zone = (page: Page, name: string) => editor(page).getByRole('group', { name, exact: true });
-
-async function addStep(page: Page, title: string) {
-  await page.getByRole('button', { name: 'Add step' }).click();
-  await page.getByRole('menuitem', { name: new RegExp(`^${title}`) }).click();
-}
 
 /**
  * Drag a field from the list into a zone. The editor is scrolled into the middle of the inspector first, so the

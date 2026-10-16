@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { addFiles, cell, expectRows, fixture, node, openApp } from './helpers/app';
+import { addFiles, addStep, cell, expectRows, fixture, node, openApp } from './helpers/app';
 
 const steps = (page: Page) => page.getByRole('listbox', { name: 'Applied steps' }).getByRole('option');
 const settings = (page: Page) => page.getByTestId('step-settings');
@@ -10,11 +10,6 @@ async function transformAfter(page: Page, source: string) {
   await page.getByRole('menuitem', { name: 'Transform' }).click();
   await expect(node(page, 'Transform 1')).toHaveAttribute('data-status', 'ok');
   await node(page, 'Transform 1').click();
-}
-
-async function addStep(page: Page, title: string) {
-  await page.getByRole('button', { name: 'Add step' }).click();
-  await page.getByRole('menuitem', { name: new RegExp(`^${title}`) }).click();
 }
 
 test('filter, sort and fill down', async ({ page }) => {
@@ -47,6 +42,8 @@ test('filter, sort and fill down', async ({ page }) => {
 test('remove title rows, then use the first row as headers', async ({ page }) => {
   await openApp(page);
   await addFiles(page, [fixture('title-rows.csv')]);
+  // Click the node once it has settled: a click while it is still being laid out can land on the pane instead.
+  await expect(node(page, 'title-rows.csv')).toHaveAttribute('data-status', /ok|error/, { timeout: 20_000 });
   await node(page, 'title-rows.csv').click();
   await page.getByText('First row is the header').click();
   await transformAfter(page, 'title-rows.csv');

@@ -3,7 +3,35 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 export const fixture = (name: string) => join(import.meta.dirname, '../../tests/fixtures', name);
+
+/**
+ * Add a step to the selected Transform from the Add step menu, and wait until it is in the step list (and so selected
+ * and shown in the step settings). The menu builds the step before adding it, which can read the data first: until
+ * then the settings still show the step before, and a click meant for the new step would change that one.
+ */
+export async function addStep(page: Page, title: string) {
+  const steps = page.getByRole('listbox', { name: 'Applied steps' }).getByRole('option');
+  const before = await steps.count();
+  await page.getByRole('button', { name: 'Add step' }).click();
+  await page.getByRole('menuitem', { name: new RegExp(`^${title}`) }).click();
+  await expect(steps).toHaveCount(before + 1);
+}
 export const fixtureText = (name: string) => readFileSync(fixture(name), 'utf8');
+
+/**
+ * With E2E_BROWSER_LOGS set (CI does), print the page's errors, warnings and failed requests, including the engine
+ * worker's, into the test output: the job log then says why a browser misbehaved without the trace.
+ */
+function logBrowserTrouble(page: Page) {
+  page.on('console', (m) => {
+    // The suite blocks the service worker on purpose (see playwright.config.ts), so that warning is left out.
+    if ((m.type() === 'error' || m.type() === 'warning') && !m.text().startsWith('Service Worker registration blocked')) console.log(`[browser ${m.type()}] ${m.text()}`);
+  });
+  page.on('pageerror', (e) => console.log(`[page error] ${e.message}`));
+  page.on('requestfailed', (r) => console.log(`[request failed] ${r.url()} ${r.failure()?.errorText ?? ''}`));
+  page.on('crash', () => console.log('[page crashed]'));
+  page.on('worker', (w) => w.on('close', () => console.log(`[worker closed] ${w.url()}`)));
+}
 
 /**
  * Open the app and wait for DuckDB, which every data flow needs.
@@ -14,6 +42,7 @@ export const fixtureText = (name: string) => readFileSync(fixture(name), 'utf8')
  * `fileSystemAccess: true` and install their own picker over the origin private file system.
  */
 export async function openApp(page: Page, { fileSystemAccess = false }: { fileSystemAccess?: boolean } = {}) {
+  if (process.env.E2E_BROWSER_LOGS) logBrowserTrouble(page);
   if (!fileSystemAccess) await page.addInitScript(() => Object.defineProperty(window, 'showOpenFilePicker', { value: undefined, configurable: true }));
   await page.goto('/');
   await expect(page.getByTestId('engine-ready')).toBeVisible({ timeout: 45_000 });
@@ -43,3 +72,58 @@ export async function columnsOf(page: Page, nodeName: string): Promise<string[]>
 
 /** A visible results cell by data column and row (both from 0), as Glide mirrors it for screen readers. */
 export const cell = (page: Page, col: number, row: number) => page.getByTestId(`glide-cell-${col + 1}-${row}`);
+
+/** The open project as IndexedDB holds it right now (autosave runs a moment after each change). */
+export const saved = (page: Page) =>
+  page.evaluate(
+    () =>
+      new Promise<{ name: string; nodes: unknown[]; view: { canvasViewport: { zoom: number } }; settings: { locale: string } } | null>((resolve) => {
+        const id = localStorage.getItem('puddle.lastProject');
+        const req = indexedDB.open('puddle');
+        req.onsuccess = () => {
+          const db = req.result;
+          if (!id || !db.objectStoreNames.contains('projects')) return resolve(null);
+          const get = db.transaction('projects').objectStore('projects').get(id);
+          get.onsuccess = () => resolve(get.result ?? null);
+          get.onerror = () => resolve(null);
+        };
+        req.onerror = () => resolve(null);
+      }),
+  );
+
+/**
+ * Fit the canvas to its nodes and wait until `name` sits wholly inside it and has stopped moving. A node added below
+ * the visible canvas can't be clicked where it is: Playwright scrolls the canvas to reach it, React Flow scrolls it
+ * straight back, and in Firefox the click then lands on the pane. A person would bring it into view first, too.
+ * Fit View fits the nodes as they are; one still growing (its counts arriving) can end a few pixels past the edge,
+ * so it is fitted again until the node is inside and still.
+ */
+export async function bringIntoView(page: Page, name: string) {
+  let last = '';
+  await expect(async () => {
+    await page.getByRole('button', { name: 'Fit View' }).click();
+    const canvas = (await page.getByTestId('canvas').boundingBox())!;
+    const box = (await node(page, name).boundingBox())!;
+    expect(box.y).toBeGreaterThanOrEqual(canvas.y);
+    expect(box.y + box.height).toBeLessThanOrEqual(canvas.y + canvas.height);
+    expect(box.x).toBeGreaterThanOrEqual(canvas.x);
+    expect(box.x + box.width).toBeLessThanOrEqual(canvas.x + canvas.width);
+    const now = JSON.stringify(box);
+    const before = last;
+    last = now;
+    expect(now).toBe(before);
+  }).toPass({ intervals: [150] });
+}
+
+/**
+ * Paste text onto the page as the system clipboard would. Firefox's ClipboardEvent constructor ignores the
+ * `clipboardData` it is given, so the event carries it as its own property, which every browser honours.
+ */
+export const pasteText = (page: Page, text: string) =>
+  page.evaluate((t) => {
+    const data = new DataTransfer();
+    data.setData('text/plain', t);
+    const event = new ClipboardEvent('paste', { clipboardData: data, bubbles: true });
+    Object.defineProperty(event, 'clipboardData', { value: data });
+    window.dispatchEvent(event);
+  }, text);

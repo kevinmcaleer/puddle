@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { addFiles, cell, fixture, node, openApp } from './helpers/app';
+import { addFiles, addStep, cell, fixture, node, openApp } from './helpers/app';
 
 const steps = (page: Page) => page.getByRole('listbox', { name: 'Applied steps' }).getByRole('option');
 
@@ -12,11 +12,6 @@ async function transform(page: Page) {
   await page.getByRole('menuitem', { name: 'Transform' }).click();
   await expect(node(page, 'Transform 1')).toHaveAttribute('data-status', 'ok');
   await node(page, 'Transform 1').click();
-}
-
-async function addStep(page: Page, title: string) {
-  await page.getByRole('button', { name: 'Add step' }).click();
-  await page.getByRole('menuitem', { name: new RegExp(`^${title}`) }).click();
 }
 
 test('steps are added, edited, viewed, reordered, turned off and deleted', async ({ page }) => {

@@ -1,4 +1,5 @@
 import type { Table } from 'apache-arrow';
+import { disableOptimizers } from '../compiler/sql';
 import { EngineError, toEngineError } from './errors';
 import { Scheduler } from './scheduler';
 import type { Activity, ColumnSchema, DuckBackend, EngineInfo, OutputFile, QueryOptions, QueryResult } from './types';
@@ -41,12 +42,24 @@ export function tableRows(table: Table): Record<string, unknown>[] {
 }
 
 /**
+ * DuckDB optimizers that copy part of a query plan, which DuckDB does by serialising it. A plan reading a CSV file
+ * can't be serialised; DuckDB catches that and keeps the plan as it is, but in Safari (WebKit) the failure escapes
+ * as the query's error. Queries that read a table more than once (joins, appends, lookups, date detection) hit it.
+ */
+export const PLAN_COPY_OPTIMIZERS = ['cte_inlining', 'common_subplan'];
+
+/** DuckDB's error when it can't serialise part of a plan, e.g. "CSVReaderSerialize not implemented". */
+export const isPlanCopyFailure = (e: unknown) => /\w+Serialize not implemented/.test(e instanceof Error ? e.message : String(e));
+
+/**
  * The main-thread face of the engine. Every call goes through the scheduler, so previews beat background
  * work, superseded previews are cancelled, and errors come back as EngineError.
  */
 export class EngineClient {
   private readonly scheduler = new Scheduler();
   private readonly stopListeners = new Set<() => void>();
+  /** True once the plan-copying optimizers are off for this connection (see PLAN_COPY_OPTIMIZERS). */
+  private planCopiesOff = false;
 
   constructor(private readonly backend: DuckBackend) {}
 
@@ -83,7 +96,7 @@ export class EngineClient {
   query(sql: string, opts: QueryOptions = {}): Promise<QueryResult> {
     return this.scheduler.submit(async (signal) => {
       const t0 = now();
-      const table = await this.backend.query(sql, signal);
+      const table = await this.run(sql, signal);
       return { table, numRows: table.numRows, columns: tableColumns(table), elapsedMs: now() - t0 };
     }, opts);
   }
@@ -91,7 +104,7 @@ export class EngineClient {
   /** Column names and DuckDB types of a query's result, without running it over the data. */
   describe(sql: string, opts: QueryOptions = {}): Promise<ColumnSchema[]> {
     return this.scheduler.submit(async (signal) => {
-      const table = await this.backend.query(`DESCRIBE ${sql}`, signal);
+      const table = await this.run(`DESCRIBE ${sql}`, signal);
       return tableRows(table).map((r) => ({ name: String(r.column_name), type: String(r.column_type) }));
     }, { label: 'Reading columns', ...opts });
   }
@@ -145,6 +158,26 @@ export class EngineClient {
 
   close(): Promise<void> {
     return this.backend.close();
+  }
+
+  /**
+   * Run a query. If DuckDB fails because it couldn't copy part of the plan (see PLAN_COPY_OPTIMIZERS), turn those
+   * optimizers off for the connection and run it once more; every later query runs without them too.
+   */
+  private async run(sql: string, signal: AbortSignal): Promise<Table> {
+    try {
+      return await this.backend.query(sql, signal);
+    } catch (e) {
+      if (this.planCopiesOff || !isPlanCopyFailure(e)) throw e;
+      try {
+        await this.backend.query(disableOptimizers(PLAN_COPY_OPTIMIZERS), signal);
+      } catch {
+        throw e;
+      }
+      this.planCopiesOff = true;
+      console.warn(`DuckDB couldn't copy a query plan here, so ${PLAN_COPY_OPTIMIZERS.join(' and ')} are now off.`);
+      return this.backend.query(sql, signal);
+    }
   }
 
   private async wrap(fn: () => Promise<void>) {
