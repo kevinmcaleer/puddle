@@ -29,4 +29,4 @@ export { dropTable, sourceFileName, sourceRelation, sourceTableName } from './so
 export { bool, cteName, ident, list, num, str, strList } from './sql';
 export * from './steps';
 export { defineRule, PATTERN_PRESETS, ruleColumns, ruleDef, ruleParams, rulePredicate, ruleTypes, type PatternPreset, type RuleDef } from './rules';
-export { compileExport, CSV_DELIMITERS, EXPORT_FORMATS, exportFileName, exportOptions, PARQUET_COMPRESSION, type ExportFormat, type OutputSpec } from './export';
+export { compileExport, compileFullCount, compileFullData, compileSheetExport, CSV_DELIMITERS, EXPORT_FORMATS, exportFileName, exportOptions, PARQUET_COMPRESSION, sheetColumn, type ExportFormat, type OutputSpec, type XlsxExportOptions } from './export';

@@ -1,6 +1,7 @@
 /// <reference lib="webworker" />
 // The Excel worker: SheetJS parses and writes workbooks here, off the main thread.
-import { ExcelService, transferables, type ExcelOp } from './service';
+import { ExcelService, type ExcelOp } from './service';
+import { transferables } from './transfer';
 import type { WorkerReply, WorkerRequest } from './client';
 
 const service = new ExcelService();

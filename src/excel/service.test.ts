@@ -1,9 +1,10 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { tableFromIPC } from 'apache-arrow';
+import { tableFromIPC, tableToIPC } from 'apache-arrow';
 import * as read from './read';
 import { sheetTable } from './arrow';
-import { ExcelService, transferables } from './service';
+import { ExcelService } from './service';
+import { transferables } from './transfer';
 import { ExcelError } from './types';
 
 const file = () => new Blob([readFileSync(join(__dirname, '../../tests/fixtures/sales.xlsx'))]);
@@ -43,6 +44,16 @@ describe('the Excel worker service', () => {
     });
     await expect(service.run('read', { book: 'y', file: file(), options: {} })).rejects.toThrow('This workbook can’t be read (boom).');
     boom.mockRestore();
+  });
+
+  it('writes workbooks, and says plainly when it can’t', async () => {
+    const service = new ExcelService();
+    const ipc = () => tableToIPC(sheetTable([{ name: 'a', type: 'BIGINT', values: [1, 2] }]), 'stream');
+    const { data } = await service.run('write', { ipc: ipc(), options: { sheetName: 'S', header: true, freezeHeader: false } });
+    expect(transferables({ data })).toEqual([data.buffer]);
+    expect(read.readSheet(read.parseWorkbook(data))).toMatchObject({ rows: 2 });
+    await expect(service.run('write', { ipc: ipc(), options: { sheetName: '', header: true, freezeHeader: false } })).rejects.toThrow('Give the sheet a name.');
+    await expect(service.run('write', { ipc: new Uint8Array([1, 2, 3]), options: { sheetName: 'S', header: true, freezeHeader: false } })).rejects.toThrow(/^The workbook couldn’t be written \(/);
   });
 });
 

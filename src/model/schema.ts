@@ -113,7 +113,7 @@ export const SourceNodeZ = z.object({ ...NodeBase, type: z.literal('source'), so
 export const TransformNodeZ = z.object({ ...NodeBase, type: z.literal('transform'), steps: z.array(StepZ).default([]) });
 
 export const OutputSpecZ = z.object({
-  format: z.enum(['csv', 'parquet', 'json', 'ndjson', 'clipboard']).default('csv'),
+  format: z.enum(['csv', 'parquet', 'json', 'ndjson', 'clipboard', 'xlsx']).default('csv'),
   fileName: z.string().optional(),
   options: z.record(z.string(), z.unknown()).default({}),
 });

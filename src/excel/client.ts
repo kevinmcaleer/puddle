@@ -1,5 +1,6 @@
 // The main thread's side of the Excel worker. SheetJS is only ever loaded inside the worker.
 import type { ExcelOp, ExcelOps, ExcelService } from './service';
+import { transferables } from './transfer';
 import { ExcelError } from './types';
 
 export interface WorkerRequest {
@@ -49,7 +50,8 @@ export function workerClient(start: () => Worker = () => new Worker(new URL('./w
       const id = next++;
       return new Promise((resolve, reject) => {
         waiting.set(id, { resolve: resolve as (v: unknown) => void, reject });
-        get().postMessage({ id, op, args } satisfies WorkerRequest);
+        // Byte arrays in the arguments (rows to write) move to the worker rather than being copied.
+        get().postMessage({ id, op, args } satisfies WorkerRequest, transferables(args));
       });
     },
   };
