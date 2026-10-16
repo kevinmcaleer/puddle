@@ -70,6 +70,8 @@ export function PuddleNode({ data, selected }: NodeProps<PuddleFlowNode>) {
         rule={rule}
         selected={selected}
         viewed={viewed}
+        pinned={viewed && project.view.pinned}
+        comparing={project.view.compare?.nodeId === node.id}
         error={status.state === 'error' ? status.message : status.state === 'detached' ? detached : undefined}
         dimmed={status.state === 'blocked' || (status.state === 'detached' && fetching)}
         brokenInput={status.state === 'error'}
