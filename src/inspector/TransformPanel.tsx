@@ -1,9 +1,10 @@
 import { useMemo } from 'react';
 import { useEngineStore } from '../app/engine';
 import { useSession } from '../app/session';
-import { compileDisplayPage, upstreamKey } from '../compiler';
+import { compileDisplayPage, upstreamKey, type Condition } from '../compiler';
 import { detectDateFormats, type Detection } from '../dates';
 import { tableRows } from '../engine/client';
+import { readPivotValues as readValues } from '../flow/pivot';
 import { useNodeStatus } from '../flow/status';
 import {
   addStep,
@@ -26,7 +27,7 @@ import { CommitInput, StepForm } from '../steps/StepForm';
 import { Banner, Button, Field, Menu, Section, StepList, Switch, type MenuItem } from '../ui';
 import { useStepColumns, useStepErrors } from './useStepColumns';
 
-const GROUPS: StepGroup[] = ['Clean', 'Columns', 'Rows', 'Text', 'Dates', 'Numbers', 'Advanced'];
+const GROUPS: StepGroup[] = ['Clean', 'Columns', 'Rows', 'Text', 'Dates', 'Numbers', 'Reshape', 'Advanced'];
 
 const apply = (edit: Parameters<ReturnType<typeof useProjectStore.getState>['apply']>[0]) => useProjectStore.getState().apply(edit);
 
@@ -96,6 +97,15 @@ function StepSettings({ node, index, error }: { node: TransformNode; index: numb
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [inputKey],
   );
+  const readPivotValues = useMemo(
+    () => {
+      const engine = useEngineStore.getState().engine;
+      const p = useProjectStore.getState().history.present;
+      return engine ? (pivot: { column: string; filters: Condition[] }) => readValues(engine, p, { nodeId: node.id, stepIndex: index - 1 }, pivot) : undefined;
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [inputKey],
+  );
   return (
     <Section title="Step settings">
       <div className="flex flex-col gap-3" data-testid="step-settings">
@@ -117,7 +127,7 @@ function StepSettings({ node, index, error }: { node: TransformNode; index: numb
             {error}
           </Banner>
         )}
-        <StepForm type={step.type} params={step.params} columns={columns} detectDates={detectDates} onChange={(params) => update({ params, label: labelFor({ ...step, params }) })} />
+        <StepForm type={step.type} params={step.params} columns={columns} detectDates={detectDates} readPivotValues={readPivotValues} onChange={(params) => update({ params, label: labelFor({ ...step, params }) })} />
         <div className="flex flex-wrap gap-2">
           {index > 0 && (
             <Button size="sm" variant="ghost" icon="layout" onClick={() => apply((p) => splitNode(p, node.id, index))}>

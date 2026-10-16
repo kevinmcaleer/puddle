@@ -197,10 +197,15 @@ body { font-family: var(--font-ui); font-size: 13px; line-height: 20px; -webkit-
 .ui-zone__chips { display: flex; flex-direction: column; gap: var(--space-1); }
 .ui-fchip { display: flex; align-items: center; gap: var(--space-1); height: 26px; padding: 0 var(--space-1) 0 var(--space-1); border: 1px solid var(--line); border-radius: var(--radius-xs); background: var(--surface-raised); box-shadow: var(--shadow-node); min-width: 0; cursor: grab; }
 .ui-fchip__grip { color: var(--ink-subtle); }
-.ui-fchip__name { flex: 1; min-width: 0; font: 600 12px/16px var(--font-mono); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.ui-fchip__agg { font: 500 11px/14px var(--font-ui); color: var(--brand); background: var(--brand-tint); padding: 1px 5px; border-radius: var(--radius-xs); }
+.ui-fchip__name { flex: 1 1 auto; min-width: 0; font: 600 12px/16px var(--font-mono); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ui-fchip__agg { flex: 0 1 auto; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font: 500 11px/14px var(--font-ui); color: var(--brand); background: var(--brand-tint); padding: 1px 5px; border-radius: var(--radius-xs); }
 .ui-fchip__x { display: inline-flex; padding: 2px; border: 0; background: none; color: var(--ink-muted); border-radius: var(--radius-xs); cursor: pointer; }
 .ui-fchip__x:hover { background: var(--surface-hover); color: var(--ink); }
+/* The name and the aggregate tag can be menu buttons, for moving a field and changing its aggregate by keyboard.
+   In a narrow zone both shrink from their own width, so the name never collapses to nothing beside its tag. */
+button.ui-fchip__name { padding: 0; border: 0; background: none; color: inherit; text-align: left; cursor: pointer; }
+button.ui-fchip__agg { border: 0; cursor: pointer; }
+button.ui-fchip__agg:hover { color: var(--brand-hover); }
 
 /* ---------- Schema popover ---------- */
 .ui-popover { width: 240px; background: var(--surface-raised); border: 1px solid var(--line); border-radius: var(--radius-md); box-shadow: var(--shadow-lift); overflow: hidden; }

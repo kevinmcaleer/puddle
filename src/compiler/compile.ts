@@ -2,11 +2,12 @@ import { freePort, hashValue, inputEdge, inputEdges, inputPorts, nodeById, topoS
 import { appendProblems, compileAppend } from './append';
 import { CompileError, PendingSchemaError, UnwiredError } from './errors';
 import { compileJoin, joinCondition, joinProblems } from './join';
+import { keptTable, knownKept, type KeptBook } from './keptBook';
 import { knownSchemas, type SchemaBook } from './schemaBook';
 import { sourceRelation } from './sources';
 import { cteName, ident, num, str } from './sql';
 import { rulePredicate } from './rules';
-import { stepParams } from './steps';
+import { pivotValuesQuery, stepParams, type Condition } from './steps';
 
 export const PAGE_SIZE = 500;
 
@@ -30,6 +31,10 @@ export interface Compiled {
 export interface CompileOptions {
   /** Where Join and Append nodes read their inputs' columns. The app's shared book by default. */
   schemas?: SchemaBook;
+  /** Kept results the compiler may read from. The app's shared book by default. */
+  kept?: KeptBook;
+  /** Compile the target itself even if it is kept: for building its table, or looking inside it. */
+  rebuild?: boolean;
 }
 
 /** Node kinds that compile from their inputs' columns, so those must be described first (see SchemaCache.prepare). */
@@ -78,15 +83,41 @@ interface Built {
   order: string[];
 }
 
-function build(project: Project, target: Target, book: SchemaBook): Built {
+/** Whether a node is read from its kept table: kept, built for its current upstream, and not being rebuilt. */
+function readsKept(project: Project, nodeId: string, target: Target, options: CompileOptions): boolean {
+  const n = nodeById(project, nodeId);
+  if (!n?.pinnedResult) return false;
+  if (nodeId === target.nodeId && (options.rebuild || target.stepIndex != null)) return false;
+  const kept = (options.kept ?? knownKept).get(nodeId);
+  return !!kept && kept.key === upstreamKey(project, { nodeId });
+}
+
+/** The nodes a target needs compiled: everything upstream, stopping at kept nodes read from their tables. */
+function neededIds(project: Project, target: Target, options: CompileOptions): Set<string> {
+  const ids = new Set<string>();
+  const visit = (id: string) => {
+    if (ids.has(id)) return;
+    ids.add(id);
+    if (readsKept(project, id, target, options)) return;
+    for (const e of inputEdges(project, id)) visit(e.from.nodeId);
+  };
+  visit(target.nodeId);
+  return ids;
+}
+
+function build(project: Project, target: Target, book: SchemaBook, options: CompileOptions = {}): Built {
   const node = nodeById(project, target.nodeId);
   if (!node) throw new CompileError('That node no longer exists.', target.nodeId);
-  const order = topoSort(project, upstreamIds(project, target.nodeId));
+  const order = topoSort(project, neededIds(project, target, options));
   const ctes: string[] = [];
   const out = new Map<string, string>();
 
   for (const id of order) {
     const n = nodeById(project, id)!;
+    if (readsKept(project, id, target, options)) {
+      out.set(id, keptTable(id));
+      continue;
+    }
     switch (n.type) {
       case 'source': {
         const source = project.sources.find((s) => s.id === n.sourceId);
@@ -149,7 +180,7 @@ function build(project: Project, target: Target, book: SchemaBook): Built {
  * input schemas always give the same SQL.
  */
 export function compile(project: Project, target: Target, options: CompileOptions = {}): Compiled {
-  const { node, ctes, out, order } = build(project, target, options.schemas ?? knownSchemas);
+  const { node, ctes, out, order } = build(project, target, options.schemas ?? knownSchemas, options);
   let output = out.get(target.nodeId)!;
   if (target.failingRuleId) {
     const rule = node.rules.find((r) => r.id === target.failingRuleId);
@@ -247,6 +278,14 @@ export function compileDateDetection(project: Project, target: Target, column: s
 }
 
 /**
+ * The values a pivot's Columns field would turn into columns, read from the data arriving at the step after its
+ * filters: one row per value (`v`, as text), at most one more than can become columns.
+ */
+export function compilePivotValues(project: Project, target: Target, pivot: { column: string; filters: Condition[] }): string {
+  return pivotValuesQuery(pivot, `(${compile(project, target).sql})`);
+}
+
+/**
  * Every enabled rule of a node in one pass over its output: `total` rows, and `f<i>` failures for the i-th rule
  * given. Predicates may use window functions (unique), so they're computed per row first, then counted.
  */
@@ -295,7 +334,8 @@ export function compileSuggestionChecks(project: Project, target: Target, checks
  * rows have a match. More pairs than matched left rows means some left row matched several right rows.
  */
 export function compileJoinCheck(project: Project, nodeId: string, options: CompileOptions = {}): string {
-  const { node, ctes, out } = build(project, { nodeId }, options.schemas ?? knownSchemas);
+  // The check looks inside the Join, so it is compiled even when kept; its inputs may still come from tables.
+  const { node, ctes, out } = build(project, { nodeId }, options.schemas ?? knownSchemas, { ...options, rebuild: true });
   if (node.type !== 'join') throw new CompileError(`${node.name} isn’t a Join node.`, node.id);
   const input = (port: 'left' | 'right') => out.get(inputEdge(project, nodeId, port)!.from.nodeId)!;
   const [l, r, j] = [input('left'), input('right'), out.get(nodeId)!];

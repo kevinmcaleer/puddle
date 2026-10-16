@@ -27,6 +27,8 @@ export interface NodeCardProps {
   dimmed?: boolean;
   expanded?: boolean;
   brokenInput?: boolean;
+  /** A kept result's state, e.g. "5.1 MB kept" or "Kept · out of date", in the metric line. */
+  kept?: { label: string; stale?: boolean };
   /** The node's note: a small marker in the header shows it on hover. */
   note?: string;
   style?: CSSProperties;
@@ -38,7 +40,7 @@ export interface NodeCardProps {
 
 /** The node card. The canvas wraps this in a React Flow custom node and swaps the ports for handles. */
 export function NodeCard({
-  kind = 'transform', name, detail, rows, cols, steps, rule, selected, viewed, pinned, comparing, error, dimmed, expanded, brokenInput, note,
+  kind = 'transform', name, detail, rows, cols, steps, rule, selected, viewed, pinned, comparing, error, dimmed, expanded, brokenInput, note, kept,
   style, className, onClick, renderPorts,
 }: NodeCardProps) {
   const k = NODE_KIND[kind];
@@ -81,11 +83,17 @@ export function NodeCard({
           <span>{error}</span>
         </div>
       )}
-      {(rows != null || rule) && (
+      {(rows != null || rule || kept) && (
         <div className="ui-node__meta">
           <span className="ui-metric">
             {rows != null && `${abbreviate(rows)} rows`}
             {cols != null && ` · ${cols} cols`}
+            {kept && (
+              <span data-testid="node-kept" data-stale={kept.stale ? 'true' : undefined}>
+                {(rows != null || cols != null) && ' · '}
+                {kept.label}
+              </span>
+            )}
           </span>
           {rule && <StatusBadge status={rule.status}>{rule.label}</StatusBadge>}
         </div>
