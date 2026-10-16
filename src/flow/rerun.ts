@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { clearKeptStops } from './kept';
 import { useRuleStore } from './rules';
 import { invalidateCaches } from './status';
 
@@ -9,5 +10,6 @@ export const useRerun = create<{ tick: number }>(() => ({ tick: 0 }));
 export function runAgain() {
   invalidateCaches();
   useRuleStore.setState({ nodes: {} });
+  clearKeptStops();
   useRerun.setState((s) => ({ tick: s.tick + 1 }));
 }
