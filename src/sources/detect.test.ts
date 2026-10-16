@@ -13,17 +13,19 @@ describe('format from a file name', () => {
     ['events.jsonl', 'ndjson'],
     ['data.parquet', 'parquet'],
     ['data.pq', 'parquet'],
+    ['book.xlsx', 'xlsx'],
+    ['BOOK.XLSX', 'xlsx'],
   ])('%s is %s', (name, format) => {
     expect(formatFromName(name)).toBe(format);
   });
 
-  it('explains that Excel arrives later', () => {
-    expect(() => formatFromName('book.xlsx')).toThrow(SourceError);
-    expect(() => formatFromName('book.xls')).toThrow(/Excel file/);
+  it('asks for old .xls workbooks to be saved as .xlsx or CSV', () => {
+    expect(() => formatFromName('book.xls')).toThrow(SourceError);
+    expect(() => formatFromName('book.xls')).toThrow('book.xls is in the old Excel format (.xls), which Puddle doesn’t read. Open it in Excel and save it as .xlsx or CSV, then add that.');
   });
 
   it('refuses unknown formats with what it can read', () => {
-    expect(() => formatFromName('photo.png')).toThrow(/CSV, TSV, JSON, NDJSON or Parquet/);
+    expect(() => formatFromName('photo.png')).toThrow(/CSV, TSV, JSON, NDJSON, Parquet or Excel \(\.xlsx\) file/);
     expect(() => formatFromName('README')).toThrow(SourceError);
   });
 
