@@ -191,7 +191,22 @@ test('compared grids scroll together, by row and by matching column', async ({ p
   await wheel(page, 0, 1500);
   await expect.poll(async () => Number(await main.getAttribute('data-first-row'))).toBeGreaterThan(10);
   await together('data-first-row').toMatch(/^[1-9]\d*$/);
-  const down = Number(await main.getAttribute('data-first-row'));
+  // WebKit scrolls the wheel off the page's own thread, so the left grid can still be on its way: wait until it stays
+  // on one row before taking it as where the person left it.
+  let last = '';
+  await expect
+    .poll(
+      async () => {
+        const now = (await main.getAttribute('data-first-row')) ?? '';
+        const still = now === last;
+        last = now;
+        return still;
+      },
+      { intervals: [300] },
+    )
+    .toBe(true);
+  await together('data-first-row').toBe(last);
+  const down = Number(last);
 
   // The grid that follows can keep moving after the person stops, as Firefox's smooth scrolling does. Regression:
   // those late moves were passed back once a short window after following had closed, so the grids took turns
