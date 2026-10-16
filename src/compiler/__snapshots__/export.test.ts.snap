@@ -1,5 +1,10 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
+exports[`Excel exports > read the full data, quoting column names 1`] = `
+"SELECT "id", CAST("a ""b""" AS DOUBLE) AS "a ""b""" FROM (WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv'))
+SELECT * FROM "n_src")"
+`;
+
 exports[`compileExport > {"format":"clipboard","options":{}} 1`] = `
 "COPY (WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv'))
 SELECT * FROM "n_src") TO 'o''ut.file' (FORMAT csv, HEADER true, DELIMITER '	')"

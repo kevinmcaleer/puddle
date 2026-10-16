@@ -1,14 +1,72 @@
 import { CSV_DELIMITERS, EXPORT_FORMATS, exportFileName, exportOptions, PARQUET_COMPRESSION, type ExportFormat } from '../compiler';
+import { useState } from 'react';
+import { SHEET_ROWS, sheetNameProblem, toSheetName } from '../excel/limits';
 import { ExportBlockedBanner, ExportButton } from '../export';
+import { useNodeStatus } from '../flow/status';
 import { setOutputSpec, useProject, useProjectStore, type OutputNode } from '../model';
 import { CommitInput } from '../steps/CommitInput';
-import { Field, Section, Select, Switch } from '../ui';
+import { Banner, Button, Field, Section, Select, Switch } from '../ui';
 
 const FORMATS = (Object.keys(EXPORT_FORMATS) as ExportFormat[]).map((value) => ({ value, label: value === 'clipboard' ? 'Copy to clipboard' : EXPORT_FORMATS[value].label }));
 const DELIMITER_LABELS: Record<(typeof CSV_DELIMITERS)[number], string> = { ',': 'Comma', ';': 'Semicolon', '\t': 'Tab', '|': 'Pipe' };
 const COMPRESSION_LABELS: Record<(typeof PARQUET_COMPRESSION)[number], string> = { zstd: 'Zstandard (smallest)', snappy: 'Snappy (fastest)', uncompressed: 'None' };
 
 const time = (iso: string) => new Date(iso).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
+
+/**
+ * Above Excel's row limit an export would be refused, so say so before it is tried and offer formats without one.
+ * The row count shown on the node is used; in sample mode the full data has at least as many.
+ */
+function SheetRowLimit({ node, header, onFormat }: { node: OutputNode; header: boolean; onFormat: (f: ExportFormat) => void }) {
+  const status = useNodeStatus(node.id);
+  const rows = status.state === 'ok' ? status.rows : undefined;
+  const room = SHEET_ROWS - (header ? 1 : 0);
+  if (rows == null || rows <= room) return null;
+  return (
+    <div data-testid="sheet-row-limit">
+      <Banner
+        tone="warn"
+        title="Too many rows for Excel"
+        action={
+          <div className="flex flex-col gap-2">
+            <Button size="sm" variant="secondary" onClick={() => onFormat('csv')}>Use CSV</Button>
+            <Button size="sm" variant="secondary" onClick={() => onFormat('parquet')}>Use Parquet</Button>
+          </div>
+        }
+      >
+        This output has {rows.toLocaleString('en-GB')} rows; an Excel sheet holds at most {room.toLocaleString('en-GB')}{header ? ' below its header' : ''}. Export it as CSV or Parquet instead, which have no row limit.
+      </Banner>
+    </div>
+  );
+}
+
+/** Excel's settings: the sheet's name, the header row, and freezing it. */
+function SheetOptions({ node, options, setOption }: { node: OutputNode; options: Record<string, unknown>; setOption: (key: string, value: unknown) => void }) {
+  const [error, setError] = useState<string>();
+  const name = typeof options.sheetName === 'string' ? options.sheetName : '';
+  const header = options.header !== false;
+  return (
+    <>
+      <Field label="Sheet name" htmlFor="out-sheet" hint="Leave empty to use the node’s name." error={error}>
+        <CommitInput
+          key={name}
+          id="out-sheet"
+          value={name}
+          placeholder={toSheetName(node.name)}
+          error={!!error}
+          onCommit={(v) => {
+            const text = v.trim();
+            const problem = text ? sheetNameProblem(text) : undefined;
+            setError(problem);
+            if (!problem) setOption('sheetName', text || undefined);
+          }}
+        />
+      </Field>
+      <Switch id="out-header" label="Include column names" checked={header} onChange={(on) => setOption('header', on)} />
+      {header && <Switch id="out-freeze" label="Freeze the header row" checked={options.freezeHeader !== false} onChange={(on) => setOption('freezeHeader', on)} />}
+    </>
+  );
+}
 
 /** An Output node's export settings, its export button and what it has exported. */
 export function OutputPanel({ node }: { node: OutputNode }) {
@@ -42,6 +100,8 @@ export function OutputPanel({ node }: { node: OutputNode }) {
             </Field>
           )}
           {(spec.format === 'csv' || spec.format === 'clipboard') && <Switch id="out-header" label="Include column names" checked={options.header !== false} onChange={(on) => setOption('header', on)} />}
+          {spec.format === 'xlsx' && <SheetOptions node={node} options={options} setOption={setOption} />}
+          {spec.format === 'xlsx' && <SheetRowLimit node={node} header={options.header !== false} onFormat={(format) => set({ format, options: {} })} />}
           {spec.format === 'parquet' && (
             <Field label="Compression" htmlFor="out-compression">
               <Select id="out-compression" options={PARQUET_COMPRESSION.map((c) => ({ value: c, label: COMPRESSION_LABELS[c] }))} value={String(options.compression)} onChange={(e) => setOption('compression', e.target.value)} />

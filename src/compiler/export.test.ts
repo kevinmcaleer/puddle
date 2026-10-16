@@ -1,5 +1,5 @@
 import { flow, src } from '../../tests/helpers/projects';
-import { compileExport, exportFileName, exportOptions } from './export';
+import { compileExport, compileFullCount, compileFullData, compileSheetExport, exportFileName, exportOptions, sheetColumn } from './export';
 
 const p = flow({
   sources: [src({ id: 'cust', format: 'csv' })],
@@ -50,7 +50,50 @@ describe('exportFileName', () => {
     ['Out', { fileName: '  ' }, 'ndjson', 'Out.ndjson'],
     ['', {}, 'csv', 'export.csv'],
     ['Report.', {}, 'csv', 'Report.csv'],
+    ['Customers', {}, 'xlsx', 'Customers.xlsx'],
+    ['customers.csv', {}, 'xlsx', 'customers.xlsx'],
+    ['Out', { fileName: 'book.xlsx' }, 'csv', 'book.csv'],
   ] as const)('%s %j as %s is %s', (name, spec, format, expected) => {
     expect(exportFileName(name, { format, ...spec })).toBe(expected);
+  });
+});
+
+describe('Excel exports', () => {
+  it('have their own options, with the header on and frozen by default', () => {
+    expect(exportOptions({ format: 'xlsx', options: {} })).toEqual({ header: true, freezeHeader: true });
+    expect(exportOptions({ format: 'xlsx', options: { sheetName: 'Orders', header: false, freezeHeader: false, stray: 1 } })).toEqual({ sheetName: 'Orders', header: false, freezeHeader: false });
+    expect(() => exportOptions({ format: 'xlsx', options: { header: 'yes' } })).toThrow(/Excel options are invalid/);
+  });
+
+  it('aren’t written by COPY', () => {
+    expect(() => compileExport(p, 'out', 'f', { format: 'xlsx', options: {} })).toThrow(/written by SheetJS/);
+  });
+
+  it.each([
+    ['BIGINT', '"c"'],
+    ['VARCHAR', '"c"'],
+    ['DATE', '"c"'],
+    ['TIMESTAMP', '"c"'],
+    ['BOOLEAN', '"c"'],
+    ['DOUBLE', '"c"'],
+    ['DECIMAL(18,3)', 'CAST("c" AS DOUBLE) AS "c"'],
+    ['TIMESTAMP WITH TIME ZONE', 'CAST("c" AS TIMESTAMP) AS "c"'],
+    ['TIMESTAMP_NS', 'CAST("c" AS TIMESTAMP) AS "c"'],
+    ['HUGEINT', 'CAST("c" AS VARCHAR) AS "c"'],
+    ['TIME', 'CAST("c" AS VARCHAR) AS "c"'],
+    ['STRUCT(a INTEGER)', 'CAST("c" AS VARCHAR) AS "c"'],
+    ['INTEGER[]', 'CAST("c" AS VARCHAR) AS "c"'],
+  ])('write a %s column as %s', (type, sql) => {
+    expect(sheetColumn({ name: 'c', type })).toBe(sql);
+  });
+
+  it('read the full data, quoting column names', () => {
+    const sampled = { ...p, sources: p.sources.map((s) => ({ ...s, sampleRows: 100 })) };
+    const sql = compileSheetExport(sampled, 'out', [{ name: 'id', type: 'BIGINT' }, { name: 'a "b"', type: 'DECIMAL(9,2)' }]);
+    expect(sql).toMatchSnapshot();
+    expect(sql).not.toContain('LIMIT 100');
+    expect(compileFullData(sampled, 'out')).toBe(compileFullData(p, 'out'));
+    expect(compileFullCount(sampled, 'out')).toBe(`SELECT COUNT(*) AS n FROM (${compileFullData(p, 'out')})`);
+    expect(() => compileSheetExport(p, 'gone', [])).toThrow(/no longer in the project/);
   });
 });
