@@ -6,8 +6,11 @@ import { applyTheme, useTheme } from './app/theme';
 import { useKeptStore } from './flow/kept';
 import { useProjectStore } from './model';
 import { registerServiceWorker } from './pwa/register';
+import { captureSignInReturn } from './sync/drive-auth';
 import './index.css';
 
+// First, so a Google sign-in's token leaves the address before anything else runs.
+captureSignInReturn();
 applyTheme(useTheme.getState().preference);
 bootEngine();
 // After the engine has loaded, so the worker's precache reads the 36 MB WASM from the HTTP cache instead of
