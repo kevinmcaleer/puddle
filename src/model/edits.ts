@@ -1,11 +1,11 @@
 // Pure project edits used by the canvas, sources and inspector. Each returns a new project.
 import { freePort, hasOutput, nodeById, removeNode } from './graph';
 import { newId } from './ids';
-import { DEFAULT_APPEND_SPEC, DEFAULT_JOIN_SPEC, type GraphNode, type NodeType, type ParseOptions, type Project, type Source } from './schema';
+import { DEFAULT_APPEND_SPEC, DEFAULT_JOIN_SPEC, DEFAULT_QUERY_SPEC, type GraphNode, type NodeType, type ParseOptions, type Project, type Source } from './schema';
 
 type Position = { x: number; y: number };
 
-const KIND_NAME: Record<NodeType, string> = { source: 'Source', transform: 'Transform', join: 'Join', append: 'Append', output: 'Output' };
+const KIND_NAME: Record<NodeType, string> = { source: 'Source', transform: 'Transform', join: 'Join', append: 'Append', query: 'Query', output: 'Output' };
 
 /** "Transform 3": the next free number for a node type. */
 export function nextNodeName(project: Project, type: NodeType): string {
@@ -30,6 +30,8 @@ function newNode(type: AddableNodeType, base: { id: string; name: string; positi
       return { ...base, type, joinSpec: { ...DEFAULT_JOIN_SPEC, keys: [] } };
     case 'append':
       return { ...base, type, appendSpec: { ...DEFAULT_APPEND_SPEC } };
+    case 'query':
+      return { ...base, type, querySpec: { ...DEFAULT_QUERY_SPEC, tables: [], joins: [], fields: [] } };
     case 'output':
       return { ...base, type, outputSpec: { format: 'csv', options: {} } };
   }

@@ -6,7 +6,7 @@ import { exportGate } from '../flow/gate';
 import { keptLabel, keptView, useKeptEntry } from '../flow/kept';
 import { summarise, useRuleStore } from '../flow/rules';
 import { useNodeStatus } from '../flow/status';
-import { inputPorts, useProject, type GraphNode } from '../model';
+import { hasNumberedInputs, inputPorts, useProject, type GraphNode } from '../model';
 import { urlProblem, useUrlFetches } from '../sources/url';
 import { NodeCard } from '../ui';
 import { portBroken, portName, portsHeight, portTop } from './ports';
@@ -27,8 +27,8 @@ export function PuddleNode({ data, selected }: NodeProps<PuddleFlowNode>) {
   const view = useViewProject();
   const keepKey = useMemo(() => (node.pinnedResult ? upstreamKey(view, { nodeId: node.id }) : null), [view, node.pinnedResult, node.id]);
   const kept = keepKey != null && node.type !== 'output' ? keptView(keptEntry, keepKey) : null;
-  const numbered = node.type === 'append';
-  // An Append gains an input as its last one is wired: React Flow has to measure the new handle.
+  const numbered = hasNumberedInputs(node);
+  // An Append or Query gains an input as its last one is wired: React Flow has to measure the new handle.
   const updateInternals = useUpdateNodeInternals();
   useEffect(() => updateInternals(node.id), [updateInternals, node.id, ports.length]);
   const allResults = useRuleStore((s) => s.nodes);
@@ -73,7 +73,7 @@ export function PuddleNode({ data, selected }: NodeProps<PuddleFlowNode>) {
                 title={ports.length > 1 ? portName(port) : undefined}
                 aria-label={ports.length > 1 ? portName(port) : undefined}
               >
-                {/* An Append's inputs are numbered on the node, so the order rows stack in is visible. */}
+                {/* An Append's inputs are numbered on the node, so the order rows stack in is visible; a Query's are its tables. */}
                 {numbered && <span className="ui-metric puddle-port-label">{Number(port.id) + 1}</span>}
               </Handle>
             ))}

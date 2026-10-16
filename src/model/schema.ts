@@ -148,9 +148,58 @@ export const DEFAULT_APPEND_SPEC = { match: 'name', tagRows: false, tagColumn: '
 /** Stacks its inputs' rows, in input order. Inputs are numbered ports; a free one is always offered after the last. */
 export const AppendNodeZ = z.object({ ...NodeBase, type: z.literal('append'), appendSpec: AppendSpecZ.default({ ...DEFAULT_APPEND_SPEC }) });
 
-export const NodeZ = z.discriminatedUnion('type', [SourceNodeZ, TransformNodeZ, JoinNodeZ, AppendNodeZ, OutputNodeZ]);
+/** How a Query join line matches rows: inner keeps matches only; left and right keep every row of that end's table. */
+export const QUERY_JOIN_KINDS = ['inner', 'left', 'right', 'full'] as const;
 
-/** Named input ports. Join uses left and right; nodes with one input, and Append's numbered inputs, use an index. */
+/** One end of a join line in the query designer: a column of the table in that input. */
+export const QueryFieldRefZ = z.object({ port: z.number().int().nonnegative(), column: z.string() });
+
+/** A join line, drawn by dragging `left`'s column onto `right`'s (a primary key onto a foreign key, say). */
+export const QueryJoinZ = z.object({
+  id: z.string().min(1),
+  left: QueryFieldRefZ,
+  right: QueryFieldRefZ,
+  /** left: every row of the left table; right: every row of the right table. */
+  kind: z.enum(QUERY_JOIN_KINDS).default('inner'),
+});
+
+export const QUERY_CRITERIA_OPS = ['=', '<>', '<', '<=', '>', '>=', 'contains', 'starts', 'ends', 'empty', 'notEmpty'] as const;
+
+export const QueryCriteriaZ = z.object({ op: z.enum(QUERY_CRITERIA_OPS), value: z.string().default('') });
+
+/** One column of the query grid: a field of one table ("*" for all of them), and what to do with it. */
+export const QueryFieldZ = z.object({
+  id: z.string().min(1),
+  port: z.number().int().nonnegative(),
+  /** A column of the table in that input, or "*" for every column. */
+  column: z.string(),
+  /** The name it has in the result; the column's own name when empty. */
+  alias: z.string().optional(),
+  show: z.boolean().default(true),
+  sort: z.enum(['none', 'asc', 'desc']).default('none'),
+  criteria: QueryCriteriaZ.optional(),
+});
+
+export const QuerySpecZ = z.object({
+  /** Where each input's table sits in the designer, by input. */
+  tables: z.array(z.object({ port: z.number().int().nonnegative(), x: z.number(), y: z.number() })).default([]),
+  joins: z.array(QueryJoinZ).default([]),
+  fields: z.array(QueryFieldZ).default([]),
+  /** Leave out rows that repeat another row exactly. */
+  distinct: z.boolean().default(false),
+});
+
+export const DEFAULT_QUERY_SPEC = { tables: [], joins: [], fields: [], distinct: false } as const satisfies z.input<typeof QuerySpecZ>;
+
+/**
+ * A query built in the designer, as in Microsoft Access: each numbered input is a table, join lines run between their
+ * columns, and the grid picks the fields, their order, sorting and criteria.
+ */
+export const QueryNodeZ = z.object({ ...NodeBase, type: z.literal('query'), querySpec: QuerySpecZ.default({ tables: [], joins: [], fields: [], distinct: false }) });
+
+export const NodeZ = z.discriminatedUnion('type', [SourceNodeZ, TransformNodeZ, JoinNodeZ, AppendNodeZ, QueryNodeZ, OutputNodeZ]);
+
+/** Named input ports. Join uses left and right; nodes with one input, and the numbered inputs of Append and Query, use an index. */
 export const NAMED_PORTS = ['left', 'right'] as const;
 
 export const PortZ = z.union([z.number().int().nonnegative(), z.enum(NAMED_PORTS)]);
@@ -225,6 +274,14 @@ export type JoinSpec = z.infer<typeof JoinSpecZ>;
 export type JoinNode = z.infer<typeof JoinNodeZ>;
 export type AppendSpec = z.infer<typeof AppendSpecZ>;
 export type AppendNode = z.infer<typeof AppendNodeZ>;
+export type QueryJoinKind = (typeof QUERY_JOIN_KINDS)[number];
+export type QueryFieldRef = z.infer<typeof QueryFieldRefZ>;
+export type QueryJoin = z.infer<typeof QueryJoinZ>;
+export type QueryCriteriaOp = (typeof QUERY_CRITERIA_OPS)[number];
+export type QueryCriteria = z.infer<typeof QueryCriteriaZ>;
+export type QueryField = z.infer<typeof QueryFieldZ>;
+export type QuerySpec = z.infer<typeof QuerySpecZ>;
+export type QueryNode = z.infer<typeof QueryNodeZ>;
 export type Port = z.infer<typeof PortZ>;
 export type GraphNode = z.infer<typeof NodeZ>;
 export type NodeType = GraphNode['type'];
