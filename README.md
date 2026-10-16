@@ -26,7 +26,7 @@ Every feature ships with its own tests, and every bug fix with a regression test
 
 ## Deploying
 
-A Docker image (nginx serving the static build) behind a Cloudflare Tunnel at puddle.kevspowertools.com. See [deploy/README.md](deploy/README.md).
+A Docker image (nginx serving the static build) behind a Cloudflare Tunnel at puddle.kevspowertools.com. `docker compose up -d` runs it on <http://localhost:8088>, and `docker compose --profile tunnel up -d` adds the tunnel. See [deploy/README.md](deploy/README.md).
 
 ## Layout
 
@@ -49,6 +49,7 @@ A Docker image (nginx serving the static build) behind a Cloudflare Tunnel at pu
 | `src/dates/` | Date format detection: candidate `strptime` formats, ranking by match rate, day and month ambiguity |
 | `src/quickfix/` | The quick-fix bar: one click on the selected columns adds one step where the viewed data is |
 | `src/rules/` | Quality rule forms and labels; rules compile in `src/compiler/rules.ts` and are checked per node by `src/flow/rules.ts` |
+| `src/report/` | Quality reports: what the rules found (counts, overrides from the export log, sources with row counts and head hashes, opt-in failing rows) written as Markdown, JSON or one self-contained HTML file, and the export dialog |
 | `src/pwa/` | The service worker (precached app, engine and extensions for offline use), its precache list and the web app manifest |
 | `src/export/` | Exports from Output nodes: the quality gate, `COPY ... TO` into DuckDB's in-memory file system (Excel workbooks instead go through the Excel worker), download or clipboard, and the export log |
 | `src/query/` | The query designer, in place of the canvas for a Query node: its tables and the join lines dragged between their fields, and the grid of fields with names, sorting, criteria and Show |

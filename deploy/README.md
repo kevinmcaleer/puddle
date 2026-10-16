@@ -22,15 +22,36 @@ What the server does (`deploy/nginx.conf`):
 - Hashed files (`/assets/`, `/duckdb-extensions/<version>/`) are cached for a year. `index.html`, `sw.js`, `precache.json` and the manifest are always revalidated, so a deploy shows on the next visit.
 - `/healthz` answers `ok` for health checks. The container runs as a non-root user and works with a read-only root file system when `/tmp` is writable.
 
+## Docker Compose
+
+`compose.yaml` in the repository root runs Puddle with a restart policy, a read-only root file system and a health check on `/healthz`. From the repository root:
+
+```sh
+docker compose up -d
+```
+
+Then open <http://localhost:8088>. Compose uses the `puddle:latest` image you built with `docker build -t puddle .`, and builds it from the Dockerfile if it isn't there. After pulling new code, `docker compose up -d --build` rebuilds it.
+
+These settings can go in the environment or in a `.env` file next to `compose.yaml`:
+
+| Variable | Default | What it does |
+| --- | --- | --- |
+| `PUDDLE_IMAGE` | `puddle:latest` | The image to run. Set `ghcr.io/kevinmcaleer/puddle:latest` to run the one CI publishes, and update it with `docker compose pull && docker compose up -d` |
+| `PUDDLE_PORT` | `8088` | The port Puddle answers on, on the host |
+| `FETCH_EXTENSIONS` | `1` | Set `0` to build where extensions.duckdb.org can't be reached (see below) |
+| `CLOUDFLARE_TUNNEL_TOKEN` | none | The tunnel's token, for the `tunnel` profile |
+
 ## The tunnel
 
 1. In Cloudflare Zero Trust, go to Networks, then Tunnels, and create a tunnel. Copy its token.
 2. Add a public hostname: `puddle.kevspowertools.com`, service `http://puddle:8080`.
-3. Next to `deploy/docker-compose.yml`, create a `.env` file containing `CLOUDFLARE_TUNNEL_TOKEN=<token>`, then run:
+3. Next to `compose.yaml`, create a `.env` file containing `CLOUDFLARE_TUNNEL_TOKEN=<token>`, then start Puddle with the tunnel:
 
    ```sh
-   docker compose -f deploy/docker-compose.yml up -d
+   docker compose --profile tunnel up -d
    ```
+
+   The tunnel starts once Puddle's health check passes.
 
 Check that the headers survive the tunnel:
 

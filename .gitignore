@@ -7,3 +7,4 @@ playwright-report
 .vite
 .DS_Store
 public/duckdb-extensions
+.env
