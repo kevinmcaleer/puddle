@@ -17,6 +17,7 @@ export {
 export { CompileError, PendingSchemaError, UnwiredError } from './errors';
 export { compileJoin, JOIN_TYPES, joinColumns, joinProblems, keepsRightColumns, suggestJoinKey, type JoinColumn, type JoinProblem } from './join';
 export { knownSchemas, SchemaBook } from './schemaBook';
+export { cleanCustomSql, customSqlProblem, INPUT_NAME, lexSql, SqlRefusal, type SqlToken, type SqlTokenKind } from './customSql';
 export { SchemaCache } from './schemaCache';
 export { sourceFileName, sourceRelation, sourceTableName } from './sources';
 export { bool, cteName, ident, list, num, str, strList } from './sql';
