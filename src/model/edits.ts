@@ -1,11 +1,11 @@
 // Pure project edits used by the canvas, sources and inspector. Each returns a new project.
-import { hasOutput, inputPorts, nodeById, removeNode } from './graph';
+import { freePort, hasOutput, nodeById, removeNode } from './graph';
 import { newId } from './ids';
-import { DEFAULT_JOIN_SPEC, type GraphNode, type NodeType, type ParseOptions, type Project, type Source } from './schema';
+import { DEFAULT_APPEND_SPEC, DEFAULT_JOIN_SPEC, type GraphNode, type NodeType, type ParseOptions, type Project, type Source } from './schema';
 
 type Position = { x: number; y: number };
 
-const KIND_NAME: Record<NodeType, string> = { source: 'Source', transform: 'Transform', join: 'Join', output: 'Output' };
+const KIND_NAME: Record<NodeType, string> = { source: 'Source', transform: 'Transform', join: 'Join', append: 'Append', output: 'Output' };
 
 /** "Transform 3": the next free number for a node type. */
 export function nextNodeName(project: Project, type: NodeType): string {
@@ -28,23 +28,27 @@ function newNode(type: AddableNodeType, base: { id: string; name: string; positi
       return { ...base, type, steps: [] };
     case 'join':
       return { ...base, type, joinSpec: { ...DEFAULT_JOIN_SPEC, keys: [] } };
+    case 'append':
+      return { ...base, type, appendSpec: { ...DEFAULT_APPEND_SPEC } };
     case 'output':
       return { ...base, type, outputSpec: { format: 'csv', options: {} } };
   }
 }
 
 /**
- * Add a Transform, Join or Output node. `after` names the nodes that feed it, wired into its inputs in order
- * (a Join's left, then its right); nodes with no output, and any beyond its inputs, are left unwired.
+ * Add a Transform, Join, Append or Output node. `after` names the nodes that feed it, wired into its free
+ * inputs in order (a Join's left, then its right; an Append's 1, 2, 3...); nodes with no output, and any
+ * beyond its inputs, are left unwired.
  */
 export function addNode(project: Project, type: AddableNodeType, position: Position, after?: string | string[], nodeId = newId('n')): Project {
   const node = newNode(type, { id: nodeId, name: nextNodeName(project, type), position, rules: [] });
   let next: Project = { ...project, nodes: [...project.nodes, node] };
   const feeds = (Array.isArray(after) ? after : after ? [after] : []).map((id) => nodeById(project, id)).filter((n) => !!n && hasOutput(n));
-  const ports = inputPorts(next, node);
-  feeds.slice(0, ports.length).forEach((from, i) => {
-    next = { ...next, edges: [...next.edges, { id: newId('e'), from: { nodeId: from!.id }, to: { nodeId, port: ports[i]!.id } }] };
-  });
+  for (const from of feeds) {
+    const port = freePort(next, nodeId);
+    if (port == null) break;
+    next = { ...next, edges: [...next.edges, { id: newId('e'), from: { nodeId: from!.id }, to: { nodeId, port } }] };
+  }
   return next;
 }
 
