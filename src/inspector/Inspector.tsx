@@ -10,7 +10,7 @@ import { OutputPanel } from './OutputPanel';
 import { RulesPanel } from './RulesPanel';
 import { TransformPanel } from './TransformPanel';
 import { useAttachments } from '../sources/attachments';
-import { detachedMessage } from '../sources/attach';
+import { DetachedMessage } from '../sources/ReconnectBanner';
 import { ReattachButton } from '../sources/ReattachButton';
 import { UrlPanel } from '../sources/UrlPanel';
 import { DELIMITERS, delimiterValue, ENCODINGS, hasParseOptions, LOCALES, parseNullStrings, withOption } from './options';
@@ -48,7 +48,7 @@ function AttachmentBanner({ source }: { source: Source }) {
     <div className="px-4 pt-3" data-testid="attachment-banner" data-state={state}>
       {state === 'detached' ? (
         <Banner tone="warn" title="File not connected" action={<ReattachButton source={source} />}>
-          {detachedMessage(source)}
+          <DetachedMessage source={source} />
         </Banner>
       ) : (
         <Banner tone="warn" title="This file looks different" action={<ReattachButton source={source} label="Choose another" />}>

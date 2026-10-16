@@ -3,6 +3,7 @@ import { suggestJoinKey } from '../compiler';
 import { useFlowStore } from '../flow/status';
 import { addNode, nodeById, setJoinSpec, useProjectStore, type AddableNodeType, type ColumnSchema, type Source, type SourceFormat } from '../model';
 import { addClipboardSource, addFileSource } from '../sources/add';
+import { pickFiles, type PickedFile } from '../sources/handles';
 import { addUrlSource } from '../sources/url';
 import { useSession } from './session';
 
@@ -23,15 +24,26 @@ function selectSource(source: Source) {
 }
 
 /** Add files as sources: at `at` (a drop point) stacked downwards, or below the existing sources. */
-export async function addFiles(files: Iterable<File>, at?: { x: number; y: number }) {
+export async function addFiles(files: Iterable<File | PickedFile>, at?: { x: number; y: number }) {
   let i = 0;
-  for (const file of files) {
+  for (const item of files) {
+    const { file, handle } = item instanceof File ? { file: item, handle: undefined } : item;
     try {
-      selectSource(await addFileSource(file, at ? { x: at.x, y: at.y + i++ * 128 } : nextSourcePosition()));
+      selectSource(await addFileSource(file, at ? { x: at.x, y: at.y + i++ * 128 } : nextSourcePosition(), handle));
     } catch (e) {
       report(e);
     }
   }
+}
+
+/**
+ * "Choose files": the browser's file picker where it keeps handles (Chromium), so the files reconnect with a click
+ * next time; otherwise `fallback` opens the usual file input.
+ */
+export async function chooseFiles(fallback: () => void) {
+  const picked = await pickFiles(true);
+  if (picked === null) fallback();
+  else await addFiles(picked);
 }
 
 export async function addPastedText(text: string) {

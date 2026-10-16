@@ -13,7 +13,7 @@ import { Banner, Button, columnKind, glideTheme } from '../ui';
 import { failingCells, nullTheme, resultCell } from './cells';
 import { HEADER_HEIGHT, headerColors, makeDrawHeader } from './header';
 import { PageLoader, type Row } from './pages';
-import { detachedMessage } from '../sources/attach';
+import { DetachedMessage } from '../sources/ReconnectBanner';
 import { ReattachButton } from '../sources/ReattachButton';
 import { UrlProblemBanner } from '../sources/UrlPanel';
 import { parseProfile, parseTypeSniff, qualityOf, type ColumnProfile } from './profile';
@@ -236,7 +236,7 @@ export function ResultsTable({ project }: { project: Project }) {
     return (
       <div className="p-4" data-testid="results-detached">
         <Banner tone="warn" title="This file isn’t connected" action={source && <ReattachButton source={source} />}>
-          {source ? detachedMessage(source) : 'Choose the file again to read it.'}
+          {source ? <DetachedMessage source={source} /> : 'Choose the file again to read it.'}
         </Banner>
       </div>
     );
