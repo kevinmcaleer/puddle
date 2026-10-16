@@ -36,7 +36,7 @@ A Docker image (nginx serving the static build) behind a Cloudflare Tunnel at pu
 | `src/engine/` | DuckDB-WASM in a Web Worker and the typed `EngineClient` (priorities, cancellation, plain-word errors) |
 | `src/model/` | The project graph: Zod schemas, wiring rules, step edits, grouping, undo and redo |
 | `src/compiler/` | The pure graph-to-SQL compiler, step registry and schema cache |
-| `src/sources/` | Adding sources: format detection, file handles, clipboard text, and choosing files again on reopen |
+| `src/sources/` | Adding sources: format detection, file handles, clipboard text, and choosing files again on reopen (on Chromium, reconnecting them with one permission click through stored file handles) |
 | `src/persistence/` | IndexedDB autosave, `.puddle.json` export and import, format migrations |
 | `src/home/` | The projects home screen and the rename and delete dialogs |
 | `src/canvas/` | The node canvas on React Flow: nodes, wires, auto layout |

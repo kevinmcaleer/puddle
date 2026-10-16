@@ -15,7 +15,7 @@ import { ResultsTable } from '../results/ResultsTable';
 import { useResultsStore } from '../results/state';
 import { ACCEPT } from '../sources/detect';
 import { Button, Menu, ResultsBar, StatusBadge, StatusStrip, Toolbar, type NodeKind } from '../ui';
-import { addFiles, addNodeAfterSelection, addPastedText, layoutFlow, pasteFromClipboard } from './actions';
+import { addFiles, addNodeAfterSelection, chooseFiles as pickSourceFiles, addPastedText, layoutFlow, pasteFromClipboard } from './actions';
 import { useEngineStore, type EngineStatus } from './engine';
 import { ResultsPanel } from './ResultsPanel';
 import { useSession } from './session';
@@ -114,7 +114,7 @@ export function AppShell() {
   useShortcuts();
 
   const importInput = useRef<HTMLInputElement>(null);
-  const chooseFiles = () => fileInput.current?.click();
+  const chooseFiles = () => void pickSourceFiles(() => fileInput.current?.click());
 
   return (
     <ReactFlowProvider>

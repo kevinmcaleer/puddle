@@ -4,7 +4,7 @@ import { invalidateCaches } from '../flow/status';
 import { createProject, newId, useProjectStore, type Project } from '../model';
 import { useResultsStore } from '../results/state';
 import { attachProject } from '../sources/attach';
-import { deleteProject, listProjects, loadProject, saveProject, type ProjectSummary } from './db';
+import { copyHandles, deleteHandles, deleteProject, listProjects, loadProject, saveProject, type ProjectSummary } from './db';
 import { migrate, projectFileName, readProjectFile, writeProjectFile } from './migrate';
 
 const LAST = 'puddle.lastProject';
@@ -159,6 +159,8 @@ export async function duplicateProject(id: string): Promise<string> {
   const now = new Date().toISOString();
   const copy = { ...migrate(p), id: newId('p'), name: `${p.name} copy`, createdAt: now, updatedAt: now };
   await saveProject(copy);
+  // The copy's sources keep their ids, so on Chromium its files reconnect the same way as the original's.
+  await copyHandles(id, copy.id).catch(() => {});
   await refreshProjects();
   return copy.id;
 }
@@ -166,6 +168,7 @@ export async function duplicateProject(id: string): Promise<string> {
 export async function removeProject(id: string) {
   if (pending) clearTimeout(pending);
   await deleteProject(id);
+  await deleteHandles(id).catch(() => {});
   stored.delete(id);
   if (lastOpened() === id) remember(null);
   await refreshProjects();
@@ -177,6 +180,8 @@ export async function importProject(file: File) {
     const project = readProjectFile(await file.text());
     const id = stored.has(project.id) ? newId('p') : project.id;
     const imported = { ...project, id };
+    // A project file carries no file handles; never pair it with ones left under the same id.
+    await deleteHandles(id).catch(() => {});
     await saveProject(imported);
     stored.add(id);
     await show(imported);

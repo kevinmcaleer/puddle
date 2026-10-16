@@ -5,8 +5,16 @@ import { join } from 'node:path';
 export const fixture = (name: string) => join(import.meta.dirname, '../../tests/fixtures', name);
 export const fixtureText = (name: string) => readFileSync(fixture(name), 'utf8');
 
-/** Open the app and wait for DuckDB, which every data flow needs. */
-export async function openApp(page: Page) {
+/**
+ * Open the app and wait for DuckDB, which every data flow needs.
+ *
+ * Chromium's own file picker (`showOpenFilePicker`) can't be driven by Playwright: with a file chooser being
+ * awaited it rejects at once, and no `filechooser` event fires. So by default the app runs without it and chooses
+ * files through `<input type="file">`, which is also how Firefox and WebKit always work. The file handle specs pass
+ * `fileSystemAccess: true` and install their own picker over the origin private file system.
+ */
+export async function openApp(page: Page, { fileSystemAccess = false }: { fileSystemAccess?: boolean } = {}) {
+  if (!fileSystemAccess) await page.addInitScript(() => Object.defineProperty(window, 'showOpenFilePicker', { value: undefined, configurable: true }));
   await page.goto('/');
   await expect(page.getByTestId('engine-ready')).toBeVisible({ timeout: 45_000 });
 }
