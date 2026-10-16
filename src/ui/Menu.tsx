@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Button, type ButtonProps } from './Button';
+import { cx } from './cx';
 import { Icon, type IconName } from './Icon';
 
 export interface MenuItem {
@@ -17,6 +18,7 @@ export function Menu({
   button,
   align = 'end',
   renderTrigger,
+  className,
 }: {
   label: ReactNode;
   items: MenuItem[];
@@ -24,6 +26,8 @@ export function Menu({
   align?: 'start' | 'end';
   /** Draw the trigger yourself (e.g. the toolbar's project name); give it the aria props passed in. */
   renderTrigger?: (p: { 'aria-haspopup': 'menu'; 'aria-expanded': boolean; onClick: () => void }) => ReactNode;
+  /** Classes for the wrapper, e.g. to let a trigger inside a flex row shrink. */
+  className?: string;
 }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -41,7 +45,7 @@ export function Menu({
   }, [open]);
 
   return (
-    <div className="relative" ref={ref}>
+    <div className={cx('relative', className)} ref={ref}>
       {renderTrigger ? (
         renderTrigger({ 'aria-haspopup': 'menu', 'aria-expanded': open, onClick: () => setOpen((o) => !o) })
       ) : (

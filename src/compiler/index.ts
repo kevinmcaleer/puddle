@@ -4,6 +4,7 @@ export {
   compileDateDetection,
   compileDisplayPage,
   compileJoinCheck,
+  compilePivotValues,
   compilePreview,
   compileProfile,
   compileRules,

@@ -1,15 +1,26 @@
-import { Children, type ReactNode } from 'react';
+import { Children, isValidElement, type HTMLAttributes, type ReactNode } from 'react';
 import { cx } from './cx';
 import { Icon } from './Icon';
 import { TypeTag, type ColumnKind } from './TypeTag';
 
-export function FieldChip({ name, type, agg, onRemove }: { name: string; type?: ColumnKind; agg?: string; onRemove?: (() => void) | false }) {
+/**
+ * A field in a pivot zone. `agg` is the value's aggregate: text draws the tag, an element (such as a menu
+ * trigger with the `ui-fchip__agg` class) is drawn as given. `label` likewise replaces the name's text.
+ */
+export function FieldChip({
+  name,
+  type,
+  agg,
+  label,
+  onRemove,
+  ...rest
+}: { name: string; type?: ColumnKind; agg?: ReactNode; label?: ReactNode; onRemove?: (() => void) | false } & Omit<HTMLAttributes<HTMLDivElement>, 'children'>) {
   return (
-    <div className="ui-fchip" draggable>
+    <div className="ui-fchip" draggable {...rest}>
       <Icon name="grip" size={14} className="ui-fchip__grip" />
       <TypeTag type={type} />
-      <span className="ui-fchip__name">{name}</span>
-      {agg && <span className="ui-fchip__agg">{agg}</span>}
+      {isValidElement(label) ? label : <span className="ui-fchip__name">{label ?? name}</span>}
+      {agg != null && (isValidElement(agg) ? agg : <span className="ui-fchip__agg">{agg}</span>)}
       {onRemove !== false && (
         <button type="button" className="ui-fchip__x" aria-label={`Remove ${name}`} onClick={onRemove || undefined}>
           <Icon name="cross" size={12} />

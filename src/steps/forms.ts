@@ -35,9 +35,11 @@ type FieldKind =
   /** Sort keys: column and direction per row. */
   | { key: string; label: string; kind: 'sortKeys'; hint?: string }
   /** strptime formats tried in order, with detected formats and their match rates offered. */
-  | { key: string; label: string; kind: 'dateFormats'; hint?: string };
+  | { key: string; label: string; kind: 'dateFormats'; hint?: string }
+  /** The pivot editor: field list and four drop zones, editing the whole of the step's settings. */
+  | { key: string; label: string; kind: 'pivot'; hint?: string };
 
-export type StepGroup = 'Clean' | 'Columns' | 'Rows' | 'Text' | 'Dates' | 'Numbers' | 'Advanced';
+export type StepGroup = 'Clean' | 'Columns' | 'Rows' | 'Text' | 'Dates' | 'Numbers' | 'Reshape' | 'Advanced';
 
 export interface DefaultsContext {
   /** Columns selected in the results table. */
