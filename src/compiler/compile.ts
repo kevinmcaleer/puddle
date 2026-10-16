@@ -5,7 +5,7 @@ import { knownSchemas, type SchemaBook } from './schemaBook';
 import { sourceRelation } from './sources';
 import { cteName, ident, num, str } from './sql';
 import { rulePredicate } from './rules';
-import { pivotValuesQuery, stepParams, type Condition } from './steps';
+import { MAX_TRANSPOSE_ROWS, pivotValuesQuery, stepParams, type Condition } from './steps';
 
 export const PAGE_SIZE = 500;
 
@@ -230,6 +230,14 @@ export function compileDateDetection(project: Project, target: Target, column: s
  */
 export function compilePivotValues(project: Project, target: Target, pivot: { column: string; filters: Condition[] }): string {
   return pivotValuesQuery(pivot, `(${compile(project, target).sql})`);
+}
+
+/**
+ * What Transpose fixes when it's set up: a row per input row (at most one more than it takes), each with the
+ * `header` column's value as text (`v`) and the input's row count (`n`).
+ */
+export function compileTransposeRows(project: Project, target: Target, header: string): string {
+  return `SELECT CAST(${ident(header)} AS VARCHAR) AS v, count(*) OVER () AS n FROM (${compile(project, target).sql}) LIMIT ${num(MAX_TRANSPOSE_ROWS + 1)}`;
 }
 
 /**
