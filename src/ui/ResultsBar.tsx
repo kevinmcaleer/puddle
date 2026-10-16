@@ -5,7 +5,7 @@ import { abbreviate, formatBytes, formatDuration, fullCount } from './format';
 import { Icon, type IconName } from './Icon';
 import { Menu } from './Menu';
 import { NODE_KIND, type NodeKind } from './nodeKinds';
-import { StatusBadge } from './StatusBadge';
+import { StatusBadge, type Status } from './StatusBadge';
 
 export interface QuickFix {
   label: string;
@@ -98,9 +98,22 @@ export interface StatusStripProps {
   detail?: ReactNode;
   /** Shown at the right-hand end, e.g. engine state. */
   end?: ReactNode;
+  /** The open project's sync state, when it syncs; `syncTitle` says more on hover. */
+  sync?: SyncState;
+  syncTitle?: string;
 }
 
-export function StatusStrip({ rows, cols, ms, rules, sample, kept, detail, end }: StatusStripProps) {
+export type SyncState = 'synced' | 'pending' | 'offline' | 'conflict' | 'error';
+
+const SYNC_BADGE: Record<SyncState, { status: Status; text: string }> = {
+  synced: { status: 'pass', text: 'Synced' },
+  pending: { status: 'pending', text: 'Sync pending' },
+  offline: { status: 'neutral', text: 'Offline' },
+  conflict: { status: 'warn', text: 'Sync conflict' },
+  error: { status: 'fail', text: 'Sync failed' },
+};
+
+export function StatusStrip({ rows, cols, ms, rules, sample, kept, detail, end, sync, syncTitle }: StatusStripProps) {
   const parts: ReactNode[] = [];
   if (rows != null) parts.push(<span key="rows">{fullCount(rows)} rows</span>);
   if (cols != null) parts.push(<span key="cols">{cols} cols</span>);
@@ -124,6 +137,13 @@ export function StatusStrip({ rows, cols, ms, rules, sample, kept, detail, end }
     <div className="ui-strip" role="status">
       {parts.flatMap((p, i) => (i ? [<span key={`sep${i}`} className="ui-strip__sep" />, p] : [p]))}
       <span className="ui-strip__end">
+        {sync && (
+          <span data-testid="sync-state" data-state={sync}>
+            <StatusBadge status={SYNC_BADGE[sync].status} title={syncTitle}>
+              {SYNC_BADGE[sync].text}
+            </StatusBadge>
+          </span>
+        )}
         {end}
         {rows != null && (sample ? <StatusBadge status="warn">Sample of {abbreviate(sample)} rows</StatusBadge> : <span>Full data</span>)}
       </span>

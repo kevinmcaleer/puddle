@@ -1,6 +1,23 @@
 import 'fake-indexeddb/auto';
 import { createProject } from '../model';
-import { closeDb, copyHandles, deleteHandles, deleteProject, listProjects, loadHandles, loadProject, saveHandle, saveProject } from './db';
+import {
+  closeDb,
+  copyHandles,
+  deleteCredential,
+  deleteHandles,
+  deleteProject,
+  deleteSyncLink,
+  listProjects,
+  listSyncLinks,
+  loadCredential,
+  loadHandles,
+  loadProject,
+  loadSyncLink,
+  saveCredential,
+  saveHandle,
+  saveProject,
+  saveSyncLink,
+} from './db';
 
 afterEach(async () => {
   await closeDb();
@@ -91,5 +108,44 @@ describe('IndexedDB file handles', () => {
     expect((await loadProject('old'))!.name).toBe('From v1');
     await saveHandle('old', 's1', handle('a.csv'));
     expect((await loadHandles('old')).size).toBe(1);
+  });
+
+  it('keeps a sync credential apart from every project, and deletes it', async () => {
+    const p = createProject('Synced');
+    await saveProject(p);
+    await saveCredential({ provider: 'gist', secret: 'github_pat_secret', account: 'kev' });
+    expect(await loadCredential('gist')).toEqual({ provider: 'gist', secret: 'github_pat_secret', account: 'kev' });
+    expect(JSON.stringify(await loadProject(p.id))).not.toContain('github_pat_secret');
+    await deleteCredential('gist');
+    expect(await loadCredential('gist')).toBeUndefined();
+  });
+
+  it('keeps sync links by project', async () => {
+    await saveSyncLink({ projectId: 'p1', provider: 'gist' });
+    await saveSyncLink({ projectId: 'p1', provider: 'gist', remoteId: 'g1', revision: 'r1', syncedHash: 'h' });
+    await saveSyncLink({ projectId: 'p2', provider: 'gist' });
+    expect(await loadSyncLink('p1')).toEqual({ projectId: 'p1', provider: 'gist', remoteId: 'g1', revision: 'r1', syncedHash: 'h' });
+    expect((await listSyncLinks()).map((l) => l.projectId).sort()).toEqual(['p1', 'p2']);
+    await deleteSyncLink('p1');
+    expect(await loadSyncLink('p1')).toBeUndefined();
+  });
+
+  it('keeps projects and handles from version 2 when it adds the sync stores', async () => {
+    await closeDb();
+    await new Promise<void>((resolve, reject) => {
+      const req = indexedDB.open('puddle', 2);
+      req.onupgradeneeded = () => {
+        req.result.createObjectStore('projects', { keyPath: 'id' }).put({ ...createProject('From v2'), id: 'old' });
+        req.result.createObjectStore('handles', { keyPath: 'key' }).createIndex('projectId', 'projectId');
+      };
+      req.onsuccess = () => {
+        req.result.close();
+        resolve();
+      };
+      req.onerror = () => reject(req.error);
+    });
+    expect((await loadProject('old'))!.name).toBe('From v2');
+    await saveSyncLink({ projectId: 'old', provider: 'gist' });
+    expect(await loadSyncLink('old')).toEqual({ projectId: 'old', provider: 'gist' });
   });
 });
