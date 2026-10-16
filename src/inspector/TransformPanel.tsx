@@ -1,9 +1,9 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useEngineStore } from '../app/engine';
 import { useSession } from '../app/session';
-import { compileDisplayPage, upstreamKey, type Condition } from '../compiler';
-import { detectDateFormats, type Detection } from '../dates';
-import { tableRows } from '../engine/client';
+import { withShortcut } from '../app/shortcuts';
+import { upstreamKey, type Condition } from '../compiler';
+import { detectDateFormats } from '../dates';
 import { readPivotValues as readValues } from '../flow/pivot';
 import { useNodeStatus } from '../flow/status';
 import { readTransposeRows } from '../flow/transpose';
@@ -18,14 +18,13 @@ import {
   updateStep,
   useProject,
   useProjectStore,
-  type ColumnSchema,
-  type Project,
   type Step,
   type TransformNode,
 } from '../model';
-import { fieldErrors, labelFor, newStep, stepForms, type StepGroup } from '../steps';
+import { fieldErrors, labelFor, stepForms, type StepGroup } from '../steps';
 import { CommitInput, StepForm } from '../steps/StepForm';
 import { Banner, Button, Field, Menu, Section, StepList, Switch, type MenuItem } from '../ui';
+import { buildStep } from './addStep';
 import { useStepColumns, useStepErrors } from './useStepColumns';
 
 const GROUPS: StepGroup[] = ['Clean', 'Columns', 'Rows', 'Text', 'Dates', 'Numbers', 'Reshape', 'Advanced'];
@@ -39,34 +38,6 @@ function viewStep(nodeId: string, index: number, step: Step | undefined) {
   if (!history.present.view.pinned) setView({ viewedNodeId: nodeId, viewedStepIndex: step ? index : undefined });
 }
 
-/** The first row arriving after step `after` (-1 for the node's input), as text; empty when it can't be read. */
-async function readFirstRow(project: Project, nodeId: string, after: number, columns: ColumnSchema[]): Promise<Record<string, string | null>> {
-  const engine = useEngineStore.getState().engine;
-  if (!engine || !columns.length) return {};
-  try {
-    const sql = compileDisplayPage(project, { nodeId, stepIndex: after }, columns.map((c) => c.name), 0, 1);
-    const [row] = tableRows((await engine.query(sql)).table);
-    return Object.fromEntries(Object.entries(row ?? {}).map(([k, v]) => [k, v == null ? null : String(v)]));
-  } catch {
-    return {};
-  }
-}
-
-/** Date formats detected on the first of these columns as it arrives after step `after`. */
-async function detectFor(project: Project, nodeId: string, after: number, columns: unknown): Promise<Detection | undefined> {
-  const engine = useEngineStore.getState().engine;
-  const column = Array.isArray(columns) && typeof columns[0] === 'string' ? columns[0] : undefined;
-  if (!engine || !column) return undefined;
-  return detectDateFormats(engine, project, { nodeId, stepIndex: after }, column).catch(() => undefined);
-}
-
-/** The rows arriving after step `after`, as Transpose reads them; undefined when they can't be read. */
-async function readRowsFor(project: Project, nodeId: string, after: number, columns: ColumnSchema[]) {
-  const engine = useEngineStore.getState().engine;
-  if (!engine || !columns[0]) return undefined;
-  return readTransposeRows(engine, project, { nodeId, stepIndex: after }, columns[0].name).catch(() => undefined);
-}
-
 function AddStepMenu({ node, after }: { node: TransformNode; after: number }) {
   const project = useProject();
   const available = useStepColumns(project, node.id, after + 1);
@@ -77,17 +48,28 @@ function AddStepMenu({ node, after }: { node: TransformNode; after: number }) {
         label: f.title,
         hint: g,
         onSelect: async () => {
-          const selected = useSession.getState().selectedColumns;
-          const firstRow = f.needsFirstRow ? await readFirstRow(project, node.id, after, available) : undefined;
-          const dates = f.detectsDates ? await detectFor(project, node.id, after, f.defaults({ selected, available }).columns) : undefined;
-          const rows = f.readsRows ? await readRowsFor(project, node.id, after, available) : undefined;
-          const step = newStep(f.type, { selected, available, firstRow, dates, rows });
+          const step = await buildStep(f, useEngineStore.getState().engine, project, node.id, after, available, useSession.getState().selectedColumns);
           apply((p) => addStep(p, node.id, step, after + 1));
           viewStep(node.id, after + 1, step);
         },
       })),
   );
-  return <Menu label="Add step" button={{ variant: 'ghost', size: 'sm', icon: 'plus' }} items={items} />;
+  // The / shortcut opens the menu with its search focused, until it next closes.
+  const pending = useSession((s) => s.addStepPending);
+  const [open, setOpen] = useState(false);
+  return (
+    <Menu
+      label="Add step"
+      button={{ variant: 'ghost', size: 'sm', icon: 'plus', title: withShortcut('Add step', 'add-step') }}
+      items={items}
+      search="Search steps"
+      open={open || pending}
+      onOpenChange={(next) => {
+        setOpen(next);
+        if (!next) useSession.getState().clearAddStep();
+      }}
+    />
+  );
 }
 
 function StepSettings({ node, index, error }: { node: TransformNode; index: number; error?: string }) {

@@ -1,7 +1,8 @@
 import { autoLayout } from '../canvas/layout';
+import { neighbour, type Direction } from '../canvas/navigate';
 import { suggestJoinKey, suggestLookupColumns } from '../compiler';
 import { useFlowStore } from '../flow/status';
-import { addNode, inputEdges, moveQueryTable, nodeById, setJoinSpec, setLookupSpec, useProjectStore, type AddableNodeType, type ColumnSchema, type Source, type SourceFormat } from '../model';
+import { addNode, canGroup, groupNodes, inputEdges, moveQueryTable, nodeById, setJoinSpec, setLookupSpec, useProjectStore, type AddableNodeType, type ColumnSchema, type Source, type SourceFormat } from '../model';
 import { addClipboardSource, addFileSource } from '../sources/add';
 import { pickFiles, type PickedFile } from '../sources/handles';
 import { addUrlSource } from '../sources/url';
@@ -117,3 +118,35 @@ export function addNodeAfterSelection(type: AddableNodeType) {
 }
 
 export const layoutFlow = () => useProjectStore.getState().apply(autoLayout);
+
+/** Group the selected nodes into one, or say why they can't be. */
+export function groupSelection() {
+  const { selectedNodeIds, notify, select } = useSession.getState();
+  if (selectedNodeIds.length < 2) return notify({ tone: 'info', text: 'Select two or more Transform nodes in a line to group them (Shift+click adds to the selection).' });
+  const check = canGroup(useProjectStore.getState().history.present, selectedNodeIds);
+  if (!check.ok) return notify({ tone: 'warn', text: check.reason });
+  useProjectStore.getState().apply((p) => groupNodes(p, selectedNodeIds));
+  select(check.chain[0]!);
+}
+
+/** Move the selection along the wires (the arrow keys). Selecting doesn't view; V does. Not while the Query designer covers the canvas. */
+export function selectNeighbour(direction: Direction) {
+  if (useSession.getState().designerNodeId) return;
+  const project = useProjectStore.getState().history.present;
+  const next = neighbour(project, useSession.getState().selectedNodeId, direction);
+  if (next) useSession.getState().select(next.id);
+}
+
+/** Show the selected node in the results table. */
+export function viewSelected() {
+  const id = useSession.getState().selectedNodeId;
+  if (id && nodeById(useProjectStore.getState().history.present, id)) useProjectStore.getState().setView({ viewedNodeId: id, viewedStepIndex: undefined });
+}
+
+/** Open the inspector's Add step menu with its search focused, for a selected Transform node. */
+export function searchAddStep() {
+  const id = useSession.getState().selectedNodeId;
+  const node = id ? nodeById(useProjectStore.getState().history.present, id) : undefined;
+  if (node?.type !== 'transform') return useSession.getState().notify({ tone: 'info', text: 'Select a Transform node to add a step to it.' });
+  useSession.getState().requestAddStep();
+}

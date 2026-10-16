@@ -44,8 +44,3 @@ export function offeredNode(project: Project, selectedId: string | null) {
   if (!v.pinned || !selectedId || selectedId === v.viewedNodeId || selectedId === v.compare?.nodeId) return undefined;
   return nodeById(project, selectedId);
 }
-
-/** P pins and unpins, outside text fields. */
-export function isPinShortcut(e: Pick<KeyboardEvent, 'key' | 'ctrlKey' | 'metaKey' | 'altKey'>) {
-  return e.key.toLowerCase() === 'p' && !e.ctrlKey && !e.metaKey && !e.altKey;
-}
