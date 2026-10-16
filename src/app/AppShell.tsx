@@ -9,6 +9,7 @@ import { openProjectDialog } from '../home/dialogs';
 import { exportProject, goHome, importProject } from '../persistence/workspace';
 import { QuickFixes } from '../quickfix/QuickFixes';
 import { showFailing } from '../rules';
+import { useKeptTotal } from '../flow/kept';
 import { ruleTally, useRuleStore } from '../flow/rules';
 import { sampledUpstream, useSample, useViewProject } from '../flow/sample';
 import { SampleBanner } from '../results/SampleBanner';
@@ -97,6 +98,7 @@ function Strip() {
   const viewed = project.view.viewedNodeId;
   const { rows, cols, ms, profile } = useResultsStore();
   const selected = useSession((s) => s.selectedColumns);
+  const kept = useKeptTotal();
   const node = viewed ? nodeById(project, viewed) : undefined;
   const results = useRuleStore((s) => (viewed ? s.nodes[viewed]?.results : undefined));
   const sample = useSample(project);
@@ -106,7 +108,7 @@ function Strip() {
       <EngineBadge status={engine} />
     </>
   );
-  if (!node) return <StatusStrip end={end} />;
+  if (!node) return <StatusStrip kept={kept} end={end} />;
   const one = selected.length === 1 ? selected[0]! : undefined;
   const p = one ? profile?.[one] : undefined;
   const sampled = sampledUpstream(project, node.id, sample).length > 0;
@@ -117,7 +119,7 @@ function Strip() {
       {one && p && <span data-testid="column-profile">{one} · {describeProfile(p)}</span>}
     </>
   );
-  return <StatusStrip rows={rows} cols={cols} ms={ms} rules={rules} sample={sampled && sample ? sample.rows : undefined} detail={(rules && sampled) || (one && p) ? detail : undefined} end={end} />;
+  return <StatusStrip rows={rows} cols={cols} ms={ms} rules={rules} kept={kept} sample={sampled && sample ? sample.rows : undefined} detail={(rules && sampled) || (one && p) ? detail : undefined} end={end} />;
 }
 
 /**
