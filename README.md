@@ -41,6 +41,7 @@ A Docker image (nginx serving the static build) behind a Cloudflare Tunnel at pu
 | `src/sources/` | Adding sources: format detection, file handles, clipboard text, web addresses (fetched again on reopen), choosing files again on reopen (on Chromium, reconnecting them with one permission click through stored file handles), and Excel sources (sheet, header row and range, kept loaded as DuckDB tables) |
 | `src/excel/` | SheetJS in a Web Worker: reading `.xlsx` sheets into typed columns and Arrow tables for DuckDB, and writing Excel exports from Arrow batches. Excel's limits and sheet-name rules live in `limits.ts`, which doesn't load SheetJS |
 | `src/persistence/` | IndexedDB autosave, `.puddle.json` export and import, format migrations |
+| `src/sync/` | Optional project sync through one provider-agnostic layer (`SyncProvider`): sync states, the offline queue, conflict choices and "Open from"; GitHub Gist is the first provider. Credentials and sync links stay in IndexedDB on this device; the synced file is the `.puddle.json` less pasted rows |
 | `src/home/` | The projects home screen and the rename and delete dialogs |
 | `src/canvas/` | The node canvas on React Flow: nodes, wires, auto layout |
 | `src/flow/` | Each node's live status (columns, row count, broken, dimmed), kept in step with the project; sample mode above the row threshold |
