@@ -91,10 +91,10 @@ it('reads the total size from Content-Range', () => {
 
 /** A fake server: answers Range requests when `ranges` is on, and records each request. */
 function fakeServer(body: Uint8Array<ArrayBuffer>, opts: { ranges?: boolean; type?: string; status?: number } = {}) {
-  const calls: { range?: string }[] = [];
+  const calls: { range?: string; cache?: RequestCache; credentials?: RequestCredentials }[] = [];
   const fetchImpl = (async (_url: string, init?: RequestInit) => {
     const range = (init?.headers as Record<string, string> | undefined)?.Range;
-    calls.push({ range });
+    calls.push({ range, ...(init?.cache ? { cache: init.cache } : {}), ...(init?.credentials ? { credentials: init.credentials } : {}) });
     if (opts.status) return new Response('nope', { status: opts.status, statusText: 'Not Found' });
     const headers = { 'Content-Type': opts.type ?? 'application/octet-stream' };
     const m = opts.ranges && range ? /bytes=(\d+)-(\d+)/.exec(range) : null;
@@ -118,7 +118,18 @@ describe('fetching an address', () => {
     expect(f).toMatchObject({ format: 'csv', ranged: false, size: body.length });
     expect(f.data).toEqual(body);
     expect(f.headHash).toBe(await headHash(new Blob([body])));
-    expect(calls).toEqual([{ range: `bytes=0-${MB - 1}` }]);
+    expect(calls).toEqual([{ range: `bytes=0-${MB - 1}`, cache: 'no-store', credentials: 'omit' }]);
+  });
+
+  // Regression: a sample fetched like a typed address (ranged, no-store, no credentials) wasn't answered from the
+  // service worker's precache in Firefox, so samples couldn't be read offline there.
+  it('fetches a file shipped with Puddle in one plain GET, the way the service worker precached it', async () => {
+    const body = text('a,b\n1,2\n');
+    const { fetchImpl, calls } = fakeServer(body, { ranges: true });
+    const f = await fetchAddress(new URL('https://puddle.example/samples/contacts.csv'), { fetchImpl, format: 'csv', shipped: true });
+    expect(f).toMatchObject({ format: 'csv', ranged: false, size: body.length });
+    expect(f.data).toEqual(body);
+    expect(calls).toEqual([{ range: undefined }]);
   });
 
   it('stops after the first request when a ranged file ends inside the first megabyte', async () => {

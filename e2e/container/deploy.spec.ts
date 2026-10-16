@@ -88,3 +88,22 @@ test('after the first visit the app loads and runs a flow offline', async ({ pag
   await node(page, 'customers.csv').click();
   await expectRows(page, 4);
 });
+
+test('after the first visit the samples open offline, from the service worker’s cache', async ({ page, context }) => {
+  await openApp(page);
+  await page.evaluate(async () => {
+    const reg = await navigator.serviceWorker.ready;
+    if (!reg.active) throw new Error('No active service worker.');
+  });
+  await expect.poll(() => page.evaluate(() => !!navigator.serviceWorker.controller), { timeout: 30_000 }).toBe(true);
+  const precache: string[] = await page.evaluate(async () => (await fetch('/precache.json')).json());
+  expect(precache).toEqual(expect.arrayContaining(['samples/contacts.csv', 'samples/sales.csv', 'samples/orders.csv', 'samples/customers.csv', 'samples/monthly-sales.csv']));
+
+  await context.setOffline(true);
+  await page.reload();
+  await expect(page.getByTestId('engine-ready')).toBeVisible({ timeout: 45_000 });
+  await page.getByRole('button', { name: 'Try a sample' }).click();
+  await page.getByRole('dialog', { name: 'Try a sample' }).getByTestId('sample-sales').click();
+  await expect(node(page, 'sales.csv')).toHaveAttribute('data-status', 'ok', { timeout: 20_000 });
+  await expectRows(page, 72);
+});

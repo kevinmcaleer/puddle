@@ -1,5 +1,5 @@
-// Puddle's service worker: keeps the app, the eh WASM bundle and the self-hosted extensions so Puddle runs
-// offline after the first visit. Registered as sw.js?build=<id>, so each deploy installs a fresh cache.
+// Puddle's service worker: keeps the app, the eh WASM bundle, the self-hosted extensions and the sample datasets so
+// Puddle runs offline after the first visit. Registered as sw.js?build=<id>, so each deploy installs a fresh cache.
 import { CACHE_PREFIX, cacheName, strategyFor } from './precache';
 
 declare const self: ServiceWorkerGlobalScope;

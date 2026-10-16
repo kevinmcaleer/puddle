@@ -2,14 +2,15 @@ import { useRef } from 'react';
 import { duplicateProject, importProject, newProject, openProject, useWorkspace } from '../persistence/workspace';
 import { THEME_ICON, THEME_LABEL, useTheme } from '../app/theme';
 import { Banner, Button, formatInstant, Menu, Toolbar, useDisplayFormat } from '../ui';
+import { SamplePicker } from '../samples/SamplePicker';
 import { openProjectDialog } from './dialogs';
-import { PROVIDERS } from '../sync';
+import { PROVIDER_IDS, PROVIDERS } from '../sync';
 import { openSyncDialog } from '../sync/dialogs';
 
 
 const plural = (n: number, one: string) => `${n} ${one}${n === 1 ? '' : 's'}`;
 
-/** The projects home screen: every project saved in this browser, with create, open, rename, duplicate, delete. */
+/** The projects home screen: every project saved in this browser, with create, open, rename, duplicate, delete, and the samples to try. */
 export function HomeScreen() {
   const { projects, error } = useWorkspace();
   const theme = useTheme();
@@ -20,7 +21,11 @@ export function HomeScreen() {
     <div className="grid h-full grid-rows-[auto_minmax(0,1fr)] bg-surface-canvas text-body text-ink" data-testid="home">
       <Toolbar>
         <Button variant="ghost" icon="export" onClick={() => importInput.current?.click()}>Import project</Button>
-        <Button variant="ghost" icon="refresh" onClick={() => openSyncDialog({ kind: 'open', provider: 'gist' })}>Open from {PROVIDERS.gist.label}</Button>
+        {PROVIDER_IDS.map((id) => (
+          <Button key={id} variant="ghost" icon="refresh" onClick={() => openSyncDialog({ kind: 'open', provider: id })}>
+            Open from {PROVIDERS[id]!.label}
+          </Button>
+        ))}
         <Button variant="primary" icon="plus" onClick={() => void newProject()}>New project</Button>
         <Button
           variant="ghost"
@@ -51,7 +56,7 @@ export function HomeScreen() {
           </div>
           {error && <Banner tone="fail" title="That didn’t work">{error}</Banner>}
           {projects.length === 0 ? (
-            <Banner tone="info" title="No projects yet">Start a new project, or import a .puddle.json file.</Banner>
+            <Banner tone="info" title="No projects yet">Start a new project, import a .puddle.json file, or try a sample below.</Banner>
           ) : (
             <ul className="flex flex-col divide-y divide-line rounded-md border border-line bg-surface-panel" aria-label="Projects">
               {projects.map((p) => (
@@ -76,6 +81,9 @@ export function HomeScreen() {
               ))}
             </ul>
           )}
+          <div className="rounded-md border border-line bg-surface-panel" data-testid="home-samples">
+            <SamplePicker />
+          </div>
         </div>
       </main>
     </div>
