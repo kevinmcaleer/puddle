@@ -26,6 +26,8 @@ describe('rule forms', () => {
     expect(ruleLabel({ type: 'inSet', params: { column: 'c', values: ['a', 'b', 'c', 'd', 'e'] } })).toBe('c is one of a, b, c and 2 more');
     expect(ruleLabel({ type: 'inRange', params: { column: 'n', min: '1', max: '' } })).toBe('n is at least 1');
     expect(ruleLabel({ type: 'inRange', params: { column: 'n', min: '', max: '9' } })).toBe('n is at most 9');
+    expect(ruleLabel({ type: 'readsAs', params: { column: 'amount', as: 'number' } })).toBe('amount reads as a number');
+    expect(ruleLabel({ type: 'readsAs', params: { column: 'due', as: 'date' } })).toBe('due reads as a date');
     // Incomplete settings fall back to the form's title.
     expect(ruleLabel({ type: 'inSet', params: { column: 'c', values: [] } })).toBe('One of a set of values');
   });

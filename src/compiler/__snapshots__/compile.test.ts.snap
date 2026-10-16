@@ -63,6 +63,10 @@ exports[`quality rules > noEdgeSpaces {"column":"name"} 1`] = `""name" IS NULL O
 
 exports[`quality rules > notEmpty {"column":"email"} 1`] = `"NOT (coalesce(trim(CAST("email" AS VARCHAR)), '') = '')"`;
 
+exports[`quality rules > readsAs {"column":"joined","as":"date"} 1`] = `"coalesce(trim(CAST("joined" AS VARCHAR)), '') = '' OR TRY_CAST(trim(CAST("joined" AS VARCHAR)) AS DATE) IS NOT NULL"`;
+
+exports[`quality rules > readsAs {"column":"na\\"me","as":"number"} 1`] = `"coalesce(trim(CAST("na""me" AS VARCHAR)), '') = '' OR TRY_CAST(trim(CAST("na""me" AS VARCHAR)) AS DOUBLE) IS NOT NULL"`;
+
 exports[`quality rules > shows only the rows a rule fails, keyed apart from the full preview 1`] = `
 "WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv')),
   "n_clean_s0" AS (SELECT * REPLACE (trim("name") AS "name") FROM "n_src"),
@@ -82,11 +86,25 @@ exports[`results table queries > checks what text columns look like, one set of 
 SELECT * FROM "n_clean_s1")"
 `;
 
+exports[`results table queries > confirms suggested rules with exact counts, only those asked for per column 1`] = `
+"SELECT count(*) AS "rows", count("id") AS "nn0", count(*) FILTER (WHERE coalesce(trim(CAST("id" AS VARCHAR)), '') = '') AS "blank0", count(DISTINCT "id") AS "distinct0", count("na""me") AS "nn1", count(*) FILTER (WHERE CAST("na""me" AS VARCHAR) <> trim(CAST("na""me" AS VARCHAR))) AS "edges1", list_sort(list(DISTINCT CAST("na""me" AS VARCHAR)) FILTER (WHERE "na""me" IS NOT NULL)) AS "values1" FROM (WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv')),
+  "n_clean_s0" AS (SELECT * REPLACE (trim("name") AS "name") FROM "n_src"),
+  "n_clean_s1" AS (SELECT * REPLACE (list_aggr(list_transform(string_split("name", ' '), w -> upper(left(w, 1)) || lower(substr(w, 2))), 'string_agg', ' ') AS "name") FROM "n_clean_s0")
+SELECT * FROM "n_clean_s1")"
+`;
+
 exports[`results table queries > profiles through SUMMARIZE 1`] = `
 "SELECT column_name, CAST(null_percentage AS DOUBLE) AS null_pct, approx_unique, CAST(min AS VARCHAR) AS min, CAST(max AS VARCHAR) AS max FROM (SUMMARIZE SELECT * FROM (WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv')),
   "n_clean_s0" AS (SELECT * REPLACE (trim("name") AS "name") FROM "n_src"),
   "n_clean_s1" AS (SELECT * REPLACE (list_aggr(list_transform(string_split("name", ' '), w -> upper(left(w, 1)) || lower(substr(w, 2))), 'string_agg', ' ') AS "name") FROM "n_clean_s0")
 SELECT * FROM "n_clean_s1"))"
+`;
+
+exports[`sample mode > reads only the first rows of a sampled source, and nothing else changes 1`] = `
+"WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv') LIMIT 1000),
+  "n_clean_s0" AS (SELECT * REPLACE (trim("name") AS "name") FROM "n_src"),
+  "n_clean_s1" AS (SELECT * REPLACE (list_aggr(list_transform(string_split("name", ' '), w -> upper(left(w, 1)) || lower(substr(w, 2))), 'string_agg', ' ') AS "name") FROM "n_clean_s0")
+SELECT * FROM "n_clean_s1""
 `;
 
 exports[`sources > csv with {"delimiter":";","header":true,"quote":"\\"","encoding":"latin-1","nullStrings":["N/A",""]} 1`] = `"read_csv('src_x.csv', delim = ';', header = true, quote = '"', encoding = 'latin-1', nullstr = ['N/A', ''])"`;

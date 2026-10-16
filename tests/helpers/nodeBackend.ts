@@ -10,6 +10,20 @@ import { cancelled } from '../../src/engine/errors';
 
 const dist = dirname(createRequire(import.meta.url).resolve('@duckdb/duckdb-wasm/dist/duckdb-node-blocking.cjs'));
 
+/** DuckDB's own lexer (the tokenizer behind its parser), for checking ours against it. Offsets and token types. */
+export async function createNodeTokenizer(): Promise<(sql: string) => { offsets: number[]; types: number[] }> {
+  const db = await createDuckDB(
+    {
+      mvp: { mainModule: join(dist, 'duckdb-mvp.wasm'), mainWorker: join(dist, 'duckdb-node-mvp.worker.cjs') },
+      eh: { mainModule: join(dist, 'duckdb-eh.wasm'), mainWorker: join(dist, 'duckdb-node-eh.worker.cjs') },
+    },
+    new VoidLogger(),
+    NODE_RUNTIME,
+  );
+  await db.instantiate();
+  return (sql) => db.tokenize(sql);
+}
+
 export async function createNodeBackend(opts: { beforeQuery?: (sql: string) => Promise<void> } = {}): Promise<DuckBackend> {
   const db = await createDuckDB(
     {

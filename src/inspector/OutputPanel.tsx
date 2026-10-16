@@ -59,7 +59,7 @@ export function OutputPanel({ node }: { node: OutputNode }) {
             {log.map((e) => (
               <li key={e.id} className="flex flex-col">
                 <span className="text-body-strong text-ink">
-                  {e.fileName} · {e.rows} {e.rows === 1 ? 'row' : 'rows'}
+                  {e.cancelled ? `${e.fileName} · stopped, nothing saved` : `${e.fileName} · ${e.rows} ${e.rows === 1 ? 'row' : 'rows'}`}
                 </span>
                 <span className="text-label text-ink-muted">{time(e.at)}</span>
                 {e.overridden?.length ? <span className="text-label text-fail">Exported anyway past {e.overridden.map((o) => `${o.rule} (${o.nodeName})`).join(', ')}</span> : null}
