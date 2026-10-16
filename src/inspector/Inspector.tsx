@@ -5,6 +5,7 @@ import { nodeById, setParseOptions, useProject, useProjectStore, type ParseOptio
 import { Banner, columnKind, Field, Icon, NODE_KIND, Section, Select, Switch, TypeTag } from '../ui';
 import { CommitInput } from '../steps/StepForm';
 import { JoinPanel } from './JoinPanel';
+import { KeepPanel } from './KeepPanel';
 import { NodeNotes } from './NodeNotes';
 import { OutputPanel } from './OutputPanel';
 import { RulesPanel } from './RulesPanel';
@@ -134,6 +135,7 @@ export function Inspector() {
     return (
       <>
         <TransformPanel node={node} />
+        <KeepPanel key={node.id} node={node} />
         <Columns nodeId={node.id} />
         <RulesPanel node={node} />
         <NodeNotes node={node} />
@@ -144,6 +146,7 @@ export function Inspector() {
     return (
       <>
         <JoinPanel node={node} />
+        <KeepPanel key={node.id} node={node} />
         <Columns nodeId={node.id} />
         <RulesPanel node={node} />
         <NodeNotes node={node} />
@@ -165,6 +168,7 @@ export function Inspector() {
       {source && source.kind === 'url' && <UrlPanel source={source} />}
       {source && hasParseOptions(source) && <SourceOptions source={source} />}
       {node.type === 'output' && <OutputPanel node={node} />}
+      {node.type === 'source' && <KeepPanel key={node.id} node={node} />}
       <Columns nodeId={node.id} />
       <RulesPanel node={node} />
       <NodeNotes node={node} />

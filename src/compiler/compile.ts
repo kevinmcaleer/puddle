@@ -1,6 +1,7 @@
 import { hashValue, inputEdge, inputEdges, inputPorts, nodeById, topoSort, upstreamIds, type ColumnSchema, type GraphNode, type JoinNode, type Project, type Rule } from '../model';
 import { CompileError, PendingSchemaError, UnwiredError } from './errors';
 import { compileJoin, joinCondition, joinProblems } from './join';
+import { keptTable, knownKept, type KeptBook } from './keptBook';
 import { knownSchemas, type SchemaBook } from './schemaBook';
 import { sourceRelation } from './sources';
 import { cteName, ident, num, str } from './sql';
@@ -29,6 +30,10 @@ export interface Compiled {
 export interface CompileOptions {
   /** Where a Join reads its inputs' columns. The app's shared book by default. */
   schemas?: SchemaBook;
+  /** Kept results the compiler may read from. The app's shared book by default. */
+  kept?: KeptBook;
+  /** Compile the target itself even if it is kept: for building its table, or looking inside it. */
+  rebuild?: boolean;
 }
 
 /** The CTE behind each input of a node, by port, in port order. Throws UnwiredError for an empty input. */
@@ -69,15 +74,41 @@ interface Built {
   order: string[];
 }
 
-function build(project: Project, target: Target, book: SchemaBook): Built {
+/** Whether a node is read from its kept table: kept, built for its current upstream, and not being rebuilt. */
+function readsKept(project: Project, nodeId: string, target: Target, options: CompileOptions): boolean {
+  const n = nodeById(project, nodeId);
+  if (!n?.pinnedResult) return false;
+  if (nodeId === target.nodeId && (options.rebuild || target.stepIndex != null)) return false;
+  const kept = (options.kept ?? knownKept).get(nodeId);
+  return !!kept && kept.key === upstreamKey(project, { nodeId });
+}
+
+/** The nodes a target needs compiled: everything upstream, stopping at kept nodes read from their tables. */
+function neededIds(project: Project, target: Target, options: CompileOptions): Set<string> {
+  const ids = new Set<string>();
+  const visit = (id: string) => {
+    if (ids.has(id)) return;
+    ids.add(id);
+    if (readsKept(project, id, target, options)) return;
+    for (const e of inputEdges(project, id)) visit(e.from.nodeId);
+  };
+  visit(target.nodeId);
+  return ids;
+}
+
+function build(project: Project, target: Target, book: SchemaBook, options: CompileOptions = {}): Built {
   const node = nodeById(project, target.nodeId);
   if (!node) throw new CompileError('That node no longer exists.', target.nodeId);
-  const order = topoSort(project, upstreamIds(project, target.nodeId));
+  const order = topoSort(project, neededIds(project, target, options));
   const ctes: string[] = [];
   const out = new Map<string, string>();
 
   for (const id of order) {
     const n = nodeById(project, id)!;
+    if (readsKept(project, id, target, options)) {
+      out.set(id, keptTable(id));
+      continue;
+    }
     switch (n.type) {
       case 'source': {
         const source = project.sources.find((s) => s.id === n.sourceId);
@@ -128,7 +159,7 @@ function build(project: Project, target: Target, book: SchemaBook): Built {
  * input schemas always give the same SQL.
  */
 export function compile(project: Project, target: Target, options: CompileOptions = {}): Compiled {
-  const { node, ctes, out, order } = build(project, target, options.schemas ?? knownSchemas);
+  const { node, ctes, out, order } = build(project, target, options.schemas ?? knownSchemas, options);
   let output = out.get(target.nodeId)!;
   if (target.failingRuleId) {
     const rule = node.rules.find((r) => r.id === target.failingRuleId);
@@ -241,7 +272,8 @@ export function compileRules(project: Project, nodeId: string, rules: Rule[]): s
  * rows have a match. More pairs than matched left rows means some left row matched several right rows.
  */
 export function compileJoinCheck(project: Project, nodeId: string, options: CompileOptions = {}): string {
-  const { node, ctes, out } = build(project, { nodeId }, options.schemas ?? knownSchemas);
+  // The check looks inside the Join, so it is compiled even when kept; its inputs may still come from tables.
+  const { node, ctes, out } = build(project, { nodeId }, options.schemas ?? knownSchemas, { ...options, rebuild: true });
   if (node.type !== 'join') throw new CompileError(`${node.name} isn’t a Join node.`, node.id);
   const input = (port: 'left' | 'right') => out.get(inputEdge(project, nodeId, port)!.from.nodeId)!;
   const [l, r, j] = [input('left'), input('right'), out.get(nodeId)!];

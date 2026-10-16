@@ -9,6 +9,7 @@ import { openProjectDialog } from '../home/dialogs';
 import { exportProject, goHome, importProject } from '../persistence/workspace';
 import { QuickFixes } from '../quickfix/QuickFixes';
 import { showFailing } from '../rules';
+import { useKeptTotal } from '../flow/kept';
 import { ruleTally, useRuleStore } from '../flow/rules';
 import { describeProfile } from '../results/profile';
 import { exportAll, ExportBlockedBanner, ExportButton } from '../export';
@@ -93,13 +94,14 @@ function Strip() {
   const viewed = project.view.viewedNodeId;
   const { rows, cols, ms, profile } = useResultsStore();
   const selected = useSession((s) => s.selectedColumns);
+  const kept = useKeptTotal();
   const node = viewed ? nodeById(project, viewed) : undefined;
   const results = useRuleStore((s) => (viewed ? s.nodes[viewed]?.results : undefined));
-  if (!node) return <StatusStrip end={<EngineBadge status={engine} />} />;
+  if (!node) return <StatusStrip kept={kept} end={<EngineBadge status={engine} />} />;
   const one = selected.length === 1 ? selected[0]! : undefined;
   const p = one ? profile?.[one] : undefined;
   const detail = one && p ? <span data-testid="column-profile">{one} · {describeProfile(p)}</span> : undefined;
-  return <StatusStrip rows={rows} cols={cols} ms={ms} rules={ruleTally(node.rules, results)} detail={detail} end={<EngineBadge status={engine} />} />;
+  return <StatusStrip rows={rows} cols={cols} ms={ms} rules={ruleTally(node.rules, results)} kept={kept} detail={detail} end={<EngineBadge status={engine} />} />;
 }
 
 /**

@@ -57,6 +57,19 @@ export function setCollapsed(project: Project, nodeId: string, collapsed: boolea
   return { ...project, nodes: project.nodes.map((n) => (n.id === nodeId ? { ...n, collapsed } : n)) };
 }
 
+/** Keep a node's result in memory (a pinned result), or stop keeping it. An Output node has nothing to keep. */
+export function setKeepResult(project: Project, nodeId: string, keep: boolean): Project {
+  return {
+    ...project,
+    nodes: project.nodes.map((n) => {
+      if (n.id !== nodeId || n.type === 'output') return n;
+      if (keep) return { ...n, pinnedResult: true };
+      const { pinnedResult: _, ...rest } = n;
+      return rest as typeof n;
+    }),
+  };
+}
+
 /** Remove nodes and their wires, plus sources no longer read by any node. Clears the view if it pointed at one. */
 export function removeNodes(project: Project, ids: string[]): Project {
   let p = project;

@@ -1,6 +1,8 @@
 import { Handle, Position, type Node, type NodeProps } from '@xyflow/react';
-import type { ReactNode } from 'react';
+import { useMemo, type ReactNode } from 'react';
+import { upstreamKey } from '../compiler';
 import { exportGate } from '../flow/gate';
+import { keptLabel, keptView, useKeptEntry } from '../flow/kept';
 import { summarise, useRuleStore } from '../flow/rules';
 import { useNodeStatus } from '../flow/status';
 import { inputPorts, useProject, type GraphNode } from '../model';
@@ -19,6 +21,9 @@ export function PuddleNode({ data, selected }: NodeProps<PuddleFlowNode>) {
   const ok = status.state === 'ok' ? status : null;
   const project = useProject();
   const ports = inputPorts(project, node);
+  const keptEntry = useKeptEntry(node.id);
+  const keepKey = useMemo(() => (node.pinnedResult ? upstreamKey(project, { nodeId: node.id }) : null), [project, node.pinnedResult, node.id]);
+  const kept = keepKey != null && node.type !== 'output' ? keptView(keptEntry, keepKey) : null;
   const allResults = useRuleStore((s) => s.nodes);
   const own = ok ? summarise(node.rules, allResults[node.id]?.results) : undefined;
   // An Output node shows when a failing rule upstream blocks its export, even with no rules of its own.
@@ -46,6 +51,7 @@ export function PuddleNode({ data, selected }: NodeProps<PuddleFlowNode>) {
         dimmed={status.state === 'blocked' || (status.state === 'detached' && fetching)}
         brokenInput={status.state === 'error'}
         note={node.notes?.trim() || undefined}
+        kept={kept ? { label: keptLabel(kept), stale: kept.state !== 'ready' } : undefined}
         renderPorts={({ output }) => (
           <>
             {ports.map((port, i) => (
