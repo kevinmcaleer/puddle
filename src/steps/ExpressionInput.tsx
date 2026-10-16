@@ -12,12 +12,17 @@ export function ExpressionInput({
   value,
   columns,
   error,
+  rows = 2,
+  placeholder,
   onCommit,
 }: {
   id: string;
   value: string;
   columns: ColumnSchema[];
   error?: boolean;
+  /** Lines shown before it scrolls; a whole query wants more than an expression. */
+  rows?: number;
+  placeholder?: string;
   onCommit: (v: string) => void;
 }) {
   const [draft, setDraft] = useState(value);
@@ -47,7 +52,8 @@ export function ExpressionInput({
       <textarea
         ref={ref}
         id={id}
-        rows={2}
+        rows={rows}
+        placeholder={placeholder}
         spellCheck={false}
         role="combobox"
         aria-expanded={matches.length > 0}

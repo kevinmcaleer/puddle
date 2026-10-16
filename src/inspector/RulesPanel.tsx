@@ -1,14 +1,18 @@
 import { useState } from 'react';
 import { useSession } from '../app/session';
+import { stopped } from '../engine/errors';
 import { useRuleStore, type RuleResult } from '../flow/rules';
+import { runAgain } from '../flow/rerun';
+import { sampledUpstream, useSample } from '../flow/sample';
 import { useNodeStatus } from '../flow/status';
-import { addRule, dismissSuggestion, newId, removeRule, updateRule, useProjectStore, type GraphNode, type Rule } from '../model';
+import { addRule, dismissSuggestion, newId, removeRule, updateRule, useProject, useProjectStore, type GraphNode, type Rule } from '../model';
 import { newRule, ruleErrors, ruleForm, ruleForms, ruleLabel, showFailing, useSuggestions, type Suggestion } from '../rules';
 import { FormFields } from '../steps/StepForm';
 import { Button, Field, Menu, RuleRow, Section, Select, Switch } from '../ui';
 
 const apply = (edit: Parameters<ReturnType<typeof useProjectStore.getState>['apply']>[0]) => useProjectStore.getState().apply(edit);
 const NONE: Record<string, RuleResult> = {};
+const STOPPED = stopped().message;
 
 function RuleSettings({ node, rule }: { node: GraphNode; rule: Rule }) {
   const status = useNodeStatus(node.id);
@@ -71,6 +75,10 @@ function Suggestions({ node }: { node: GraphNode }) {
 export function RulesPanel({ node }: { node: GraphNode }) {
   const results = useRuleStore((s) => s.nodes[node.id]?.results ?? NONE);
   const status = useNodeStatus(node.id);
+  const project = useProject();
+  const sample = useSample(project);
+  const onSample = node.rules.some((r) => r.enabled) && sampledUpstream(project, node.id, sample).length > 0;
+  const stopped = Object.values(results).some((r) => r.state === 'error' && r.message === STOPPED);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const items = ruleForms().map((f) => ({
     label: f.title,
@@ -82,6 +90,18 @@ export function RulesPanel({ node }: { node: GraphNode }) {
   }));
   return (
     <Section title="Rules" count={node.rules.length} action={<Menu label="Add rule" button={{ variant: 'ghost', size: 'sm', icon: 'plus' }} items={items} />}>
+      {onSample && (
+        <p className="pb-2 text-label text-ink-muted" data-testid="rules-sample-note">
+          Checked on the sample, so counts are of sampled rows. Exports check these rules on the full data first.
+        </p>
+      )}
+      {stopped && (
+        <div className="pb-2">
+          <Button size="sm" variant="secondary" onClick={runAgain}>
+            Run again
+          </Button>
+        </div>
+      )}
       {node.rules.length ? (
         <div className="flex flex-col" data-testid="rules">
           {node.rules.map((r) => {

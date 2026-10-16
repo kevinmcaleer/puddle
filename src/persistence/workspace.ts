@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { useSession } from '../app/session';
+import { resetSample } from '../flow/sample';
 import { invalidateCaches } from '../flow/status';
 import { createProject, newId, useProjectStore, type Project } from '../model';
 import { useResultsStore } from '../results/state';
@@ -47,6 +48,7 @@ export async function refreshProjects() {
 /** Show a project in the editor: load it without history, reset per-tab state and reconnect what can be. */
 function show(project: Project) {
   invalidateCaches();
+  resetSample();
   useSession.setState({ selectedNodeId: null, selectedNodeIds: [], selectedStepId: null, selectedColumns: [], notice: null });
   useResultsStore.getState().set({ rows: undefined, cols: undefined, ms: undefined, profile: undefined });
   useProjectStore.getState().load(project);

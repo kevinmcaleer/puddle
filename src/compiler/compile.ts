@@ -83,7 +83,8 @@ function build(project: Project, target: Target, book: SchemaBook): Built {
         const source = project.sources.find((s) => s.id === n.sourceId);
         if (!source) throw new CompileError(`${n.name} has lost its source. Add the file again.`, n.id);
         const name = cteName(n.id);
-        ctes.push(`${name} AS (SELECT * FROM ${sourceRelation(source)})`);
+        const sample = source.sampleRows != null ? ` LIMIT ${num(source.sampleRows)}` : '';
+        ctes.push(`${name} AS (SELECT * FROM ${sourceRelation(source)}${sample})`);
         out.set(n.id, name);
         break;
       }
@@ -194,7 +195,7 @@ export function upstreamKey(project: Project, target: Target): string {
       const inputs = inputEdges(project, n.id).map((e) => [e.from.nodeId, e.to.port]);
       if (n.type === 'source') {
         const s = project.sources.find((x) => x.id === n.sourceId);
-        return { id: n.id, type: n.type, inputs, source: s && { id: s.id, format: s.format, parseOptions: s.parseOptions, file: s.file?.headHash, size: s.file?.size, clip: s.clipboard?.text, url: s.url && [s.url.href, s.url.headHash] } };
+        return { id: n.id, type: n.type, inputs, source: s && { id: s.id, format: s.format, parseOptions: s.parseOptions, file: s.file?.headHash, size: s.file?.size, clip: s.clipboard?.text, url: s.url && [s.url.href, s.url.headHash], sample: s.sampleRows } };
       }
       if (n.type === 'transform') {
         const steps = n.id === target.nodeId && target.stepIndex != null ? n.steps.slice(0, target.stepIndex + 1) : n.steps;

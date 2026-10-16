@@ -151,6 +151,8 @@ function FieldInput({ field, value, params, columns, error, detectDates, onChang
     }
     case 'expression':
       return <ExpressionInput key={String(value ?? '')} id={id} value={String(value ?? '')} columns={columns} error={!!error} onCommit={onChange} />;
+    case 'sql':
+      return <ExpressionInput key={String(value ?? '')} id={id} rows={8} placeholder={field.placeholder} value={String(value ?? '')} columns={columns} error={!!error} onCommit={onChange} />;
     case 'conditions':
       return <Conditions value={Array.isArray(value) ? (value as Condition[]) : []} columns={columns} onChange={onChange} />;
     case 'sortKeys':
@@ -214,9 +216,15 @@ export function FormFields({
         f.kind === 'switch' ? (
           <FieldInput key={f.key} field={f} value={params[f.key]} params={params} columns={columns} onChange={(v) => onChange({ ...params, [f.key]: v })} />
         ) : (
-          <Field key={f.key} label={f.label} htmlFor={`step-${f.key}`} hint={f.liveHint?.(params) ?? f.hint} error={errors[f.key]}>
+          <Field key={f.key} label={f.label} htmlFor={`step-${f.key}`} hint={f.liveHint?.(params) ?? f.hint} error={f.kind === 'sql' ? undefined : errors[f.key]}>
             <FieldInput field={f} value={params[f.key]} params={params} columns={columns} error={errors[f.key]} detectDates={detectDates} onChange={(v) => onChange({ ...params, [f.key]: v })} />
             {f.expects && <ExpectedType expects={f.expects} problem={textColumnsProblem(f, params[f.key], columns)} />}
+            {/* A refused query gets a banner: the reason can be long, and nothing runs until it's fixed. */}
+            {f.kind === 'sql' && errors[f.key] && (
+              <Banner tone="fail" title="This query can’t run as a step">
+                {errors[f.key]}
+              </Banner>
+            )}
           </Field>
         ),
       )}
