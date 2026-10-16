@@ -3,10 +3,11 @@ import type { StoredSyncLink } from '../persistence/db';
 import { projectFileName } from '../persistence/migrate';
 import { readSynced, syncHash, syncText } from './file';
 import type { SyncState } from './state';
-import { SyncAuthError, SyncConflictError, SyncMissingError, SyncOfflineError, type ProviderId, type RemoteFile, type SyncProvider } from './types';
+import { SyncAuthError, SyncConflictError, SyncMissingError, SyncOfflineError, type ProviderId, type RemoteFile, type SignInReturn, type SyncProvider } from './types';
 
 export interface SyncDeps {
-  providers: Record<ProviderId, SyncProvider>;
+  /** The providers this build offers; a link to one it doesn't (Drive without a client ID) waits untouched. */
+  providers: Partial<Record<ProviderId, SyncProvider>>;
   links: {
     load(projectId: string): Promise<StoredSyncLink | undefined>;
     save(link: StoredSyncLink): Promise<void>;
@@ -24,6 +25,8 @@ export interface SyncDeps {
     open(id: string): Promise<void>;
     /** Save a project beside the others without opening it. */
     saveCopy(project: Project): Promise<void>;
+    /** Save the open project now, even untouched, so it is there to come back to after leaving the page. */
+    keep(): Promise<void>;
   };
   state: { get(): SyncState; set(patch: Partial<SyncState>): void };
   notify(text: string): void;
@@ -49,6 +52,13 @@ export function createSyncController(deps: SyncDeps) {
   const conflicts = new Map<string, NonNullable<SyncState['conflict']>>();
   const timers = new Map<string, ReturnType<typeof setTimeout>>();
   let chain: Promise<unknown> = Promise.resolve();
+
+  const providerOf = (link: StoredSyncLink) => providers[link.provider as ProviderId];
+  function provider(id: ProviderId) {
+    const p = providers[id];
+    if (!p) throw new Error(`This build of Puddle doesn’t sync to ${id}.`);
+    return p;
+  }
 
   function queue<T>(fn: () => Promise<T>): Promise<T> {
     const run = chain.then(fn);
@@ -84,8 +94,10 @@ export function createSyncController(deps: SyncDeps) {
       schedule(projectId, retry);
     } else {
       report(projectId, { status: 'error', error: e instanceof Error ? e.message : String(e) });
-      // A refused token waits for a new one; anything else may pass on a later try.
-      if (!(e instanceof SyncAuthError)) schedule(projectId, retry);
+      // A refused token waits for a new one (and may have been forgotten: Drive's run out); anything else may pass on
+      // a later try.
+      if (e instanceof SyncAuthError) void refreshAccounts();
+      else schedule(projectId, retry);
     }
   }
 
@@ -95,14 +107,15 @@ export function createSyncController(deps: SyncDeps) {
   async function push(projectId: string) {
     const link = await links.load(projectId);
     const project = link && (await projects.load(projectId));
-    if (!link || !project || conflicts.has(projectId)) return;
+    const remote = link && providerOf(link);
+    if (!link || !project || !remote || conflicts.has(projectId)) return;
     const hash = syncHash(project);
     if (link.remoteId && hash === link.syncedHash) return report(projectId, { status: 'synced', error: null });
     if (!deps.online()) return report(projectId, { status: 'offline', error: null });
     report(projectId, { status: 'pending', error: null });
     try {
-      const remote = await providers[link.provider as ProviderId].push(fileOf(project), link.remoteId && link.revision ? { id: link.remoteId, revision: link.revision } : undefined);
-      await links.save({ ...link, ...linkFields(remote), syncedHash: hash });
+      const pushed = await remote.push(fileOf(project), link.remoteId && link.revision ? { id: link.remoteId, revision: link.revision } : undefined);
+      await links.save({ ...link, ...linkFields(pushed), syncedHash: hash });
       report(projectId, { status: 'synced', error: null });
     } catch (e) {
       failed(projectId, project, e);
@@ -113,7 +126,7 @@ export function createSyncController(deps: SyncDeps) {
 
   /** Bring the remote version into this browser in place of the local one, under the local project's id. */
   async function takeRemote(link: StoredSyncLink, local: Project) {
-    const pulled = await providers[link.provider as ProviderId].pull(link.remoteId!);
+    const pulled = await provider(link.provider as ProviderId).pull(link.remoteId!);
     const next = { ...readSynced(pulled.text, local), id: local.id };
     await links.save({ ...link, ...linkFields(pulled), syncedHash: syncHash(next) });
     await projects.replace(next);
@@ -122,7 +135,8 @@ export function createSyncController(deps: SyncDeps) {
   /** On opening a project: pull what changed remotely, push what changed here, or stop at a conflict. */
   async function check(projectId: string) {
     const link = await links.load(projectId);
-    if (!link) return;
+    const remoteProvider = link && providerOf(link);
+    if (!link || !remoteProvider) return;
     report(projectId, { provider: link.provider as ProviderId });
     const conflict = conflicts.get(projectId);
     if (conflict) return report(projectId, { status: 'conflict', conflict });
@@ -131,12 +145,12 @@ export function createSyncController(deps: SyncDeps) {
     if (!project) return;
     if (!deps.online()) return report(projectId, { status: 'offline' });
     try {
-      const remote = await providers[link.provider as ProviderId].head(link.remoteId);
+      const remote = await remoteProvider.head(link.remoteId);
       if (remote.revision === link.revision) return push(projectId);
       if (syncHash(project) !== link.syncedHash) throw new SyncConflictError(remote);
       // Nothing changed here since the last sync: the remote version is simply newer.
       await takeRemote(link, project);
-      deps.notify(`Updated from ${providers[link.provider as ProviderId].label} with changes made in another browser.`);
+      deps.notify(`Updated from ${remoteProvider.label} with changes made in another browser.`);
       report(projectId, { status: 'synced', error: null });
     } catch (e) {
       // Deleted remotely: the next push writes it again.
@@ -151,6 +165,19 @@ export function createSyncController(deps: SyncDeps) {
       for (const link of await links.list()) schedule(link.projectId, 0);
     });
 
+  /** Read who each provider is signed in as. */
+  function refreshAccounts() {
+    return Promise.all(
+      Object.values(providers).map(async (p) => {
+        const account = await p.account().catch(() => null);
+        const accounts = { ...state.get().accounts };
+        if (account) accounts[p.id] = account;
+        else delete accounts[p.id];
+        state.set({ accounts });
+      }),
+    );
+  }
+
   return {
     /** A project was opened in the editor. */
     shown(project: Project) {
@@ -162,7 +189,7 @@ export function createSyncController(deps: SyncDeps) {
     saved(project: Project) {
       return queue(async () => {
         const link = await links.load(project.id);
-        if (!link || conflicts.has(project.id)) return;
+        if (!link || !providerOf(link) || conflicts.has(project.id)) return;
         if (syncHash(project) === link.syncedHash) return;
         report(project.id, { status: deps.online() ? 'pending' : 'offline' });
         schedule(project.id);
@@ -171,31 +198,36 @@ export function createSyncController(deps: SyncDeps) {
 
     drain,
 
-    /** Read who each provider is signed in as. */
-    refreshAccounts() {
-      return Promise.all(
-        Object.values(providers).map(async (p) => {
-          const account = await p.account().catch(() => null);
-          const accounts = { ...state.get().accounts };
-          if (account) accounts[p.id] = account;
-          else delete accounts[p.id];
-          state.set({ accounts });
-        }),
-      );
-    },
+    refreshAccounts,
 
-    async connect(provider: ProviderId, credential: string) {
-      const account = await providers[provider].connect(credential);
-      state.set({ accounts: { ...state.get().accounts, [provider]: account } });
-      // A project that stopped on a refused token can carry on.
+    async connect(id: ProviderId, credential: string) {
+      const account = await provider(id).connect(credential);
+      state.set({ accounts: { ...state.get().accounts, [id]: account } });
+      // A project that stopped on a refused token can carry on: the open one checks for remote changes first.
+      const open = projects.openId();
+      if (open)
+        void queue(async () => {
+          if ((await links.load(open))?.provider === id) await check(open);
+        });
       void drain();
       return account;
+    },
+
+    /**
+     * Sign in on the provider's own page (Google Drive), saving the open project first; the app picks up `then` on
+     * coming back.
+     */
+    async signIn(id: ProviderId, then: SignInReturn['then']) {
+      const p = provider(id);
+      if (!p.signIn) throw new Error(`${p.label} signs in with a pasted token.`);
+      await projects.keep();
+      await p.signIn({ then, projectId: projects.openId() });
     },
 
     /** Forget the credential and stop syncing every project through this provider on this device. */
     disconnect(provider: ProviderId) {
       return queue(async () => {
-        await providers[provider].disconnect();
+        await providers[provider]?.disconnect();
         for (const link of await links.list()) {
           if (link.provider !== provider) continue;
           await links.delete(link.projectId);
@@ -274,21 +306,21 @@ export function createSyncController(deps: SyncDeps) {
     },
 
     /** The provider's Puddle projects, for "Open from". */
-    list: (provider: ProviderId) => providers[provider].list(),
+    list: async (id: ProviderId) => provider(id).list(),
 
     /** Open a remote project: the local copy already synced with it, or a new local copy linked to it. */
-    openRemote(provider: ProviderId, remoteId: string) {
+    openRemote(id: ProviderId, remoteId: string) {
       return queue(async () => {
-        const existing = (await links.list()).find((l) => l.provider === provider && l.remoteId === remoteId);
+        const existing = (await links.list()).find((l) => l.provider === id && l.remoteId === remoteId);
         if (existing) {
           if (await projects.load(existing.projectId)) return projects.open(existing.projectId);
           await links.delete(existing.projectId);
         }
-        const pulled = await providers[provider].pull(remoteId);
+        const pulled = await provider(id).pull(remoteId);
         let project = readSynced(pulled.text);
         // The project was copied into this browser some other way: keep both.
         if (await projects.load(project.id)) project = { ...project, id: newId('p') };
-        await links.save({ projectId: project.id, provider, ...linkFields(pulled), syncedHash: syncHash(project) });
+        await links.save({ projectId: project.id, provider: id, ...linkFields(pulled), syncedHash: syncHash(project) });
         await projects.replace(project);
       });
     },

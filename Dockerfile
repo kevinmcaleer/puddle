@@ -13,6 +13,9 @@ COPY . .
 ARG FETCH_EXTENSIONS=1
 ARG PUDDLE_BUILD
 ENV PUDDLE_BUILD=$PUDDLE_BUILD
+# Google Drive sync's OAuth client ID (see README, Development); without it the Drive option is hidden.
+ARG VITE_GOOGLE_CLIENT_ID
+ENV VITE_GOOGLE_CLIENT_ID=$VITE_GOOGLE_CLIENT_ID
 RUN if [ "$FETCH_EXTENSIONS" = "1" ]; then node scripts/fetch-duckdb-extensions.mjs public/duckdb-extensions; fi \
  && npx vite build
 

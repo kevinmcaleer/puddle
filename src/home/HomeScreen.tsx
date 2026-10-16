@@ -4,7 +4,7 @@ import { THEME_ICON, THEME_LABEL, useTheme } from '../app/theme';
 import { Banner, Button, Menu, Toolbar } from '../ui';
 import { SamplePicker } from '../samples/SamplePicker';
 import { openProjectDialog } from './dialogs';
-import { PROVIDERS } from '../sync';
+import { PROVIDER_IDS, PROVIDERS } from '../sync';
 import { openSyncDialog } from '../sync/dialogs';
 
 const updated = (iso: string) =>
@@ -22,7 +22,11 @@ export function HomeScreen() {
     <div className="grid h-full grid-rows-[auto_minmax(0,1fr)] bg-surface-canvas text-body text-ink" data-testid="home">
       <Toolbar>
         <Button variant="ghost" icon="export" onClick={() => importInput.current?.click()}>Import project</Button>
-        <Button variant="ghost" icon="refresh" onClick={() => openSyncDialog({ kind: 'open', provider: 'gist' })}>Open from {PROVIDERS.gist.label}</Button>
+        {PROVIDER_IDS.map((id) => (
+          <Button key={id} variant="ghost" icon="refresh" onClick={() => openSyncDialog({ kind: 'open', provider: id })}>
+            Open from {PROVIDERS[id]!.label}
+          </Button>
+        ))}
         <Button variant="primary" icon="plus" onClick={() => void newProject()}>New project</Button>
         <Button
           variant="ghost"
