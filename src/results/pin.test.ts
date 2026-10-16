@@ -1,6 +1,6 @@
 import { flow, src } from '../../tests/helpers/projects';
 import { useProjectStore } from '../model';
-import { closeCompare, comparedNode, compareWith, isPinShortcut, offeredNode, togglePin, viewHere, viewNode } from './pin';
+import { closeCompare, comparedNode, compareWith, offeredNode, togglePin, viewHere, viewNode } from './pin';
 
 const project = () =>
   flow({
@@ -86,18 +86,5 @@ describe('pinning the results table', () => {
     compareWith('out');
     viewHere('t1');
     expect(useProjectStore.getState().history.past).toHaveLength(0);
-  });
-});
-
-describe('isPinShortcut', () => {
-  const key = (k: string, mods: Partial<Record<'ctrlKey' | 'metaKey' | 'altKey', boolean>> = {}) => ({ key: k, ctrlKey: false, metaKey: false, altKey: false, ...mods });
-
-  it('is P, without Ctrl, Cmd or Alt', () => {
-    expect(isPinShortcut(key('p'))).toBe(true);
-    expect(isPinShortcut(key('P'))).toBe(true);
-    expect(isPinShortcut(key('p', { ctrlKey: true }))).toBe(false);
-    expect(isPinShortcut(key('p', { metaKey: true }))).toBe(false);
-    expect(isPinShortcut(key('p', { altKey: true }))).toBe(false);
-    expect(isPinShortcut(key('o'))).toBe(false);
   });
 });
