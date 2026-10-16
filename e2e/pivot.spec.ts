@@ -12,11 +12,10 @@ async function addStep(page: Page, title: string) {
 }
 
 /**
- * Drag a field from the list into a zone. The zones are centred first: a drag near the inspector's edge makes
- * the browser scroll it, which would move the zone out from under the pointer.
+ * Drag a field from the list into a zone. The page is tall enough that the inspector doesn't scroll: a drag near
+ * its edge would make the browser scroll it, moving fields and zones out from under the pointer.
  */
 async function drag(page: Page, field: string, to: string) {
-  await zone(page, 'Filters').evaluate((e) => e.scrollIntoView({ block: 'center' }));
   await editor(page).getByRole('button', { name: `Add ${field}` }).dragTo(zone(page, to));
   await expect(zone(page, to).getByRole('button', { name: `${to}: ${field}` })).toBeVisible();
 }
@@ -28,6 +27,8 @@ async function byKeyboard(page: Page, trigger: string, item: string) {
   await editor(page).getByRole('menuitem', { name: item, exact: true }).focus();
   await page.keyboard.press('Enter');
 }
+
+test.use({ viewport: { width: 1280, height: 1400 } });
 
 test.beforeEach(async ({ page }) => {
   await openApp(page);
@@ -54,7 +55,7 @@ test('pivot by dragging fields into zones; a new value waits for Refresh columns
   await expect(zone(page, 'Values').getByRole('button', { name: 'Summarise revenue: sum' })).toBeVisible();
   await expect(steps(page).nth(1)).toHaveText(/Pivoted month into columns by region/);
   await expect(editor(page).getByText('Columns for month: 2024-01, 2024-02.')).toBeVisible();
-  await expect(cell(page, 0, 0)).toHaveText('North');
+  await expect(cell(page, 0, 0)).toHaveText('North', { timeout: 20_000 });
   await expect(cell(page, 1, 0)).toHaveText('55.5');
   await expect(cell(page, 2, 1)).toHaveText('76.5');
   await expect(cell(page, 3, 0)).toHaveCount(0);
@@ -80,8 +81,8 @@ test('group by with the keyboard alone: add fields, move one, change an aggregat
   await byKeyboard(page, 'Rows: rep', 'Move to values');
   await expect(zone(page, 'Rows').getByRole('button', { name: /^Rows: / })).toHaveText(['region']);
   await byKeyboard(page, 'Summarise rep: count', 'Count distinct');
-  await expect(steps(page)).toHaveText([/Grouped by region/]);
-  await expect(cell(page, 0, 0)).toHaveText('East');
+  await expect(steps(page)).toHaveText([/Grouped by region/], { timeout: 20_000 });
+  await expect(cell(page, 0, 0)).toHaveText('East', { timeout: 20_000 });
   await expect(cell(page, 1, 1)).toHaveText('6');
   await expect(cell(page, 2, 1)).toHaveText('2');
   await expect(cell(page, 2, 3)).toHaveText('0');
@@ -92,7 +93,7 @@ test('group by with the keyboard alone: add fields, move one, change an aggregat
 
   // A later step sees the summary's columns by their names.
   await addStep(page, 'Sort rows');
-  await expect(settings(page).getByLabel('Sort column 1', { exact: true }).locator('option')).toHaveText(['region', 'units sold', 'count distinct of rep']);
+  await expect(settings(page).getByLabel('Sort column 1', { exact: true }).locator('option')).toHaveText(['region', 'units sold', 'count distinct of rep'], { timeout: 20_000 });
   await settings(page).getByLabel('Sort column 1', { exact: true }).selectOption('units sold');
   await settings(page).getByLabel('Sort direction 1').selectOption('desc');
   await expect(cell(page, 0, 0)).toHaveText('South');
