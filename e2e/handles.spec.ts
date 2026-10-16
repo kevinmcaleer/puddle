@@ -168,9 +168,11 @@ test('a duplicated project reconnects the same way; deleting a project forgets i
   await page.getByRole('button', { name: 'More for Untitled project' }).click();
   await page.getByRole('menuitem', { name: 'Duplicate' }).click();
   await page.getByTestId('project-Untitled project copy').getByRole('button').first().click();
+  // Opening a project is asynchronous: wait for the copy to be the open project before reading its id.
+  await expect(page.getByTestId('project-name')).toHaveText('Untitled project copy');
   const copy = await projectId(page);
   expect(copy).not.toBe(original);
-  expect(await storedHandles(page, copy)).toBe(1);
+  await expect.poll(() => storedHandles(page, copy)).toBe(1);
   // Files chosen in this tab stay connected; a fresh visit reconnects the copy through its own handles.
   await reload(page);
   await expect(page.getByTestId('project-name')).toHaveText('Untitled project copy');
