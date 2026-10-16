@@ -185,3 +185,14 @@ test('a sign-in refused on Google’s page says so and connects nothing', async 
   await page.getByRole('button', { name: 'Open from Google Drive' }).click();
   await expect(page.getByRole('dialog', { name: 'Open from Google Drive' }).getByRole('button', { name: 'Sign in with Google' })).toBeVisible();
 });
+
+test('an untouched new project is saved before leaving for Google, and syncs on coming back', async ({ page }) => {
+  const google = mockGoogleDrive();
+  await google.route(page.context());
+  await openApp(page);
+  const id = await page.evaluate(() => (globalThis.__puddle as unknown as { store: { getState(): { history: { present: { id: string } } } } }).store.getState().history.present.id);
+  await startSyncing(page);
+  const back = await page.evaluate(() => (globalThis.__puddle as unknown as { store: { getState(): { history: { present: { id: string } } } } }).store.getState().history.present.id);
+  expect(back).toBe(id);
+  expect(JSON.parse(google.file().content).id).toBe(id);
+});
