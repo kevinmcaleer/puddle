@@ -1,4 +1,4 @@
-import { createProject, parseProject, type JoinSpec, type Port, type Project, type Source, type Step } from '../../src/model';
+import { createProject, parseProject, type AppendSpec, type JoinSpec, type Port, type Project, type Source, type Step } from '../../src/model';
 
 type SourceInit = Pick<Source, 'id' | 'format'> & Partial<Source>;
 
@@ -12,6 +12,7 @@ interface FlowInit {
     | { id: string; type: 'source'; sourceId: string }
     | { id: string; type: 'transform'; steps?: Step[] }
     | { id: string; type: 'join'; joinSpec?: Partial<JoinSpec> }
+    | { id: string; type: 'append'; appendSpec?: Partial<AppendSpec> }
     | { id: string; type: 'output' }
   >;
   /** A wire goes into input 0 unless it names a port ("left", "right"). */
