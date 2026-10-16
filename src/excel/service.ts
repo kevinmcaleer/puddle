@@ -2,6 +2,7 @@
 import type { WorkBook } from 'xlsx';
 import { sheetToIPC } from './arrow';
 import { listSheets, parseWorkbook, readSheet } from './read';
+import { writeWorkbook, type SheetWriteOptions } from './write';
 import { ExcelError, type SheetColumnType, type SheetInfo, type SheetReadOptions } from './types';
 
 export interface ReadResult {
@@ -21,6 +22,8 @@ export interface ExcelOps {
   read: { args: { book: string; file: Blob; options: SheetReadOptions }; result: ReadResult };
   /** Let a parsed workbook go. */
   forget: { args: { book: string }; result: void };
+  /** Write rows (an Arrow IPC stream) as a one-sheet .xlsx workbook. */
+  write: { args: { ipc: Uint8Array; options: SheetWriteOptions }; result: { data: Uint8Array } };
 }
 
 export type ExcelOp = keyof ExcelOps;
@@ -59,18 +62,18 @@ export class ExcelService implements Record<ExcelOp, (args: never) => Promise<un
     this.books.delete(book);
   }
 
+  async write({ ipc, options }: ExcelOps['write']['args']): Promise<ExcelOps['write']['result']> {
+    return { data: writeWorkbook(ipc, options) };
+  }
+
   /** Run an operation by name; failures come back as ExcelError with a message fit to show. */
   async run<K extends ExcelOp>(op: K, args: ExcelOps[K]['args']): Promise<ExcelOps[K]['result']> {
     try {
       return (await (this[op] as (a: ExcelOps[K]['args']) => Promise<ExcelOps[K]['result']>).call(this, args)) as ExcelOps[K]['result'];
     } catch (e) {
       if (e instanceof ExcelError) throw e;
-      throw new ExcelError(`This workbook can’t be read (${e instanceof Error ? e.message : String(e)}).`);
+      const why = e instanceof Error ? e.message : String(e);
+      throw new ExcelError(op === 'write' ? `The workbook couldn’t be written (${why}).` : `This workbook can’t be read (${why}).`);
     }
   }
-}
-
-/** Buffers in a result that can be handed over to the other thread instead of copied. */
-export function transferables(result: unknown): Transferable[] {
-  return result && typeof result === 'object' && 'ipc' in result && result.ipc instanceof Uint8Array ? [result.ipc.buffer as ArrayBuffer] : [];
 }

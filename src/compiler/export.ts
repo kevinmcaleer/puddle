@@ -1,9 +1,9 @@
 // Exports: an Output node's rows written by DuckDB's COPY ... TO, so the file never passes through JavaScript rows.
 import { z } from 'zod';
-import type { OutputNode, Project } from '../model';
+import { nodeById, type ColumnSchema, type OutputNode, type Project } from '../model';
 import { compile, fullData } from './compile';
 import { CompileError } from './errors';
-import { bool, str } from './sql';
+import { bool, ident, list, str } from './sql';
 
 export type ExportFormat = OutputNode['outputSpec']['format'];
 export type OutputSpec = OutputNode['outputSpec'];
@@ -14,6 +14,7 @@ export const EXPORT_FORMATS: Record<ExportFormat, { label: string; ext: string; 
   json: { label: 'JSON', ext: 'json', mime: 'application/json' },
   ndjson: { label: 'NDJSON', ext: 'ndjson', mime: 'application/x-ndjson' },
   clipboard: { label: 'Clipboard', ext: 'tsv', mime: 'text/tab-separated-values' },
+  xlsx: { label: 'Excel', ext: 'xlsx', mime: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' },
 };
 
 export const CSV_DELIMITERS = [',', ';', '\t', '|'] as const;
@@ -22,6 +23,9 @@ export const PARQUET_COMPRESSION = ['zstd', 'snappy', 'uncompressed'] as const;
 const CsvOptions = z.object({ delimiter: z.enum(CSV_DELIMITERS).default(','), header: z.boolean().default(true) });
 const ParquetOptions = z.object({ compression: z.enum(PARQUET_COMPRESSION).default('zstd') });
 const ClipboardOptions = z.object({ header: z.boolean().default(true) });
+/** Excel: the sheet's name (the Output node's name when unset), a header row, and keeping that row in view. */
+const XlsxOptions = z.object({ sheetName: z.string().optional(), header: z.boolean().default(true), freezeHeader: z.boolean().default(true) });
+export type XlsxExportOptions = z.infer<typeof XlsxOptions>;
 
 /** Each format's options with their defaults filled in; unknown keys are dropped. */
 export function exportOptions(spec: Pick<OutputSpec, 'format' | 'options'>) {
@@ -37,6 +41,8 @@ export function exportOptions(spec: Pick<OutputSpec, 'format' | 'options'>) {
       return parse(ParquetOptions);
     case 'clipboard':
       return parse(ClipboardOptions);
+    case 'xlsx':
+      return parse(XlsxOptions);
     default:
       return {};
   }
@@ -62,6 +68,8 @@ function copyOptions(spec: Pick<OutputSpec, 'format' | 'options'>): string {
       return 'FORMAT json, ARRAY true';
     case 'ndjson':
       return 'FORMAT json';
+    case 'xlsx':
+      throw new CompileError('Excel workbooks are written by SheetJS, not COPY. Use compileSheetExport.');
   }
 }
 
@@ -71,9 +79,33 @@ export function compileExport(project: Project, nodeId: string, path: string, sp
   if (!node) throw new CompileError('That node is no longer in the project.', nodeId);
   const s = spec ?? (node.type === 'output' ? node.outputSpec : undefined);
   if (!s) throw new CompileError(`${node.name} isn’t an Output node.`, nodeId);
-  // Exports always read the full data, even if handed a sample-mode copy of the project.
   return `COPY (${compile(fullData(project), { nodeId }).sql}) TO ${str(path)} (${copyOptions(s)})`;
 }
+
+/** DuckDB types an Excel cell holds as they are (numbers, booleans, dates, date-times, text). */
+const SHEET_TYPES = /^(BOOLEAN|TINYINT|SMALLINT|INTEGER|BIGINT|UTINYINT|USMALLINT|UINTEGER|FLOAT|REAL|DOUBLE|VARCHAR|DATE|TIMESTAMP)$/;
+
+/** A column as Excel can hold it: decimals as numbers, other timestamps as plain ones, anything else as text. */
+export function sheetColumn(c: ColumnSchema): string {
+  const t = c.type.toUpperCase();
+  const col = ident(c.name);
+  if (SHEET_TYPES.test(t)) return col;
+  if (/^DECIMAL|^NUMERIC/.test(t)) return `CAST(${col} AS DOUBLE) AS ${col}`;
+  if (/^TIMESTAMP/.test(t)) return `CAST(${col} AS TIMESTAMP) AS ${col}`;
+  return `CAST(${col} AS VARCHAR) AS ${col}`;
+}
+
+/** The query whose rows an Excel export writes, given the Output node's columns (from DESCRIBE). */
+export function compileSheetExport(project: Project, nodeId: string, columns: ColumnSchema[]): string {
+  if (!nodeById(project, nodeId)) throw new CompileError('That node is no longer in the project.', nodeId);
+  return `SELECT ${list(columns.map(sheetColumn))} FROM (${compile(fullData(project), { nodeId }).sql})`;
+}
+
+/** How many rows an Output node exports, on the full data. */
+export const compileFullCount = (project: Project, nodeId: string): string => `SELECT COUNT(*) AS n FROM (${compile(fullData(project), { nodeId }).sql})`;
+
+/** The Output node's full query (never a sample), e.g. to DESCRIBE it before an Excel export. */
+export const compileFullData = (project: Project, nodeId: string): string => compile(fullData(project), { nodeId }).sql;
 
 /** A safe file name for an export: the one given, or the node's name, always with the format's extension. */
 export function exportFileName(name: string, spec: Pick<OutputSpec, 'format' | 'fileName'>): string {

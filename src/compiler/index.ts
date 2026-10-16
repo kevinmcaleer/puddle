@@ -37,4 +37,4 @@ export { dropTable, sourceFileName, sourceRelation, sourceTableName } from './so
 export { bool, cteName, ident, list, num, stepFailure, str, strList } from './sql';
 export * from './steps';
 export { defineRule, describeRule, PATTERN_PRESETS, READS_AS_TYPES, ruleColumns, ruleDef, ruleParams, rulePredicate, ruleRefs, ruleScope, ruleTypes, type NodeNames, type PatternPreset, type ReadsAs, type RuleContext, type RuleDef } from './rules';
-export { compileExport, CSV_DELIMITERS, EXPORT_FORMATS, exportFileName, exportOptions, PARQUET_COMPRESSION, type ExportFormat, type OutputSpec } from './export';
+export { compileExport, compileFullCount, compileFullData, compileSheetExport, CSV_DELIMITERS, EXPORT_FORMATS, exportFileName, exportOptions, PARQUET_COMPRESSION, sheetColumn, type ExportFormat, type OutputSpec, type XlsxExportOptions } from './export';

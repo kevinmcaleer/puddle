@@ -14,3 +14,4 @@ export { useProject, useProjectStore, type ProjectState } from './store';
 export { placeStep, type Placed } from './quickfix';
 export { addRule, dismissSuggestion, removeRule, updateRule } from './rules';
 export { logExport, setOutputSpec } from './exports';
+export { carryPin, viewWithout } from './view';

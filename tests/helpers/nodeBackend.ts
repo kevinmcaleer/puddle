@@ -5,10 +5,18 @@ import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { createDuckDB, NODE_RUNTIME, VoidLogger } from '@duckdb/duckdb-wasm/blocking';
+import { tableFromIPC } from 'apache-arrow';
 import type { DuckBackend } from '../../src/engine/types';
 import { cancelled } from '../../src/engine/errors';
 
-const dist = dirname(createRequire(import.meta.url).resolve('@duckdb/duckdb-wasm/dist/duckdb-node-blocking.cjs'));
+const require = createRequire(import.meta.url);
+const dist = dirname(require.resolve('@duckdb/duckdb-wasm/dist/duckdb-node-blocking.cjs'));
+/**
+ * The blocking build loads Arrow through CommonJS, so its tables are instances of a second copy of Arrow's classes
+ * that the app's (ESM) Arrow functions don't recognise: tableToIPC writes nothing for them. In the browser DuckDB and
+ * the app share one Arrow, so results are passed through IPC here to match.
+ */
+const cjsArrow = require('apache-arrow') as typeof import('apache-arrow');
 
 /** DuckDB's own lexer (the tokenizer behind its parser), for checking ours against it. Offsets and token types. */
 export async function createNodeTokenizer(): Promise<(sql: string) => { offsets: number[]; types: number[] }> {
@@ -46,7 +54,7 @@ export async function createNodeBackend(opts: { beforeQuery?: (sql: string) => P
     async query(sql, signal) {
       await opts.beforeQuery?.(sql);
       if (signal.aborted) throw cancelled();
-      return conn.query(sql);
+      return tableFromIPC(cjsArrow.tableToIPC(conn.query(sql), 'stream'));
     },
     async registerFile(name, file) {
       db.registerFileBuffer(name, new Uint8Array(await file.arrayBuffer()));
