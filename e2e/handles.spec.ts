@@ -1,6 +1,10 @@
 import { expect, test, type Page } from '@playwright/test';
 import { fixtureText, node, openApp } from './helpers/app';
 
+// Keeping file handles between visits needs showOpenFilePicker, which only Chromium browsers have. Elsewhere Puddle
+// says so and asks for the file again: e2e/browsers.spec.ts tests that in every browser.
+test.skip(({ browserName }) => browserName !== 'chromium', 'Only Chromium keeps file handles; browsers.spec.ts covers the others.');
+
 /**
  * Chromium's file picker can't be driven by Playwright, so these tests stand in for it: files are written to the
  * origin private file system and the picker hands back their real FileSystemFileHandles, which the app stores in

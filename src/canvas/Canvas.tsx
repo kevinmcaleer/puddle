@@ -14,7 +14,7 @@ import '@xyflow/react/dist/base.css';
 import { useCallback, useMemo, useState, type DragEvent } from 'react';
 import { addFiles, addNodeAfterSelection } from '../app/actions';
 import { droppedFiles } from '../sources/handles';
-import { ReconnectBanner } from '../sources/ReconnectBanner';
+import { FilesNotKeptBanner, ReconnectBanner } from '../sources/ReconnectBanner';
 import { useSession } from '../app/session';
 import { useFlowStore } from '../flow/status';
 import { JOIN_TYPES } from '../compiler';
@@ -268,6 +268,7 @@ export function Canvas({ onAddSource }: { onAddSource: () => void }) {
 
       <div className="pointer-events-none absolute left-4 right-4 top-4 z-panel mx-auto flex max-w-[560px] flex-col gap-2 [&>*]:pointer-events-auto">
         <ReconnectBanner />
+        <FilesNotKeptBanner />
         {notice && (
           <div data-testid="canvas-notice">
             <Banner tone={notice.tone} action={<Button variant="ghost" size="sm" onClick={() => useSession.getState().notify(null)}>Dismiss</Button>}>

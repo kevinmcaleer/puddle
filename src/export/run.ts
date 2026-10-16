@@ -9,7 +9,7 @@ import { useRuleStore, type RuleResult } from '../flow/rules';
 import { currentSample, sampledUpstream, type Sample } from '../flow/sample';
 import { schemaCacheFor, useFlowStore } from '../flow/status';
 import { logExport, newId, nodeById, topoSort, upstreamIds, useProjectStore, type ExportLogEntry, type Project } from '../model';
-import { copyText, saveBlob } from './deliver';
+import { copyText, reserveClipboard, saveBlob, type ClipboardSlot } from './deliver';
 
 /** Clipboard exports above this size are refused: pasting them would hang most spreadsheets anyway. */
 export const CLIPBOARD_LIMIT = 10 * 1024 * 1024;
@@ -90,10 +90,14 @@ export async function exportGateFor(engine: EngineClient, project: Project, node
   return exportGate(project, nodeId, results);
 }
 
-const deliverToBrowser: Delivery = async (blob, fileName, format) => {
-  if (format === 'clipboard') await copyText(await blob.text());
-  else saveBlob(blob, fileName);
-};
+/** Hand the export over: as a download, or onto the clipboard (into the write reserved at the click, if any). */
+const deliverToBrowser =
+  (slot?: ClipboardSlot): Delivery =>
+  async (blob, fileName, format) => {
+    if (format !== 'clipboard') return saveBlob(blob, fileName);
+    const text = await blob.text();
+    await (slot ? slot.fill(text) : copyText(text));
+  };
 
 /** Output nodes being exported right now, with when each started, so their buttons show the time taken. */
 export const useExporting = create<{ nodes: Record<string, number> }>(() => ({ nodes: {} }));
@@ -118,13 +122,15 @@ async function exportOne(nodeId: string, override: boolean): Promise<Omit<Export
   if (!engine) throw new Error('The data engine is still starting.');
   const project = useProjectStore.getState().history.present;
   const node = nodeById(project, nodeId);
+  // Before anything is awaited, so the clipboard write still counts as part of the click.
+  const slot = node?.type === 'output' && node.outputSpec.format === 'clipboard' ? reserveClipboard() : undefined;
   busy(nodeId, true);
   try {
     await prepareFullData(engine, project, nodeId);
     const gate = await exportGateFor(engine, project, nodeId, currentSample(project));
     if (gate.state === 'blocked' && !override && sampledUpstream(project, nodeId, currentSample(project)).length)
       throw new Error(`Export blocked on the full data. ${gate.blocking.map(describeBlock).join(' ')} Run on full data to see the failing rows, or to export anyway.`);
-    const entry = await runExport(engine, project, nodeId, { gate, override, deliver: deliverToBrowser });
+    const entry = await runExport(engine, project, nodeId, { gate, override, deliver: deliverToBrowser(slot) });
     useProjectStore.getState().amend((p) => logExport(p, entry));
     return entry;
   } catch (e) {
@@ -143,6 +149,8 @@ async function exportOne(nodeId: string, override: boolean): Promise<Omit<Export
     useProjectStore.getState().amend((p) => logExport(p, entry));
     return entry;
   } finally {
+    // Once filled this does nothing; otherwise the reserved write is dropped.
+    slot?.cancel();
     busy(nodeId, false);
   }
 }

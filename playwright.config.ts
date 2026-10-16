@@ -1,4 +1,5 @@
-import { defineConfig, devices } from '@playwright/test';
+import { defineConfig } from '@playwright/test';
+import { browserProjects } from './e2e/helpers/browsers';
 
 // E2E_PORT lets several checkouts run the suite side by side without reusing each other's server.
 const port = Number(process.env.E2E_PORT ?? 4173);
@@ -14,7 +15,7 @@ export default defineConfig({
   reporter: process.env.CI ? [['github'], ['list']] : 'list',
   // The service worker would precache the 36 MB engine in every test; e2e/container tests it.
   use: { baseURL: `http://localhost:${port}`, trace: 'retain-on-failure', serviceWorkers: 'block' },
-  projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
+  projects: browserProjects(),
   webServer: {
     command: `npm run build && npx vite preview --port ${port} --strictPort`,
     port,

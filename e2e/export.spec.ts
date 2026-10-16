@@ -75,7 +75,9 @@ test('a failing rule upstream blocks the export, which can be overridden and is 
   await expect(page.getByTestId('canvas-notice')).toContainText('Exported Output 1.csv.');
 });
 
-test('copy an Output node to the clipboard as tab-separated text', async ({ page, context }) => {
+test('copy an Output node to the clipboard as tab-separated text', async ({ page, context, browserName }) => {
+  // Only Chromium lets a test grant clipboard access; the click-time test below covers the copy in every browser.
+  test.skip(browserName !== 'chromium', 'Playwright can grant clipboard permissions in Chromium only.');
   await context.grantPermissions(['clipboard-read', 'clipboard-write']);
   await customersToOutput(page);
   await node(page, 'Output 1').click();
@@ -85,4 +87,64 @@ test('copy an Output node to the clipboard as tab-separated text', async ({ page
   const text = await page.evaluate(() => navigator.clipboard.readText());
   expect(text.split('\n')[0]).toBe('id\tname\temail\tjoined');
   await expect(log(page)).toContainText('Clipboard · 4 rows');
+});
+
+/**
+ * A clipboard that behaves as Safari's does: it only accepts a write asked for while the click is being handled,
+ * and refuses one made later, after the export has run. With `refuse`, it accepts nothing (as a browser with
+ * clipboard access turned off). What it accepts lands in `window.__copied`.
+ */
+async function strictClipboard(page: Page, { refuse = false } = {}) {
+  await page.addInitScript((refuse) => {
+    const w = window as unknown as { __copied: string[] };
+    w.__copied = [];
+    let clicking = false;
+    window.addEventListener(
+      'click',
+      () => {
+        clicking = true;
+        setTimeout(() => (clicking = false), 0);
+      },
+      true,
+    );
+    const denied = () => new DOMException('Write permission denied.', 'NotAllowedError');
+    const clip = navigator.clipboard ?? Object.defineProperty(navigator, 'clipboard', { value: {}, configurable: true }).clipboard;
+    Object.defineProperty(clip, 'writeText', {
+      configurable: true,
+      value: async (text: string) => {
+        if (refuse || !clicking) throw denied();
+        w.__copied.push(text);
+      },
+    });
+    Object.defineProperty(clip, 'write', {
+      configurable: true,
+      value: (items: ClipboardItem[]) => {
+        if (refuse || !clicking) return Promise.reject(denied());
+        // The browser holds the write open until the item's text arrives.
+        return items[0]!.getType('text/plain').then(async (blob) => void w.__copied.push(await blob.text()));
+      },
+    });
+  }, refuse);
+}
+
+test('the clipboard copy is asked for during the click, so browsers that need that still take it', async ({ page }) => {
+  await strictClipboard(page);
+  await customersToOutput(page);
+  await node(page, 'Output 1').click();
+  await page.getByLabel('Format').selectOption('clipboard');
+  await bar(page).getByRole('button', { name: 'Copy to clipboard' }).click();
+  await expect(page.getByTestId('canvas-notice')).toContainText('Copied 4 rows from Output 1.');
+  const copied = await page.evaluate(() => (window as unknown as { __copied: string[] }).__copied);
+  expect(copied).toHaveLength(1);
+  expect(copied[0]!.split('\n')[0]).toBe('id\tname\temail\tjoined');
+  await expect(log(page)).toContainText('Clipboard · 4 rows');
+});
+
+test('a browser that refuses the clipboard gets a plain way out', async ({ page }) => {
+  await strictClipboard(page, { refuse: true });
+  await customersToOutput(page);
+  await node(page, 'Output 1').click();
+  await page.getByLabel('Format').selectOption('clipboard');
+  await bar(page).getByRole('button', { name: 'Copy to clipboard' }).click();
+  await expect(page.getByTestId('canvas-notice')).toContainText('This browser won’t let Puddle use the clipboard. Export a file instead.');
 });
