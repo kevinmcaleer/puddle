@@ -6,12 +6,16 @@ import { useFlowStore } from '../flow/status';
 import {
   addQueryField,
   addQueryJoin,
+  addQueryOrRow,
   addQueryTable,
+  criteriaCell,
   moveQueryField,
   moveQueryTable,
   removeQueryField,
   removeQueryJoin,
+  removeQueryOrRow,
   removeQueryTable,
+  setQueryCriteria,
   setQuerySpec,
   updateQueryField,
   useProject,
@@ -290,11 +294,12 @@ function useGridDrop(node: QueryNode) {
   return { over, props };
 }
 
-type Row = 'Field' | 'Table' | 'Total' | 'Name' | 'Sort' | 'Show' | 'Criteria';
+/** A row of the grid; a number is an "or" row below Criteria (1 the first), and Add the row that adds one. */
+type Row = 'Field' | 'Table' | 'Total' | 'Name' | 'Sort' | 'Show' | 'Criteria' | number | 'Add';
 
 /**
- * The query grid, as in Access: a column per field, with its table, name, sort, whether it shows, and criteria; and
- * with Totals on, how it's grouped or summarised.
+ * The query grid, as in Access: a column per field, with its table, name, sort, whether it shows, and criteria with
+ * "or" rows below it; and with Totals on, how it's grouped or summarised.
  */
 function QueryGrid({ node, tables }: { node: QueryNode; tables: DesignerTable[] }) {
   const { fields } = node.querySpec;
@@ -304,7 +309,8 @@ function QueryGrid({ node, tables }: { node: QueryNode; tables: DesignerTable[] 
   const cell = (i: number, extra?: string) => ({ className: cx('puddle-qd-cell', over === i && 'is-over', extra), ...props(i) });
   const { totals } = node.querySpec;
   // The Total row sits under Table, as in Access, while Totals is on.
-  const rows: Row[] = totals ? ['Field', 'Table', 'Total', 'Name', 'Sort', 'Show', 'Criteria'] : ['Field', 'Table', 'Name', 'Sort', 'Show', 'Criteria'];
+  const orRows = Array.from({ length: node.querySpec.orRows }, (_, i) => i + 1);
+  const rows: Row[] = [...(totals ? ['Field', 'Table', 'Total', 'Name', 'Sort', 'Show', 'Criteria'] as const : ['Field', 'Table', 'Name', 'Sort', 'Show', 'Criteria'] as const), ...orRows, 'Add'];
   const names = defaultNames(node.querySpec);
   const columns: ColumnSchema[] = tables.flatMap((t) => t.columns ?? []);
 
@@ -355,22 +361,43 @@ function QueryGrid({ node, tables }: { node: QueryNode; tables: DesignerTable[] 
         return all ? null : <Select aria-label={`Sort ${name}`} options={SORTS} value={f.sort} onChange={(e) => update(f, { sort: e.target.value as QueryField['sort'] })} />;
       case 'Show':
         return <Switch aria-label={`Show ${name}`} checked={f.show} onChange={(show) => update(f, { show })} />;
-      case 'Criteria':
-        if (all) return null;
-        return (
-          <div className="flex flex-col gap-1">
-            <Select
-              aria-label={`Criteria for ${name}`}
-              options={OPS}
-              value={f.criteria?.op ?? ''}
-              onChange={(e) => update(f, { criteria: e.target.value ? { op: e.target.value as QueryCriteriaOp, value: f.criteria?.value ?? '' } : undefined })}
-            />
-            {f.criteria && CRITERIA_OPS[f.criteria.op].needsValue && (
-              <CommitInput key={f.criteria.value} mono value={f.criteria.value} aria-label={`Criteria value for ${name}`} onCommit={(value) => update(f, { criteria: { op: f.criteria!.op, value } })} />
-            )}
-          </div>
-        );
+      case 'Add':
+        return null;
+      default:
+        return all ? null : criteriaEditor(f, row === 'Criteria' ? 0 : row);
     }
+  };
+
+  /** A field's condition in a criteria row: 0 is Criteria, then the "or" rows. */
+  const criteriaEditor = (f: QueryField, row: number) => {
+    const name = label(f);
+    const c = criteriaCell(f, row);
+    const what = row ? `Or ${row}` : 'Criteria';
+    const set = (criteria: QueryField['criteria']) => apply((p) => setQueryCriteria(p, node.id, f.id, row, criteria));
+    return (
+      <div className="flex flex-col gap-1">
+        <Select aria-label={`${what} for ${name}`} options={OPS} value={c?.op ?? ''} onChange={(e) => set(e.target.value ? { op: e.target.value as QueryCriteriaOp, value: c?.value ?? '' } : undefined)} />
+        {c && CRITERIA_OPS[c.op].needsValue && <CommitInput key={c.value} mono value={c.value} aria-label={`${what} value for ${name}`} onCommit={(value) => set({ op: c.op, value })} />}
+      </div>
+    );
+  };
+
+  /** The row's heading: its name; an "or" row's can remove it, and the last row adds one. */
+  const heading = (row: Row) => {
+    if (row === 'Add')
+      return (
+        <Button variant="ghost" size="sm" icon="plus" onClick={() => apply((p) => addQueryOrRow(p, node.id))}>
+          Add or row
+        </Button>
+      );
+    if (typeof row === 'number')
+      return (
+        <span className="flex items-center gap-1">
+          or
+          <Button variant="ghost" size="sm" icon="cross" iconOnly aria-label={`Remove or row ${row}`} onClick={() => apply((p) => removeQueryOrRow(p, node.id, row))} />
+        </span>
+      );
+    return row;
   };
 
   return (
@@ -380,7 +407,7 @@ function QueryGrid({ node, tables }: { node: QueryNode; tables: DesignerTable[] 
           <tbody>
             {rows.map((row) => (
               <tr key={row}>
-                <th scope="row" className="ui-eyebrow">{row}</th>
+                <th scope="row" className={row === 'Add' ? undefined : 'ui-eyebrow'} data-testid={typeof row === 'number' ? `grid-or-${row}` : undefined}>{heading(row)}</th>
                 {fields.map((f, i) => (
                   <td key={f.id} {...cell(i)} data-testid={row === 'Field' ? `grid-field-${i + 1}` : undefined}>
                     {content(row, f)}
@@ -474,7 +501,7 @@ export function QueryDesigner({ node }: { node: QueryNode }) {
                 ) : (
                   <ul className="flex flex-col gap-1">
                     {problems.map((p) => (
-                      <li key={p.field}>{p.message}</li>
+                      <li key={p.field ?? p.message}>{p.message}</li>
                     ))}
                   </ul>
                 )}

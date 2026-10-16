@@ -1,7 +1,7 @@
 // Pure edits to a Query node, as the query designer makes them: tables in and out, join lines, and the field grid.
 import { canConnect, freePort, GraphError, inputEdge, nodeById } from './graph';
 import { newId } from './ids';
-import type { Project, QueryField, QueryFieldRef, QueryJoin, QueryJoinKind, QueryNode, QuerySpec } from './schema';
+import type { Project, QueryCriteria, QueryField, QueryFieldRef, QueryJoin, QueryJoinKind, QueryNode, QuerySpec } from './schema';
 
 const query = (project: Project, nodeId: string): QueryNode | undefined => {
   const n = nodeById(project, nodeId);
@@ -66,6 +66,48 @@ export function updateQueryField(project: Project, nodeId: string, fieldId: stri
 
 export function removeQueryField(project: Project, nodeId: string, fieldId: string): Project {
   return withSpec(project, nodeId, (spec) => ({ ...spec, fields: spec.fields.filter((f) => f.id !== fieldId) }));
+}
+
+/** A field's condition in one criteria row: 0 is the Criteria row, 1 the first "or" row below it. */
+export const criteriaCell = (f: Pick<QueryField, 'criteria' | 'or'>, row: number): QueryCriteria | undefined => (row === 0 ? f.criteria : (f.or?.[row - 1] ?? undefined));
+
+/** A field with these "or" cells, kept short: no empty cells at the end, and no list when every cell is empty. */
+function withOr(f: QueryField, cells: Array<QueryCriteria | null | undefined>): QueryField {
+  const or = cells.map((c) => c ?? null);
+  while (or.length && !or[or.length - 1]) or.pop();
+  const { or: _old, ...rest } = f;
+  return or.length ? { ...rest, or } : rest;
+}
+
+/** Set (or clear, with undefined) a field's condition in a criteria row: 0 is Criteria, then the "or" rows. */
+export function setQueryCriteria(project: Project, nodeId: string, fieldId: string, row: number, criteria: QueryCriteria | undefined): Project {
+  return withSpec(project, nodeId, (spec) => {
+    if (row < 0 || row > spec.orRows) return spec;
+    const fields = spec.fields.map((f) => {
+      if (f.id !== fieldId) return f;
+      if (row === 0) {
+        const { criteria: _old, ...rest } = f;
+        return criteria ? { ...rest, criteria } : rest;
+      }
+      const cells: Array<QueryCriteria | null | undefined> = [...(f.or ?? [])];
+      while (cells.length < row) cells.push(null);
+      cells[row - 1] = criteria ?? null;
+      return withOr(f, cells);
+    });
+    return { ...spec, fields };
+  });
+}
+
+/** Add an "or" row at the bottom of the grid's criteria. */
+export const addQueryOrRow = (project: Project, nodeId: string): Project => withSpec(project, nodeId, (spec) => ({ ...spec, orRows: spec.orRows + 1 }));
+
+/** Remove an "or" row (1 is the first below Criteria) with every field's condition in it; the rows below move up. */
+export function removeQueryOrRow(project: Project, nodeId: string, row: number): Project {
+  return withSpec(project, nodeId, (spec) => {
+    if (row < 1 || row > spec.orRows) return spec;
+    const fields = spec.fields.map((f) => (f.or ? withOr(f, f.or.filter((_, i) => i !== row - 1)) : f));
+    return { ...spec, orRows: spec.orRows - 1, fields };
+  });
 }
 
 /** Move a field to another place in the grid (its index once moved). */
