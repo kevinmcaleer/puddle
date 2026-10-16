@@ -6,3 +6,4 @@ playwright-report
 public/duckdb-extensions
 .git
 *.tsbuildinfo
+.env
