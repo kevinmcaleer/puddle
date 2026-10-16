@@ -318,4 +318,34 @@ describe('kept results', () => {
     expect(after).toEqual(await preview(unkept(renamed), 'out'));
     expect(after.map((r) => r.from)).toContain('Shop');
   });
+
+  it('keeps a Lookup, and a Lookup reads a kept input, matching a run with nothing kept', async () => {
+    const shop = flow({
+      sources: [orders, customers],
+      nodes: [
+        { id: 'o', type: 'source', sourceId: 'orders' },
+        { id: 'c', type: 'source', sourceId: 'customers' },
+        { id: 'k', type: 'lookup', lookupSpec: { keys: [{ main: 'customer_id', lookup: 'customer_id' }], columns: ['name'], suffix: '_lookup', useDefault: false, defaultValue: '' } },
+        { id: 'out', type: 'output' },
+      ],
+      wires: [['o', 'k', 'main'], ['c', 'k', 'lookup'], ['k', 'out']],
+    });
+
+    // A kept lookup input: the Lookup reads its table, not the customers file.
+    const keptInput = setKeepResult(shop, 'c', true);
+    await settle(keptInput);
+    log.length = 0;
+    const rows = await preview(keptInput, 'out');
+    expect(log.filter((q) => q.includes('shop-customers'))).toEqual([]);
+    expect(log.some((q) => q.includes('"kept_c"'))).toBe(true);
+    expect(rows).toEqual(await preview(unkept(keptInput), 'out'));
+
+    // The Lookup itself kept: downstream reads its table and runs nothing upstream.
+    const keptLookup = setKeepResult(shop, 'k', true);
+    await settle(keptLookup);
+    expect(await tables()).toEqual(['kept_k']);
+    log.length = 0;
+    expect(await preview(keptLookup, 'out')).toEqual(rows);
+    expect(log.filter((q) => q.includes('read_csv'))).toEqual([]);
+  });
 });

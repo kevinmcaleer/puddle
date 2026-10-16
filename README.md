@@ -37,7 +37,7 @@ A Docker image (nginx serving the static build) behind a Cloudflare Tunnel at pu
 | `src/app/` | The app shell: toolbar actions, inspector and results docks, status strip, theme, engine boot, per-tab session state |
 | `src/engine/` | DuckDB-WASM in a Web Worker and the typed `EngineClient` (priorities, cancellation, Stop, plain-word errors) |
 | `src/model/` | The project graph: Zod schemas, wiring rules, step edits, grouping, undo and redo |
-| `src/compiler/` | The pure graph-to-SQL compiler (steps, joins over two inputs and appends over any number), step registry, schema cache and the schema book joins and appends read their inputs’ columns from |
+| `src/compiler/` | The pure graph-to-SQL compiler (steps, joins and lookups over two inputs, appends over any number, and queries from the query designer), step registry, schema cache and the schema book those nodes read their inputs’ columns from |
 | `src/sources/` | Adding sources: format detection, file handles, clipboard text, web addresses (fetched again on reopen), choosing files again on reopen (on Chromium, reconnecting them with one permission click through stored file handles), and Excel sources (sheet, header row and range, kept loaded as DuckDB tables) |
 | `src/excel/` | SheetJS in a Web Worker: reading `.xlsx` sheets into typed columns and Arrow tables for DuckDB. The worker is shared by everything that reads or writes workbooks |
 | `src/persistence/` | IndexedDB autosave, `.puddle.json` export and import, format migrations |
@@ -50,6 +50,7 @@ A Docker image (nginx serving the static build) behind a Cloudflare Tunnel at pu
 | `src/rules/` | Quality rule forms and labels; rules compile in `src/compiler/rules.ts` and are checked per node by `src/flow/rules.ts` |
 | `src/pwa/` | The service worker (precached app, engine and extensions for offline use), its precache list and the web app manifest |
 | `src/export/` | Exports from Output nodes: the quality gate, `COPY ... TO` into DuckDB's in-memory file system, download or clipboard, and the export log |
+| `src/query/` | The query designer, in place of the canvas for a Query node: its tables and the join lines dragged between their fields, and the grid of fields with names, sorting, criteria and Show |
 | `src/inspector/` | The right-hand panel: source read options, applied steps, step settings and node notes |
 | `src/notes/` | The project notes panel: Markdown written and previewed, rendered with raw HTML off and links in a new tab |
 | `src/results/` | The results table on Glide Data Grid: paging, headers with type and quality |
