@@ -375,23 +375,25 @@ function QueryGrid({ node, tables }: { node: QueryNode; tables: DesignerTable[] 
 
   return (
     <div className="puddle-qd-grid" data-testid="query-grid">
-      <table>
-        <tbody>
-          {rows.map((row) => (
-            <tr key={row}>
-              <th scope="row" className="ui-eyebrow">{row}</th>
-              {fields.map((f, i) => (
-                <td key={f.id} {...cell(i)} data-testid={row === 'Field' ? `grid-field-${i + 1}` : undefined}>
-                  {content(row, f)}
+      <div className="puddle-qd-grid__scroll" data-testid="query-grid-scroll">
+        <table>
+          <tbody>
+            {rows.map((row) => (
+              <tr key={row}>
+                <th scope="row" className="ui-eyebrow">{row}</th>
+                {fields.map((f, i) => (
+                  <td key={f.id} {...cell(i)} data-testid={row === 'Field' ? `grid-field-${i + 1}` : undefined}>
+                    {content(row, f)}
+                  </td>
+                ))}
+                <td {...cell(fields.length, 'is-spare')} data-testid={row === 'Field' ? 'grid-drop' : undefined}>
+                  {row === 'Field' && <span className="text-ink-subtle">{fields.length ? 'Drag another field here' : 'Drag fields here'}</span>}
                 </td>
-              ))}
-              <td {...cell(fields.length, 'is-spare')} data-testid={row === 'Field' ? 'grid-drop' : undefined}>
-                {row === 'Field' && <span className="text-ink-subtle">{fields.length ? 'Drag another field here' : 'Drag fields here'}</span>}
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
