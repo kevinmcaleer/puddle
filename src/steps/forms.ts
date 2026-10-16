@@ -1,12 +1,20 @@
 import { newId, type ColumnSchema, type Step } from '../model';
 import { stepDef } from '../compiler';
 import type { Detection } from '../dates';
+import { columnKind } from '../ui/columnKind';
 
 /** One setting in a step's editor form. The generic form renders these; a step needs no React of its own. */
 export type FieldSpec = FieldKind & {
   /** Show the field only when this holds for the step's settings, e.g. one extract mode's options. */
   when?: (params: Record<string, unknown>) => boolean;
+  /** For column fields: the type the step needs. Text columns picked here get a pointer to parse dates or parse numbers. */
+  expects?: ExpectedKind;
+  /** A hint worked out from the settings as they are, shown in place of `hint`, e.g. a format's example. */
+  liveHint?: (params: Record<string, unknown>) => string | undefined;
 };
+
+/** What a date or number step needs from its columns. */
+export type ExpectedKind = 'date' | 'number';
 
 type FieldKind =
   | { key: string; label: string; kind: 'columns'; hint?: string }
@@ -27,7 +35,7 @@ type FieldKind =
   /** strptime formats tried in order, with detected formats and their match rates offered. */
   | { key: string; label: string; kind: 'dateFormats'; hint?: string };
 
-export type StepGroup = 'Clean' | 'Columns' | 'Rows' | 'Text' | 'Dates';
+export type StepGroup = 'Clean' | 'Columns' | 'Rows' | 'Text' | 'Dates' | 'Numbers';
 
 export interface DefaultsContext {
   /** Columns selected in the results table. */
@@ -91,6 +99,24 @@ export function newStep(type: string, ctx: DefaultsContext): Step {
 
 /** Field errors from the step's schema, keyed by field, so the form shows them before anything runs. */
 export const fieldErrors = (step: Pick<Step, 'type' | 'params'>) => schemaErrors(stepDef(step.type)?.params, step.params);
+
+const PARSE_STEP: Record<ExpectedKind, { step: string; as: string }> = { date: { step: 'Parse dates', as: 'dates' }, number: { step: 'Parse numbers', as: 'numbers' } };
+
+/**
+ * When a date or number field is given text columns, what to do about it: read them with parse dates or parse
+ * numbers first. Undefined when every picked column is fine, or the field takes any type.
+ */
+export function textColumnsProblem(field: Pick<FieldSpec, 'expects'>, value: unknown, columns: ColumnSchema[]): string | undefined {
+  if (!field.expects) return undefined;
+  const picked = Array.isArray(value) ? value.map(String) : typeof value === 'string' && value ? [value] : [];
+  const text = picked.filter((name) => {
+    const c = columns.find((x) => x.name === name);
+    return !!c && columnKind(c.type) === 'text';
+  });
+  if (!text.length) return undefined;
+  const { step, as } = PARSE_STEP[field.expects];
+  return `${text.join(', ')} ${text.length === 1 ? 'is' : 'are'} text. Add a ${step} step before this one to read ${text.length === 1 ? 'it' : 'them'} as ${as}.`;
+}
 
 /** Errors from a params schema, keyed by field, as sentences. */
 export function schemaErrors(schema: { safeParse: (v: unknown) => { success: true } | { success: false; error: { issues: { path: PropertyKey[]; message: string }[] } } } | undefined, params: unknown): Record<string, string> {

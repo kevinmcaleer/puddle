@@ -1,11 +1,21 @@
 // Editor forms for the foundation steps.
-import { defineStepForm, type DefaultsContext } from './forms';
+import { columnKind, type ColumnKind } from '../ui/columnKind';
+import { defineStepForm, type DefaultsContext, type ExpectedKind } from './forms';
 
 /** Selected columns, else the first text column, else nothing (the form then asks for one). */
 export const pickColumns = ({ selected, available }: DefaultsContext) =>
   selected.length ? selected : available.filter((c) => /CHAR|TEXT|STRING/i.test(c.type)).slice(0, 1).map((c) => c.name);
 
 export const allSelected = ({ selected }: DefaultsContext) => selected;
+
+const KINDS: Record<ExpectedKind, ColumnKind[]> = { date: ['date', 'timestamp'], number: ['integer', 'decimal'] };
+
+/** Whether a column type is one a date (or number) step takes. */
+export const isKind = (type: string, kind: ExpectedKind) => KINDS[kind].includes(columnKind(type));
+
+/** Selected columns, else the first date (or number) column, else nothing. */
+export const pickKind = ({ selected, available }: DefaultsContext, kind: ExpectedKind) =>
+  selected.length ? selected : available.filter((c) => isKind(c.type, kind)).slice(0, 1).map((c) => c.name);
 
 defineStepForm({
   type: 'trimWhitespace',
