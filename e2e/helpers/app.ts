@@ -95,11 +95,13 @@ export const saved = (page: Page) =>
  * Fit the canvas to its nodes and wait until `name` sits wholly inside it and has stopped moving. A node added below
  * the visible canvas can't be clicked where it is: Playwright scrolls the canvas to reach it, React Flow scrolls it
  * straight back, and in Firefox the click then lands on the pane. A person would bring it into view first, too.
+ * Fit View fits the nodes as they are; one still growing (its counts arriving) can end a few pixels past the edge,
+ * so it is fitted again until the node is inside and still.
  */
 export async function bringIntoView(page: Page, name: string) {
-  await page.getByRole('button', { name: 'Fit View' }).click();
   let last = '';
   await expect(async () => {
+    await page.getByRole('button', { name: 'Fit View' }).click();
     const canvas = (await page.getByTestId('canvas').boundingBox())!;
     const box = (await node(page, name).boundingBox())!;
     expect(box.y).toBeGreaterThanOrEqual(canvas.y);

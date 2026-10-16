@@ -161,6 +161,11 @@ test('a table moved in the designer stays where it was put, with its join lines 
   await field(page, 1, 'customer_id').dragTo(field(page, 2, 'customer_id'));
   // The drop has landed (WebKit finishes a native drag after the mouse call returns) before the table is moved.
   await expect(page.getByTestId('query-join-line')).toHaveCount(1);
+  // In Playwright's WebKit the next press after a native drag never reaches the page: CI recorded the header drag's
+  // moves and release but no pointerdown, so the table couldn't move. A plain mouse drag with no field drag before it
+  // moves the table there (the test above). A click on an empty corner of the designer, as a person's next click
+  // would be, takes that press.
+  await page.getByTestId('query-tables').click({ position: { x: 4, y: 4 } });
   const table = page.getByTestId('query-table-2');
   const before = await tablePlace(page, 1);
   const head = table.locator('.puddle-qd-table__head');
