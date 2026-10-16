@@ -15,6 +15,7 @@ import { exportAll, ExportBlockedBanner, ExportButton } from '../export';
 import { ResultsTable } from '../results/ResultsTable';
 import { useResultsStore } from '../results/state';
 import { ACCEPT } from '../sources/detect';
+import { useExcelSources } from '../sources/excel';
 import { UrlDialog } from '../sources/UrlDialog';
 import { openUrlDialog } from '../sources/urlDialog';
 import { Button, Menu, ResultsBar, StatusBadge, StatusStrip, Toolbar, type NodeKind } from '../ui';
@@ -114,6 +115,7 @@ export function AppShell() {
   const theme = useTheme();
   const notesOpen = useSession((s) => s.notesOpen);
   const fileInput = useRef<HTMLInputElement>(null);
+  useExcelSources();
   useFlowEvaluation();
   useShortcuts();
 

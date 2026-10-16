@@ -100,8 +100,9 @@ export function formatFromContentType(contentType: string | null | undefined): S
 export function formatFromAddress(url: URL, contentType?: string | null): SourceFormat {
   const name = nameFromAddress(url);
   const byName = knownFormat(name);
+  if (byName === 'xlsx') throw new UrlSourceError('Excel workbooks can’t be read from a web address yet. Download the file and drop it here instead.', 'format');
   if (byName) return byName;
-  if (/\.xlsx?$/i.test(name)) formatFromName(name);
+  if (/\.xls$/i.test(name)) formatFromName(name);
   const byType = formatFromContentType(contentType);
   if (byType) return byType;
   throw new UrlSourceError('Puddle can’t tell this file’s format from its address or the server’s reply. Choose the format and add it again.', 'format');

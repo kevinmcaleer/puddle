@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { useEngineStore } from '../app/engine';
 import { updateSource, useProject, useProjectStore } from '../model';
 import { useAttachments } from '../sources/attachments';
+import { excelReady, useExcelReads } from '../sources/excel';
 import { evaluateRules } from './rules';
 import { evaluateFlow, useFlowStore } from './status';
 
@@ -13,10 +14,12 @@ export function useFlowEvaluation() {
   const project = useProject();
   const engine = useEngineStore((s) => s.engine);
   const attachments = useAttachments((s) => s.sources);
+  // An Excel sheet being read (or that can't be) is not readable yet, like a file not chosen again.
+  const excel = useExcelReads((s) => s.reads);
 
   useEffect(() => {
     if (!engine) return;
-    void evaluateFlow(engine, project, (id) => (attachments[id] ?? 'detached') === 'detached').then(() => {
+    void evaluateFlow(engine, project, (id) => (attachments[id] ?? 'detached') === 'detached' || !excelReady(project, id)).then(() => {
       // Rules run after every preview is settled, at background priority, so they never hold it up.
       void evaluateRules(engine, project);
       const statuses = useFlowStore.getState().nodes;
@@ -32,5 +35,5 @@ export function useFlowEvaluation() {
         return next;
       });
     });
-  }, [engine, project, attachments]);
+  }, [engine, project, attachments, excel]);
 }

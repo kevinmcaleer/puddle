@@ -15,6 +15,9 @@ import { PageLoader, type Row } from './pages';
 import { DetachedMessage } from '../sources/ReconnectBanner';
 import { ReattachButton } from '../sources/ReattachButton';
 import { UrlProblemBanner } from '../sources/UrlPanel';
+import { attachmentOf } from '../sources/attachments';
+import { isExcelSource } from '../sources/excel';
+import { ExcelProblemBanner } from '../sources/ExcelPanel';
 import { parseProfile, parseTypeSniff, qualityOf, type ColumnProfile } from './profile';
 import { useResultsStore } from './state';
 
@@ -210,6 +213,12 @@ export function ResultsTable({ project }: { project: Project }) {
       return (
         <div className="p-4" data-testid="results-url">
           <UrlProblemBanner source={source} />
+        </div>
+      );
+    if (source && isExcelSource(source) && attachmentOf(source.id) !== 'detached')
+      return (
+        <div className="p-4" data-testid="results-excel">
+          <ExcelProblemBanner source={source} />
         </div>
       );
     return (

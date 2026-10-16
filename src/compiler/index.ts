@@ -18,7 +18,7 @@ export { CompileError, PendingSchemaError, UnwiredError } from './errors';
 export { compileJoin, JOIN_TYPES, joinColumns, joinProblems, keepsRightColumns, suggestJoinKey, type JoinColumn, type JoinProblem } from './join';
 export { knownSchemas, SchemaBook } from './schemaBook';
 export { SchemaCache } from './schemaCache';
-export { sourceFileName, sourceRelation, sourceTableName } from './sources';
+export { dropTable, sourceFileName, sourceRelation, sourceTableName } from './sources';
 export { bool, cteName, ident, list, num, str, strList } from './sql';
 export * from './steps';
 export { defineRule, PATTERN_PRESETS, ruleColumns, ruleDef, ruleParams, rulePredicate, ruleTypes, type PatternPreset, type RuleDef } from './rules';

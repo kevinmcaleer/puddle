@@ -111,6 +111,11 @@ export class EngineClient {
     await this.wrap(() => this.backend.registerBuffer(name, data));
   }
 
+  /** Create a table from an Arrow IPC stream. The buffer is handed to DuckDB's worker, so don't reuse it. */
+  async insertArrow(name: string, ipc: Uint8Array): Promise<void> {
+    await this.wrap(() => this.backend.insertArrow(name, ipc));
+  }
+
   async dropFile(name: string): Promise<void> {
     await this.wrap(() => this.backend.dropFile(name));
   }

@@ -5,7 +5,7 @@ import { compile, compileCount, compileDateDetection, compileRules, compileDispl
 import { CompileError, UnwiredError } from './errors';
 import { SchemaCache } from './schemaCache';
 import { ident, setExtensionRepository, str } from './sql';
-import { sourceRelation } from './sources';
+import { dropTable, sourceRelation, sourceTableName } from './sources';
 import { expressionProblem, regexProblem } from './steps';
 
 const cleanFlow = (steps = [step('s1', 'trimWhitespace', { columns: ['name'] }), step('s2', 'changeCase', { columns: ['name'], mode: 'title' })]) =>
@@ -37,6 +37,19 @@ describe('sources', () => {
     ['xlsx', {}],
   ])('%s with %j', (format, parseOptions) => {
     expect(sourceRelation(src({ id: 'x', format, parseOptions }))).toMatchSnapshot();
+  });
+
+  it('reads an Excel sheet from a table named for its file and read options', () => {
+    const file = { originalName: 'b.xlsx', size: 1, lastModified: 0, headHash: 'h1' };
+    const name = (parseOptions: ParseOptions, headHash = 'h1') => sourceTableName(src({ id: 'x', format: 'xlsx', parseOptions, file: { ...file, headHash } }));
+    expect(name({})).toMatch(/^src_x_[0-9a-f]{12}$/);
+    expect(sourceRelation(src({ id: 'x', format: 'xlsx', parseOptions: {}, file }))).toBe(ident(name({})));
+    expect(name({})).toBe(name({}));
+    const names = [name({}), name({ sheet: 'Visits' }), name({ headerRow: 3 }), name({ headerRow: 0 }), name({ range: 'A1:B2' }), name({}, 'h2')];
+    expect(new Set(names).size).toBe(names.length);
+    // Options Excel doesn't use don't change it.
+    expect(name({ delimiter: ';' })).toBe(name({}));
+    expect(dropTable(name({}))).toBe(`DROP TABLE IF EXISTS ${ident(name({}))}`);
   });
 });
 

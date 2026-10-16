@@ -4,6 +4,8 @@
 FROM --platform=$BUILDPLATFORM node:22-alpine AS build
 WORKDIR /app
 COPY package.json package-lock.json ./
+# The SheetJS tarball is vendored (its current releases are not on the npm registry).
+COPY vendor ./vendor
 RUN npm ci
 COPY . .
 # Bundle DuckDB's json and parquet extensions so the app never fetches them from extensions.duckdb.org.

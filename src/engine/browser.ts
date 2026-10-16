@@ -99,6 +99,7 @@ export async function createBrowserBackend(): Promise<DuckBackend> {
     dropFile: async (name) => {
       await db.dropFile(name);
     },
+    insertArrow: (name, ipc) => conn.insertArrowFromIPCStream(ipc, { name, create: true }),
     openOutput: async (name) => memoryOutput(db, name),
     async close() {
       await conn.close();
