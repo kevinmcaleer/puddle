@@ -63,14 +63,9 @@ export function Menu({
     return () => {
       window.removeEventListener('pointerdown', onDown);
       window.removeEventListener('keydown', onKey);
+      setQuery('');
     };
   }, [open, setOpen]);
-
-  // The search starts empty each time the menu opens. Only closing clears it: the effect above also runs again when
-  // the parent passes a new onOpenChange, and clearing there threw away what was being typed.
-  useEffect(() => {
-    if (!open) setQuery('');
-  }, [open]);
 
   const q = query.trim().toLowerCase();
   const shown = q ? items.filter((i) => `${i.label} ${i.hint ?? ''}`.toLowerCase().includes(q)) : items;
