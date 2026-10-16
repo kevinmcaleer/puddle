@@ -89,10 +89,16 @@ test('building a flow from the keyboard: add, layout, move along the wires, view
 
   // Arrows select without viewing (and don't nudge the node); V views.
   await expect(page.getByTestId('results-title')).not.toHaveText('Transform 1');
-  const at = (await store(page)).positions;
   await page.keyboard.press('v');
   await expect(page.getByTestId('results-title')).toHaveText('Transform 1');
-  expect((await store(page)).positions).toEqual(at);
+  expect((await store(page)).positions).toEqual(laidOut);
+
+  // Regression: an arrow on a node focused by clicking it used to nudge the node; now it only moves the selection.
+  await node(page, 'shop-orders.csv').click();
+  await page.keyboard.press('ArrowRight');
+  await isSelected(page, 'Transform 1');
+  await page.keyboard.press('ArrowDown');
+  expect((await store(page)).positions).toEqual(laidOut);
 });
 
 test('/ opens the Add step menu with its search focused, and Enter adds the first match', async ({ page }) => {
