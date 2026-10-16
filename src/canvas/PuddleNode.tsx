@@ -69,6 +69,9 @@ export function PuddleNode({ data, selected }: NodeProps<PuddleFlowNode>) {
               </Handle>
             ))}
             {output && <Handle type="source" position={Position.Right} className="ui-port" />}
+            {/* Ends for a rule's dashed reference to another node (see RefEdge). */}
+            <Handle type="target" id="ref-in" position={Position.Top} className="puddle-ref-handle" isConnectable={false} />
+            <Handle type="source" id="ref-out" position={Position.Bottom} className="puddle-ref-handle" isConnectable={false} />
           </>
         )}
       />

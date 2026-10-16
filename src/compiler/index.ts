@@ -10,7 +10,10 @@ export {
   compileRules,
   compileSuggestionChecks,
   compileTypeSniff,
+  fullData,
   needsInputSchemas,
+  refKeys,
+  ruleContext,
   PAGE_SIZE,
   upstreamKey,
   type CompileOptions,
@@ -28,5 +31,5 @@ export { SchemaCache } from './schemaCache';
 export { sourceFileName, sourceRelation, sourceTableName } from './sources';
 export { bool, cteName, ident, list, num, str, strList } from './sql';
 export * from './steps';
-export { defineRule, PATTERN_PRESETS, ruleColumns, ruleDef, ruleParams, rulePredicate, ruleTypes, type PatternPreset, type RuleDef } from './rules';
+export { defineRule, describeRule, PATTERN_PRESETS, READS_AS_TYPES, ruleColumns, ruleDef, ruleParams, rulePredicate, ruleRefs, ruleScope, ruleTypes, type NodeNames, type PatternPreset, type ReadsAs, type RuleContext, type RuleDef } from './rules';
 export { compileExport, CSV_DELIMITERS, EXPORT_FORMATS, exportFileName, exportOptions, PARQUET_COMPRESSION, type ExportFormat, type OutputSpec } from './export';

@@ -5,7 +5,7 @@ import { compileJoin, joinCondition, joinProblems } from './join';
 import { knownSchemas, type SchemaBook } from './schemaBook';
 import { sourceRelation } from './sources';
 import { cteName, ident, num, str } from './sql';
-import { rulePredicate } from './rules';
+import { rulePredicate, ruleRefs, ruleScope, type RuleContext } from './rules';
 import { pivotValuesQuery, stepParams, type Condition } from './steps';
 
 export const PAGE_SIZE = 500;
@@ -154,9 +154,10 @@ export function compile(project: Project, target: Target, options: CompileOption
   if (target.failingRuleId) {
     const rule = node.rules.find((r) => r.id === target.failingRuleId);
     if (!rule) throw new CompileError(`${node.name} has no such rule.`, node.id);
+    if (ruleScope(rule) === 'table') throw new CompileError(`“${rule.label}” is about the whole table, so there are no failing rows to show.`, node.id);
     const pass = ident('__puddle_pass');
     const name = ident(`n_${node.id}_failing`);
-    ctes.push(`${name} AS (SELECT * EXCLUDE (${pass}) FROM (SELECT *, (${rulePredicate(rule)}) AS ${pass} FROM ${output}) WHERE NOT coalesce(${pass}, false))`);
+    ctes.push(`${name} AS (SELECT * EXCLUDE (${pass}) FROM (SELECT *, (${rulePredicate(rule, ruleContext(project))}) AS ${pass} FROM ${output}) WHERE NOT coalesce(${pass}, false))`);
     output = name;
   }
   const sql = ctes.length ? `WITH ${ctes.join(',\n  ')}\nSELECT * FROM ${output}` : `SELECT * FROM ${output}`;
@@ -228,7 +229,36 @@ export function upstreamKey(project: Project, target: Target): string {
     })
     .sort((a, b) => (a.id < b.id ? -1 : 1));
   const failing = target.failingRuleId ? nodeById(project, target.nodeId)?.rules.find((r) => r.id === target.failingRuleId) : undefined;
-  return hashValue({ target: [target.nodeId, target.stepIndex ?? null], nodes, ...(target.failingRuleId ? { failing: failing ? [failing.type, failing.params] : target.failingRuleId } : {}) });
+  return hashValue({ target: [target.nodeId, target.stepIndex ?? null], nodes, ...(target.failingRuleId ? { failing: failing ? [failing.type, failing.params, refKeys(project, failing)] : target.failingRuleId } : {}) });
+}
+
+/** The project with every source read in full: exports, and the other nodes rules read, never use the sample. */
+export function fullData(project: Project): Project {
+  return project.sources.some((s) => s.sampleRows != null) ? { ...project, sources: project.sources.map((s) => (s.sampleRows == null ? s : { ...s, sampleRows: undefined })) } : project;
+}
+
+/** Keys of the nodes a rule reads, so its result is re-checked when one of them changes (or goes). */
+export function refKeys(project: Project, rule: Pick<Rule, 'type' | 'params'>): Array<string | null> {
+  return ruleRefs(rule).map((id) => (nodeById(project, id) ? upstreamKey(fullData(project), { nodeId: id }) : null));
+}
+
+/**
+ * What rules read besides their own node: another node's rows, on the full data. A node that's gone or can't
+ * compile makes the rule fail to run with the reason, rather than pass.
+ */
+export function ruleContext(project: Project, options: CompileOptions = {}): RuleContext {
+  const full = fullData(project);
+  return {
+    relation: (nodeId) => {
+      const other = nodeById(full, nodeId);
+      if (!other) throw new CompileError('The node this rule reads is no longer in the project.');
+      try {
+        return `(${compile(full, { nodeId }, options).sql})`;
+      } catch (e) {
+        throw new CompileError(`${other.name} can’t run, so this rule can’t be checked. ${e instanceof Error ? e.message : String(e)}`);
+      }
+    },
+  };
 }
 
 /**
@@ -261,9 +291,14 @@ export function compilePivotValues(project: Project, target: Target, pivot: { co
 export function compileRules(project: Project, nodeId: string, rules: Rule[]): string {
   if (!rules.length) throw new RangeError('No rules to check.');
   const { sql } = compile(project, { nodeId });
-  const flags = rules.map((r, i) => `(${rulePredicate(r)}) AS ${ident(`r${i}`)}`);
-  const counts = rules.map((_, i) => `count(*) FILTER (WHERE NOT coalesce(${ident(`r${i}`)}, false)) AS ${ident(`f${i}`)}`);
-  return `SELECT count(*) AS total, ${counts.join(', ')} FROM (SELECT ${flags.join(', ')} FROM (${sql}))`;
+  const ctx = ruleContext(project);
+  const predicates = rules.map((r) => rulePredicate(r, ctx));
+  const flags = rules.flatMap((r, i) => (ruleScope(r) === 'row' ? [`(${predicates[i]}) AS ${ident(`r${i}`)}`] : []));
+  // A table rule (row count) is checked once over the whole output: 1 failure when it doesn't hold, else 0.
+  const counts = rules.map((r, i) =>
+    ruleScope(r) === 'row' ? `count(*) FILTER (WHERE NOT coalesce(${ident(`r${i}`)}, false)) AS ${ident(`f${i}`)}` : `CASE WHEN coalesce((${predicates[i]}), false) THEN 0 ELSE 1 END AS ${ident(`f${i}`)}`,
+  );
+  return `SELECT count(*) AS total, ${counts.join(', ')} FROM (SELECT ${flags.length ? flags.join(', ') : '1 AS "__puddle_row"'} FROM (${sql}))`;
 }
 
 /** What a suggested rule needs confirmed about one column before it is offered. */

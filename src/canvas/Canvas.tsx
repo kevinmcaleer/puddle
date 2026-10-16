@@ -17,18 +17,37 @@ import { droppedFiles } from '../sources/handles';
 import { ReconnectBanner } from '../sources/ReconnectBanner';
 import { useSession } from '../app/session';
 import { useFlowStore } from '../flow/status';
-import { JOIN_TYPES } from '../compiler';
+import { JOIN_TYPES, ruleRefs } from '../compiler';
 import { canConnect, canGroup, connect, freePort, groupNodes, hasOutput, inputPorts, moveNodes, newId, parsePort, removeNodes, samePort, setCollapsed, upstreamIds, useProject, useProjectStore, type GraphNode } from '../model';
 import { Banner, Button } from '../ui';
 import { hostOf } from '../sources/url';
 import { formatLabel } from './formatLabel';
 import { portBroken, portName } from './ports';
 import { PuddleNode, type PuddleFlowNode } from './PuddleNode';
+import { RefEdge, type RefFlowEdge } from './RefEdge';
 import { WireEdge, type WireFlowEdge } from './WireEdge';
 import './canvas.css';
 
 const nodeTypes = { puddle: PuddleNode };
-const edgeTypes = { wire: WireEdge };
+const edgeTypes = { wire: WireEdge, reference: RefEdge };
+
+type PuddleEdge = WireFlowEdge | RefFlowEdge;
+
+/** One dashed reference per pair of nodes where a rule on one reads the other. */
+function referenceEdges(project: ReturnType<typeof useProject>): RefFlowEdge[] {
+  const byPair = new Map<string, RefFlowEdge>();
+  for (const n of project.nodes)
+    for (const r of n.rules)
+      for (const ref of ruleRefs(r)) {
+        const from = project.nodes.find((x) => x.id === ref);
+        if (!from || from.id === n.id) continue;
+        const id = `ref:${from.id}:${n.id}`;
+        const edge = byPair.get(id) ?? { id, type: 'reference' as const, source: from.id, sourceHandle: 'ref-out', target: n.id, targetHandle: 'ref-in', selectable: false, deletable: false, focusable: false, data: { label: `${from.name}->${n.name}`, rules: [] } };
+        edge.data!.rules.push(r.label);
+        byPair.set(id, edge);
+      }
+  return [...byPair.values()];
+}
 
 function detailFor(node: GraphNode, sources: ReturnType<typeof useProject>['sources'], edges: ReturnType<typeof useProject>['edges']): string | undefined {
   // A Join shows its type under its name.
@@ -108,9 +127,9 @@ export function Canvas({ onAddSource }: { onAddSource: () => void }) {
     [project.nodes, project.sources, project.edges, dragging, selectedNodeIds, viewedId],
   );
 
-  const edges: WireFlowEdge[] = useMemo(
-    () =>
-      project.edges.map((e) => {
+  const edges: PuddleEdge[] = useMemo(
+    () => [
+      ...project.edges.map((e): WireFlowEdge => {
         const to = statuses[e.to.nodeId]?.status;
         const from = statuses[e.from.nodeId]?.status.state;
         // A wire turns red when the node it feeds breaks on what it carries (on this input, when the error says which).
@@ -130,6 +149,8 @@ export function Canvas({ onAddSource }: { onAddSource: () => void }) {
           data: { state: broken ? 'broken' : active ? 'active' : 'idle', fromNodeId: e.from.nodeId, hovered: hoveredEdge === e.id, label: `${name(e.from.nodeId)}->${name(e.to.nodeId)}`, port: spec && String(spec.id), portName: spec && portName(spec) },
         };
       }),
+      ...referenceEdges(project),
+    ],
     [project, statuses, activeIds, hoveredEdge, selectedEdges],
   );
 
@@ -191,14 +212,14 @@ export function Canvas({ onAddSource }: { onAddSource: () => void }) {
       onDragLeave={() => setDropping(false)}
       onDrop={onDrop}
     >
-      <ReactFlow<PuddleFlowNode, WireFlowEdge>
+      <ReactFlow<PuddleFlowNode, PuddleEdge>
         nodes={nodes}
         edges={edges}
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
         defaultViewport={project.view.canvasViewport}
         onNodesChange={onNodesChange}
-        onEdgesChange={(changes: EdgeChange<WireFlowEdge>[]) => {
+        onEdgesChange={(changes: EdgeChange<PuddleEdge>[]) => {
           const select = changes.flatMap((c) => (c.type === 'select' ? [c] : []));
           if (select.length) setSelectedEdges((ids) => [...ids.filter((id) => !select.some((c) => c.id === id)), ...select.filter((c) => c.selected).map((c) => c.id)]);
         }}

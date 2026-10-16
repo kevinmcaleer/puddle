@@ -2,10 +2,13 @@
 import { create } from 'zustand';
 import { useEngineStore } from '../app/engine';
 import { useSession } from '../app/session';
-import { CompileError, compileExport, compileRules, EXPORT_FORMATS, exportFileName, type ExportFormat } from '../compiler';
-import { isStopped, tableRows, toEngineError, type EngineClient } from '../engine';
+import { CompileError, compileExport, EXPORT_FORMATS, exportFileName, type ExportFormat } from '../compiler';
+import { isStopped, type EngineClient } from '../engine';
+import { stopped as stoppedError } from '../engine/errors';
+
+const STOPPED = stoppedError().message;
 import { describeBlock, exportGate, type Gate } from '../flow/gate';
-import { useRuleStore, type RuleResult } from '../flow/rules';
+import { checkRules, useRuleStore, type RuleResult } from '../flow/rules';
 import { currentSample, sampledUpstream, type Sample } from '../flow/sample';
 import { schemaCacheFor, useFlowStore } from '../flow/status';
 import { logExport, newId, nodeById, topoSort, upstreamIds, useProjectStore, type ExportLogEntry, type Project } from '../model';
@@ -77,14 +80,10 @@ export async function exportGateFor(engine: EngineClient, project: Project, node
   for (const id of topoSort(project, upstreamIds(project, nodeId))) {
     const rules = nodeById(project, id)?.rules.filter((r) => r.enabled && r.severity === 'fail') ?? [];
     if (!rules.length) continue;
-    const entry: Record<string, RuleResult> = {};
-    try {
-      const r = tableRows((await engine.query(compileRules(project, id, rules), { priority: 'preview', label: 'Checking rules on the full data' })).table)[0]!;
-      rules.forEach((rule, i) => (entry[rule.id] = { state: 'ok', failures: Number(r[`f${i}`]), total: Number(r.total) }));
-    } catch (e) {
-      if (isStopped(e)) throw e;
-      for (const rule of rules) entry[rule.id] = { state: 'error', message: e instanceof CompileError ? e.message : toEngineError(e).message };
-    }
+    const entry = await checkRules(engine, project, id, rules, { priority: 'preview', label: 'Checking rules on the full data' });
+    if (!entry) throw new Error('The rules check was replaced by a newer one. Try again.');
+    const stopped = Object.values(entry).find((r) => r.state === 'error' && r.message === STOPPED);
+    if (stopped) throw stoppedError();
     results[id] = { results: entry };
   }
   return exportGate(project, nodeId, results);

@@ -19,6 +19,8 @@ export function RuleRow({
   selected,
   onSelect,
   onShowFailing,
+  metric: metricText,
+  noFailingRows,
   suggestion,
 }: {
   name: string;
@@ -32,6 +34,10 @@ export function RuleRow({
   selected?: boolean;
   onSelect?: () => void;
   onShowFailing?: () => void;
+  /** Replaces the "n of total" figure, e.g. "12 rows" for a rule about the whole table. */
+  metric?: string;
+  /** Said in place of "Show failing rows" when the rule has no rows to show (a row count). */
+  noFailingRows?: string;
   /**
    * A rule suggested from profiling, not yet added: shown muted with its reason and Add and Dismiss. It has no
    * result, because suggestions never run as rules.
@@ -56,7 +62,7 @@ export function RuleRow({
   const ok = !error && failures === 0;
   const status = disabled ? 'neutral' : pending ? 'pending' : error ? 'fail' : ok ? 'pass' : severity;
   const word = disabled ? 'Off' : pending ? 'Checking' : error ? 'Can’t run' : ok ? 'Pass' : severity === 'warn' ? 'Warn' : 'Fail';
-  const metric = disabled || pending ? '' : error ? '' : ok ? `${abbreviate(total)} checked` : `${abbreviate(failures)} of ${abbreviate(total)}`;
+  const metric = disabled || pending ? '' : error ? '' : (metricText ?? (ok ? `${abbreviate(total)} checked` : `${abbreviate(failures)} of ${abbreviate(total)}`));
   return (
     <div className={cx('ui-rule', selected && 'bg-surface-hover')} data-status={status}>
       <span className="ui-rule__sev">
@@ -72,10 +78,14 @@ export function RuleRow({
       <span className="ui-metric">{metric}</span>
       {expr && <code className="ui-rule__expr">{expr}</code>}
       {error && <span className="ui-rule__expr text-fail" title={error}>{error}</span>}
-      {!ok && !error && !pending && !disabled && onShowFailing && (
+      {!ok && !error && !pending && !disabled && (noFailingRows || onShowFailing) && (
         <div className="ui-rule__foot">
           <span />
-          <button type="button" className="ui-link" onClick={onShowFailing}>Show failing rows</button>
+          {noFailingRows ? (
+            <span className="text-label text-ink-muted">{noFailingRows}</span>
+          ) : (
+            <button type="button" className="ui-link" onClick={onShowFailing}>Show failing rows</button>
+          )}
         </div>
       )}
     </div>

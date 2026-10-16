@@ -82,6 +82,7 @@ body { font-family: var(--font-ui); font-size: 13px; line-height: 20px; -webkit-
 .ui-wire { fill: none; stroke: var(--wire); stroke-width: 1.75; }
 .ui-wire--active { stroke: var(--wire-active); stroke-width: 2.25; }
 .ui-wire--broken { stroke: var(--wire-broken); stroke-width: 2; stroke-dasharray: 6 4; }
+.ui-wire--ref { stroke: var(--wire); stroke-width: 1.5; stroke-dasharray: 2 4; stroke-linecap: round; }
 .ui-canvas { position: relative; overflow: hidden; background-color: var(--surface-canvas); background-image: radial-gradient(circle, var(--canvas-dot) 1px, transparent 1.2px); background-size: 16px 16px; }
 
 /* ---------- Panels and sections ---------- */

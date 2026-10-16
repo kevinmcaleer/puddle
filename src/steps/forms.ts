@@ -37,7 +37,11 @@ type FieldKind =
   /** strptime formats tried in order, with detected formats and their match rates offered. */
   | { key: string; label: string; kind: 'dateFormats'; hint?: string }
   /** The pivot editor: field list and four drop zones, editing the whole of the step's settings. */
-  | { key: string; label: string; kind: 'pivot'; hint?: string };
+  | { key: string; label: string; kind: 'pivot'; hint?: string }
+  /** Another node on the canvas (rules that read one): its id. */
+  | { key: string; label: string; kind: 'node'; hint?: string }
+  /** A column of the node picked in the field named by `node`. */
+  | { key: string; label: string; kind: 'nodeColumn'; node: string; hint?: string };
 
 export type StepGroup = 'Clean' | 'Columns' | 'Rows' | 'Text' | 'Dates' | 'Numbers' | 'Reshape' | 'Advanced';
 

@@ -1,7 +1,7 @@
 // Exports: an Output node's rows written by DuckDB's COPY ... TO, so the file never passes through JavaScript rows.
 import { z } from 'zod';
 import type { OutputNode, Project } from '../model';
-import { compile } from './compile';
+import { compile, fullData } from './compile';
 import { CompileError } from './errors';
 import { bool, str } from './sql';
 
@@ -72,8 +72,7 @@ export function compileExport(project: Project, nodeId: string, path: string, sp
   const s = spec ?? (node.type === 'output' ? node.outputSpec : undefined);
   if (!s) throw new CompileError(`${node.name} isn’t an Output node.`, nodeId);
   // Exports always read the full data, even if handed a sample-mode copy of the project.
-  const full = { ...project, sources: project.sources.map((src) => (src.sampleRows == null ? src : { ...src, sampleRows: undefined })) };
-  return `COPY (${compile(full, { nodeId }).sql}) TO ${str(path)} (${copyOptions(s)})`;
+  return `COPY (${compile(fullData(project), { nodeId }).sql}) TO ${str(path)} (${copyOptions(s)})`;
 }
 
 /** A safe file name for an export: the one given, or the node's name, always with the format's extension. */

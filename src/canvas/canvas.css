@@ -22,3 +22,5 @@
 .puddle-wire-popover { position: absolute; z-index: var(--z-popover); pointer-events: none; }
 .puddle-canvas.is-dropping { box-shadow: inset 0 0 0 2px var(--brand); }
 .puddle-canvas .puddle-port-label { position: absolute; right: calc(100% + var(--space-1)); bottom: 100%; pointer-events: none; }
+/* Where a rule's reference to another node starts and ends: never connectable, never seen. */
+.puddle-canvas .react-flow__handle.puddle-ref-handle { opacity: 0; pointer-events: none; min-width: 0; min-height: 0; width: 0; height: 0; border: 0; }
