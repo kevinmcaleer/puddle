@@ -20,7 +20,7 @@ import { canConnect, canGroup, connect, freePort, groupNodes, hasOutput, inputPo
 import { Banner, Button } from '../ui';
 import { hostOf } from '../sources/url';
 import { formatLabel } from './formatLabel';
-import { portBroken } from './ports';
+import { portBroken, portName } from './ports';
 import { PuddleNode, type PuddleFlowNode } from './PuddleNode';
 import { WireEdge, type WireFlowEdge } from './WireEdge';
 import './canvas.css';
@@ -28,9 +28,13 @@ import './canvas.css';
 const nodeTypes = { puddle: PuddleNode };
 const edgeTypes = { wire: WireEdge };
 
-function detailFor(node: GraphNode, sources: ReturnType<typeof useProject>['sources']): string | undefined {
+function detailFor(node: GraphNode, sources: ReturnType<typeof useProject>['sources'], edges: ReturnType<typeof useProject>['edges']): string | undefined {
   // A Join shows its type under its name.
   if (node.type === 'join') return `Join · ${JOIN_TYPES[node.joinSpec.kind].label}`;
+  if (node.type === 'append') {
+    const n = edges.filter((e) => e.to.nodeId === node.id).length;
+    return `Append · ${n} ${n === 1 ? 'input' : 'inputs'}${node.appendSpec.match === 'position' ? ' by position' : ''}`;
+  }
   if (node.type !== 'source') return undefined;
   const s = sources.find((x) => x.id === node.sourceId);
   if (!s) return 'Source';
@@ -38,11 +42,11 @@ function detailFor(node: GraphNode, sources: ReturnType<typeof useProject>['sour
   return s.kind === 'clipboard' ? `Source · Pasted ${formatLabel(s.format)}` : `Source · ${formatLabel(s.format)}`;
 }
 
-/** Shown when several nodes are selected: group them into one, or say why they can't be; two can be joined. */
+/** Shown when several nodes are selected: group them into one, or say why they can't be; join two, or append them. */
 function GroupBar({ ids }: { ids: string[] }) {
   const project = useProject();
   const check = canGroup(project, ids);
-  const joinable = ids.length === 2 && ids.every((id) => project.nodes.some((n) => n.id === id && hasOutput(n)));
+  const combinable = ids.every((id) => project.nodes.some((n) => n.id === id && hasOutput(n)));
   return (
     <div className="absolute bottom-4 left-1/2 z-panel -translate-x-1/2" data-testid="group-bar">
       <div className="ui-popover flex w-auto items-center gap-3 px-3 py-2">
@@ -58,9 +62,14 @@ function GroupBar({ ids }: { ids: string[] }) {
         >
           Group into one node
         </Button>
-        {joinable && (
+        {combinable && ids.length === 2 && (
           <Button size="sm" variant="secondary" icon="join" onClick={() => addNodeAfterSelection('join')}>
             Join these two
+          </Button>
+        )}
+        {combinable && (
+          <Button size="sm" variant="secondary" icon="append" onClick={() => addNodeAfterSelection('append')}>
+            Append these
           </Button>
         )}
       </div>
@@ -92,9 +101,9 @@ export function Canvas({ onAddSource }: { onAddSource: () => void }) {
         type: 'puddle',
         position: dragging[n.id] ?? n.position,
         selected: selectedNodeIds.includes(n.id),
-        data: { node: n, viewed: n.id === viewedId, detail: detailFor(n, project.sources) },
+        data: { node: n, viewed: n.id === viewedId, detail: detailFor(n, project.sources, project.edges) },
       })),
-    [project.nodes, project.sources, dragging, selectedNodeIds, viewedId],
+    [project.nodes, project.sources, project.edges, dragging, selectedNodeIds, viewedId],
   );
 
   const edges: WireFlowEdge[] = useMemo(
@@ -108,7 +117,7 @@ export function Canvas({ onAddSource }: { onAddSource: () => void }) {
         const name = (id: string) => project.nodes.find((n) => n.id === id)?.name ?? id;
         const target = project.nodes.find((n) => n.id === e.to.nodeId);
         const ports = target ? inputPorts(project, target) : [];
-        const port = ports.length > 1 ? ports.find((p) => samePort(p.id, e.to.port))?.label : undefined;
+        const spec = ports.length > 1 ? ports.find((p) => samePort(p.id, e.to.port)) : undefined;
         return {
           id: e.id,
           type: 'wire',
@@ -116,7 +125,7 @@ export function Canvas({ onAddSource }: { onAddSource: () => void }) {
           target: e.to.nodeId,
           targetHandle: String(e.to.port),
           selected: selectedEdges.includes(e.id),
-          data: { state: broken ? 'broken' : active ? 'active' : 'idle', fromNodeId: e.from.nodeId, hovered: hoveredEdge === e.id, label: `${name(e.from.nodeId)}->${name(e.to.nodeId)}`, port },
+          data: { state: broken ? 'broken' : active ? 'active' : 'idle', fromNodeId: e.from.nodeId, hovered: hoveredEdge === e.id, label: `${name(e.from.nodeId)}->${name(e.to.nodeId)}`, port: spec && String(spec.id), portName: spec && portName(spec) },
         };
       }),
     [project, statuses, activeIds, hoveredEdge, selectedEdges],
