@@ -1,0 +1,251 @@
+{
+  "puddleRecipe": 1,
+  "kind": "pipeline",
+  "formatVersion": 1,
+  "name": "Deduplicate customers",
+  "description": "Tidies customer ids on both sides, keeps one row per customer and brings each order its customer’s details.",
+  "notes": "## Deduplicate customers\n\nFor an order list and the customer list it belongs to.\n\n- **customer_id** is trimmed and upper-cased in both, so “c017 ” matches “C017”.\n- **Customers** keep one row per id; a rule checks the ids are unique.\n- **Orders** are joined to their customer, keeping orders whose customer isn’t listed.\n",
+  "settings": {
+    "sampleThresholdRows": 5000000,
+    "locale": "en-GB",
+    "defaultDateFormats": []
+  },
+  "sources": [
+    {
+      "id": "orders",
+      "name": "Orders",
+      "kind": "file",
+      "format": "csv",
+      "parseOptions": {},
+      "detectedSchema": [
+        {
+          "name": "customer_id",
+          "type": "VARCHAR"
+        }
+      ]
+    },
+    {
+      "id": "customers",
+      "name": "Customers",
+      "kind": "file",
+      "format": "csv",
+      "parseOptions": {},
+      "detectedSchema": [
+        {
+          "name": "customer_id",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "name",
+          "type": "VARCHAR"
+        }
+      ]
+    }
+  ],
+  "nodes": [
+    {
+      "id": "n_orders",
+      "type": "source",
+      "name": "Orders",
+      "sourceId": "orders",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "rules": []
+    },
+    {
+      "id": "n_customers",
+      "type": "source",
+      "name": "Customers",
+      "sourceId": "customers",
+      "position": {
+        "x": 0,
+        "y": 200
+      },
+      "rules": []
+    },
+    {
+      "id": "n_order_ids",
+      "type": "transform",
+      "name": "Clean order ids",
+      "position": {
+        "x": 260,
+        "y": 0
+      },
+      "rules": [],
+      "steps": [
+        {
+          "id": "st_trim",
+          "type": "trimWhitespace",
+          "label": "Trimmed customer_id",
+          "enabled": true,
+          "params": {
+            "columns": [
+              "customer_id"
+            ]
+          }
+        },
+        {
+          "id": "st_upper",
+          "type": "changeCase",
+          "label": "Changed customer_id to upper case",
+          "enabled": true,
+          "params": {
+            "columns": [
+              "customer_id"
+            ],
+            "mode": "upper"
+          }
+        }
+      ]
+    },
+    {
+      "id": "n_dedupe",
+      "type": "transform",
+      "name": "Deduplicate customers",
+      "position": {
+        "x": 260,
+        "y": 200
+      },
+      "rules": [
+        {
+          "id": "r_unique",
+          "type": "unique",
+          "label": "customer_id is unique",
+          "enabled": true,
+          "severity": "fail",
+          "params": {
+            "columns": [
+              "customer_id"
+            ]
+          }
+        }
+      ],
+      "steps": [
+        {
+          "id": "st_trim",
+          "type": "trimWhitespace",
+          "label": "Trimmed customer_id, name",
+          "enabled": true,
+          "params": {
+            "columns": [
+              "customer_id",
+              "name"
+            ]
+          }
+        },
+        {
+          "id": "st_upper",
+          "type": "changeCase",
+          "label": "Changed customer_id to upper case",
+          "enabled": true,
+          "params": {
+            "columns": [
+              "customer_id"
+            ],
+            "mode": "upper"
+          }
+        },
+        {
+          "id": "st_dupes",
+          "type": "duplicateRows",
+          "label": "Removed duplicate rows by customer_id",
+          "enabled": true,
+          "params": {
+            "columns": [
+              "customer_id"
+            ],
+            "keep": "first"
+          }
+        }
+      ]
+    },
+    {
+      "id": "n_join",
+      "type": "join",
+      "name": "Orders with customers",
+      "position": {
+        "x": 520,
+        "y": 100
+      },
+      "rules": [],
+      "joinSpec": {
+        "kind": "left",
+        "keys": [
+          {
+            "left": "customer_id",
+            "right": "customer_id"
+          }
+        ],
+        "suffix": "_customer"
+      }
+    },
+    {
+      "id": "n_out",
+      "type": "output",
+      "name": "Matched orders",
+      "position": {
+        "x": 780,
+        "y": 100
+      },
+      "rules": [],
+      "outputSpec": {
+        "format": "csv",
+        "options": {}
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "e1",
+      "from": {
+        "nodeId": "n_orders"
+      },
+      "to": {
+        "nodeId": "n_order_ids",
+        "port": 0
+      }
+    },
+    {
+      "id": "e2",
+      "from": {
+        "nodeId": "n_customers"
+      },
+      "to": {
+        "nodeId": "n_dedupe",
+        "port": 0
+      }
+    },
+    {
+      "id": "e3",
+      "from": {
+        "nodeId": "n_order_ids"
+      },
+      "to": {
+        "nodeId": "n_join",
+        "port": "left"
+      }
+    },
+    {
+      "id": "e4",
+      "from": {
+        "nodeId": "n_dedupe"
+      },
+      "to": {
+        "nodeId": "n_join",
+        "port": "right"
+      }
+    },
+    {
+      "id": "e5",
+      "from": {
+        "nodeId": "n_join"
+      },
+      "to": {
+        "nodeId": "n_out",
+        "port": 0
+      }
+    }
+  ]
+}

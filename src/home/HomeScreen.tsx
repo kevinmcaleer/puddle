@@ -5,22 +5,26 @@ import { Banner, Button, Menu, Toolbar } from '../ui';
 import { openProjectDialog } from './dialogs';
 import { PROVIDERS } from '../sync';
 import { openSyncDialog } from '../sync/dialogs';
+import { openRecipeFile } from '../recipes/actions';
+import { RecipeGallery } from '../recipes/RecipeGallery';
 
 const updated = (iso: string) =>
   new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }).format(new Date(iso));
 
 const plural = (n: number, one: string) => `${n} ${one}${n === 1 ? '' : 's'}`;
 
-/** The projects home screen: every project saved in this browser, with create, open, rename, duplicate, delete. */
+/** The projects home screen: every project saved in this browser, with create, open, rename, duplicate, delete, and the recipe gallery. */
 export function HomeScreen() {
   const { projects, error } = useWorkspace();
   const theme = useTheme();
   const importInput = useRef<HTMLInputElement>(null);
+  const recipeInput = useRef<HTMLInputElement>(null);
 
   return (
     <div className="grid h-full grid-rows-[auto_minmax(0,1fr)] bg-surface-canvas text-body text-ink" data-testid="home">
       <Toolbar>
         <Button variant="ghost" icon="export" onClick={() => importInput.current?.click()}>Import project</Button>
+        <Button variant="ghost" icon="template" onClick={() => recipeInput.current?.click()}>Open recipe</Button>
         <Button variant="ghost" icon="refresh" onClick={() => openSyncDialog({ kind: 'open', provider: 'gist' })}>Open from {PROVIDERS.gist.label}</Button>
         <Button variant="primary" icon="plus" onClick={() => void newProject()}>New project</Button>
         <Button
@@ -42,6 +46,18 @@ export function HomeScreen() {
           const file = e.target.files?.[0];
           e.target.value = '';
           if (file) void importProject(file);
+        }}
+      />
+      <input
+        ref={recipeInput}
+        type="file"
+        accept=".json,application/json"
+        hidden
+        data-testid="recipe-input"
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          e.target.value = '';
+          if (file) void openRecipeFile(file);
         }}
       />
       <main className="overflow-auto">
@@ -77,6 +93,7 @@ export function HomeScreen() {
               ))}
             </ul>
           )}
+          <RecipeGallery />
         </div>
       </main>
     </div>

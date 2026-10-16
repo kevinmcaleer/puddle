@@ -32,6 +32,8 @@ import { ResultsPanel } from './ResultsPanel';
 import { ShortcutsDialog } from './ShortcutsDialog';
 import { openTemplates } from '../templates/actions';
 import { TemplateDialogs } from '../templates/TemplateDialogs';
+import { openExportRecipe, openRecipeFile } from '../recipes/actions';
+import { RecipeAttachBanner, RecipeDialogs } from '../recipes/RecipeDialogs';
 import { shortcutText, withShortcut, type GlobalShortcutId } from './shortcuts';
 import { useShortcuts } from './useShortcuts';
 import { PROVIDERS, useSync } from '../sync';
@@ -190,6 +192,7 @@ export function AppShell() {
   useFlowEvaluation();
 
   const importInput = useRef<HTMLInputElement>(null);
+  const recipeInput = useRef<HTMLInputElement>(null);
   const chooseFiles = () => void pickSourceFiles(() => fileInput.current?.click());
 
   const session = useSession.getState;
@@ -226,6 +229,8 @@ export function AppShell() {
             { label: 'Rename', icon: 'text', onSelect: () => openProjectDialog({ kind: 'rename', id: project.id, name: project.name }) },
             { label: 'Export project', icon: 'export', hint: '.puddle.json', onSelect: exportProject },
             { label: 'Import project', icon: 'source', onSelect: () => importInput.current?.click() },
+            { label: 'Export recipe', icon: 'template', hint: 'Steps, no data', onSelect: () => openExportRecipe() },
+            { label: 'Open recipe', icon: 'template', hint: '.puddle-recipe.json', onSelect: () => recipeInput.current?.click() },
             { label: `Sync to ${PROVIDERS.gist.label}`, icon: 'refresh', onSelect: () => openSyncDialog({ kind: 'project', provider: 'gist' }) },
             { label: 'All projects', icon: 'layout', onSelect: () => void goHome() },
           ]}
@@ -298,6 +303,7 @@ export function AppShell() {
         </Toolbar>
         <div>
           <SyncConflictBanner />
+          <RecipeAttachBanner />
         </div>
         <input
           ref={importInput}
@@ -309,6 +315,18 @@ export function AppShell() {
             const file = e.target.files?.[0];
             e.target.value = '';
             if (file) void importProject(file);
+          }}
+        />
+        <input
+          ref={recipeInput}
+          type="file"
+          accept=".json,application/json"
+          hidden
+          data-testid="recipe-input"
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            e.target.value = '';
+            if (file) void openRecipeFile(file);
           }}
         />
         <input
@@ -350,6 +368,7 @@ export function AppShell() {
       <UrlDialog onChooseFile={chooseFiles} />
       <ShortcutsDialog />
       <TemplateDialogs />
+      <RecipeDialogs />
     </ReactFlowProvider>
   );
 }

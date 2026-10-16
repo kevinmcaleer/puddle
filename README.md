@@ -43,6 +43,7 @@ A Docker image (nginx serving the static build) behind a Cloudflare Tunnel at pu
 | `src/persistence/` | IndexedDB autosave, `.puddle.json` export and import, format migrations |
 | `src/sync/` | Optional project sync through one provider-agnostic layer (`SyncProvider`): sync states, the offline queue, conflict choices and "Open from"; GitHub Gist is the first provider. Credentials and sync links stay in IndexedDB on this device; the synced file is the `.puddle.json` less pasted rows |
 | `src/templates/` | Node templates: a Transform node's steps saved outside any project (IndexedDB, upgraded through the project migrations), the library dialog, and the column mapping that renames a template's columns for a new input and turns off steps whose columns are missing |
+| `src/recipes/` | Recipes: a whole pipeline exported as `.puddle-recipe.json` with no data in it (no rows, file names, head hashes, kept results, pasted rows, header values or private parts of addresses), opened as a new project whose sources ask for files and take the column mapping from templates; templates as single-node recipes; the built-in gallery in `public/recipes` |
 | `src/home/` | The projects home screen and the rename and delete dialogs |
 | `src/canvas/` | The node canvas on React Flow: nodes, wires, auto layout |
 | `src/flow/` | Each node's live status (columns, row count, broken, dimmed), kept in step with the project; sample mode above the row threshold |

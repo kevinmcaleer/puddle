@@ -49,6 +49,11 @@ export const SourceZ = z.object({
   parseOptions: ParseOptionsZ.default({}),
   detectedSchema: z.array(ColumnSchemaZ).default([]),
   /**
+   * The columns a recipe expects this source to have (src/recipes), kept until its first file is read: a file whose
+   * columns differ is offered the column mapping, and then this goes.
+   */
+  expected: z.array(ColumnSchemaZ).optional(),
+  /**
    * Sample mode: read only the first this-many rows. Set only on the in-memory copy that previews, profiles and
    * rules compile from (flow/sample.ts); the project itself never has it, so exports always read everything.
    */

@@ -1,0 +1,189 @@
+{
+  "puddleRecipe": 1,
+  "kind": "pipeline",
+  "formatVersion": 1,
+  "name": "Standardise dates and currencies",
+  "description": "Reads dates written four ways as dates, amounts with currency symbols as numbers, and tidies currency codes and regions.",
+  "notes": "## Standardise dates and currencies\n\nFor orders or sales exported from more than one place.\n\n- **order_date** is read as a date from 2024-05-28, 24/01/2024, 16 Feb 2024 or April 28, 2024. Dates no format reads come out empty, and a rule warns about them.\n- **amount** is read as a number: currency symbols, codes and thousands separators go.\n- **currency** is trimmed and upper-cased; **region** is trimmed and written in title case.\n",
+  "settings": {
+    "sampleThresholdRows": 5000000,
+    "locale": "en-GB",
+    "defaultDateFormats": []
+  },
+  "sources": [
+    {
+      "id": "sales",
+      "name": "Sales",
+      "kind": "file",
+      "format": "csv",
+      "parseOptions": {},
+      "detectedSchema": [
+        {
+          "name": "order_date",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "amount",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "currency",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "region",
+          "type": "VARCHAR"
+        }
+      ]
+    }
+  ],
+  "nodes": [
+    {
+      "id": "n_sales",
+      "type": "source",
+      "name": "Sales",
+      "sourceId": "sales",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "rules": []
+    },
+    {
+      "id": "n_std",
+      "type": "transform",
+      "name": "Standardise",
+      "position": {
+        "x": 260,
+        "y": 0
+      },
+      "rules": [
+        {
+          "id": "r_date",
+          "type": "notEmpty",
+          "label": "order_date is never empty",
+          "enabled": true,
+          "severity": "warn",
+          "params": {
+            "column": "order_date"
+          }
+        },
+        {
+          "id": "r_amount",
+          "type": "notEmpty",
+          "label": "amount is never empty",
+          "enabled": true,
+          "severity": "warn",
+          "params": {
+            "column": "amount"
+          }
+        }
+      ],
+      "steps": [
+        {
+          "id": "st_trim",
+          "type": "trimWhitespace",
+          "label": "Trimmed order_date, currency, region",
+          "enabled": true,
+          "params": {
+            "columns": [
+              "order_date",
+              "currency",
+              "region"
+            ]
+          }
+        },
+        {
+          "id": "st_dates",
+          "type": "parseDates",
+          "label": "Parsed order_date as dates",
+          "enabled": true,
+          "params": {
+            "columns": [
+              "order_date"
+            ],
+            "formats": [
+              "%Y-%m-%d",
+              "%d/%m/%Y",
+              "%d %b %Y",
+              "%B %d, %Y"
+            ],
+            "onError": "empty"
+          }
+        },
+        {
+          "id": "st_amount",
+          "type": "parseNumbers",
+          "label": "Parsed numbers in amount",
+          "enabled": true,
+          "params": {
+            "columns": [
+              "amount"
+            ],
+            "decimal": "."
+          }
+        },
+        {
+          "id": "st_currency",
+          "type": "changeCase",
+          "label": "Changed currency to upper case",
+          "enabled": true,
+          "params": {
+            "columns": [
+              "currency"
+            ],
+            "mode": "upper"
+          }
+        },
+        {
+          "id": "st_region",
+          "type": "changeCase",
+          "label": "Changed region to title case",
+          "enabled": true,
+          "params": {
+            "columns": [
+              "region"
+            ],
+            "mode": "title"
+          }
+        }
+      ]
+    },
+    {
+      "id": "n_out",
+      "type": "output",
+      "name": "Standardised sales",
+      "position": {
+        "x": 520,
+        "y": 0
+      },
+      "rules": [],
+      "outputSpec": {
+        "format": "csv",
+        "options": {}
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "e1",
+      "from": {
+        "nodeId": "n_sales"
+      },
+      "to": {
+        "nodeId": "n_std",
+        "port": 0
+      }
+    },
+    {
+      "id": "e2",
+      "from": {
+        "nodeId": "n_std"
+      },
+      "to": {
+        "nodeId": "n_out",
+        "port": 0
+      }
+    }
+  ]
+}

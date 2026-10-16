@@ -1,5 +1,6 @@
 import { hashValue, type Project } from '../model';
 import { readProjectFile, writeProjectFile } from '../persistence/migrate';
+import { withoutHeaderValues, withoutPastedRows } from '../persistence/shareable';
 
 /**
  * The project as it syncs: the `.puddle.json` export, less pasted data and request header values. Pasted rows are
@@ -8,16 +9,7 @@ import { readProjectFile, writeProjectFile } from '../persistence/migrate';
  * each header syncs by name with an empty value and keeps its value in this browser.
  */
 function syncable(project: Project): Project {
-  const sources = project.sources.map((s) => {
-    let out = s;
-    if (out.clipboard) {
-      const { clipboard: _, ...rest } = out;
-      out = rest;
-    }
-    if (out.url?.headers) out = { ...out, url: { ...out.url, headers: Object.fromEntries(Object.keys(out.url.headers).map((name) => [name, ''])) } };
-    return out;
-  });
-  return { ...project, sources };
+  return { ...project, sources: project.sources.map((s) => withoutHeaderValues(withoutPastedRows(s))) };
 }
 
 export const syncText = (project: Project) => writeProjectFile(syncable(project));
