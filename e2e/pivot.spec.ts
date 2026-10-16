@@ -12,10 +12,12 @@ async function addStep(page: Page, title: string) {
 }
 
 /**
- * Drag a field from the list into a zone. The page is tall enough that the inspector doesn't scroll: a drag near
- * its edge would make the browser scroll it, moving fields and zones out from under the pointer.
+ * Drag a field from the list into a zone. The editor is scrolled into the middle of the inspector first, so the
+ * field list and the zones are both in view: otherwise reaching the target scrolls the inspector mid-drag, moving
+ * fields and zones out from under the pointer.
  */
 async function drag(page: Page, field: string, to: string) {
+  await editor(page).evaluate((el) => el.scrollIntoView({ block: 'center' }));
   await editor(page).getByRole('button', { name: `Add ${field}` }).dragTo(zone(page, to));
   await expect(zone(page, to).getByRole('button', { name: `${to}: ${field}` })).toBeVisible();
 }
