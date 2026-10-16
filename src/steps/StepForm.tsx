@@ -26,12 +26,11 @@ function ColumnsPicker({ id, value, columns, single, onChange }: { id: string; v
             key={c.name}
             type="button"
             aria-pressed={on}
-            aria-label={c.name}
             title={c.type}
             className={cx('ui-chip font-mono', on && 'bg-brand-tint text-ink')}
             onClick={() => onChange(single ? [c.name] : on ? value.filter((v) => v !== c.name) : [...value, c.name])}
           >
-            <TypeTag type={columnKind(c.type)} />
+            <TypeTag type={columnKind(c.type)} decorative />
             {c.name}
           </button>
         );

@@ -72,7 +72,7 @@ export function ResultsBar({
     <div className={cx('ui-resultsbar', pinned && 'is-pinned')}>
       <div className="ui-resultsbar__title">
         <Icon name={NODE_KIND[kind].icon} />
-        <span>{title}</span>
+        <h2 className="min-w-0">{title}</h2>
         {pinned && (
           <span className="ui-pinned"><Icon name="pin" size={14} />Pinned</span>
         )}
@@ -133,9 +133,13 @@ export function StatusStrip({ rows, cols, ms, rules, sample, kept, detail, end, 
         {formatBytes(kept)} kept
       </span>,
     );
+  // The counts and rule results are a live region, so a screen reader hears them change; the end of the strip (the
+  // running query's timer and Stop, the engine) isn't, or the timer would be read out four times a second.
   return (
-    <div className="ui-strip" role="status">
-      {parts.flatMap((p, i) => (i ? [<span key={`sep${i}`} className="ui-strip__sep" />, p] : [p]))}
+    <footer className="ui-strip">
+      <span role="status" className="ui-row" style={{ gap: 'var(--space-3)' }}>
+        {parts.flatMap((p, i) => (i ? [<span key={`sep${i}`} className="ui-strip__sep" />, p] : [p]))}
+      </span>
       <span className="ui-strip__end">
         {sync && (
           <span data-testid="sync-state" data-state={sync}>
@@ -147,6 +151,6 @@ export function StatusStrip({ rows, cols, ms, rules, sample, kept, detail, end, 
         {end}
         {rows != null && (sample ? <StatusBadge status="warn">Sample of {abbreviate(sample)} rows</StatusBadge> : <span>Full data</span>)}
       </span>
-    </div>
+    </footer>
   );
 }

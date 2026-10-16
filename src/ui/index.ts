@@ -8,6 +8,8 @@ export { Field, Select, Switch, TextInput, type SelectOption } from './Field';
 export { abbreviate, formatBytes, formatDuration, fullCount } from './format';
 export { glideTheme } from './glideTheme';
 export { Icon, type IconName } from './Icon';
+export { announce } from './announce';
+export { LiveRegions } from './LiveRegion';
 export { Menu, type MenuItem } from './Menu';
 export { NodeCard, type NodeCardProps, type NodeStepSummary } from './Node';
 export { NODE_KIND, type NodeKind } from './nodeKinds';

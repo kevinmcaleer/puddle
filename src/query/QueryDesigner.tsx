@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState, type DragEvent, type PointerEvent as ReactPointerEvent } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, type DragEvent, type KeyboardEvent as ReactKeyboardEvent, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent } from 'react';
 import { useSession } from '../app/session';
 import { cardKind } from '../canvas/kind';
 import { CRITERIA_OPS, crossJoinedTables, defaultNames, fieldTotal, TOTALS, totalsProblems } from '../compiler';
@@ -27,7 +27,7 @@ import {
 import { viewNode } from '../results/pin';
 import { CommitInput } from '../steps/CommitInput';
 import { ExpressionInput } from '../steps/ExpressionInput';
-import { Banner, Button, columnKind, cx, Icon, Menu, NODE_KIND, Select, Switch, TypeTag } from '../ui';
+import { Banner, Button, columnKind, cx, Dialog, Field, Icon, Menu, NODE_KIND, Select, Switch, TypeTag } from '../ui';
 import { designerTables, refKey, tableCandidates, useDesigner, type DesignerTable } from './tables';
 import './query.css';
 
@@ -59,6 +59,52 @@ interface Line {
   to: { x: number; y: number };
 }
 
+/** How far an arrow key moves a table, and with Shift. */
+const NUDGE = 16;
+const NUDGE_FAR = 64;
+
+/**
+ * What dragging a field does, from the keyboard: Enter on a field opens this, to add it to the grid or join it to a
+ * field of another table. It offers the other tables' fields with the same name first.
+ */
+function FieldDialog({ node, tables, field, onClose }: { node: QueryNode; tables: DesignerTable[]; field: QueryFieldRef; onClose: () => void }) {
+  const table = tables.find((t) => t.port === field.port);
+  const targets = tables
+    .filter((t) => t.port !== field.port)
+    .flatMap((t) => (t.columns ?? []).map((c) => ({ value: refKey({ port: t.port, column: c.name }), label: `${t.label}.${c.name}`, same: c.name === field.column, ref: { port: t.port, column: c.name } })))
+    .sort((a, b) => Number(b.same) - Number(a.same));
+  const [target, setTarget] = useState(targets[0]?.value ?? '');
+  const all = field.column === '*';
+  const name = all ? `All columns of ${table?.label}` : `${table?.label}.${field.column}`;
+  return (
+    <Dialog title={name} onClose={onClose}>
+      <Button variant="secondary" icon="plus" data-autofocus onClick={() => (apply((p) => addQueryField(p, node.id, field)), onClose())}>
+        Add to the grid
+      </Button>
+      {!all && targets.length > 0 && (
+        <div className="flex items-end gap-2">
+          <div className="min-w-0 flex-1">
+            <Field label="Join to" htmlFor="query-join-to">
+              <Select id="query-join-to" options={targets} value={target} onChange={(e) => setTarget(e.target.value)} />
+            </Field>
+          </div>
+          <Button
+            variant="primary"
+            icon="join"
+            onClick={() => {
+              const to = targets.find((t) => t.value === target);
+              if (to) apply((p) => addQueryJoin(p, node.id, field, to.ref));
+              onClose();
+            }}
+          >
+            Add join
+          </Button>
+        </div>
+      )}
+    </Dialog>
+  );
+}
+
 /** The tables, with their fields to drag and the join lines between them. */
 function TablePane({ node, tables }: { node: QueryNode; tables: DesignerTable[] }) {
   const pane = useRef<HTMLDivElement>(null);
@@ -70,6 +116,25 @@ function TablePane({ node, tables }: { node: QueryNode; tables: DesignerTable[] 
   const selectedJoin = useDesigner((s) => s.selectedJoinId);
   const selectJoin = useDesigner((s) => s.selectJoin);
   const remeasure = () => setTick((t) => t + 1);
+  const [actions, setActions] = useState<QueryFieldRef | null>(null);
+  // Enter or Space on a field opens its actions; so does a screen reader's click (detail 0), but not a mouse click,
+  // which picks the field up to drag or adds it with a double-click.
+  const fieldKeys = (ref: QueryFieldRef) => ({
+    onKeyDown: (e: ReactKeyboardEvent) => {
+      if (e.key !== 'Enter' && e.key !== ' ') return;
+      e.preventDefault();
+      setActions(ref);
+    },
+    onClick: (e: ReactMouseEvent) => e.detail === 0 && setActions(ref),
+  });
+  // The arrow keys move a focused table's header, as dragging it does.
+  const moveKeys = (t: DesignerTable) => (e: ReactKeyboardEvent) => {
+    const step = e.shiftKey ? NUDGE_FAR : NUDGE;
+    const by = { ArrowLeft: [-step, 0], ArrowRight: [step, 0], ArrowUp: [0, -step], ArrowDown: [0, step] }[e.key];
+    if (!by || e.target !== e.currentTarget || e.altKey || e.ctrlKey || e.metaKey) return;
+    e.preventDefault();
+    apply((p) => moveQueryTable(p, node.id, t.port, { x: Math.max(0, t.x + by[0]!), y: Math.max(0, t.y + by[1]!) }));
+  };
 
   // Lines follow the rows they join, so they're measured again whenever a table, a list or the pane moves.
   const layout = tables.map((t) => `${t.port}:${t.x},${t.y}:${t.columns?.length ?? -1}`).join('|');
@@ -191,7 +256,15 @@ function TablePane({ node, tables }: { node: QueryNode; tables: DesignerTable[] 
             aria-label={`Table ${t.label}`}
             role="group"
           >
-            <div className="puddle-qd-table__head" onPointerDown={(e) => startMove(t, e)} title="Drag to move">
+            <div
+              className="puddle-qd-table__head"
+              onPointerDown={(e) => startMove(t, e)}
+              title="Drag to move, or focus and use the arrow keys"
+              tabIndex={0}
+              role="group"
+              aria-label={`Move ${t.label} with the arrow keys`}
+              onKeyDown={moveKeys(t)}
+            >
               <span className="ui-metric">{t.port + 1}</span>
               <span className="puddle-qd-table__name">{t.label}</span>
               <Button variant="ghost" size="sm" icon="cross" iconOnly aria-label={`Remove ${t.label} from the query`} onClick={() => apply((p) => removeQueryTable(p, node.id, t.port))} />
@@ -228,8 +301,10 @@ function TablePane({ node, tables }: { node: QueryNode; tables: DesignerTable[] 
                       onDragLeave={() => setOver((o) => (o === key ? null : o))}
                       onDrop={c.name === '*' ? undefined : dropOnRow(ref)}
                     >
-                      {c.name === '*' ? <span className="puddle-qd-field__all">*</span> : <TypeTag type={columnKind(c.type)} />}
-                      <span className="ui-col">{c.name === '*' ? 'All columns' : c.name}</span>
+                      <span role="button" tabIndex={0} aria-haspopup="dialog" className="puddle-qd-field__name" {...fieldKeys(ref)}>
+                        {c.name === '*' ? <span className="puddle-qd-field__all" aria-hidden="true">*</span> : <TypeTag type={columnKind(c.type)} decorative />}
+                        <span className="ui-col">{c.name === '*' ? 'All columns' : c.name}</span>
+                      </span>
                     </li>
                   );
                 })
@@ -240,6 +315,7 @@ function TablePane({ node, tables }: { node: QueryNode; tables: DesignerTable[] 
           </div>
         );
       })}
+      {actions && <FieldDialog node={node} tables={tables} field={actions} onClose={() => setActions(null)} />}
       <svg className="puddle-qd-lines" width={size.w} height={size.h} aria-hidden="true">
         {drawn.map((l) => (
           <g key={l.id} data-testid="query-join-line" data-join={l.id} className={cx(selectedJoin === l.id && 'is-selected')}>
@@ -336,6 +412,21 @@ function QueryGrid({ node, tables }: { node: QueryNode; tables: DesignerTable[] 
         return (
           <div
             className="puddle-qd-colhead"
+            tabIndex={0}
+            role="group"
+            aria-label={`${name}, column ${fields.indexOf(f) + 1} of ${fields.length}`}
+            title="Drag to move, or focus and press Alt with the left or right arrow"
+            onKeyDown={(e) => {
+              if (!e.altKey || (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') || e.target !== e.currentTarget) return;
+              e.preventDefault();
+              const to = fields.indexOf(f) + (e.key === 'ArrowLeft' ? -1 : 1);
+              if (to < 0 || to >= fields.length) return;
+              apply((p) => moveQueryField(p, node.id, f.id, to));
+              // The column's cell moves in the page, which can take the focus with it: it's put back.
+              const moved = f.id;
+              requestAnimationFrame(() => document.querySelector<HTMLElement>(`[data-colhead="${CSS.escape(moved)}"]`)?.focus());
+            }}
+            data-colhead={f.id}
             draggable
             onDragStart={(e) => {
               e.dataTransfer.setData(GRID_MIME, f.id);
@@ -387,7 +478,7 @@ function QueryGrid({ node, tables }: { node: QueryNode; tables: DesignerTable[] 
                   </td>
                 ))}
                 <td {...cell(fields.length, 'is-spare')} data-testid={row === 'Field' ? 'grid-drop' : undefined}>
-                  {row === 'Field' && <span className="text-ink-subtle">{fields.length ? 'Drag another field here' : 'Drag fields here'}</span>}
+                  {row === 'Field' && <span className="text-ink-subtle">{fields.length ? 'Drag another field here' : 'Drag fields here, or press Enter on a field'}</span>}
                 </td>
               </tr>
             ))}
@@ -419,8 +510,14 @@ export function QueryDesigner({ node }: { node: QueryNode }) {
     return () => selectJoin(null);
   }, [node.id, selectJoin]);
 
+  // Opened from the keyboard (Enter on the node, which the designer has just replaced), the keyboard comes here.
+  const designer = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (document.activeElement === document.body) designer.current?.focus();
+  }, [node.id]);
+
   return (
-    <div className="puddle-qd" data-testid="query-designer" aria-label={`Query designer for ${node.name}`}>
+    <div ref={designer} tabIndex={-1} role="region" className="puddle-qd" data-testid="query-designer" aria-label={`Query designer for ${node.name}`}>
       <div className="puddle-qd-bar">
         <Button variant="ghost" size="sm" icon="arrow-left" onClick={() => useSession.getState().openDesigner(null)}>
           Back to canvas
@@ -484,7 +581,7 @@ export function QueryDesigner({ node }: { node: QueryNode }) {
           {cross.length > 0 && (
             <div data-testid="query-cross-join">
               <Banner tone="info">
-                {cross.map((p) => tables.find((t) => t.port === p)!.label).join(', ')} {cross.length === 1 ? 'has' : 'have'} no join line, so every row pairs with every row. Drag a field onto the matching field of another table to join them.
+                {cross.map((p) => tables.find((t) => t.port === p)!.label).join(', ')} {cross.length === 1 ? 'has' : 'have'} no join line, so every row pairs with every row. Drag a field onto the matching field of another table to join them, or press Enter on a field.
               </Banner>
             </div>
           )}

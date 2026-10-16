@@ -63,4 +63,44 @@ describe('Menu', () => {
     fireEvent.keyDown(window, { key: 'Escape' });
     expect(onOpenChange).toHaveBeenCalledWith(false);
   });
+
+  it('puts focus on the first item when it opens, moves with the arrow keys, Home and End, and wraps', () => {
+    render(<Menu label="Add" items={items()} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Add' }));
+    const [trim, parse, keep] = screen.getAllByRole('menuitem');
+    expect(document.activeElement).toBe(trim);
+    fireEvent.keyDown(trim!, { key: 'ArrowDown' });
+    expect(document.activeElement).toBe(parse);
+    fireEvent.keyDown(parse!, { key: 'End' });
+    expect(document.activeElement).toBe(keep);
+    fireEvent.keyDown(keep!, { key: 'ArrowDown' });
+    expect(document.activeElement).toBe(trim);
+    fireEvent.keyDown(trim!, { key: 'ArrowUp' });
+    expect(document.activeElement).toBe(keep);
+    fireEvent.keyDown(keep!, { key: 'Home' });
+    expect(document.activeElement).toBe(trim);
+  });
+
+  it('opens with the down arrow on its button', () => {
+    render(<Menu label="Add" items={items()} />);
+    fireEvent.keyDown(screen.getByRole('button', { name: 'Add' }), { key: 'ArrowDown' });
+    expect(document.activeElement).toBe(screen.getAllByRole('menuitem')[0]);
+  });
+
+  it('gives focus back to its button on Escape and when an item is picked', () => {
+    const pick = vi.fn();
+    render(<Menu label="Add" items={items(pick)} />);
+    const button = screen.getByRole('button', { name: 'Add' });
+    fireEvent.click(button);
+    fireEvent.keyDown(window, { key: 'Escape' });
+    expect(screen.queryByRole('menu')).toBeNull();
+    expect(document.activeElement).toBe(button);
+    fireEvent.click(button);
+    let focusedWhenPicked: Element | null = null;
+    pick.mockImplementation(() => (focusedWhenPicked = document.activeElement));
+    fireEvent.click(screen.getByRole('menuitem', { name: /Parse dates/ }));
+    expect(pick).toHaveBeenCalledWith('parse');
+    // Focus is back on the button before the item runs, so a dialog it opens gives focus back there.
+    expect(focusedWhenPicked).toBe(button);
+  });
 });

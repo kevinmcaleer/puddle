@@ -17,7 +17,7 @@ function RenameDialog({ id, name }: { id: string; name: string }) {
       }}
     >
       <Field label="Name" htmlFor="project-name">
-        <TextInput id="project-name" value={value} autoFocus onChange={(e) => setValue(e.target.value)} />
+        <TextInput id="project-name" value={value} data-autofocus onChange={(e) => setValue(e.target.value)} />
       </Field>
     </Dialog>
   );

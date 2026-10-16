@@ -2,7 +2,7 @@ import { autoLayout } from '../canvas/layout';
 import { neighbour, type Direction } from '../canvas/navigate';
 import { suggestJoinKey, suggestLookupColumns } from '../compiler';
 import { useFlowStore } from '../flow/status';
-import { addNode, canGroup, groupNodes, inputEdges, moveQueryTable, nodeById, setJoinSpec, setLookupSpec, useProjectStore, type AddableNodeType, type ColumnSchema, type Source, type SourceFormat } from '../model';
+import { addNode, canConnect, canGroup, connect, disconnect, freePort, groupNodes, inputEdges, moveQueryTable, newId, nodeById, setJoinSpec, setLookupSpec, useProjectStore, type AddableNodeType, type ColumnSchema, type Port, type Source, type SourceFormat } from '../model';
 import { addClipboardSource, addFileSource } from '../sources/add';
 import { pickFiles, type PickedFile } from '../sources/handles';
 import { addUrlSource } from '../sources/url';
@@ -149,4 +149,73 @@ export function searchAddStep() {
   const node = id ? nodeById(useProjectStore.getState().history.present, id) : undefined;
   if (node?.type !== 'transform') return useSession.getState().notify({ tone: 'info', text: 'Select a Transform node to add a step to it.' });
   useSession.getState().requestAddStep();
+}
+
+/**
+ * Wire one node's output into another's input: `port` when the wire was dropped on one, else the first free input.
+ * When it can't be wired, the canvas notice says why. True when the wire was added.
+ */
+export function wireNodes(fromId: string, toId: string, port?: Port): boolean {
+  const { apply, history } = useProjectStore.getState();
+  const into = port ?? freePort(history.present, toId);
+  const check = canConnect(history.present, fromId, toId, into);
+  if (!check.ok || into == null) {
+    useSession.getState().notify({ tone: 'warn', text: check.ok ? 'That node has no free input.' : check.reason });
+    return false;
+  }
+  apply((p) => connect(p, { id: newId('e'), from: { nodeId: fromId }, to: { nodeId: toId, port: into } }));
+  return true;
+}
+
+const nameOf = (id: string) => nodeById(useProjectStore.getState().history.present, id)?.name ?? id;
+
+/**
+ * C: start wiring from the selected node. The next node chosen with Enter (or C again) is wired from it, or, when a
+ * wire already runs between them, unwired. Escape cancels.
+ */
+export function startWiring() {
+  const { selectedNodeId, connectFrom, notify, setConnectFrom } = useSession.getState();
+  if (connectFrom) return finishWiring();
+  if (!selectedNodeId) return notify({ tone: 'info', text: 'Select a node to wire from first.' });
+  setConnectFrom(selectedNodeId);
+  notify({ tone: 'info', text: `Wiring from ${nameOf(selectedNodeId)}. Move to the node to wire it into and press Enter, or Escape to cancel. Choosing a node it already feeds removes that wire.` });
+}
+
+/** Wire the node being wired from into the selected node, or take away the wire between them. */
+export function finishWiring() {
+  const { selectedNodeId: to, connectFrom: from, notify, setConnectFrom } = useSession.getState();
+  if (!from) return;
+  if (!to || to === from) return notify({ tone: 'info', text: `Wiring from ${nameOf(from)}. Move to another node first, or press Escape to cancel.` });
+  setConnectFrom(null);
+  const { apply, history } = useProjectStore.getState();
+  const existing = inputEdges(history.present, to).find((e) => e.from.nodeId === from);
+  if (existing) {
+    apply((p) => disconnect(p, existing.id));
+    return notify({ tone: 'info', text: `Removed the wire from ${nameOf(from)} into ${nameOf(to)}.` });
+  }
+  if (wireNodes(from, to)) notify({ tone: 'info', text: `Wired ${nameOf(from)} into ${nameOf(to)}.` });
+}
+
+/** Escape: stop wiring. False when there was nothing to cancel, so Escape keeps its usual meaning. */
+export function cancelWiring(): boolean {
+  const { connectFrom, notify, setConnectFrom } = useSession.getState();
+  if (!connectFrom) return false;
+  setConnectFrom(null);
+  notify({ tone: 'info', text: 'Wiring cancelled.' });
+  return true;
+}
+
+/**
+ * Enter on the canvas: finish wiring when wiring, otherwise open the selected node: a Query in its designer, any
+ * other node in the inspector, with the keyboard moved there.
+ */
+export function openSelected(focusInspector: () => void) {
+  const { selectedNodeId, connectFrom, openDesigner, setInspectorOpen, setNotesOpen } = useSession.getState();
+  if (connectFrom) return finishWiring();
+  const node = selectedNodeId ? nodeById(useProjectStore.getState().history.present, selectedNodeId) : undefined;
+  if (!node) return;
+  if (node.type === 'query') return openDesigner(node.id);
+  setNotesOpen(false);
+  setInspectorOpen(true);
+  focusInspector();
 }
