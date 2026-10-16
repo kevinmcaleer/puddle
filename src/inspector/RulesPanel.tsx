@@ -5,8 +5,8 @@ import { useRuleStore, type RuleResult } from '../flow/rules';
 import { runAgain } from '../flow/rerun';
 import { sampledUpstream, useSample } from '../flow/sample';
 import { useNodeStatus } from '../flow/status';
-import { addRule, removeRule, updateRule, useProject, useProjectStore, type GraphNode, type Rule } from '../model';
-import { newRule, ruleErrors, ruleForm, ruleForms, ruleLabel, showFailing } from '../rules';
+import { addRule, dismissSuggestion, newId, removeRule, updateRule, useProject, useProjectStore, type GraphNode, type Rule } from '../model';
+import { newRule, ruleErrors, ruleForm, ruleForms, ruleLabel, showFailing, useSuggestions, type Suggestion } from '../rules';
 import { FormFields } from '../steps/StepForm';
 import { Button, Field, Menu, RuleRow, Section, Select, Switch } from '../ui';
 
@@ -48,6 +48,25 @@ function RuleSettings({ node, rule }: { node: GraphNode; rule: Rule }) {
           Delete rule
         </Button>
       </div>
+    </div>
+  );
+}
+
+/** Suggested rules: added with one click as an ordinary rule, or dismissed for this node for good. */
+function Suggestions({ node }: { node: GraphNode }) {
+  const suggestions = useSuggestions(node);
+  if (!suggestions.length) return null;
+  const add = (s: Suggestion) => {
+    const rule: Rule = { id: newId('r'), type: s.type, label: ruleLabel(s), enabled: true, severity: 'fail', params: s.params };
+    apply((p) => addRule(p, node.id, rule));
+  };
+  return (
+    <div className="mt-2 flex flex-col border-t border-line pt-2" data-testid="rule-suggestions" aria-label="Suggested rules">
+      {suggestions.map((s) => (
+        <div key={s.key} data-testid={`suggestion-${s.key}`}>
+          <RuleRow name={ruleLabel(s)} suggestion={{ reason: s.reason, onAdd: () => add(s), onDismiss: () => apply((p) => dismissSuggestion(p, node.id, s.key)) }} />
+        </div>
+      ))}
     </div>
   );
 }
@@ -109,6 +128,7 @@ export function RulesPanel({ node }: { node: GraphNode }) {
       ) : (
         <p className="text-ink-muted">No rules yet. Add one to say what this data should look like.</p>
       )}
+      <Suggestions node={node} />
     </Section>
   );
 }

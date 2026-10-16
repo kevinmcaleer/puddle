@@ -7,11 +7,13 @@ export {
   compilePreview,
   compileProfile,
   compileRules,
+  compileSuggestionChecks,
   compileTypeSniff,
   PAGE_SIZE,
   upstreamKey,
   type CompileOptions,
   type Compiled,
+  type SuggestionCheck,
   type Target,
 } from './compile';
 export { CompileError, PendingSchemaError, UnwiredError } from './errors';

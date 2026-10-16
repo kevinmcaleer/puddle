@@ -236,6 +236,37 @@ export function compileRules(project: Project, nodeId: string, rules: Rule[]): s
   return `SELECT count(*) AS total, ${counts.join(', ')} FROM (SELECT ${flags.join(', ')} FROM (${sql}))`;
 }
 
+/** What a suggested rule needs confirmed about one column before it is offered. */
+export interface SuggestionCheck {
+  column: string;
+  /** Count values that are empty (null or blank text). */
+  blank?: boolean;
+  /** Count values with spaces at either end. */
+  edges?: boolean;
+  /** Count distinct values exactly (profiling's count is approximate). */
+  distinct?: boolean;
+  /** List the distinct values, as text and sorted. */
+  values?: boolean;
+}
+
+/**
+ * One row of exact facts behind suggested rules, at background priority: `rows`, and per check i `nn<i>`
+ * (non-null values) plus `blank<i>`, `edges<i>`, `distinct<i>` and `values<i>` as asked for.
+ */
+export function compileSuggestionChecks(project: Project, target: Target, checks: SuggestionCheck[]): string {
+  const parts = ['count(*) AS "rows"'];
+  checks.forEach((c, i) => {
+    const col = ident(c.column);
+    const text = `CAST(${col} AS VARCHAR)`;
+    parts.push(`count(${col}) AS ${ident(`nn${i}`)}`);
+    if (c.blank) parts.push(`count(*) FILTER (WHERE coalesce(trim(${text}), '') = '') AS ${ident(`blank${i}`)}`);
+    if (c.edges) parts.push(`count(*) FILTER (WHERE ${text} <> trim(${text})) AS ${ident(`edges${i}`)}`);
+    if (c.distinct) parts.push(`count(DISTINCT ${col}) AS ${ident(`distinct${i}`)}`);
+    if (c.values) parts.push(`list_sort(list(DISTINCT ${text}) FILTER (WHERE ${col} IS NOT NULL)) AS ${ident(`values${i}`)}`);
+  });
+  return `SELECT ${parts.join(', ')} FROM (${compile(project, target).sql})`;
+}
+
 /**
  * Whether a Join multiplies rows, in one row: `left_rows` and `right_rows` in its inputs, `rows` out of it,
  * `pairs` of matching left and right rows, and how many left (`matched_left`) and right (`matched_right`)
