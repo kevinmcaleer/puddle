@@ -201,6 +201,10 @@ body { font-family: var(--font-ui); font-size: 13px; line-height: 20px; -webkit-
 .ui-fchip__agg { font: 500 11px/14px var(--font-ui); color: var(--brand); background: var(--brand-tint); padding: 1px 5px; border-radius: var(--radius-xs); }
 .ui-fchip__x { display: inline-flex; padding: 2px; border: 0; background: none; color: var(--ink-muted); border-radius: var(--radius-xs); cursor: pointer; }
 .ui-fchip__x:hover { background: var(--surface-hover); color: var(--ink); }
+/* The name and the aggregate tag can be menu buttons, for moving a field and changing its aggregate by keyboard. */
+button.ui-fchip__name { padding: 0; border: 0; background: none; color: inherit; text-align: left; cursor: pointer; }
+button.ui-fchip__agg { border: 0; cursor: pointer; }
+button.ui-fchip__agg:hover { color: var(--brand-hover); }
 
 /* ---------- Schema popover ---------- */
 .ui-popover { width: 240px; background: var(--surface-raised); border: 1px solid var(--line); border-radius: var(--radius-md); box-shadow: var(--shadow-lift); overflow: hidden; }

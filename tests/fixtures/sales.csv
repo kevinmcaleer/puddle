@@ -1,0 +1,9 @@
+region,month,product,units,revenue,rep
+North,2024-01,Widget,3,30.00,Ann
+North,2024-01,Gadget,1,25.50,Bo
+North,2024-02,Widget,2,20.00,Ann
+South,2024-01,Widget,5,50.00,Cy
+South,2024-02,Gadget,2,51.00,Cy
+South,2024-02,Gadget,1,25.50,Di
+East,2024-03,Widget,4,40.00,Ed
+West,,Gadget,1,25.50,
