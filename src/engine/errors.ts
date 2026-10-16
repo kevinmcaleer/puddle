@@ -43,6 +43,13 @@ export function toEngineError(e: unknown): EngineError {
   const body = line.replace(/^[A-Za-z ]+ Error:\s*/, '');
 
   if (/interrupt/i.test(raw)) return new EngineError('cancelled', 'The query was cancelled.', raw);
+  // A step's own check failing (stepFailure in the compiler): its message is already written for the user.
+  const own = /^(?:[A-Za-z ]+ Error:\s*)?Puddle: (.*)$/.exec(line);
+  if (own) return new EngineError('invalid-input', own[1]!, raw);
+  // UNPIVOT puts every column into one value column, which holds one type.
+  const mixed = /Cannot unpivot columns of types (\w+) and (\w+)/i.exec(raw);
+  if (mixed)
+    return new EngineError('conversion', `The columns being unpivoted hold different types (${mixed[1]} and ${mixed[2]}), and one value column can only hold one. Turn on Treat all values as text, or change their types first.`, raw);
   if (/^Parser Error/i.test(line)) return new EngineError('syntax', `The SQL couldn't be read: ${body}. Check the expression for typos.`, raw);
   const ext = /exists in the (\w+) extension/i.exec(raw) ?? /extension "?(\w+)"? (?:is not|not) (?:installed|loaded|found)/i.exec(raw);
   if (ext) return new EngineError('missing-extension', `This needs DuckDB's ${ext[1]} extension, which couldn't be loaded. Check your connection and try again.`, raw);

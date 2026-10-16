@@ -22,3 +22,17 @@ exports[`pivot step > compiles a group by, a pivot and a filtered pivot > pivot 
   USING sum("__puddle_v0") AS "v0"
 )"
 `;
+
+exports[`transpose step > compiles to UNPIVOT then PIVOT over the rows it was set up for, stopping if their number changes > with headers 1`] = `
+"SELECT "__puddle_c" AS "column", "__puddle_r1_v" AS "East", "__puddle_r2_v" AS "it's" FROM (
+  PIVOT (SELECT "__puddle_r", "__puddle_c", "__puddle_v" FROM (SELECT row_number() OVER () AS "__puddle_r", CAST("q1" AS VARCHAR) AS "q1" FROM "n_in" WHERE (SELECT CASE WHEN count(*) <> 2 THEN error('Puddle: Transpose was set up for 2 rows, and its input has a different number now. Refresh the rows in the step’s settings.') ELSE true END FROM "n_in")) UNPIVOT INCLUDE NULLS ("__puddle_v" FOR "__puddle_c" IN ("q1")))
+  ON "__puddle_r" IN (1 AS "__puddle_r1", 2 AS "__puddle_r2")
+  USING first("__puddle_v") AS "v"
+  GROUP BY "__puddle_c"
+)
+ORDER BY list_position(['q1'], "__puddle_c")"
+`;
+
+exports[`unpivot step > compiles to UNPIVOT, keeping empty values and casting to text only when asked > columns 1`] = `"SELECT * FROM "n_in" UNPIVOT ("value" FOR "attribute" IN ("q1", "q2"))"`;
+
+exports[`unpivot step > compiles to UNPIVOT, keeping empty values and casting to text only when asked > every column except, as text, with empty values 1`] = `"SELECT * FROM (SELECT "region", CAST(COLUMNS(* EXCLUDE ("region")) AS VARCHAR) FROM "n_in") UNPIVOT INCLUDE NULLS ("sales" FOR "quarter" IN (COLUMNS(* EXCLUDE ("region"))))"`;

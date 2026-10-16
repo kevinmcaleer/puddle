@@ -6,6 +6,7 @@ import { detectDateFormats, type Detection } from '../dates';
 import { tableRows } from '../engine/client';
 import { readPivotValues as readValues } from '../flow/pivot';
 import { useNodeStatus } from '../flow/status';
+import { readTransposeRows } from '../flow/transpose';
 import {
   addStep,
   canUngroup,
@@ -59,6 +60,13 @@ async function detectFor(project: Project, nodeId: string, after: number, column
   return detectDateFormats(engine, project, { nodeId, stepIndex: after }, column).catch(() => undefined);
 }
 
+/** The rows arriving after step `after`, as Transpose reads them; undefined when they can't be read. */
+async function readRowsFor(project: Project, nodeId: string, after: number, columns: ColumnSchema[]) {
+  const engine = useEngineStore.getState().engine;
+  if (!engine || !columns[0]) return undefined;
+  return readTransposeRows(engine, project, { nodeId, stepIndex: after }, columns[0].name).catch(() => undefined);
+}
+
 function AddStepMenu({ node, after }: { node: TransformNode; after: number }) {
   const project = useProject();
   const available = useStepColumns(project, node.id, after + 1);
@@ -72,7 +80,8 @@ function AddStepMenu({ node, after }: { node: TransformNode; after: number }) {
           const selected = useSession.getState().selectedColumns;
           const firstRow = f.needsFirstRow ? await readFirstRow(project, node.id, after, available) : undefined;
           const dates = f.detectsDates ? await detectFor(project, node.id, after, f.defaults({ selected, available }).columns) : undefined;
-          const step = newStep(f.type, { selected, available, firstRow, dates });
+          const rows = f.readsRows ? await readRowsFor(project, node.id, after, available) : undefined;
+          const step = newStep(f.type, { selected, available, firstRow, dates, rows });
           apply((p) => addStep(p, node.id, step, after + 1));
           viewStep(node.id, after + 1, step);
         },
@@ -106,6 +115,15 @@ function StepSettings({ node, index, error }: { node: TransformNode; index: numb
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [inputKey],
   );
+  const readRows = useMemo(
+    () => {
+      const engine = useEngineStore.getState().engine;
+      const p = useProjectStore.getState().history.present;
+      return engine ? (header: string) => readTransposeRows(engine, p, { nodeId: node.id, stepIndex: index - 1 }, header) : undefined;
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [inputKey],
+  );
   return (
     <Section title="Step settings">
       <div className="flex flex-col gap-3" data-testid="step-settings">
@@ -127,7 +145,7 @@ function StepSettings({ node, index, error }: { node: TransformNode; index: numb
             {error}
           </Banner>
         )}
-        <StepForm type={step.type} params={step.params} columns={columns} detectDates={detectDates} readPivotValues={readPivotValues} onChange={(params) => update({ params, label: labelFor({ ...step, params }) })} />
+        <StepForm type={step.type} params={step.params} columns={columns} detectDates={detectDates} readPivotValues={readPivotValues} readRows={readRows} onChange={(params) => update({ params, label: labelFor({ ...step, params }) })} />
         <div className="flex flex-wrap gap-2">
           {index > 0 && (
             <Button size="sm" variant="ghost" icon="layout" onClick={() => apply((p) => splitNode(p, node.id, index))}>
