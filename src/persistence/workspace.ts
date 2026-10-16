@@ -1,5 +1,7 @@
 import { create } from 'zustand';
+import { useEngineStore } from '../app/engine';
 import { useSession } from '../app/session';
+import { dropAllKept } from '../flow/kept';
 import { resetSample } from '../flow/sample';
 import { invalidateCaches } from '../flow/status';
 import { createProject, newId, useProjectStore, type Project } from '../model';
@@ -47,6 +49,8 @@ export async function refreshProjects() {
 
 /** Show a project in the editor: load it without history, reset per-tab state and reconnect what can be. */
 function show(project: Project) {
+  // The last project's kept results go with it.
+  void dropAllKept(useEngineStore.getState().engine);
   invalidateCaches();
   resetSample();
   useSession.setState({ selectedNodeId: null, selectedNodeIds: [], selectedStepId: null, selectedColumns: [], notice: null });
@@ -137,6 +141,7 @@ export async function goHome() {
   await flush();
   await refreshProjects();
   useWorkspace.setState({ screen: 'home' });
+  await dropAllKept(useEngineStore.getState().engine);
 }
 
 export async function renameProject(id: string, name: string) {
