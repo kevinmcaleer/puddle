@@ -21,6 +21,7 @@ import { ResultsTable } from '../results/ResultsTable';
 import { useResultsStore } from '../results/state';
 import { ACCEPT } from '../sources/detect';
 import { useExcelSources } from '../sources/excel';
+import { SamplesDialog } from '../samples/SamplePicker';
 import { UrlDialog } from '../sources/UrlDialog';
 import { openUrlDialog } from '../sources/urlDialog';
 import { cardKind } from '../canvas/kind';
@@ -34,7 +35,7 @@ import { openTemplates } from '../templates/actions';
 import { TemplateDialogs } from '../templates/TemplateDialogs';
 import { shortcutText, withShortcut, type GlobalShortcutId } from './shortcuts';
 import { useShortcuts } from './useShortcuts';
-import { PROVIDERS, useSync } from '../sync';
+import { PROVIDER_IDS, PROVIDERS, useSync } from '../sync';
 import { openSyncDialog } from '../sync/dialogs';
 import { SyncConflictBanner } from '../sync/SyncDialogs';
 import { useSession } from './session';
@@ -126,8 +127,8 @@ function useSyncBadge() {
   const status = useSync((s) => s.status);
   const provider = useSync((s) => s.provider);
   const error = useSync((s) => s.error);
-  if (status === 'off' || !provider) return {};
-  const label = PROVIDERS[provider].label;
+  const label = provider && PROVIDERS[provider]?.label;
+  if (status === 'off' || !label) return {};
   const title = {
     synced: `Saved to ${label}`,
     pending: `Changes are on their way to ${label}`,
@@ -226,7 +227,7 @@ export function AppShell() {
             { label: 'Rename', icon: 'text', onSelect: () => openProjectDialog({ kind: 'rename', id: project.id, name: project.name }) },
             { label: 'Export project', icon: 'export', hint: '.puddle.json', onSelect: exportProject },
             { label: 'Import project', icon: 'source', onSelect: () => importInput.current?.click() },
-            { label: `Sync to ${PROVIDERS.gist.label}`, icon: 'refresh', onSelect: () => openSyncDialog({ kind: 'project', provider: 'gist' }) },
+            ...PROVIDER_IDS.map((id) => ({ label: `Sync to ${PROVIDERS[id]!.label}`, icon: 'refresh' as const, onSelect: () => openSyncDialog({ kind: 'project', provider: id }) })),
             { label: 'All projects', icon: 'layout', onSelect: () => void goHome() },
           ]}
         >
@@ -348,6 +349,7 @@ export function AppShell() {
         <Strip />
       </div>
       <UrlDialog onChooseFile={chooseFiles} />
+      <SamplesDialog />
       <ShortcutsDialog />
       <TemplateDialogs />
     </ReactFlowProvider>
