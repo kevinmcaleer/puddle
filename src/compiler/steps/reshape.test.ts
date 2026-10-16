@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { schemaErrors } from '../../steps/forms';
-import { MAX_PIVOT_VALUES, pivot, pivotOutputs, pivotValuesQuery } from './reshape';
+import { MAX_PIVOT_VALUES, MAX_TRANSPOSE_ROWS, pivot, pivotOutputs, pivotValuesQuery, transpose, unpivot } from './reshape';
 
 const base = { rows: ['region'], column: '', pivotValues: [], values: [{ column: 'total', agg: 'sum' }], filters: [], names: {} };
 const compile = (p: Record<string, unknown>) => pivot.compile(pivot.params.parse({ ...base, ...p }), { input: '"n_in"' });
@@ -57,5 +57,39 @@ describe('pivot step', () => {
     expect(pivotValuesQuery({ column: 'month', filters: [{ column: 'region', op: 'notEquals', value: 'East' }] }, '"n_in"')).toBe(
       `SELECT CAST("month" AS VARCHAR) AS v FROM (SELECT * FROM "n_in" WHERE coalesce((lower(CAST("region" AS VARCHAR)) IS DISTINCT FROM 'east'), false)) WHERE "month" IS NOT NULL GROUP BY "month" ORDER BY "month" LIMIT ${MAX_PIVOT_VALUES + 1}`,
     );
+  });
+});
+
+describe('unpivot step', () => {
+  const compileU = (p: Record<string, unknown>) => unpivot.compile(unpivot.params.parse({ columns: ['q1', 'q2'], ...p }), { input: '"n_in"' });
+
+  it('compiles to UNPIVOT, keeping empty values and casting to text only when asked', () => {
+    expect(compileU({})).toMatchSnapshot('columns');
+    expect(compileU({ columns: ['region'], except: true, keepEmpty: true, asText: true, attribute: 'quarter', value: 'sales' })).toMatchSnapshot('every column except, as text, with empty values');
+    expect(compileU({ asText: true })).toContain(`REPLACE (CAST("q1" AS VARCHAR) AS "q1", CAST("q2" AS VARCHAR) AS "q2")`);
+  });
+
+  it('labels itself by what it unpivots', () => {
+    expect(unpivot.label(unpivot.params.parse({ columns: ['q1', 'q2'] }))).toBe('Unpivoted q1, q2');
+    expect(unpivot.label(unpivot.params.parse({ columns: ['region'], except: true }))).toBe('Unpivoted every column except region');
+  });
+});
+
+describe('transpose step', () => {
+  const params = { columns: ['region', 'q1'], rowCount: 2, headerValues: ['East', "it's"], headers: true };
+
+  it('compiles to UNPIVOT then PIVOT over the rows it was set up for, stopping if their number changes', () => {
+    expect(transpose.compile(transpose.params.parse(params), { input: '"n_in"' })).toMatchSnapshot('with headers');
+    expect(transpose.compile(transpose.params.parse({ ...params, headers: false }), { input: '"n_in"' })).toContain('"__puddle_r2_v" AS "row 2"');
+  });
+
+  it(`refuses an empty table, more than ${MAX_TRANSPOSE_ROWS} rows, and headers with nothing left to transpose`, () => {
+    expect(schemaErrors(transpose.params, { ...params, rowCount: 0, headerValues: [] })).toEqual({ rowCount: 'The table has no rows to transpose.' });
+    expect(schemaErrors(transpose.params, { ...params, rowCount: MAX_TRANSPOSE_ROWS + 1, headerValues: [] })).toEqual({
+      rowCount: 'The table has 1,001 rows, and transpose makes a column of each, so it only runs on up to 1,000: filter or group the rows first.',
+    });
+    expect(schemaErrors(transpose.params, { ...params, columns: ['region'] })).toEqual({ headers: 'With the first column as headers, there’s no column left to transpose.' });
+    expect(schemaErrors(transpose.params, { ...params, headerValues: ['East'] })).toEqual({ rowCount: 'The header values weren’t read: refresh the rows.' });
+    expect(schemaErrors(transpose.params, { ...params, rowCount: MAX_TRANSPOSE_ROWS, headerValues: [], headers: false })).toEqual({});
   });
 });

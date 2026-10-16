@@ -2,13 +2,16 @@
 import { create } from 'zustand';
 import { useEngineStore } from '../app/engine';
 import { useSession } from '../app/session';
-import { CompileError, compileExport, compileRules, EXPORT_FORMATS, exportFileName, type ExportFormat } from '../compiler';
+import { tableToIPC } from 'apache-arrow';
+import { CompileError, compileExport, compileFullCount, compileFullData, compileRules, compileSheetExport, EXPORT_FORMATS, exportFileName, exportOptions, type ExportFormat, type XlsxExportOptions } from '../compiler';
+import { excelClient } from '../excel/client';
+import { SHEET_COLUMNS, SHEET_ROWS, sheetNameProblem, tooManyRows, toSheetName } from '../excel/limits';
 import { isStopped, tableRows, toEngineError, type EngineClient } from '../engine';
 import { describeBlock, exportGate, type Gate } from '../flow/gate';
 import { useRuleStore, type RuleResult } from '../flow/rules';
 import { currentSample, sampledUpstream, type Sample } from '../flow/sample';
 import { schemaCacheFor, useFlowStore } from '../flow/status';
-import { logExport, newId, nodeById, topoSort, upstreamIds, useProjectStore, type ExportLogEntry, type Project } from '../model';
+import { logExport, newId, nodeById, topoSort, upstreamIds, useProjectStore, type ExportLogEntry, type OutputNode, type Project } from '../model';
 import { copyText, reserveClipboard, saveBlob, type ClipboardSlot } from './deliver';
 
 /** Clipboard exports above this size are refused: pasting them would hang most spreadsheets anyway. */
@@ -21,6 +24,34 @@ export class ExportBlocked extends Error {
 }
 
 export type Delivery = (blob: Blob, fileName: string, format: ExportFormat) => Promise<void>;
+
+/** The sheet an Excel export writes: its own name if set, else one made from the Output node's name. */
+export function sheetNameFor(node: OutputNode): string {
+  const o = exportOptions(node.outputSpec) as XlsxExportOptions;
+  return o.sheetName?.trim() || toSheetName(node.name);
+}
+
+/**
+ * Write an Output node as an Excel workbook. DuckDB can't write .xlsx, so the rows come back as Arrow batches and
+ * SheetJS writes them in the Excel worker; they never become one big array of row objects on the main thread.
+ * Above a sheet's row limit nothing is written: the export says why and suggests CSV or Parquet.
+ */
+async function writeExcel(engine: EngineClient, project: Project, node: OutputNode, label: string): Promise<{ blob: Blob; rows: number }> {
+  const o = exportOptions(node.outputSpec) as XlsxExportOptions;
+  const sheetName = sheetNameFor(node);
+  const problem = sheetNameProblem(sheetName);
+  if (problem) throw new Error(`${problem} Change the sheet name in the export settings.`);
+  const [{ n }] = tableRows((await engine.query(compileFullCount(project, node.id), { priority: 'preview', label })).table) as [{ n: number }];
+  if (Number(n) > SHEET_ROWS - (o.header ? 1 : 0)) throw new Error(tooManyRows(Number(n), o.header));
+  const columns = await engine.describe(compileFullData(project, node.id), { priority: 'preview', label });
+  if (columns.length > SHEET_COLUMNS) throw new Error(`This output has ${columns.length} columns; an Excel sheet holds at most ${SHEET_COLUMNS.toLocaleString('en-GB')}. Export it as CSV or Parquet instead.`);
+  const result = await engine.query(compileSheetExport(project, node.id, columns), { priority: 'preview', label });
+  const ipc = tableToIPC(result.table, 'stream');
+  // Arrow writes nothing for a table built by another copy of its classes; say so rather than export an empty sheet.
+  if (!ipc.byteLength) throw new Error('The rows couldn’t be handed to the Excel writer. Reload Puddle and try again.');
+  const { data } = await excelClient().call('write', { ipc, options: { sheetName, header: o.header, freezeHeader: o.freezeHeader } });
+  return { blob: new Blob([data as Uint8Array<ArrayBuffer>], { type: EXPORT_FORMATS.xlsx.mime }), rows: result.numRows };
+}
 
 /**
  * Export one Output node. A blocked gate stops it unless `override` is set, and the override is logged with the
@@ -38,11 +69,12 @@ export async function runExport(
   if (gate.state === 'checking' && !override) throw new Error('Rules are still being checked. Try again in a moment.');
   const spec = node.outputSpec;
   const fileName = exportFileName(node.name, spec);
+  const label = `Exporting ${node.name}`;
   // A fresh name each time, so two exports never write to the same file.
-  const { blob, rows } = await engine.exportFile(`${newId('x')}.${EXPORT_FORMATS[spec.format].ext}`, (path) => compileExport(project, nodeId, path), {
-    priority: 'preview',
-    label: `Exporting ${node.name}`,
-  });
+  const { blob, rows } =
+    spec.format === 'xlsx'
+      ? await writeExcel(engine, project, node, label)
+      : await engine.exportFile(`${newId('x')}.${EXPORT_FORMATS[spec.format].ext}`, (path) => compileExport(project, nodeId, path), { priority: 'preview', label });
   if (spec.format === 'clipboard' && blob.size > CLIPBOARD_LIMIT)
     throw new Error(`That’s too much to copy (${Math.round(blob.size / 1024 / 1024)} MB). Export it as a file instead.`);
   await deliver(blob, fileName, spec.format);

@@ -36,7 +36,8 @@ export async function addFileSource(file: File, position = { x: 80, y: 80 }, han
     parseOptions: {},
     detectedSchema: [],
   };
-  await engine.registerFile(sourceFileName(source), file);
+  // Excel is read by SheetJS into a table (see ./excel), not by DuckDB from the file.
+  if (format !== 'xlsx') await engine.registerFile(sourceFileName(source), file);
   files.set(source.id, file);
   markAttached(source.id);
   useProjectStore.getState().apply((p) => addSource(p, source, position));

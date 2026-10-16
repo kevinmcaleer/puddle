@@ -64,7 +64,8 @@ export async function reattachFile(source: Source, file: File, handle?: FileHand
   const hash = await headHash(file);
   const same = source.file?.headHash === hash;
   const engine = await whenEngine();
-  await engine.registerFile(sourceFileName(source), file);
+  // Excel is read again by SheetJS once the file is remembered (see ./excel).
+  if (format !== 'xlsx') await engine.registerFile(sourceFileName(source), file);
   rememberFile(source.id, file);
   keepHandle(source.id, handle);
   settleSource(source.id);
