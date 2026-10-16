@@ -1,6 +1,6 @@
-// The Reshape step group: pivot and group by.
+// The Reshape step group: pivot and group by, unpivot, transpose.
 import { z } from 'zod';
-import { ident, list, str } from '../sql';
+import { ident, list, num, stepFailure, str, strList } from '../sql';
 import { defineStep } from './registry';
 import { condition, Condition } from './rows';
 
@@ -176,4 +176,109 @@ export const pivot = defineStep({
     return `Summarised ${[...new Set(p.values.map((v) => v.column))].join(', ')}`;
   },
   compile: (p, { input }) => compilePivot(p, input),
+});
+
+const NewName = (what: string) => z.string().trim().min(1, `name the ${what} column`);
+
+const UnpivotShape = z.object({
+  /** The columns to unpivot, or with `except` the columns to keep as they are. */
+  columns: z.array(z.string().min(1)).min(1, 'pick at least one column'),
+  except: z.boolean().default(false),
+  /** The new column holding each unpivoted column's name. */
+  attribute: NewName('attribute').default('attribute'),
+  /** The new column holding its value. */
+  value: NewName('value').default('value'),
+  /** Keep rows whose value is empty, which UNPIVOT leaves out otherwise. */
+  keepEmpty: z.boolean().default(false),
+  /** Unpivot the values as text, so columns of different types can share one value column. */
+  asText: z.boolean().default(false),
+});
+export type UnpivotParams = z.infer<typeof UnpivotShape>;
+
+export const unpivot = defineStep({
+  type: 'unpivot',
+  params: UnpivotShape.superRefine((p, ctx) => {
+    if (sameName(p.attribute, p.value)) ctx.addIssue({ code: 'custom', path: ['value'], message: 'name the attribute and value columns differently' });
+    // With "all except", the picked columns stay, so the new columns mustn't take their names.
+    const kept = p.except ? p.columns.find((c) => sameName(c, p.attribute) || sameName(c, p.value)) : undefined;
+    if (kept) ctx.addIssue({ code: 'custom', path: [sameName(kept, p.attribute) ? 'attribute' : 'value'], message: `the column ${kept} stays as it is: give the new column another name` });
+  }),
+  label: (p) => (p.except ? `Unpivoted every column except ${p.columns.join(', ')}` : `Unpivoted ${p.columns.join(', ')}`),
+  compile: (p, { input }) => {
+    const picked = list(p.columns.map(ident));
+    const on = p.except ? `COLUMNS(* EXCLUDE (${picked}))` : picked;
+    let source = input;
+    if (p.asText)
+      source = p.except
+        ? `(SELECT ${picked}, CAST(COLUMNS(* EXCLUDE (${picked})) AS VARCHAR) FROM ${input})`
+        : `(SELECT * REPLACE (${list(p.columns.map((c) => `CAST(${ident(c)} AS VARCHAR) AS ${ident(c)}`))}) FROM ${input})`;
+    return `SELECT * FROM ${source} UNPIVOT ${p.keepEmpty ? 'INCLUDE NULLS ' : ''}(${ident(p.value)} FOR ${ident(p.attribute)} IN (${on}))`;
+  },
+});
+
+/** The most rows Transpose takes: each becomes a column. */
+export const MAX_TRANSPOSE_ROWS = 1000;
+/** The first column of a transposed table, holding the input's column names. */
+export const TRANSPOSED_NAMES = 'column';
+
+const TransposeShape = z.object({
+  /** The input's columns when the step was set up, in order. */
+  columns: z.array(z.string().min(1)).min(1, 'there are no columns to transpose'),
+  /** How many rows the input had then. */
+  rowCount: z.number({ error: 'the rows haven’t been read: refresh them' }).int().min(0),
+  /** The first column's values then, as text, for headers. */
+  headerValues: z.array(z.string().nullable()).default([]),
+  /** Use the first column's values as the new column names; that column isn't transposed. */
+  headers: z.boolean().default(false),
+});
+export type TransposeParams = z.infer<typeof TransposeShape>;
+
+/** The transposed table's column names after the first: the header values, or "row 1", "row 2"…, made unique. */
+export function transposedNames(p: Pick<TransposeParams, 'rowCount' | 'headerValues' | 'headers'>): string[] {
+  const used = [TRANSPOSED_NAMES];
+  return Array.from({ length: Math.min(p.rowCount, MAX_TRANSPOSE_ROWS) }, (_, i) => {
+    const header = p.headers ? p.headerValues[i]?.trim() : undefined;
+    const base = header || `row ${i + 1}`;
+    let name = base;
+    for (let k = 2; used.some((u) => sameName(u, name)); k++) name = `${base} (${k})`;
+    used.push(name);
+    return name;
+  });
+}
+
+const fmt = (n: number) => n.toLocaleString('en');
+
+export const transpose = defineStep({
+  type: 'transpose',
+  params: TransposeShape.superRefine((p, ctx) => {
+    const issue = (path: string, message: string) => ctx.addIssue({ code: 'custom', path: [path], message });
+    if (p.rowCount > MAX_TRANSPOSE_ROWS)
+      issue('rowCount', `the table has ${fmt(p.rowCount)} rows, and transpose makes a column of each, so it only runs on up to ${fmt(MAX_TRANSPOSE_ROWS)}: filter or group the rows first`);
+    else if (p.rowCount === 0) issue('rowCount', 'the table has no rows to transpose');
+    else if (p.headers && p.headerValues.length !== p.rowCount) issue('rowCount', 'the header values weren’t read: refresh the rows');
+    if (p.headers && p.columns.length < 2) issue('headers', 'with the first column as headers, there’s no column left to transpose');
+  }),
+  label: (p) => (p.headers ? `Transposed, with ${p.columns[0]} as headers` : 'Transposed rows and columns'),
+  compile: (p, { input }) => {
+    const moved = p.headers ? p.columns.slice(1) : p.columns;
+    const names = transposedNames(p);
+    const R = ident('__puddle_r');
+    const C = ident('__puddle_c');
+    const V = ident('__puddle_v');
+    // The rows become columns fixed when the step was set up; a different number of rows now stops the query.
+    const changed = stepFailure(`Transpose was set up for ${fmt(p.rowCount)} rows, and its input has a different number now. Refresh the rows in the step’s settings.`);
+    const check = `(SELECT CASE WHEN count(*) <> ${num(p.rowCount)} THEN ${changed} ELSE true END FROM ${input})`;
+    const rows = `SELECT row_number() OVER () AS ${R}, ${list(moved.map((c) => `CAST(${ident(c)} AS VARCHAR) AS ${ident(c)}`))} FROM ${input} WHERE ${check}`;
+    const long = `SELECT ${R}, ${C}, ${V} FROM (${rows}) UNPIVOT INCLUDE NULLS (${V} FOR ${C} IN (${list(moved.map(ident))}))`;
+    const on = names.map((_, i) => `${num(i + 1)} AS ${ident(`__puddle_r${i + 1}`)}`);
+    return [
+      `SELECT ${list([`${C} AS ${ident(TRANSPOSED_NAMES)}`, ...names.map((n, i) => `${ident(`__puddle_r${i + 1}_v`)} AS ${ident(n)}`)])} FROM (`,
+      `  PIVOT (${long})`,
+      `  ON ${R} IN (${list(on)})`,
+      `  USING first(${V}) AS ${ident('v')}`,
+      `  GROUP BY ${C}`,
+      `)`,
+      `ORDER BY list_position(${strList(moved)}, ${C})`,
+    ].join('\n');
+  },
 });

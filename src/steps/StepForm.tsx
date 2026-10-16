@@ -6,6 +6,7 @@ import { Conditions, type Condition } from './Conditions';
 import { DateFormatsInput } from './DateFormatsInput';
 import { ExpressionInput } from './ExpressionInput';
 import { PivotEditor, type ReadPivotValues } from './PivotEditor';
+import { TransposeRows, type ReadTransposeRows } from './TransposeRows';
 import { fieldErrors, stepForm, textColumnsProblem, type ExpectedKind, type FieldSpec } from './forms';
 
 type Params = Record<string, unknown>;
@@ -94,7 +95,30 @@ export interface OtherNode {
   columns: ColumnSchema[];
 }
 
-function FieldInput({ field, value, params, columns, nodes = [], error, detectDates, onChange }: { field: FieldSpec; value: unknown; params: Params; columns: ColumnSchema[]; nodes?: OtherNode[]; error?: string; detectDates?: (column: string) => Promise<Detection>; onChange: (v: unknown) => void }) {
+function FieldInput({
+  field,
+  value,
+  params,
+  columns,
+  nodes = [],
+  error,
+  detectDates,
+  readRows,
+  onChange,
+  onParams,
+}: {
+  field: FieldSpec;
+  value: unknown;
+  params: Params;
+  columns: ColumnSchema[];
+  nodes?: OtherNode[];
+  error?: string;
+  detectDates?: (column: string) => Promise<Detection>;
+  readRows?: ReadTransposeRows;
+  onChange: (v: unknown) => void;
+  /** For fields that set several settings at once. */
+  onParams: (params: Params) => void;
+}) {
   const id = `step-${field.key}`;
   switch (field.kind) {
     case 'columns':
@@ -162,6 +186,8 @@ function FieldInput({ field, value, params, columns, nodes = [], error, detectDa
       if (!other) return <p className="text-label text-ink-muted">Pick a node first.</p>;
       return <ColumnsPicker id={id} single value={typeof value === 'string' && value ? [value] : []} columns={other.columns} onChange={(v) => onChange(v[0] ?? '')} />;
     }
+    case 'transposeRows':
+      return <TransposeRows params={params} columns={columns} read={readRows} onChange={onParams} />;
   }
 }
 
@@ -203,6 +229,7 @@ export function FormFields({
   detectDates,
   readPivotValues,
   nodes,
+  readRows,
   onChange,
   testId,
 }: {
@@ -214,6 +241,7 @@ export function FormFields({
   readPivotValues?: ReadPivotValues;
   /** Other nodes, for fields that pick one (rules that read another node). */
   nodes?: OtherNode[];
+  readRows?: ReadTransposeRows;
   onChange: (params: Params) => void;
   testId?: string;
 }) {
@@ -223,7 +251,7 @@ export function FormFields({
         f.kind === 'pivot' ? (
           <PivotEditor key={f.key} params={params} errors={errors} columns={columns} readValues={readPivotValues} onChange={onChange} />
         ) : f.kind === 'switch' ? (
-          <FieldInput key={f.key} field={f} value={params[f.key]} params={params} columns={columns} onChange={(v) => onChange({ ...params, [f.key]: v })} />
+          <FieldInput key={f.key} field={f} value={params[f.key]} params={params} columns={columns} onChange={(v) => onChange({ ...params, [f.key]: v })} onParams={onChange} />
         ) : (
           <Field key={f.key} label={f.label} htmlFor={`step-${f.key}`} hint={f.liveHint?.(params) ?? f.hint} error={f.kind === 'sql' ? undefined : errors[f.key]}>
             <FieldInput
@@ -234,8 +262,15 @@ export function FormFields({
               nodes={nodes}
               error={errors[f.key]}
               detectDates={detectDates}
+              readRows={readRows}
               onChange={(v) => onChange({ ...params, [f.key]: v, ...(f.kind === 'node' ? columnsOfNode(fields, f.key) : {}) })}
+              onParams={onChange}
             />
+            {f.problem?.(params, columns) && (
+              <Banner tone="warn" title="This won’t run as it is">
+                {f.problem(params, columns)}
+              </Banner>
+            )}
             {f.expects && <ExpectedType expects={f.expects} problem={textColumnsProblem(f, params[f.key], columns)} />}
             {/* A refused query gets a banner: the reason can be long, and nothing runs until it's fixed. */}
             {f.kind === 'sql' && errors[f.key] && (
@@ -257,6 +292,7 @@ export function StepForm({
   columns,
   detectDates,
   readPivotValues,
+  readRows,
   onChange,
 }: {
   type: string;
@@ -264,8 +300,7 @@ export function StepForm({
   columns: ColumnSchema[];
   detectDates?: (column: string) => Promise<Detection>;
   readPivotValues?: ReadPivotValues;
-  /** Other nodes, for fields that pick one (rules that read another node). */
-  nodes?: OtherNode[];
+  readRows?: ReadTransposeRows;
   onChange: (params: Params) => void;
 }) {
   const form = stepForm(type);
@@ -279,6 +314,7 @@ export function StepForm({
       columns={columns}
       detectDates={detectDates}
       readPivotValues={readPivotValues}
+      readRows={readRows}
       onChange={onChange}
     />
   );

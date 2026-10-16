@@ -1,6 +1,7 @@
 import { newId, type ColumnSchema, type Step } from '../model';
 import { stepDef } from '../compiler';
 import type { Detection } from '../dates';
+import type { TransposeRowsRead } from '../flow/transpose';
 import { columnKind } from '../ui/columnKind';
 
 /** One setting in a step's editor form. The generic form renders these; a step needs no React of its own. */
@@ -11,6 +12,8 @@ export type FieldSpec = FieldKind & {
   expects?: ExpectedKind;
   /** A hint worked out from the settings as they are, shown in place of `hint`, e.g. a format's example. */
   liveHint?: (params: Record<string, unknown>) => string | undefined;
+  /** A problem the settings will run into with the step's input columns, shown as a warning before it runs. */
+  problem?: (params: Record<string, unknown>, columns: ColumnSchema[]) => string | undefined;
 };
 
 /** What a date or number step needs from its columns. */
@@ -38,6 +41,8 @@ type FieldKind =
   | { key: string; label: string; kind: 'dateFormats'; hint?: string }
   /** The pivot editor: field list and four drop zones, editing the whole of the step's settings. */
   | { key: string; label: string; kind: 'pivot'; hint?: string }
+  /** How many rows Transpose was set up for, with a way to read them again. */
+  | { key: string; label: string; kind: 'transposeRows'; hint?: string }
   /** Another node on the canvas (rules that read one): its id. */
   | { key: string; label: string; kind: 'node'; hint?: string }
   /** A column of the node picked in the field named by `node`. */
@@ -56,6 +61,8 @@ export interface DefaultsContext {
   dates?: Detection;
   /** The project locale's decimal mark. */
   decimal?: '.' | ',';
+  /** The step input's rows as Transpose reads them, for forms that ask for it with `readsRows`. */
+  rows?: TransposeRowsRead;
 }
 
 /** The editor side of a step type: its name in the Add step menu, its group, its form and its defaults. */
@@ -69,6 +76,8 @@ export interface StepForm {
   needsFirstRow?: boolean;
   /** Detect date formats on the first default column before choosing defaults (parse dates). */
   detectsDates?: boolean;
+  /** Read the step input's row count and first column before choosing defaults (transpose). */
+  readsRows?: boolean;
 }
 
 const FORMS = new Map<string, StepForm>();

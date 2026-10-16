@@ -14,12 +14,16 @@ interface SessionState {
   notice: { tone: 'info' | 'warn' | 'fail'; text: string } | null;
   /** The project notes panel is open in the right-hand dock, in place of the inspector. */
   notesOpen: boolean;
+  /** The Query node whose designer fills the canvas area, in place of the canvas. */
+  designerNodeId: string | null;
   select: (id: string | null) => void;
   toggleSelected: (id: string) => void;
   selectStep: (id: string | null) => void;
   setSelectedColumns: (cols: string[]) => void;
   notify: (notice: SessionState['notice']) => void;
   setNotesOpen: (open: boolean) => void;
+  /** Open a Query node's designer (selecting the node, so the inspector shows it too), or close it with null. */
+  openDesigner: (nodeId: string | null) => void;
 }
 
 export const useSession = create<SessionState>((set) => ({
@@ -29,6 +33,7 @@ export const useSession = create<SessionState>((set) => ({
   selectedColumns: [],
   notice: null,
   notesOpen: false,
+  designerNodeId: null,
   // Picking a node shows it in the inspector, so the notes panel makes way.
   select: (id) => set((s) => ({ selectedNodeId: id, selectedNodeIds: id ? [id] : [], selectedStepId: null, notesOpen: id ? false : s.notesOpen })),
   toggleSelected: (id) =>
@@ -41,4 +46,6 @@ export const useSession = create<SessionState>((set) => ({
   setSelectedColumns: (selectedColumns) => set({ selectedColumns }),
   notify: (notice) => set({ notice }),
   setNotesOpen: (notesOpen) => set({ notesOpen }),
+  openDesigner: (designerNodeId) =>
+    set((s) => (designerNodeId ? { designerNodeId, selectedNodeId: designerNodeId, selectedNodeIds: [designerNodeId], selectedStepId: null, notesOpen: false } : { designerNodeId: null, selectedNodeIds: s.selectedNodeIds })),
 }));
