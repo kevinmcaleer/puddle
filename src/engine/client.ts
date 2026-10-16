@@ -46,6 +46,7 @@ export function tableRows(table: Table): Record<string, unknown>[] {
  */
 export class EngineClient {
   private readonly scheduler = new Scheduler();
+  private readonly stopListeners = new Set<() => void>();
 
   constructor(private readonly backend: DuckBackend) {}
 
@@ -68,7 +69,15 @@ export class EngineClient {
 
   /** Stop the running query in DuckDB and drop the queued ones; each rejects with an EngineError coded "stopped". */
   stop(): number {
-    return this.scheduler.stop();
+    const n = this.scheduler.stop();
+    for (const fn of this.stopListeners) fn();
+    return n;
+  }
+
+  /** Called on every stop(), for work that queues its queries one at a time (kept results) and should stop too. */
+  onStop(fn: () => void): () => void {
+    this.stopListeners.add(fn);
+    return () => void this.stopListeners.delete(fn);
   }
 
   query(sql: string, opts: QueryOptions = {}): Promise<QueryResult> {

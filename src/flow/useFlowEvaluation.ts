@@ -1,16 +1,23 @@
 import { useEffect } from 'react';
 import { useEngineStore } from '../app/engine';
-import { updateSource, useProject, useProjectStore } from '../model';
-import { useAttachments } from '../sources/attachments';
+import { updateSource, useProject, useProjectStore, type Project } from '../model';
+import { useAttachments, type Attachment } from '../sources/attachments';
 import { excelReady, useExcelReads } from '../sources/excel';
+import { syncKept } from './kept';
 import { useRerun } from './rerun';
 import { evaluateRules } from './rules';
 import { countSources, useViewProject } from './sample';
 import { evaluateFlow, useFlowStore } from './status';
 
 /**
- * Keep node statuses in step with the project: re-evaluate whenever it changes, and record each source's
- * detected schema (a derived fact, so it doesn't add an undo step).
+ * A source that can't be read in this tab: its file isn't chosen again, or it is an Excel sheet not loaded (yet) for
+ * its current options. The sampled copy of a project has the same sources and options, so either copy will do.
+ */
+const unreadable = (attachments: Record<string, Attachment>, project: Project, id: string) => (attachments[id] ?? 'detached') === 'detached' || !excelReady(project, id);
+
+/**
+ * Keep node statuses in step with the project: re-evaluate whenever it changes, bring kept results up to
+ * date, and record each source's detected schema (a derived fact, so it doesn't add an undo step).
  */
 export function useFlowEvaluation() {
   const project = useProject();
@@ -24,15 +31,17 @@ export function useFlowEvaluation() {
 
   useEffect(() => {
     if (!engine) return;
-    const detached = (id: string) => (attachments[id] ?? 'detached') === 'detached' || !excelReady(project, id);
-    void countSources(engine, project, (id) => !detached(id));
+    void countSources(engine, project, (id) => !unreadable(attachments, project, id));
   }, [engine, project, attachments, excel, tick]);
 
   useEffect(() => {
     if (!engine) return;
-    void evaluateFlow(engine, view, (id) => (attachments[id] ?? 'detached') === 'detached' || !excelReady(project, id)).then(() => {
+    void evaluateFlow(engine, view, (id) => unreadable(attachments, view, id)).then(() => {
       // Rules run after every preview is settled, at background priority, so they never hold it up.
       void evaluateRules(engine, view);
+      // Kept results build behind them too, from the project as evaluated (the sampled copy in sample mode),
+      // and only once their node is known to work.
+      void syncKept(engine, view);
       const statuses = useFlowStore.getState().nodes;
       useProjectStore.getState().amend((p) => {
         let next = p;
@@ -46,5 +55,5 @@ export function useFlowEvaluation() {
         return next;
       });
     });
-  }, [engine, project, view, attachments, excel, tick]);
+  }, [engine, view, attachments, excel, tick]);
 }

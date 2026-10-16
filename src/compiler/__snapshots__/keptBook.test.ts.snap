@@ -1,0 +1,6 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`kept results in the compiler > reads downstream nodes from a kept table instead of compiling upstream 1`] = `
+"WITH "n_more_s0" AS (SELECT * REPLACE (upper("name") AS "name") FROM "kept_clean")
+SELECT * FROM "n_more_s0""
+`;
