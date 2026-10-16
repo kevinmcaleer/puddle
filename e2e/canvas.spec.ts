@@ -38,7 +38,12 @@ test('nodes are added after the selection, wired, and laid out', async ({ page }
 test('dragging a wire connects nodes, and a wire that would make a loop is refused with a reason', async ({ page }) => {
   await openApp(page);
   await addFiles(page, [fixture('customers.csv')]);
+  // Regression (flaky on a busy machine): adding a file is asynchronous and selects its node when it lands. If it
+  // landed after the canvas click below, the Transform was added after the source and wired to it. Wait until the
+  // source is in and selected, so the click really leaves nothing selected.
+  await expect(page.getByTestId('inspector-source')).toBeVisible();
   await page.getByTestId('canvas').click({ position: { x: 20, y: 20 } });
+  await expect(page.getByTestId('inspector-source')).toHaveCount(0);
   await page.getByRole('button', { name: 'Add node' }).click();
   await page.getByRole('menuitem', { name: 'Transform' }).click();
   await expect(node(page, 'Transform 1')).toHaveAttribute('data-status', 'unwired');
@@ -100,6 +105,22 @@ test('a broken source breaks its node and dims everything downstream', async ({ 
   await expect(page.getByTestId('wire-customers.csv->Transform 1')).toHaveAttribute('data-state', 'broken');
 
   await page.getByRole('button', { name: 'Undo' }).click();
+  await expect(node(page, 'Output 1')).toHaveAttribute('data-status', 'ok');
+});
+
+test('a wire can be selected and deleted on its own, and undo brings it back', async ({ page }) => {
+  await openApp(page);
+  await addFiles(page, [fixture('customers.csv')]);
+  await node(page, 'customers.csv').click();
+  await page.getByRole('button', { name: 'Add node' }).click();
+  await page.getByRole('menuitem', { name: 'Output' }).click();
+  await expect(node(page, 'Output 1')).toHaveAttribute('data-status', 'ok');
+  await page.getByTestId('wire-customers.csv->Output 1').click({ force: true });
+  await page.keyboard.press('Delete');
+  await expect(page.getByTestId('wire-customers.csv->Output 1')).not.toBeAttached();
+  await expect(node(page, 'Output 1')).toHaveAttribute('data-status', 'unwired');
+  await expect(node(page, 'customers.csv')).toBeAttached();
+  await page.keyboard.press('Control+z');
   await expect(node(page, 'Output 1')).toHaveAttribute('data-status', 'ok');
 });
 

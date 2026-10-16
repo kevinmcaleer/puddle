@@ -3,9 +3,10 @@ import type { ReactNode } from 'react';
 import { exportGate } from '../flow/gate';
 import { summarise, useRuleStore } from '../flow/rules';
 import { useNodeStatus } from '../flow/status';
-import { useProject, type GraphNode } from '../model';
+import { inputPorts, useProject, type GraphNode } from '../model';
 import { urlProblem, useUrlFetches } from '../sources/url';
 import { NodeCard } from '../ui';
+import { portBroken, portTop } from './ports';
 
 export type PuddleNodeData = { node: GraphNode; viewed: boolean; label?: ReactNode; detail?: string };
 export type PuddleFlowNode = Node<PuddleNodeData, 'puddle'>;
@@ -17,6 +18,7 @@ export function PuddleNode({ data, selected }: NodeProps<PuddleFlowNode>) {
   const steps = node.type === 'transform' ? node.steps.map((s) => ({ label: s.label, disabled: !s.enabled })) : undefined;
   const ok = status.state === 'ok' ? status : null;
   const project = useProject();
+  const ports = inputPorts(project, node);
   const allResults = useRuleStore((s) => s.nodes);
   const own = ok ? summarise(node.rules, allResults[node.id]?.results) : undefined;
   // An Output node shows when a failing rule upstream blocks its export, even with no rules of its own.
@@ -44,10 +46,19 @@ export function PuddleNode({ data, selected }: NodeProps<PuddleFlowNode>) {
         dimmed={status.state === 'blocked' || (status.state === 'detached' && fetching)}
         brokenInput={status.state === 'error'}
         note={node.notes?.trim() || undefined}
-        renderPorts={({ inputs, output }) => (
+        renderPorts={({ output }) => (
           <>
-            {inputs.map((top, i) => (
-              <Handle key={i} type="target" position={Position.Left} id={String(i)} className={status.state === 'error' ? 'ui-port is-broken' : 'ui-port'} style={{ top }} />
+            {ports.map((port, i) => (
+              <Handle
+                key={String(port.id)}
+                type="target"
+                position={Position.Left}
+                id={String(port.id)}
+                className={portBroken(status, port.id) ? 'ui-port is-broken' : 'ui-port'}
+                style={{ top: portTop(i, ports.length) }}
+                title={ports.length > 1 ? `${port.label} input` : undefined}
+                aria-label={ports.length > 1 ? `${port.label} input` : undefined}
+              />
             ))}
             {output && <Handle type="source" position={Position.Right} className="ui-port" />}
           </>

@@ -4,6 +4,7 @@ import { Section } from '../ui';
 const PLACEHOLDER: Record<GraphNode['type'], string> = {
   source: 'Where this file comes from, who sends it.',
   transform: 'Why this node exists, what it expects.',
+  join: 'What the two tables are and why they match on these keys.',
   output: 'Who uses this export, and where it goes.',
 };
 

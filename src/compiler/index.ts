@@ -1,5 +1,24 @@
-export { compile, compileCount, compileDateDetection, compileRules, compileDisplayPage, compileSuggestionChecks, compilePreview, compileProfile, compileTypeSniff, PAGE_SIZE, upstreamKey, type Compiled, type SuggestionCheck, type Target } from './compile';
-export { CompileError } from './errors';
+export {
+  compile,
+  compileCount,
+  compileDateDetection,
+  compileDisplayPage,
+  compileJoinCheck,
+  compilePreview,
+  compileProfile,
+  compileRules,
+  compileSuggestionChecks,
+  compileTypeSniff,
+  PAGE_SIZE,
+  upstreamKey,
+  type CompileOptions,
+  type Compiled,
+  type SuggestionCheck,
+  type Target,
+} from './compile';
+export { CompileError, PendingSchemaError, UnwiredError } from './errors';
+export { compileJoin, JOIN_TYPES, joinColumns, joinProblems, keepsRightColumns, suggestJoinKey, type JoinColumn, type JoinProblem } from './join';
+export { knownSchemas, SchemaBook } from './schemaBook';
 export { SchemaCache } from './schemaCache';
 export { sourceFileName, sourceRelation, sourceTableName } from './sources';
 export { bool, cteName, ident, list, num, str, strList } from './sql';

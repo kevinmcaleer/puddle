@@ -1,4 +1,4 @@
-import type { Edge, GraphNode, Project } from './schema';
+import { NAMED_PORTS, type Edge, type GraphNode, type Port, type Project } from './schema';
 
 export class GraphError extends Error {
   constructor(message: string) {
@@ -7,9 +7,47 @@ export class GraphError extends Error {
   }
 }
 
-/** How many wires a node accepts. Phase 1 node types take zero or one. */
-export function inputCapacity(node: GraphNode): number {
-  return node.type === 'source' ? 0 : 1;
+/** One input of a node: the port id its wire carries, and the name people see ("Left"). */
+export interface InputPort {
+  id: Port;
+  label: string;
+}
+
+const NO_PORTS: InputPort[] = [];
+const ONE_PORT: InputPort[] = [{ id: 0, label: 'Input' }];
+const JOIN_PORTS: InputPort[] = [
+  { id: 'left', label: 'Left' },
+  { id: 'right', label: 'Right' },
+];
+
+/**
+ * The inputs a node takes, in the order they sit down its left edge. Each takes at most one wire, and the
+ * node compiles once every one is wired. `project` is there for kinds whose inputs depend on their wiring
+ * (a variable number of numbered inputs).
+ */
+export function inputPorts(_project: Project, node: GraphNode): InputPort[] {
+  switch (node.type) {
+    case 'source':
+      return NO_PORTS;
+    case 'join':
+      return JOIN_PORTS;
+    default:
+      return ONE_PORT;
+  }
+}
+
+/** How many wires a node accepts. */
+export function inputCapacity(project: Project, node: GraphNode): number {
+  return inputPorts(project, node).length;
+}
+
+export const samePort = (a: Port, b: Port) => String(a) === String(b);
+
+/** A port id as React Flow hands it back (handle ids are strings): "0" is 0, "left" is "left". */
+export function parsePort(handle: string | null | undefined): Port | undefined {
+  if (handle == null || handle === '') return undefined;
+  if (/^\d+$/.test(handle)) return Number(handle);
+  return (NAMED_PORTS as readonly string[]).includes(handle) ? (handle as Port) : undefined;
 }
 
 export function hasOutput(node: GraphNode): boolean {
@@ -20,10 +58,22 @@ export function nodeById(project: Project, id: string): GraphNode | undefined {
   return project.nodes.find((n) => n.id === id);
 }
 
+/** Wires into a node, in port order (left before right, 0 before 1). */
 export function inputEdges(project: Project, nodeId: string): Edge[] {
   return project.edges
     .filter((e) => e.to.nodeId === nodeId)
     .sort((a, b) => String(a.to.port).localeCompare(String(b.to.port), undefined, { numeric: true }));
+}
+
+/** The wire into one input of a node, if there is one. */
+export function inputEdge(project: Project, nodeId: string, port: Port): Edge | undefined {
+  return project.edges.find((e) => e.to.nodeId === nodeId && samePort(e.to.port, port));
+}
+
+/** The first input of a node with no wire in it yet. */
+export function freePort(project: Project, nodeId: string): Port | undefined {
+  const node = nodeById(project, nodeId);
+  return node ? inputPorts(project, node).find((p) => !inputEdge(project, nodeId, p.id))?.id : undefined;
 }
 
 export function outputEdges(project: Project, nodeId: string): Edge[] {
@@ -47,7 +97,7 @@ export function downstreamIds(project: Project, nodeId: string): Set<string> {
   return reachable(nodeId, (id) => outputEdges(project, id).map((e) => e.to.nodeId));
 }
 
-/** Every node upstream of nodeId, including itself. */
+/** Every node upstream of nodeId, including itself, across every input. */
 export function upstreamIds(project: Project, nodeId: string): Set<string> {
   return reachable(nodeId, (id) => inputEdges(project, id).map((e) => e.from.nodeId));
 }
@@ -76,24 +126,36 @@ export function topoSort(project: Project, only?: Set<string>): string[] {
 
 export type ConnectCheck = { ok: true } | { ok: false; reason: string };
 
-/** Whether a wire from `fromId` into `toId` is allowed, and if not, why, in words the canvas can show. */
-export function canConnect(project: Project, fromId: string, toId: string): ConnectCheck {
+/**
+ * Whether a wire from `fromId` into input `port` of `toId` is allowed, and if not, why, in words the canvas
+ * can show. Without a port, the first free input is meant. Each input takes one wire; loops are refused.
+ */
+export function canConnect(project: Project, fromId: string, toId: string, port?: Port): ConnectCheck {
   const from = nodeById(project, fromId);
   const to = nodeById(project, toId);
   if (!from || !to) return { ok: false, reason: 'That node no longer exists.' };
   if (fromId === toId) return { ok: false, reason: "A node can't feed into itself." };
   if (!hasOutput(from)) return { ok: false, reason: `${from.name} is an Output node, so nothing can come out of it.` };
-  const capacity = inputCapacity(to);
-  if (capacity === 0) return { ok: false, reason: `${to.name} is a Source node, so it can't take an input.` };
-  if (project.edges.some((e) => e.from.nodeId === fromId && e.to.nodeId === toId)) return { ok: false, reason: 'These nodes are already connected.' };
-  if (inputEdges(project, toId).length >= capacity) return { ok: false, reason: `${to.name} already has an input. Remove that wire first.` };
+  const ports = inputPorts(project, to);
+  if (!ports.length) return { ok: false, reason: `${to.name} is a Source node, so it can't take an input.` };
+  const single = ports.length === 1;
+  const target = port ?? freePort(project, toId);
+  if (target == null) {
+    if (project.edges.some((e) => e.from.nodeId === fromId && e.to.nodeId === toId)) return { ok: false, reason: 'These nodes are already connected.' };
+    return { ok: false, reason: single ? `${to.name} already has an input. Remove that wire first.` : `Every input of ${to.name} already has a wire. Remove one first.` };
+  }
+  const spec = ports.find((p) => samePort(p.id, target));
+  if (!spec) return { ok: false, reason: `${to.name} has no input called ${String(target)}.` };
+  const taken = inputEdge(project, toId, target);
+  if (taken?.from.nodeId === fromId) return { ok: false, reason: 'These nodes are already connected.' };
+  if (taken) return { ok: false, reason: single ? `${to.name} already has an input. Remove that wire first.` : `The ${spec.label.toLowerCase()} input of ${to.name} already has a wire. Remove it first.` };
   if (upstreamIds(project, fromId).has(toId)) return { ok: false, reason: `That wire would make a loop: ${to.name} already feeds into ${from.name}.` };
   return { ok: true };
 }
 
-/** Add a wire, or throw GraphError with the reason it's refused. */
+/** Add a wire into the input its edge names, or throw GraphError with the reason it's refused. */
 export function connect(project: Project, edge: Edge): Project {
-  const check = canConnect(project, edge.from.nodeId, edge.to.nodeId);
+  const check = canConnect(project, edge.from.nodeId, edge.to.nodeId, edge.to.port);
   if (!check.ok) throw new GraphError(check.reason);
   return { ...project, edges: [...project.edges, edge] };
 }
