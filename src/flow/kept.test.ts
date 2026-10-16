@@ -16,12 +16,14 @@ describe('kept results', () => {
     expect(keptView({ key: 'k1', bytes: 2048 }, 'k2')).toEqual({ state: 'stale' });
     expect(keptView({ key: 'k1', building: 'k2' }, 'k2')).toEqual({ state: 'stale' });
     expect(keptView({ key: 'k1', error: { key: 'k2', message: 'Out of memory' } }, 'k2')).toEqual({ state: 'failed', message: 'Out of memory' });
+    expect(keptView({ bytes: 10, stopped: 'k2' }, 'k2')).toEqual({ state: 'stopped' });
   });
 
   it('labels a kept node by its memory, or as out of date', () => {
     expect(keptLabel({ state: 'ready', bytes: 5_314_560 })).toBe('5.1 MB kept');
     expect(keptLabel({ state: 'stale' })).toBe('Kept · out of date');
     expect(keptLabel({ state: 'failed', message: 'x' })).toBe('Kept · couldn’t build');
+    expect(keptLabel({ state: 'stopped' })).toBe('Kept · stopped');
   });
 
   it('totals kept memory and warns above half the engine’s limit', () => {

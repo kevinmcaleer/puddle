@@ -1,6 +1,7 @@
 import { Handle, Position, type Node, type NodeProps } from '@xyflow/react';
 import { useMemo, type ReactNode } from 'react';
 import { upstreamKey } from '../compiler';
+import { useViewProject } from '../flow/sample';
 import { exportGate } from '../flow/gate';
 import { keptLabel, keptView, useKeptEntry } from '../flow/kept';
 import { summarise, useRuleStore } from '../flow/rules';
@@ -22,7 +23,9 @@ export function PuddleNode({ data, selected }: NodeProps<PuddleFlowNode>) {
   const project = useProject();
   const ports = inputPorts(project, node);
   const keptEntry = useKeptEntry(node.id);
-  const keepKey = useMemo(() => (node.pinnedResult ? upstreamKey(project, { nodeId: node.id }) : null), [project, node.pinnedResult, node.id]);
+  // Kept tables are built from the project as evaluated: the sampled copy in sample mode.
+  const view = useViewProject();
+  const keepKey = useMemo(() => (node.pinnedResult ? upstreamKey(view, { nodeId: node.id }) : null), [view, node.pinnedResult, node.id]);
   const kept = keepKey != null && node.type !== 'output' ? keptView(keptEntry, keepKey) : null;
   const allResults = useRuleStore((s) => s.nodes);
   const own = ok ? summarise(node.rules, allResults[node.id]?.results) : undefined;

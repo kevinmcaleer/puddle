@@ -1,7 +1,7 @@
 import { flow, src, step } from '../../tests/helpers/projects';
 import type { ParseOptions, Source } from '../model';
 import { rulePredicate } from './rules';
-import { compile, compileCount, compileDateDetection, compileRules, compileDisplayPage, compilePreview, compileProfile, compileTypeSniff, upstreamKey } from './compile';
+import { compile, compileCount, compileDateDetection, compileRules, compileDisplayPage, compileSuggestionChecks, compilePreview, compileProfile, compileTypeSniff, upstreamKey } from './compile';
 import { CompileError, UnwiredError } from './errors';
 import { SchemaCache } from './schemaCache';
 import { ident, setExtensionRepository, str } from './sql';
@@ -185,6 +185,24 @@ describe('errors', () => {
   });
 });
 
+describe('sample mode', () => {
+  it('reads only the first rows of a sampled source, and nothing else changes', () => {
+    const p = cleanFlow();
+    const sampled = { ...p, sources: p.sources.map((s) => ({ ...s, sampleRows: 1000 })) };
+    const sql = compile(sampled, { nodeId: 'clean' }).sql;
+    expect(sql).toContain(`"n_src" AS (SELECT * FROM read_csv('src_cust.csv') LIMIT 1000)`);
+    expect(sql.replace(' LIMIT 1000', '')).toBe(compile(p, { nodeId: 'clean' }).sql);
+    expect(sql).toMatchSnapshot();
+  });
+
+  it('gives sampled results their own cache key', () => {
+    const p = cleanFlow();
+    const sampled = { ...p, sources: p.sources.map((s) => ({ ...s, sampleRows: 1000 })) };
+    expect(upstreamKey(sampled, { nodeId: 'clean' })).not.toBe(upstreamKey(p, { nodeId: 'clean' }));
+    expect(upstreamKey({ ...p, sources: p.sources.map((s) => ({ ...s, sampleRows: 10 })) }, { nodeId: 'clean' })).not.toBe(upstreamKey(sampled, { nodeId: 'clean' }));
+  });
+});
+
 describe('upstreamKey', () => {
   it('ignores names, notes, positions and downstream edits', () => {
     const p = cleanFlow();
@@ -245,6 +263,16 @@ describe('results table queries', () => {
 
   it('profiles through SUMMARIZE', () => {
     expect(compileProfile(cleanFlow(), { nodeId: 'out' })).toMatchSnapshot();
+  });
+
+  it('confirms suggested rules with exact counts, only those asked for per column', () => {
+    const sql = compileSuggestionChecks(cleanFlow(), { nodeId: 'out' }, [
+      { column: 'id', blank: true, distinct: true },
+      { column: 'na"me', edges: true, values: true },
+    ]);
+    expect(sql).toMatchSnapshot();
+    expect(sql).not.toContain('"edges0"');
+    expect(sql).not.toContain('"distinct1"');
   });
 
   it('checks what text columns look like, one set of counts per column', () => {
@@ -320,6 +348,8 @@ describe('quality rules', () => {
     ['inSet', { column: 'name', values: ['Ann'], matchCase: false }],
     ['inRange', { column: 'id', min: '1', max: '10' }],
     ['inRange', { column: 'joined', min: '2020-01-01', max: '' }],
+    ['readsAs', { column: 'joined', as: 'date' }],
+    ['readsAs', { column: 'na"me', as: 'number' }],
   ])('%s %j', (type, params) => {
     expect(rulePredicate({ type, params, label: type })).toMatchSnapshot();
   });

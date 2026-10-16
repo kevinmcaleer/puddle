@@ -1,3 +1,4 @@
+import { Button } from './Button';
 import { cx } from './cx';
 import { abbreviate } from './format';
 import { StatusBadge } from './StatusBadge';
@@ -18,6 +19,7 @@ export function RuleRow({
   selected,
   onSelect,
   onShowFailing,
+  suggestion,
 }: {
   name: string;
   expr?: string;
@@ -30,7 +32,27 @@ export function RuleRow({
   selected?: boolean;
   onSelect?: () => void;
   onShowFailing?: () => void;
+  /**
+   * A rule suggested from profiling, not yet added: shown muted with its reason and Add and Dismiss. It has no
+   * result, because suggestions never run as rules.
+   */
+  suggestion?: { reason: string; onAdd: () => void; onDismiss: () => void };
 }) {
+  if (suggestion)
+    return (
+      <div className="ui-rule text-ink-muted" data-status="suggested">
+        <span className="ui-rule__sev">
+          <StatusBadge status="neutral">Suggested</StatusBadge>
+        </span>
+        <span className="ui-rule__name" title={name}>{name}</span>
+        <span />
+        <span className="col-[2/4] text-label">{suggestion.reason}</span>
+        <span className="ui-rule__foot justify-end">
+          <Button size="sm" variant="ghost" icon="plus" onClick={suggestion.onAdd} aria-label={`Add suggested rule: ${name}`}>Add</Button>
+          <Button size="sm" variant="ghost" icon="cross" onClick={suggestion.onDismiss} aria-label={`Dismiss suggestion: ${name}`}>Dismiss</Button>
+        </span>
+      </div>
+    );
   const ok = !error && failures === 0;
   const status = disabled ? 'neutral' : pending ? 'pending' : error ? 'fail' : ok ? 'pass' : severity;
   const word = disabled ? 'Off' : pending ? 'Checking' : error ? 'Can’t run' : ok ? 'Pass' : severity === 'warn' ? 'Warn' : 'Fail';

@@ -1,7 +1,7 @@
 import type { Table } from 'apache-arrow';
 import { EngineError, toEngineError } from './errors';
 import { Scheduler } from './scheduler';
-import type { ColumnSchema, DuckBackend, EngineInfo, OutputFile, QueryOptions, QueryResult } from './types';
+import type { Activity, ColumnSchema, DuckBackend, EngineInfo, OutputFile, QueryOptions, QueryResult } from './types';
 
 const now = () => (typeof performance !== 'undefined' ? performance.now() : Date.now());
 
@@ -46,6 +46,7 @@ export function tableRows(table: Table): Record<string, unknown>[] {
  */
 export class EngineClient {
   private readonly scheduler = new Scheduler();
+  private readonly stopListeners = new Set<() => void>();
 
   constructor(private readonly backend: DuckBackend) {}
 
@@ -55,6 +56,28 @@ export class EngineClient {
 
   get pending(): number {
     return this.scheduler.size;
+  }
+
+  /** The query running now, for the Stop control. */
+  get activity(): Activity | null {
+    return this.scheduler.activity;
+  }
+
+  onActivity(fn: (a: Activity | null) => void): () => void {
+    return this.scheduler.subscribe(fn);
+  }
+
+  /** Stop the running query in DuckDB and drop the queued ones; each rejects with an EngineError coded "stopped". */
+  stop(): number {
+    const n = this.scheduler.stop();
+    for (const fn of this.stopListeners) fn();
+    return n;
+  }
+
+  /** Called on every stop(), for work that queues its queries one at a time (kept results) and should stop too. */
+  onStop(fn: () => void): () => void {
+    this.stopListeners.add(fn);
+    return () => void this.stopListeners.delete(fn);
   }
 
   query(sql: string, opts: QueryOptions = {}): Promise<QueryResult> {
@@ -70,7 +93,7 @@ export class EngineClient {
     return this.scheduler.submit(async (signal) => {
       const table = await this.backend.query(`DESCRIBE ${sql}`, signal);
       return tableRows(table).map((r) => ({ name: String(r.column_name), type: String(r.column_type) }));
-    }, opts);
+    }, { label: 'Reading columns', ...opts });
   }
 
   /**

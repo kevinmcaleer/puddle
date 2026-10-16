@@ -5,7 +5,8 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { compileDisplayPage, compileExport, knownKept, sourceFileName, upstreamKey } from '../../src/compiler';
 import { EngineClient, tableRows } from '../../src/engine/client';
-import { dropAllKept, keptSettled, keptTotal, syncKept, useKeptStore } from '../../src/flow/kept';
+import { clearKeptStops, dropAllKept, keptSettled, keptTotal, keptView, syncKept, useKeptStore } from '../../src/flow/kept';
+import { applySample } from '../../src/flow/sample';
 import { evaluateFlow, invalidateCaches, schemaCacheFor } from '../../src/flow/status';
 import { removeNodes, setKeepResult, type Project, type Step } from '../../src/model';
 import { createNodeBackend } from '../helpers/nodeBackend';
@@ -16,9 +17,19 @@ const orders = src({ id: 'orders', format: 'csv' });
 const customers = src({ id: 'customers', format: 'csv' });
 
 const log: string[] = [];
+/** While set, CREATE statements wait until released, so a test can press Stop during a build. */
+let holdCreates = false;
+let release: (() => void) | null = null;
 let engine: EngineClient;
 beforeAll(async () => {
-  engine = new EngineClient(await createNodeBackend({ beforeQuery: async (sql) => void log.push(sql) }));
+  engine = new EngineClient(
+    await createNodeBackend({
+      beforeQuery: async (sql) => {
+        log.push(sql);
+        if (holdCreates && sql.startsWith('CREATE')) await new Promise<void>((r) => (release = r));
+      },
+    }),
+  );
   for (const [s, file] of [[cust, 'customers.csv'], [orders, 'shop-orders.csv'], [customers, 'shop-customers.csv']] as const)
     await engine.registerBuffer(sourceFileName(s), new Uint8Array(readFileSync(join(__dirname, '../fixtures', file))));
 });
@@ -193,5 +204,78 @@ describe('kept results', () => {
     expect(useKeptStore.getState().nodes.t).toEqual({});
     await settle(setKeepResult(chain(), 't', true));
     expect(await tables()).toEqual(['kept_t']);
+  });
+
+  it('in sample mode keeps the sampled result for previews, while exports read the full data', async () => {
+    const p = setKeepResult(chain(), 't', true);
+    // The app's view of a project whose source is over the threshold: the source reads its first 2 rows.
+    const view = applySample(p, { rows: 2, sources: { cust: 4 } });
+    await settle(view);
+    expect(Number((await engine.query('SELECT count(*) AS n FROM "kept_t"')).table.get(0)!.toJSON().n)).toBe(2);
+    expect(upstreamKey(view, { nodeId: 't' })).not.toBe(upstreamKey(p, { nodeId: 't' }));
+
+    log.length = 0;
+    const rows = await preview(view, 'out');
+    expect(log.filter((q) => q.includes('read_csv'))).toEqual([]);
+    expect(rows).toEqual(await preview(unkept(view), 'out'));
+    expect(rows).toHaveLength(2);
+
+    // The export compiles the full project: its key isn't the sampled table's, so it reads the file, all of it.
+    const sql = compileExport(p, 'out', '/x.csv');
+    expect(sql).toContain('read_csv');
+    expect(sql).not.toContain('kept_t');
+    const exported = await engine.exportFile('sampled.csv', (path) => compileExport(p, 'out', path));
+    expect(exported.rows).toBe(4);
+
+    // Run on full data: the table is rebuilt from every row.
+    await settle(p);
+    expect(Number((await engine.query('SELECT count(*) AS n FROM "kept_t"')).table.get(0)!.toJSON().n)).toBe(4);
+    expect(compileExport(p, 'out', '/x.csv')).toContain('"kept_t"');
+  });
+
+  it('Stop stops a build in progress and the builds queued behind it; nothing half-built is read', async () => {
+    const p = setKeepResult(setKeepResult(chain(), 't', true), 'more', true);
+    await settle(p);
+    expect(await tables()).toEqual(['kept_more', 'kept_t']);
+
+    const changed = setKeepResult(setKeepResult(chain([trim, withEmail]), 't', true), 'more', true);
+    await evaluateFlow(engine, changed);
+    holdCreates = true;
+    const building = syncKept(engine, changed);
+    try {
+      await expect.poll(() => release).not.toBeNull();
+      expect(engine.stop()).toBe(1);
+    } finally {
+      holdCreates = false;
+      release?.();
+      release = null;
+    }
+    await building;
+    await keptSettled();
+
+    // Neither table was replaced. The one whose build was under way is no longer read, even for the project it
+    // was built for; the one that never started is still whole, and read only for the project it was built for.
+    expect(log.filter((q) => q.startsWith('CREATE'))).toHaveLength(3);
+    expect(knownKept.ids()).toEqual(['more']);
+    expect(knownKept.get('more')?.key).toBe(upstreamKey(p, { nodeId: 'more' }));
+    const { t, more } = useKeptStore.getState().nodes;
+    expect(keptView(t, upstreamKey(changed, { nodeId: 't' }))).toEqual({ state: 'stopped' });
+    expect(keptView(more, upstreamKey(changed, { nodeId: 'more' }))).toEqual({ state: 'stopped' });
+    expect(keptView(t, upstreamKey(p, { nodeId: 't' })).state).not.toBe('ready');
+    expect(keptTotal(useKeptStore.getState().nodes)).toBeGreaterThan(0); // the old tables still take memory
+    expect(compileDisplayPage(p, { nodeId: 't' }, ['name'])).toContain('read_csv');
+    expect(compileDisplayPage(changed, { nodeId: 'out' }, ['name'])).toContain('read_csv');
+    expect(await preview(changed, 'out')).toEqual(await preview(unkept(changed), 'out'));
+
+    // A later sync doesn't rebuild what was stopped; Run again does.
+    log.length = 0;
+    await syncKept(engine, changed);
+    expect(log.filter((q) => q.startsWith('CREATE'))).toEqual([]);
+    clearKeptStops();
+    await syncKept(engine, changed);
+    await keptSettled();
+    expect(log.filter((q) => q.startsWith('CREATE'))).toHaveLength(2);
+    expect(knownKept.get('more')?.key).toBe(upstreamKey(changed, { nodeId: 'more' }));
+    expect(await preview(changed, 'out')).toEqual(await preview(unkept(changed), 'out'));
   });
 });

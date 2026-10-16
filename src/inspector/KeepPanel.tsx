@@ -1,7 +1,8 @@
 import { useMemo, useState } from 'react';
 import { upstreamKey } from '../compiler';
+import { useViewProject } from '../flow/sample';
 import { keptNearLimit, keptView, useKeptEntry, useKeptStore, useKeptTotal } from '../flow/kept';
-import { setKeepResult, useProject, useProjectStore, type GraphNode } from '../model';
+import { setKeepResult, useProjectStore, type GraphNode } from '../model';
 import { Banner, Button, formatBytes, Section, Switch } from '../ui';
 
 /**
@@ -9,14 +10,15 @@ import { Banner, Button, formatBytes, Section, Switch } from '../ui';
  * everything before it. Shows the memory it takes, and asks first when kept results already use a lot.
  */
 export function KeepPanel({ node }: { node: GraphNode }) {
-  const project = useProject();
   const apply = useProjectStore((s) => s.apply);
   const entry = useKeptEntry(node.id);
   const total = useKeptTotal();
   const limit = useKeptStore((s) => s.limit);
   const [asking, setAsking] = useState(false);
   const on = !!node.pinnedResult;
-  const key = useMemo(() => (on ? upstreamKey(project, { nodeId: node.id }) : null), [on, project, node.id]);
+  // Kept tables are built from the project as evaluated: the sampled copy in sample mode.
+  const evaluated = useViewProject();
+  const key = useMemo(() => (on ? upstreamKey(evaluated, { nodeId: node.id }) : null), [on, evaluated, node.id]);
   const view = key != null ? keptView(entry, key) : null;
 
   const keep = (value: boolean) => {
@@ -31,7 +33,7 @@ export function KeepPanel({ node }: { node: GraphNode }) {
         <Switch id="keep-result" label="Keep result in memory" checked={on} onChange={toggle} />
         {view ? (
           <div className="ui-metric" data-testid="keep-memory" data-state={view.state}>
-            {view.state === 'ready' ? `Uses ${formatBytes(view.bytes)}` : view.state === 'failed' ? `Couldn’t keep it: ${view.message}` : entry?.building ? 'Out of date. Rebuilding…' : 'Out of date. It rebuilds once this node runs.'}
+            {view.state === 'ready' ? `Uses ${formatBytes(view.bytes)}` : view.state === 'failed' ? `Couldn’t keep it: ${view.message}` : view.state === 'stopped' ? 'Stopped. Use Run again to build it.' : entry?.building ? 'Out of date. Rebuilding…' : 'Out of date. It rebuilds once this node runs.'}
           </div>
         ) : (
           <p className="text-label text-ink-muted">Nodes after this one read its result instead of re-running everything before it.</p>

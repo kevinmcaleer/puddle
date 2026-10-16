@@ -1,5 +1,6 @@
 export type EngineErrorCode =
   | 'cancelled'
+  | 'stopped'
   | 'syntax'
   | 'missing'
   | 'conversion'
@@ -26,6 +27,11 @@ export class EngineError extends Error {
 export const cancelled = () => new EngineError('cancelled', 'The query was replaced by a newer one.');
 
 export const isCancelled = (e: unknown): e is EngineError => e instanceof EngineError && e.code === 'cancelled';
+
+/** Someone pressed Stop. Unlike a superseded query, this is shown, with a way to run it again. */
+export const stopped = () => new EngineError('stopped', 'Stopped before it finished.');
+
+export const isStopped = (e: unknown): e is EngineError => e instanceof EngineError && e.code === 'stopped';
 
 const firstLine = (s: string) => s.split('\n')[0]!.trim();
 

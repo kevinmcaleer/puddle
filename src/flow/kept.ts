@@ -3,7 +3,7 @@
 // matches the node's upstream key (see compiler/keptBook.ts); this module builds, rebuilds and drops them.
 import { create } from 'zustand';
 import { compile, keptTable, keptTableName, knownKept, upstreamKey } from '../compiler';
-import { tableRows, toEngineError, type EngineClient } from '../engine';
+import { isStopped, tableRows, toEngineError, type EngineClient } from '../engine';
 import { nodeById, topoSort, type Project } from '../model';
 import { formatBytes } from '../ui/format';
 import { schemaCacheFor, useFlowStore } from './status';
@@ -17,6 +17,8 @@ export interface KeptEntry {
   building?: string;
   /** Why the last build failed, for which key: it isn't retried until something upstream changes. */
   error?: { key: string; message: string };
+  /** The key whose build was stopped (the Stop control): not built again until Run again or an upstream change. */
+  stopped?: string;
 }
 
 interface KeptState {
@@ -30,18 +32,20 @@ export const useKeptStore = create<KeptState>(() => ({ nodes: {}, limit: null })
 /** Above this share of the engine's memory, keeping another result asks first. */
 export const KEPT_WARN_SHARE = 0.5;
 
-export type KeptView = { state: 'ready'; bytes: number } | { state: 'stale' } | { state: 'failed'; message: string };
+export type KeptView = { state: 'ready'; bytes: number } | { state: 'stale' } | { state: 'stopped' } | { state: 'failed'; message: string };
 
 /** How a kept node's table stands against the node's current upstream key. */
 export function keptView(entry: KeptEntry | undefined, key: string): KeptView {
   if (entry?.key === key) return { state: 'ready', bytes: entry.bytes ?? 0 };
   if (entry?.error?.key === key) return { state: 'failed', message: entry.error.message };
+  if (entry?.stopped === key) return { state: 'stopped' };
   return { state: 'stale' };
 }
 
 /** How a kept result reads on its node: its memory once built, otherwise that it's out of date or failed. */
 export function keptLabel(view: KeptView): string {
   if (view.state === 'ready') return `${formatBytes(view.bytes)} kept`;
+  if (view.state === 'stopped') return 'Kept · stopped';
   return view.state === 'failed' ? 'Kept · couldn’t build' : 'Kept · out of date';
 }
 
@@ -72,6 +76,9 @@ const wanted = new Map<string, string>();
 let latest: Project | null = null;
 /** Builds and drops run one at a time, so the memory measured around a build is that build's own. */
 let queue: Promise<unknown> = Promise.resolve();
+/** Bumped when a build is stopped, so the builds queued behind it (not yet in the engine) stop too. */
+let stops = 0;
+let offStop: (() => void) | null = null;
 
 function serial<T>(fn: () => Promise<T>): Promise<T> {
   const run = queue.then(fn, fn);
@@ -91,13 +98,13 @@ function setEntry(nodeId: string, update: (e: KeptEntry | undefined) => KeptEntr
 
 /** Bytes held by in-memory tables: only kept results make tables, and they're built one at a time. */
 async function tableBytes(engine: EngineClient): Promise<number> {
-  const r = await engine.query(`SELECT CAST(coalesce(sum(memory_usage_bytes), 0) AS BIGINT) AS b FROM duckdb_memory() WHERE tag = 'IN_MEMORY_TABLE'`, { priority: 'background' });
+  const r = await engine.query(`SELECT CAST(coalesce(sum(memory_usage_bytes), 0) AS BIGINT) AS b FROM duckdb_memory() WHERE tag = 'IN_MEMORY_TABLE'`, { priority: 'background', label: 'Measuring kept results' });
   return Number(tableRows(r.table)[0]?.b ?? 0);
 }
 
 async function readLimit(engine: EngineClient) {
   try {
-    const r = await engine.query(`SELECT current_setting('memory_limit') AS l`, { priority: 'background' });
+    const r = await engine.query(`SELECT current_setting('memory_limit') AS l`, { priority: 'background', label: 'Reading the memory limit' });
     if (engine === engineOf) useKeptStore.setState({ limit: parseMemoryLimit(String(tableRows(r.table)[0]?.l ?? '')) });
   } catch {
     // Without a limit there's simply no warning.
@@ -106,7 +113,13 @@ async function readLimit(engine: EngineClient) {
 
 function build(engine: EngineClient, project: Project, nodeId: string, key: string): Promise<void> {
   setEntry(nodeId, (e) => ({ ...e, building: key }));
+  const epoch = stops;
   return serial(async () => {
+    if (epoch !== stops) {
+      // Stop was pressed while this waited its turn: it stops too.
+      setEntry(nodeId, (e) => (e && e.building === key ? { ...e, building: undefined, stopped: key } : e));
+      return;
+    }
     const current = () => engine === engineOf && wanted.get(nodeId) === key;
     if (!current()) {
       setEntry(nodeId, (e) => (e && e.building === key ? { ...e, building: undefined } : e));
@@ -120,17 +133,24 @@ function build(engine: EngineClient, project: Project, nodeId: string, key: stri
       // The table is about to change: nothing compiled from here on reads it until it's recorded again.
       knownKept.delete(nodeId);
       const before = await tableBytes(engine);
-      await engine.query(`CREATE OR REPLACE TABLE ${keptTable(nodeId)} AS ${sql}`, { priority: 'background' });
+      // Stopping it rolls the statement back, leaving the old table, which nothing reads any more (see above).
+      const name = nodeById(project, nodeId)?.name ?? 'a result';
+      await engine.query(`CREATE OR REPLACE TABLE ${keptTable(nodeId)} AS ${sql}`, { priority: 'background', label: `Keeping ${name}` });
       const after = await tableBytes(engine);
       if (engine !== engineOf || !wanted.has(nodeId)) return; // dropped meanwhile; its DROP is queued behind this
       knownKept.set(nodeId, { key, table: keptTableName(nodeId) });
       // The replaced table's memory was freed by the same statement.
-      setEntry(nodeId, (e) => ({ key, bytes: Math.max(0, after - before + (e?.key != null ? (e.bytes ?? 0) : 0)) }));
+      setEntry(nodeId, (e) => ({ key, bytes: Math.max(0, after - before + (e?.bytes ?? 0)) }));
     } catch (err) {
       if (engine !== engineOf || !wanted.has(nodeId)) return;
+      // A failed or stopped CREATE OR REPLACE leaves the old table (and its memory) as it was, but it is no
+      // longer in the compiler's book, so it no longer counts as built for any key.
+      if (isStopped(err)) {
+        setEntry(nodeId, (e) => ({ ...(e?.bytes != null ? { bytes: e.bytes } : {}), stopped: key }));
+        return;
+      }
       const message = toEngineError(err).message;
-      // A failed CREATE OR REPLACE leaves the old table as it was, still keyed for its old upstream.
-      setEntry(nodeId, (e) => ({ ...e, building: undefined, error: { key, message } }));
+      setEntry(nodeId, (e) => ({ ...(e?.bytes != null ? { bytes: e.bytes } : {}), error: { key, message } }));
     }
     // Upstream changed again while this was building: build for the project as it is now.
     if (wanted.has(nodeId) && wanted.get(nodeId) !== key && latest) void syncKept(engine, latest);
@@ -155,6 +175,8 @@ function drop(engine: EngineClient, nodeId: string): Promise<void> {
 export function syncKept(engine: EngineClient, project: Project): Promise<void> {
   if (engine !== engineOf) {
     engineOf = engine;
+    offStop?.();
+    offStop = engine.onStop(() => void stops++);
     wanted.clear();
     knownKept.clear();
     useKeptStore.setState({ nodes: {}, limit: null });
@@ -183,13 +205,18 @@ export function syncKept(engine: EngineClient, project: Project): Promise<void> 
       // One build per node at a time; when it finishes it catches up with the latest project.
       continue;
     }
-    if (e?.key === key || e?.error?.key === key) continue;
+    if (e?.key === key || e?.error?.key === key || e?.stopped === key) continue;
     // A node that doesn't work (yet) keeps its old table, unused, until it does.
     const status = statuses[id];
     if (status?.key !== key || status.status.state !== 'ok') continue;
     jobs.push(build(engine, project, id, key));
   }
   return Promise.all(jobs).then(() => undefined);
+}
+
+/** Run again after Stop: builds that were stopped may run again. */
+export function clearKeptStops() {
+  useKeptStore.setState((s) => ({ nodes: Object.fromEntries(Object.entries(s.nodes).map(([id, e]) => [id, e.stopped ? { ...e, stopped: undefined } : e])) }));
 }
 
 /** Resolves once every queued build and drop has finished, including catch-up builds they started. */

@@ -76,20 +76,23 @@ async function checkNode(engine: EngineClient, project: Project, nodeId: string,
   const set = (results: Record<string, RuleResult>) =>
     useRuleStore.setState((s) => (s.nodes[nodeId]?.key === key ? { nodes: { ...s.nodes, [nodeId]: { key, results } } } : s));
   const run = async (batch: Rule[]) => {
-    const r = tableRows((await engine.query(compileRules(project, nodeId, batch), { priority: 'background', supersede: `rules:${nodeId}` })).table)[0]!;
+    const r = tableRows((await engine.query(compileRules(project, nodeId, batch), { priority: 'background', supersede: `rules:${nodeId}`, label: 'Checking rules' })).table)[0]!;
     return batch.map((_, i) => ({ failures: Number(r[`f${i}`]), total: Number(r.total) }));
   };
   try {
     const counts = await run(rules);
     set(Object.fromEntries(rules.map((r, i) => [r.id, { state: 'ok', ...counts[i]! }])));
   } catch (e) {
-    if (toEngineError(e).code === 'cancelled') return;
+    const code = toEngineError(e).code;
+    if (code === 'cancelled') return;
+    // Stop was pressed: say so on every rule, rather than retrying them one by one.
+    if (code === 'stopped') return set(Object.fromEntries(rules.map((r) => [r.id, { state: 'error', message: toEngineError(e).message }])));
     // One bad rule fails the batch: check them one by one to say which.
     const results: Record<string, RuleResult> = {};
     for (const rule of rules) {
       try {
         const [c] = await engine
-          .query(compileRules(project, nodeId, [rule]), { priority: 'background' })
+          .query(compileRules(project, nodeId, [rule]), { priority: 'background', label: 'Checking rules' })
           .then((r) => [tableRows(r.table)[0]!]);
         results[rule.id] = { state: 'ok', failures: Number(c!.f0), total: Number(c!.total) };
       } catch (err) {

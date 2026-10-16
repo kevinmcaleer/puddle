@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { useEngineStore } from '../app/engine';
 import { useSession } from '../app/session';
 import { dropAllKept } from '../flow/kept';
+import { resetSample } from '../flow/sample';
 import { invalidateCaches } from '../flow/status';
 import { createProject, newId, useProjectStore, type Project } from '../model';
 import { useResultsStore } from '../results/state';
@@ -51,6 +52,7 @@ function show(project: Project) {
   // The last project's kept results go with it.
   void dropAllKept(useEngineStore.getState().engine);
   invalidateCaches();
+  resetSample();
   useSession.setState({ selectedNodeId: null, selectedNodeIds: [], selectedStepId: null, selectedColumns: [], notice: null });
   useResultsStore.getState().set({ rows: undefined, cols: undefined, ms: undefined, profile: undefined });
   useProjectStore.getState().load(project);
