@@ -16,6 +16,12 @@ describe('toEngineError', () => {
     // A step's own check (stepFailure) is shown as written, without the parse options advice.
     ['Invalid Input Error: Puddle: Transpose was set up for 3 rows.', 'invalid-input', /^Transpose was set up for 3 rows\.$/],
     ['Binder Error: Cannot unpivot columns of types BIGINT and VARCHAR - an explicit cast is required.', 'conversion', /different types \(BIGINT and VARCHAR\).*Treat all values as text/],
+    // A query with totals using a column it neither groups nor summarises.
+    [
+      'Binder Error: column "name" must appear in the GROUP BY clause or must be part of an aggregate function.\nEither add it to the GROUP BY list, or use "ANY_VALUE(name)" if the exact value of "name" is not important.',
+      'invalid-input',
+      /^name is used but neither grouped nor summarised\. Set its Total to Group by/,
+    ],
     ['Something odd', 'unknown', /Something odd/],
   ])('%s', (raw, code, message) => {
     const e = toEngineError(new Error(raw));

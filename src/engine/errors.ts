@@ -54,6 +54,10 @@ export function toEngineError(e: unknown): EngineError {
   const ext = /exists in the (\w+) extension/i.exec(raw) ?? /extension "?(\w+)"? (?:is not|not) (?:installed|loaded|found)/i.exec(raw);
   if (ext) return new EngineError('missing-extension', `This needs DuckDB's ${ext[1]} extension, which couldn't be loaded. Check your connection and try again.`, raw);
   if (/^(Binder|Catalog) Error/i.test(line)) {
+    // A query with totals showing, sorting or filtering on a column it neither groups nor summarises.
+    const ungrouped = /column "?([^"\s]+)"? must appear in the GROUP BY clause/i.exec(raw);
+    if (ungrouped)
+      return new EngineError('invalid-input', `${ungrouped[1]} is used but neither grouped nor summarised. Set its Total to Group by, or summarise it, for instance with sum(${ungrouped[1]}) in an expression.`, raw);
     const col = /column "?([^"\s]+)"? not found/i.exec(raw) ?? /Referenced column "?([^"\s]+)"?/i.exec(raw);
     if (col) return new EngineError('missing', `Column ${col[1]} doesn't exist at this point in the flow. Pick a column that exists upstream.`, raw);
     // A date or number function given text: say which step reads it, not DuckDB's candidate list.
