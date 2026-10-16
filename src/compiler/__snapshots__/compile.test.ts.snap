@@ -475,21 +475,81 @@ exports[`step snapshots > sortRows {"keys":[{"column":"joined","descending":true
 SELECT * FROM "n_clean_s0""
 `;
 
+exports[`step snapshots > splitByCharacters {"column":"id","count":2,"at":"left","into":["a","b"],"keepOriginal":true} 1`] = `
+"WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv')),
+  "n_clean_s0" AS (SELECT * EXCLUDE ("__puddle_split"), "__puddle_split"[1] AS "a", "__puddle_split"[2] AS "b" FROM (SELECT * REPLACE (CASE WHEN length("__puddle_split") > 2 THEN [left("__puddle_split", 2), substr("__puddle_split", 2 + 1)] ELSE ["__puddle_split"] END AS "__puddle_split") FROM (SELECT *, CAST("id" AS VARCHAR) AS "__puddle_split" FROM "n_src")))
+SELECT * FROM "n_clean_s0""
+`;
+
+exports[`step snapshots > splitByCharacters {"column":"id","count":2,"at":"right","to":"rows"} 1`] = `
+"WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv')),
+  "n_clean_s0" AS (SELECT * EXCLUDE ("__puddle_split") REPLACE (unnest(CASE WHEN coalesce(len("__puddle_split"), 0) = 0 THEN [NULL::VARCHAR] ELSE "__puddle_split" END) AS "id") FROM (SELECT * REPLACE (CASE WHEN length("__puddle_split") > 2 THEN [left("__puddle_split", length("__puddle_split") - 2), right("__puddle_split", 2)] ELSE [NULL, "__puddle_split"] END AS "__puddle_split") FROM (SELECT *, CAST("id" AS VARCHAR) AS "__puddle_split" FROM "n_src")))
+SELECT * FROM "n_clean_s0""
+`;
+
+exports[`step snapshots > splitByCharacters {"column":"id","count":2,"into":["a","b"]} 1`] = `
+"WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv')),
+  "n_clean_s0" AS (SELECT * EXCLUDE ("id", "__puddle_split"), "__puddle_split"[1] AS "a", "__puddle_split"[2] AS "b" FROM (SELECT * REPLACE (list_transform(range(0, length("__puddle_split"), 2), __i -> substr("__puddle_split", __i + 1, 2)) AS "__puddle_split") FROM (SELECT *, CAST("id" AS VARCHAR) AS "__puddle_split" FROM "n_src")))
+SELECT * FROM "n_clean_s0""
+`;
+
+exports[`step snapshots > splitByDelimiter {"column":"email","delimiter":"::","at":"right","quote":"\\"","into":["a","b"]} 1`] = `
+"WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv')),
+  "n_clean_s0" AS (SELECT * EXCLUDE ("email", "__puddle_split"), "__puddle_split"[1] AS "a", "__puddle_split"[2] AS "b" FROM (SELECT * REPLACE (CASE WHEN len("__puddle_split") < 2 THEN [CASE WHEN length("__puddle_split"[1]) >= 2 AND starts_with("__puddle_split"[1], '"') AND ends_with("__puddle_split"[1], '"') THEN replace("__puddle_split"[1][2:-2], '""', '"') ELSE "__puddle_split"[1] END] ELSE [array_to_string("__puddle_split"[1:-2], '::'), CASE WHEN length("__puddle_split"[-1]) >= 2 AND starts_with("__puddle_split"[-1], '"') AND ends_with("__puddle_split"[-1], '"') THEN replace("__puddle_split"[-1][2:-2], '""', '"') ELSE "__puddle_split"[-1] END] END AS "__puddle_split") FROM (SELECT *, string_split(array_to_string(list_transform(string_split(CAST("email" AS VARCHAR), '"'), (__piece, __i) -> CASE WHEN __i % 2 = 1 THEN replace(__piece, '::', chr(31)) ELSE __piece END), '"'), chr(31)) AS "__puddle_split" FROM "n_src")))
+SELECT * FROM "n_clean_s0""
+`;
+
 exports[`step snapshots > splitByDelimiter {"column":"email","delimiter":"@","into":["user","domain"],"keepOriginal":false} 1`] = `
 "WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv')),
-  "n_clean_s0" AS (SELECT * EXCLUDE ("email"), string_split(CAST("email" AS VARCHAR), '@')[1] AS "user", string_split(CAST("email" AS VARCHAR), '@')[2] AS "domain" FROM "n_src")
+  "n_clean_s0" AS (SELECT * EXCLUDE ("email", "__puddle_split"), "__puddle_split"[1] AS "user", "__puddle_split"[2] AS "domain" FROM (SELECT * REPLACE ("__puddle_split" AS "__puddle_split") FROM (SELECT *, string_split(CAST("email" AS VARCHAR), '@') AS "__puddle_split" FROM "n_src")))
+SELECT * FROM "n_clean_s0""
+`;
+
+exports[`step snapshots > splitByDelimiter {"column":"email","delimiterKind":"comma","quote":"\\"","into":["a","b"]} 1`] = `
+"WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv')),
+  "n_clean_s0" AS (SELECT * EXCLUDE ("email", "__puddle_split"), "__puddle_split"[1] AS "a", "__puddle_split"[2] AS "b" FROM (SELECT * REPLACE (list_transform("__puddle_split", __field -> CASE WHEN length(__field) >= 2 AND starts_with(__field, '"') AND ends_with(__field, '"') THEN replace(__field[2:-2], '""', '"') ELSE __field END) AS "__puddle_split") FROM (SELECT *, string_split(array_to_string(list_transform(string_split(CAST("email" AS VARCHAR), '"'), (__piece, __i) -> CASE WHEN __i % 2 = 1 THEN replace(__piece, ',', chr(31)) ELSE __piece END), '"'), chr(31)) AS "__puddle_split" FROM "n_src")))
+SELECT * FROM "n_clean_s0""
+`;
+
+exports[`step snapshots > splitByDelimiter {"column":"email","delimiterKind":"semicolon","to":"rows"} 1`] = `
+"WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv')),
+  "n_clean_s0" AS (SELECT * EXCLUDE ("__puddle_split") REPLACE (unnest(CASE WHEN coalesce(len("__puddle_split"), 0) = 0 THEN [NULL::VARCHAR] ELSE "__puddle_split" END) AS "email") FROM (SELECT * REPLACE ("__puddle_split" AS "__puddle_split") FROM (SELECT *, string_split(CAST("email" AS VARCHAR), ';') AS "__puddle_split" FROM "n_src")))
+SELECT * FROM "n_clean_s0""
+`;
+
+exports[`step snapshots > splitByDelimiter {"column":"email","delimiterKind":"tab","at":"left","into":["a","b"]} 1`] = `
+"WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv')),
+  "n_clean_s0" AS (SELECT * EXCLUDE ("email", "__puddle_split"), "__puddle_split"[1] AS "a", "__puddle_split"[2] AS "b" FROM (SELECT * REPLACE (CASE WHEN len("__puddle_split") < 2 THEN ["__puddle_split"[1]] ELSE ["__puddle_split"[1], array_to_string("__puddle_split"[2:], '	')] END AS "__puddle_split") FROM (SELECT *, string_split(CAST("email" AS VARCHAR), '	') AS "__puddle_split" FROM "n_src")))
 SELECT * FROM "n_clean_s0""
 `;
 
 exports[`step snapshots > splitByDelimiter {"column":"name","delimiter":"'","into":["a"],"keepOriginal":true} 1`] = `
 "WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv')),
-  "n_clean_s0" AS (SELECT *, string_split(CAST("name" AS VARCHAR), '''')[1] AS "a" FROM "n_src")
+  "n_clean_s0" AS (SELECT * EXCLUDE ("__puddle_split"), "__puddle_split"[1] AS "a" FROM (SELECT * REPLACE ("__puddle_split" AS "__puddle_split") FROM (SELECT *, string_split(CAST("name" AS VARCHAR), '''') AS "__puddle_split" FROM "n_src")))
 SELECT * FROM "n_clean_s0""
 `;
 
 exports[`step snapshots > splitByPosition {"column":"joined","positions":[4,7],"into":["year","dash_month","dash_day"],"keepOriginal":true} 1`] = `
 "WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv')),
   "n_clean_s0" AS (SELECT *, substr(CAST("joined" AS VARCHAR), 1, 4) AS "year", substr(CAST("joined" AS VARCHAR), 5, 3) AS "dash_month", substr(CAST("joined" AS VARCHAR), 8) AS "dash_day" FROM "n_src")
+SELECT * FROM "n_clean_s0""
+`;
+
+exports[`step snapshots > splitByPosition {"column":"joined","positions":[4],"to":"rows"} 1`] = `
+"WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv')),
+  "n_clean_s0" AS (SELECT * EXCLUDE ("__puddle_split") REPLACE (unnest(CASE WHEN coalesce(len("__puddle_split"), 0) = 0 THEN [NULL::VARCHAR] ELSE "__puddle_split" END) AS "joined") FROM (SELECT * REPLACE ([substr("__puddle_split", 1, 4), substr("__puddle_split", 5)] AS "__puddle_split") FROM (SELECT *, CAST("joined" AS VARCHAR) AS "__puddle_split" FROM "n_src")))
+SELECT * FROM "n_clean_s0""
+`;
+
+exports[`step snapshots > splitByTransition {"column":"name","transition":"lowerUpper","into":["a","b"]} 1`] = `
+"WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv')),
+  "n_clean_s0" AS (SELECT * EXCLUDE ("name", "__puddle_split"), "__puddle_split"[1] AS "a", "__puddle_split"[2] AS "b" FROM (SELECT * REPLACE ("__puddle_split" AS "__puddle_split") FROM (SELECT *, string_split(regexp_replace(CAST("name" AS VARCHAR), '([a-z])([A-Z])', '\\1' || chr(31) || '\\2', 'g'), chr(31)) AS "__puddle_split" FROM "n_src")))
+SELECT * FROM "n_clean_s0""
+`;
+
+exports[`step snapshots > splitByTransition {"column":"name","transition":"nonDigitDigit","to":"rows"} 1`] = `
+"WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv')),
+  "n_clean_s0" AS (SELECT * EXCLUDE ("__puddle_split") REPLACE (unnest(CASE WHEN coalesce(len("__puddle_split"), 0) = 0 THEN [NULL::VARCHAR] ELSE "__puddle_split" END) AS "name") FROM (SELECT * REPLACE ("__puddle_split" AS "__puddle_split") FROM (SELECT *, string_split(regexp_replace(CAST("name" AS VARCHAR), '([^0-9])([0-9])', '\\1' || chr(31) || '\\2', 'g'), chr(31)) AS "__puddle_split" FROM "n_src")))
 SELECT * FROM "n_clean_s0""
 `;
 

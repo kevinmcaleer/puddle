@@ -8,27 +8,30 @@ import { createNodeBackend } from '../helpers/nodeBackend';
 import { flow, src, step } from '../helpers/projects';
 
 const cust: Source = src({ id: 'cust', format: 'csv' });
+const splits: Source = src({ id: 'splits', format: 'csv' });
 
 let engine: EngineClient;
 beforeAll(async () => {
   engine = new EngineClient(await createNodeBackend());
   await engine.registerBuffer(sourceFileName(cust), new Uint8Array(readFileSync(join(__dirname, '../fixtures/customers.csv'))));
+  await engine.registerBuffer(sourceFileName(splits), new Uint8Array(readFileSync(join(__dirname, '../fixtures/splits.csv'))));
 });
 afterAll(() => engine.close());
 
-const project = (...steps: Step[]) =>
+const project = (...steps: Step[]) => projectOn(cust, ...steps);
+const projectOn = (source: Source, ...steps: Step[]) =>
   flow({
-    sources: [cust],
+    sources: [source],
     nodes: [
-      { id: 'in', type: 'source', sourceId: cust.id },
+      { id: 'in', type: 'source', sourceId: source.id },
       { id: 't', type: 'transform', steps },
     ],
     wires: [['in', 't']],
   });
 
 /** The step's output as DuckDB prints it, and its column names and types. */
-async function run(type: string, params: Record<string, unknown>) {
-  const p = project(step('s', type, params));
+async function run(type: string, params: Record<string, unknown>, source = cust) {
+  const p = projectOn(source, step('s', type, params));
   const schema = await engine.describe(compile(p, { nodeId: 't' }).sql);
   const columns = schema.map((c) => c.name);
   const rows = tableRows((await engine.query(compileDisplayPage(p, { nodeId: 't' }, columns, 0))).table);
@@ -59,6 +62,66 @@ describe('columns steps', () => {
     const r = await run('splitByPosition', { column: 'joined', positions: [4, 5, 7], into: ['year', 'dash', 'month', 'rest'], keepOriginal: true });
     expect(r.columns).toEqual(['id', 'name', 'email', 'joined', 'year', 'dash', 'month', 'rest']);
     expect(r.rows[0]).toMatchObject({ year: '2024', dash: '-', month: '01', rest: '-31' });
+  });
+
+  // Split column, with Power Query's options, against tests/fixtures/splits.csv.
+  const onSplits = (type: string, params: Record<string, unknown>) => run(type, { keepOriginal: false, ...params }, splits);
+  const col = (r: { rows: Record<string, unknown>[] }, name: string) => r.rows.map((x) => x[name]);
+
+  it('splits at each delimiter, leaving delimiters inside quotes alone when asked', async () => {
+    const plain = await onSplits('splitByDelimiter', { column: 'line', delimiterKind: 'comma', into: ['a', 'b', 'c', 'd'] });
+    expect(plain.rows[0]).toMatchObject({ a: 'one', b: '"two', c: ' three"', d: 'four' });
+    const quoted = await onSplits('splitByDelimiter', { column: 'line', delimiterKind: 'comma', quote: '"', into: ['a', 'b', 'c'] });
+    expect(quoted.columns).toEqual(['id', 'code', 'name', 'a', 'b', 'c']);
+    expect(quoted.rows[0]).toMatchObject({ a: 'one', b: 'two, three', c: 'four' });
+    expect(quoted.rows[1]).toMatchObject({ a: 'solo', b: null, c: null });
+    expect(quoted.rows[2]).toMatchObject({ a: null, b: null });
+  });
+
+  it('splits once at the left-most or right-most delimiter', async () => {
+    const left = await onSplits('splitByDelimiter', { column: 'line', delimiterKind: 'comma', quote: '"', at: 'left', into: ['first', 'rest'] });
+    expect(left.rows[0]).toMatchObject({ first: 'one', rest: '"two, three",four' });
+    expect(left.rows[1]).toMatchObject({ first: 'solo', rest: null });
+    const right = await onSplits('splitByDelimiter', { column: 'line', delimiterKind: 'custom', delimiter: ',', at: 'right', into: ['start', 'last'] });
+    expect(right.rows[0]).toMatchObject({ start: 'one,"two, three"', last: 'four' });
+  });
+
+  it('splits into rows, keeping a row for an empty value', async () => {
+    const r = await onSplits('splitByDelimiter', { column: 'line', delimiterKind: 'comma', quote: '"', to: 'rows' });
+    expect(r.columns).toEqual(['id', 'line', 'code', 'name']);
+    expect(r.rows.map((x) => [x.id, x.line])).toEqual([['1', 'one'], ['1', 'two, three'], ['1', 'four'], ['2', 'solo'], ['3', null]]);
+  });
+
+  it('splits by named delimiters such as a space', async () => {
+    const r = await onSplits('splitByDelimiter', { column: 'line', delimiterKind: 'space', into: ['a', 'b'], keepOriginal: true });
+    expect(r.rows[0]).toMatchObject({ line: 'one,"two, three",four', a: 'one,"two,', b: 'three",four' });
+  });
+
+  it('splits by number of characters: repeatedly, or once from the left or right', async () => {
+    const repeat = await onSplits('splitByCharacters', { column: 'code', count: 3, into: ['p1', 'p2', 'p3'] });
+    expect(repeat.rows.map((x) => [x.p1, x.p2, x.p3])).toEqual([['ABC', '123', 'def'], ['12a', 'b', null], ['A', null, null]]);
+    const left = await onSplits('splitByCharacters', { column: 'code', count: 2, at: 'left', into: ['head', 'tail'] });
+    expect(left.rows.map((x) => [x.head, x.tail])).toEqual([['AB', 'C123def'], ['12', 'ab'], ['A', null]]);
+    const right = await onSplits('splitByCharacters', { column: 'code', count: 3, at: 'right', into: ['head', 'tail'] });
+    expect(right.rows.map((x) => [x.head, x.tail])).toEqual([['ABC123', 'def'], ['1', '2ab'], [null, 'A']]);
+    const rows = await onSplits('splitByCharacters', { column: 'code', count: 4, to: 'rows' });
+    expect(col(rows, 'code')).toEqual(['ABC1', '23de', 'f', '12ab', 'A']);
+  });
+
+  it('splits by character transition', async () => {
+    expect(col(await onSplits('splitByTransition', { column: 'name', transition: 'lowerUpper', to: 'rows' }), 'name')).toEqual(['hello', 'World', 'Foo', 'Plain', null]);
+    const digits = await onSplits('splitByTransition', { column: 'code', transition: 'nonDigitDigit', into: ['a', 'b'] });
+    expect(digits.rows[0]).toMatchObject({ a: 'ABC', b: '123def' });
+    const nonDigits = await onSplits('splitByTransition', { column: 'code', transition: 'digitNonDigit', into: ['a', 'b'] });
+    expect(nonDigits.rows[0]).toMatchObject({ a: 'ABC123', b: 'def' });
+    expect(nonDigits.rows[1]).toMatchObject({ a: '12', b: 'ab' });
+    const upper = await onSplits('splitByTransition', { column: 'code', transition: 'upperLower', into: ['a', 'b'] });
+    expect(upper.rows[0]).toMatchObject({ a: 'ABC123def', b: null });
+  });
+
+  it('splits by position into rows', async () => {
+    const r = await onSplits('splitByPosition', { column: 'code', positions: [3, 6], to: 'rows' });
+    expect(col(r, 'code')).toEqual(['ABC', '123', 'def', '12a', 'b', '', 'A', '', '']);
   });
 
   it('merges columns, skipping empty values', async () => {

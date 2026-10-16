@@ -1,7 +1,7 @@
 // Editor forms for the Columns step group.
-import { COLUMN_TYPES } from '../compiler';
+import { COLUMN_TYPES, SPLIT_TRANSITIONS, type DelimiterKind } from '../compiler';
 import { allSelected, pickColumns } from './basic';
-import { defineStepForm, type DefaultsContext } from './forms';
+import { defineStepForm, type DefaultsContext, type FieldSpec } from './forms';
 
 /** The first selected column, else the first text column, else the first column. */
 const oneColumn = (ctx: DefaultsContext) => pickColumns(ctx)[0] ?? ctx.available[0]?.name ?? '';
@@ -44,19 +44,99 @@ defineStepForm({
   defaults: (ctx) => ({ columns: allSelected(ctx), to: 'integer', onError: 'empty' }),
 });
 
+const SPLIT_TO: FieldSpec = {
+  key: 'to',
+  label: 'Split into',
+  kind: 'select',
+  options: [
+    { value: 'columns', label: 'Columns' },
+    { value: 'rows', label: 'Rows' },
+  ],
+};
+const toColumns = (p: Record<string, unknown>) => p.to !== 'rows';
+const NEW_COLUMNS = { key: 'into', label: 'New columns', kind: 'list', of: 'text', when: toColumns } satisfies FieldSpec;
+const KEEP_ORIGINAL: FieldSpec = { key: 'keepOriginal', label: 'Keep the original column', kind: 'switch', when: toColumns };
+
+const DELIMITER_LABELS: Record<DelimiterKind, string> = {
+  comma: 'Comma',
+  semicolon: 'Semicolon',
+  colon: 'Colon',
+  equals: 'Equals sign',
+  space: 'Space',
+  tab: 'Tab',
+  newline: 'Line break',
+  custom: 'Custom',
+};
+
+/** How many parts the first row's value splits into, so the new columns match the data (at least two). */
+function partsInFirstRow(column: string, delimiter: string, ctx: DefaultsContext): number {
+  const value = ctx.firstRow?.[column];
+  return Math.max(2, value ? value.split(delimiter).length : 2);
+}
+
 defineStepForm({
   type: 'splitByDelimiter',
   title: 'Split by delimiter',
   group: 'Columns',
+  needsFirstRow: true,
   fields: [
     { key: 'column', label: 'Column', kind: 'column' },
-    { key: 'delimiter', label: 'Delimiter', kind: 'text', mono: true, placeholder: ',' },
-    { key: 'into', label: 'New columns', kind: 'list', of: 'text', hint: 'Names for the parts, separated by commas.' },
-    { key: 'keepOriginal', label: 'Keep the original column', kind: 'switch' },
+    { key: 'delimiterKind', label: 'Delimiter', kind: 'select', options: Object.entries(DELIMITER_LABELS).map(([value, label]) => ({ value, label })) },
+    { key: 'delimiter', label: 'Custom delimiter', kind: 'text', mono: true, placeholder: ',', when: (p) => p.delimiterKind === 'custom' },
+    {
+      key: 'at',
+      label: 'Split at',
+      kind: 'select',
+      options: [
+        { value: 'each', label: 'Each occurrence of the delimiter' },
+        { value: 'left', label: 'Left-most delimiter' },
+        { value: 'right', label: 'Right-most delimiter' },
+      ],
+    },
+    SPLIT_TO,
+    {
+      key: 'quote',
+      label: 'Quote character',
+      kind: 'select',
+      hint: 'Delimiters inside quotes don’t split.',
+      options: [
+        { value: '"', label: 'Double quote (")' },
+        { value: '', label: 'None' },
+      ],
+    },
+    { ...NEW_COLUMNS, hint: 'One name per column. Parts beyond these are dropped.' },
+    KEEP_ORIGINAL,
   ],
   defaults: (ctx) => {
     const column = oneColumn(ctx);
-    return { column, delimiter: ',', into: parts(column, 2, ctx), keepOriginal: false };
+    return { column, delimiterKind: 'comma', delimiter: '', at: 'each', to: 'columns', quote: '"', into: parts(column, partsInFirstRow(column, ',', ctx), ctx), keepOriginal: false };
+  },
+});
+
+defineStepForm({
+  type: 'splitByCharacters',
+  title: 'Split by number of characters',
+  group: 'Columns',
+  fields: [
+    { key: 'column', label: 'Column', kind: 'column' },
+    { key: 'count', label: 'Number of characters', kind: 'number', min: 1 },
+    {
+      key: 'at',
+      label: 'Split',
+      kind: 'select',
+      options: [
+        { value: 'repeat', label: 'Repeatedly' },
+        { value: 'left', label: 'Once, as far left as possible' },
+        { value: 'right', label: 'Once, as far right as possible' },
+      ],
+    },
+    SPLIT_TO,
+    { ...NEW_COLUMNS, hint: 'One name per column. Parts beyond these are dropped.' },
+    KEEP_ORIGINAL,
+  ],
+  defaults: (ctx) => {
+    const column = oneColumn(ctx);
+    return { column, count: 1, at: 'repeat', to: 'columns', into: parts(column, 2, ctx), keepOriginal: false };
   },
 });
 
@@ -67,12 +147,35 @@ defineStepForm({
   fields: [
     { key: 'column', label: 'Column', kind: 'column' },
     { key: 'positions', label: 'Split after character', kind: 'list', of: 'number', hint: 'Character counts, separated by commas.' },
-    { key: 'into', label: 'New columns', kind: 'list', of: 'text', hint: 'One more name than there are positions.' },
-    { key: 'keepOriginal', label: 'Keep the original column', kind: 'switch' },
+    SPLIT_TO,
+    { ...NEW_COLUMNS, hint: 'One more name than there are positions.' },
+    KEEP_ORIGINAL,
   ],
   defaults: (ctx) => {
     const column = oneColumn(ctx);
-    return { column, positions: [1], into: parts(column, 2, ctx), keepOriginal: false };
+    return { column, positions: [1], to: 'columns', into: parts(column, 2, ctx), keepOriginal: false };
+  },
+});
+
+defineStepForm({
+  type: 'splitByTransition',
+  title: 'Split by character transition',
+  group: 'Columns',
+  fields: [
+    { key: 'column', label: 'Column', kind: 'column' },
+    {
+      key: 'transition',
+      label: 'Split from',
+      kind: 'select',
+      options: Object.entries(SPLIT_TRANSITIONS).map(([value, t]) => ({ value, label: t.label.charAt(0).toUpperCase() + t.label.slice(1) })),
+    },
+    SPLIT_TO,
+    { ...NEW_COLUMNS, hint: 'One name per column. Parts beyond these are dropped.' },
+    KEEP_ORIGINAL,
+  ],
+  defaults: (ctx) => {
+    const column = oneColumn(ctx);
+    return { column, transition: 'lowerUpper', to: 'columns', into: parts(column, 2, ctx), keepOriginal: false };
   },
 });
 
