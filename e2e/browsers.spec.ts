@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { addFiles, expectRows, fixture, node, openApp } from './helpers/app';
+import { addFiles, expectRows, fixture, node, openApp, saved } from './helpers/app';
 
 // Firefox and Safari can't keep access to files between visits (no showOpenFilePicker). openApp removes the
 // picker, so in every browser these tests run as Firefox and Safari always do.
@@ -10,6 +10,8 @@ test('without file handles, a reopened project says plainly to choose its files 
   await expect(node(page, 'customers.csv')).toHaveAttribute('data-status', 'ok', { timeout: 20_000 });
   // Nothing to choose again yet.
   await expect(page.getByTestId('files-not-kept-banner')).toHaveCount(0);
+  // Autosave runs a moment after the change; reopen once it has.
+  await expect.poll(async () => (await saved(page))?.nodes.length).toBe(1);
 
   await page.reload();
   await expect(page.getByTestId('engine-ready')).toBeVisible({ timeout: 45_000 });
@@ -33,6 +35,7 @@ test('the note about files not being kept can be dismissed', async ({ page }) =>
   await openApp(page);
   await addFiles(page, [fixture('customers.csv'), fixture('orders.tsv')]);
   await expect(node(page, 'orders.tsv')).toHaveAttribute('data-status', 'ok', { timeout: 20_000 });
+  await expect.poll(async () => (await saved(page))?.nodes.length).toBe(2);
   await page.reload();
   await expect(page.getByTestId('engine-ready')).toBeVisible({ timeout: 45_000 });
   const banner = page.getByTestId('files-not-kept-banner');

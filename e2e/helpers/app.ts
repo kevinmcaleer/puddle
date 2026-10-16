@@ -43,3 +43,56 @@ export async function columnsOf(page: Page, nodeName: string): Promise<string[]>
 
 /** A visible results cell by data column and row (both from 0), as Glide mirrors it for screen readers. */
 export const cell = (page: Page, col: number, row: number) => page.getByTestId(`glide-cell-${col + 1}-${row}`);
+
+/** The open project as IndexedDB holds it right now (autosave runs a moment after each change). */
+export const saved = (page: Page) =>
+  page.evaluate(
+    () =>
+      new Promise<{ name: string; nodes: unknown[]; view: { canvasViewport: { zoom: number } }; settings: { locale: string } } | null>((resolve) => {
+        const id = localStorage.getItem('puddle.lastProject');
+        const req = indexedDB.open('puddle');
+        req.onsuccess = () => {
+          const db = req.result;
+          if (!id || !db.objectStoreNames.contains('projects')) return resolve(null);
+          const get = db.transaction('projects').objectStore('projects').get(id);
+          get.onsuccess = () => resolve(get.result ?? null);
+          get.onerror = () => resolve(null);
+        };
+        req.onerror = () => resolve(null);
+      }),
+  );
+
+/**
+ * Fit the canvas to its nodes and wait until `name` sits wholly inside it and has stopped moving. A node added below
+ * the visible canvas can't be clicked where it is: Playwright scrolls the canvas to reach it, React Flow scrolls it
+ * straight back, and in Firefox the click then lands on the pane. A person would bring it into view first, too.
+ */
+export async function bringIntoView(page: Page, name: string) {
+  await page.getByRole('button', { name: 'Fit View' }).click();
+  let last = '';
+  await expect(async () => {
+    const canvas = (await page.getByTestId('canvas').boundingBox())!;
+    const box = (await node(page, name).boundingBox())!;
+    expect(box.y).toBeGreaterThanOrEqual(canvas.y);
+    expect(box.y + box.height).toBeLessThanOrEqual(canvas.y + canvas.height);
+    expect(box.x).toBeGreaterThanOrEqual(canvas.x);
+    expect(box.x + box.width).toBeLessThanOrEqual(canvas.x + canvas.width);
+    const now = JSON.stringify(box);
+    const before = last;
+    last = now;
+    expect(now).toBe(before);
+  }).toPass({ intervals: [150] });
+}
+
+/**
+ * Paste text onto the page as the system clipboard would. Firefox's ClipboardEvent constructor ignores the
+ * `clipboardData` it is given, so the event carries it as its own property, which every browser honours.
+ */
+export const pasteText = (page: Page, text: string) =>
+  page.evaluate((t) => {
+    const data = new DataTransfer();
+    data.setData('text/plain', t);
+    const event = new ClipboardEvent('paste', { clipboardData: data, bubbles: true });
+    Object.defineProperty(event, 'clipboardData', { value: data });
+    window.dispatchEvent(event);
+  }, text);

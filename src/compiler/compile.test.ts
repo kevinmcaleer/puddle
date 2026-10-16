@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { flow, src, step } from '../../tests/helpers/projects';
 import type { ParseOptions, Source } from '../model';
 import { rulePredicate } from './rules';
@@ -320,12 +321,31 @@ describe('column step settings', () => {
     expect(regexProblem('(abc')).toBe('close every ( with a )');
     expect(regexProblem('[abc')).toBe('close every [ with a ]');
     expect(regexProblem('*a')).toMatch(/put something before/);
+    expect(regexProblem('a)')).toBe('close every ( with a )');
+    expect(regexProblem('a\\')).toBe('escape a trailing \\ as \\\\');
+    expect(regexProblem('[(]')).toBeUndefined();
     expect(regexProblem('a(?=b)')).toMatch(/look-aheads/);
     expect(regexProblem('(a)\\1')).toMatch(/back-references/);
     expect(invalid('findReplace', { columns: ['name'], find: '(', regex: true })).toThrow(/close every \(/);
     expect(invalid('findReplace', { columns: ['name'], find: '(', regex: false })).not.toThrow();
     expect(invalid('extractText', { column: 'name', mode: 'regex', pattern: '[', into: 'x' })).toThrow(/close every \[/);
     expect(invalid('padText', { columns: ['id'], length: 3, character: '00' })).toThrow(/one character/);
+  });
+
+  // Regression: the advice was read from V8's error messages, so Firefox and Safari got "fix the pattern (…)".
+  it('gives the same advice whatever words the browser uses for a broken pattern', () => {
+    const messages = ['unterminated parenthetical', 'unterminated character class', 'nothing to repeat', '\\ at end of pattern'];
+    const advice = ['(abc', '[abc', '*a', 'a\\'].map((pattern, i) => {
+      vi.stubGlobal('RegExp', function FirefoxRegExp() {
+        throw new SyntaxError(messages[i]);
+      });
+      try {
+        return regexProblem(pattern);
+      } finally {
+        vi.unstubAllGlobals();
+      }
+    });
+    expect(advice).toEqual(['close every ( with a )', 'close every [ with a ]', expect.stringMatching(/put something before/), 'escape a trailing \\ as \\\\']);
   });
 
   it('detects date formats on a sample of non-empty values, one constant format per SELECT', () => {

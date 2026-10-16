@@ -8,6 +8,26 @@ const Columns = z.array(z.string().min(1)).min(1, 'pick at least one column');
 const Name = z.string().trim().min(1, 'give the new column a name');
 const names = (cols: string[]) => cols.join(', ');
 
+/** An unclosed ( or [, a stray ), or a trailing \ in a pattern, said as how to fix it; undefined if there is none. */
+function unclosedIn(pattern: string): string | undefined {
+  let depth = 0;
+  let inClass = false;
+  for (let i = 0; i < pattern.length; i++) {
+    const c = pattern[i];
+    if (c === '\\') {
+      if (i === pattern.length - 1) return 'escape a trailing \\ as \\\\';
+      i++;
+    } else if (inClass) {
+      if (c === ']') inClass = false;
+    } else if (c === '[') inClass = true;
+    else if (c === '(') depth++;
+    else if (c === ')' && --depth < 0) return 'close every ( with a )';
+  }
+  if (inClass) return 'close every [ with a ]';
+  if (depth > 0) return 'close every ( with a )';
+  return undefined;
+}
+
 /**
  * Why a pattern won't work in DuckDB (RE2), in words that say how to fix it, or undefined if it's fine.
  * JavaScript's parser catches syntax errors; RE2 also refuses look-arounds and back-references.
@@ -16,11 +36,11 @@ export function regexProblem(pattern: string): string | undefined {
   try {
     new RegExp(pattern);
   } catch (e) {
+    // Each browser words its errors differently, so the common mistakes are found by reading the pattern.
+    const unclosed = unclosedIn(pattern);
+    if (unclosed) return unclosed;
     const why = (e as Error).message.replace(/^Invalid regular expression: \/.*\/u?: /, '');
-    if (/unterminated group|unmatched/i.test(why)) return 'close every ( with a )';
-    if (/unterminated character class/i.test(why)) return 'close every [ with a ]';
     if (/nothing to repeat/i.test(why)) return 'put something before * + ? or {, or escape it with \\';
-    if (/\\ at end/i.test(why)) return 'escape a trailing \\ as \\\\';
     return `fix the pattern (${why.charAt(0).toLowerCase() + why.slice(1)})`;
   }
   if (/\(\?<?[=!]/.test(pattern)) return 'look-aheads and look-behinds are not supported; match the text and use a group instead';

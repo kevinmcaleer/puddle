@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { addFiles, cell, columnsOf, expectRows, fixture, fixtureText, node, openApp } from './helpers/app';
+import { addFiles, cell, columnsOf, expectRows, fixture, fixtureText, node, openApp, pasteText } from './helpers/app';
 
 test('a CSV added from the file chooser becomes a source node and fills the results table', async ({ page }) => {
   await openApp(page);
@@ -37,11 +37,7 @@ test('a file dropped on the canvas is added where it lands', async ({ page }) =>
 test('pasting rows onto the canvas adds a clipboard source', async ({ page }) => {
   await openApp(page);
   await page.getByTestId('canvas').click();
-  await page.evaluate(() => {
-    const data = new DataTransfer();
-    data.setData('text/plain', 'sku\tqty\nA1\t3\nB2\t5\n');
-    window.dispatchEvent(new ClipboardEvent('paste', { clipboardData: data }));
-  });
+  await pasteText(page, 'sku\tqty\nA1\t3\nB2\t5\n');
   await expect(node(page, 'Pasted data')).toHaveAttribute('data-status', 'ok');
   await expectRows(page, 2);
   expect(await columnsOf(page, 'Pasted data')).toEqual(['sku', 'qty']);

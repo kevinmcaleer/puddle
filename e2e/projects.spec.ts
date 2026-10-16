@@ -1,23 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { addFiles, cell, expectRows, fixture, node, openApp } from './helpers/app';
-
-/** The open project as IndexedDB holds it right now (autosave runs a moment after each change). */
-const saved = (page: Page) =>
-  page.evaluate(
-    () =>
-      new Promise<{ name: string; nodes: unknown[]; view: { canvasViewport: { zoom: number } }; settings: { locale: string } } | null>((resolve) => {
-        const id = localStorage.getItem('puddle.lastProject');
-        const req = indexedDB.open('puddle');
-        req.onsuccess = () => {
-          const db = req.result;
-          if (!id || !db.objectStoreNames.contains('projects')) return resolve(null);
-          const get = db.transaction('projects').objectStore('projects').get(id);
-          get.onsuccess = () => resolve(get.result ?? null);
-          get.onerror = () => resolve(null);
-        };
-        req.onerror = () => resolve(null);
-      }),
-  );
+import { addFiles, cell, expectRows, fixture, node, openApp, pasteText, saved } from './helpers/app';
 
 const projectMenu = async (page: Page, item: string) => {
   await page.getByTestId('project-menu').click();
@@ -69,11 +51,7 @@ test('choosing a different file than the project was built on warns', async ({ p
 
 test('pasted data is stored in the project and comes back connected', async ({ page }) => {
   await openApp(page);
-  await page.evaluate(() => {
-    const data = new DataTransfer();
-    data.setData('text/plain', 'sku\tqty\nA1\t3\nB2\t5\n');
-    window.dispatchEvent(new ClipboardEvent('paste', { clipboardData: data }));
-  });
+  await pasteText(page, 'sku\tqty\nA1\t3\nB2\t5\n');
   await expect(node(page, 'Pasted data')).toHaveAttribute('data-status', 'ok');
   await expect.poll(async () => (await saved(page))?.nodes.length).toBe(1);
   await page.reload();
