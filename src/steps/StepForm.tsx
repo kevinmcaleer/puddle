@@ -1,11 +1,11 @@
 import type { ColumnSchema } from '../model';
-import { Banner, Button, columnKind, cx, Field, Select, Switch, TypeTag } from '../ui';
+import { Banner, Button, columnKind, cx, Field, Select, Switch, TypeTag, type ColumnKind } from '../ui';
 import { FILTER_OPS } from '../compiler';
 import type { Detection } from '../dates';
 import { CommitInput } from './CommitInput';
 import { DateFormatsInput } from './DateFormatsInput';
 import { ExpressionInput } from './ExpressionInput';
-import { fieldErrors, stepForm, type FieldSpec } from './forms';
+import { fieldErrors, stepForm, textColumnsProblem, type ExpectedKind, type FieldSpec } from './forms';
 
 type Params = Record<string, unknown>;
 
@@ -167,6 +167,31 @@ function FieldInput({ field, value, params, columns, error, detectDates, onChang
   }
 }
 
+const EXPECTED: Record<ExpectedKind, { tags: ColumnKind[]; text: string; title: string }> = {
+  date: { tags: ['date', 'timestamp'], text: 'Date or date and time columns', title: 'Needs dates' },
+  number: { tags: ['integer', 'decimal'], text: 'Number columns', title: 'Needs numbers' },
+};
+
+/** The type a date or number field takes, and what to do when it's given text. */
+function ExpectedType({ expects, problem }: { expects: ExpectedKind; problem?: string }) {
+  const e = EXPECTED[expects];
+  return (
+    <>
+      <span className="flex items-center gap-1 text-ink-muted" data-testid="expected-type">
+        {e.tags.map((t) => (
+          <TypeTag key={t} type={t} />
+        ))}
+        {e.text}
+      </span>
+      {problem && (
+        <Banner tone="warn" title={e.title}>
+          {problem}
+        </Banner>
+      )}
+    </>
+  );
+}
+
 /** A form built from a field list, with field errors shown before anything runs. Steps and rules share it. */
 export function FormFields({
   fields,
@@ -191,8 +216,9 @@ export function FormFields({
         f.kind === 'switch' ? (
           <FieldInput key={f.key} field={f} value={params[f.key]} params={params} columns={columns} onChange={(v) => onChange({ ...params, [f.key]: v })} />
         ) : (
-          <Field key={f.key} label={f.label} htmlFor={`step-${f.key}`} hint={f.hint} error={f.kind === 'sql' ? undefined : errors[f.key]}>
+          <Field key={f.key} label={f.label} htmlFor={`step-${f.key}`} hint={f.liveHint?.(params) ?? f.hint} error={f.kind === 'sql' ? undefined : errors[f.key]}>
             <FieldInput field={f} value={params[f.key]} params={params} columns={columns} error={errors[f.key]} detectDates={detectDates} onChange={(v) => onChange({ ...params, [f.key]: v })} />
+            {f.expects && <ExpectedType expects={f.expects} problem={textColumnsProblem(f, params[f.key], columns)} />}
             {/* A refused query gets a banner: the reason can be long, and nothing runs until it's fixed. */}
             {f.kind === 'sql' && errors[f.key] && (
               <Banner tone="fail" title="This query can’t run as a step">

@@ -5,6 +5,7 @@ import { join } from 'node:path';
 import { TokenType } from '@duckdb/duckdb-wasm/blocking';
 import { compile, CompileError, compileDisplayPage, customSqlErrorLine, customSqlProblem, lexSql, sourceFileName } from '../../src/compiler';
 import { EngineClient, tableRows } from '../../src/engine/client';
+import { schemaCacheFor } from '../../src/flow/status';
 import { toEngineError } from '../../src/engine/errors';
 import type { Step } from '../../src/model';
 import { ACCEPTED, REFUSED } from '../helpers/customSqlCorpus';
@@ -102,6 +103,39 @@ describe('a custom SQL step sees only its input', () => {
     for (const q of [...direct, 'SELECT * FROM n_c', 'WITH n_c AS (SELECT * FROM n_c) SELECT * FROM n_c', "SELECT * FROM query('SELECT * FROM n_c')"]) {
       expect(() => compile(project(sql(q)), { nodeId: 't' }), q).toThrow(CompileError);
     }
+    expect(sent.length).toBe(before);
+  });
+
+  it('after a join, it reads the join’s output but not the CTEs of the join or of either branch', async () => {
+    const joined = (leftQuery: string, afterQuery: string) =>
+      flow({
+        sources: [orders, customers],
+        nodes: [
+          { id: 'o', type: 'source', sourceId: orders.id },
+          { id: 'c', type: 'source', sourceId: customers.id },
+          { id: 'lo', type: 'transform', steps: [sql(leftQuery)] },
+          { id: 'rc', type: 'transform', steps: [step('s', 'sortRows', { keys: [{ column: 'id', descending: false }] })] },
+          { id: 'j', type: 'join', joinSpec: { kind: 'inner', keys: [{ left: 'customer_id', right: 'id' }] } },
+          { id: 't', type: 'transform', steps: [sql(afterQuery, 1)] },
+        ],
+        wires: [['o', 'lo'], ['c', 'rc'], ['lo', 'j', 'left'], ['rc', 'j', 'right'], ['j', 't']],
+      });
+    const good = joined('SELECT * FROM input', 'SELECT count(*) AS n FROM input');
+    // Reading the join's input columns fills the schema book that compiling a join needs.
+    const schema = await schemaCacheFor(engine).get(good, { nodeId: 't' });
+    const compiled = compile(good, { nodeId: 't' }).sql;
+    // The names a query might try are really in the WITH chain it runs inside.
+    for (const cte of ['"n_o"', '"n_c"', '"n_lo_s0"', '"n_rc_s0"', '"n_j"']) expect(compiled).toContain(`${cte} AS (`);
+    expect(tableRows((await engine.query(compileDisplayPage(good, { nodeId: 't' }, schema.map((c) => c.name), 0))).table)[0]).toEqual({ n: '3' });
+
+    const refused = /there’s no table .* for this step to read/;
+    const before = sent.length;
+    for (const name of ['n_j', 'n_o', 'n_c', 'n_lo_s0', 'n_rc_s0', '"n_j"', 'l', 'r']) {
+      const q = `SELECT * FROM ${name}`;
+      expect(() => compile(joined('SELECT * FROM input', q), { nodeId: 't' }), q).toThrow(refused);
+      expect(() => compile(joined(q, 'SELECT * FROM input'), { nodeId: 't' }), q).toThrow(refused);
+    }
+    expect(() => compile(joined('SELECT * FROM input, n_c', 'SELECT * FROM input'), { nodeId: 'j' })).toThrow(refused);
     expect(sent.length).toBe(before);
   });
 

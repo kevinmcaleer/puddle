@@ -4,6 +4,8 @@ describe('toEngineError', () => {
   it.each([
     ['Parser Error: syntax error at or near "SELEC"\n\nLINE 1: SELEC 1', 'syntax', /couldn't be read: syntax error at or near "SELEC"/],
     ['Binder Error: Referenced column "order_dt" not found in FROM clause!', 'missing', /Column order_dt doesn't exist at this point in the flow/],
+    ["Binder Error: No function matches the given name and argument types 'year(VARCHAR)'. You might need to add explicit type casts.", 'missing', /text where dates or numbers are needed. Add a Parse dates or Parse numbers step/],
+    ["Binder Error: No function matches the given name and argument types 'round(VARCHAR, INTEGER_LITERAL)'.", 'missing', /Parse numbers/],
     ['Catalog Error: Table with name src_x does not exist!', 'missing', /src_x isn't loaded/],
     ['Conversion Error: Could not convert string \'abc\' to INT32', 'conversion', /couldn't be converted/],
     ['IO Error: No files found that match the pattern "x.csv"', 'io', /file couldn't be read/],

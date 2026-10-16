@@ -15,6 +15,22 @@ export {
 } from './columns';
 export { duplicateRows, FILTER_OPS, fillRows, filterRows, headerNames, promoteHeaders, removeBlankRows, removeRows, sortRows, type FilterOp } from './rows';
 export { escapeRegex, extractText, findReplace, padText, regexProblem, textLength } from './text';
-export { hasTime, parseDates } from './dates';
+export {
+  DATE_PARTS,
+  dateDifference,
+  extractDatePart,
+  formatDates,
+  hasTime,
+  INTERVAL_UNITS,
+  parseDates,
+  partColumn,
+  shiftDates,
+  TRUNCATE_TO,
+  truncateDates,
+  type DatePart,
+  type IntervalUnit,
+  type TruncateTo,
+} from './dates';
+export { absoluteValue, bucketLabels, bucketNumbers, convertExpr, convertUnits, decimalsOf, roundNumbers, standardise, UNITS, type Unit } from './numbers';
 export { collapseSpaces, emptyToNull, parseNumbers, removeNonPrinting } from './clean';
 export { CUSTOM_SQL_OPENER, customSql, customSqlErrorLine } from './advanced';
