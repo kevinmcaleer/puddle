@@ -49,6 +49,17 @@ function referenceEdges(project: ReturnType<typeof useProject>): RefFlowEdge[] {
   return [...byPair.values()];
 }
 
+/** Which nodes a dashed reference starts from and ends at, so only those get its hidden handles. */
+function referenceEnds(project: ReturnType<typeof useProject>) {
+  const from = new Set<string>();
+  const to = new Set<string>();
+  for (const e of referenceEdges(project)) {
+    from.add(e.source);
+    to.add(e.target);
+  }
+  return { from, to };
+}
+
 function detailFor(node: GraphNode, sources: ReturnType<typeof useProject>['sources'], edges: ReturnType<typeof useProject>['edges']): string | undefined {
   // A Join shows its type under its name.
   if (node.type === 'join') return `Join · ${JOIN_TYPES[node.joinSpec.kind].label}`;
@@ -115,16 +126,17 @@ export function Canvas({ onAddSource }: { onAddSource: () => void }) {
   const viewedId = project.view.viewedNodeId;
   const activeIds = useMemo(() => (viewedId && project.nodes.some((n) => n.id === viewedId) ? upstreamIds(project, viewedId) : new Set<string>()), [project, viewedId]);
 
-  const nodes: PuddleFlowNode[] = useMemo(
-    () =>
-      project.nodes.map((n) => ({
-        id: n.id,
-        type: 'puddle',
-        position: dragging[n.id] ?? n.position,
-        selected: selectedNodeIds.includes(n.id),
-        data: { node: n, viewed: n.id === viewedId, detail: detailFor(n, project.sources, project.edges) },
-      })),
-    [project.nodes, project.sources, project.edges, dragging, selectedNodeIds, viewedId],
+  const nodes: PuddleFlowNode[] = useMemo(() => {
+    const ends = referenceEnds(project);
+    return project.nodes.map((n) => ({
+      id: n.id,
+      type: 'puddle',
+      position: dragging[n.id] ?? n.position,
+      selected: selectedNodeIds.includes(n.id),
+      data: { node: n, viewed: n.id === viewedId, detail: detailFor(n, project.sources, project.edges), refIn: ends.to.has(n.id), refOut: ends.from.has(n.id) },
+    }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- references are read from project.nodes
+  }, [project.nodes, project.sources, project.edges, dragging, selectedNodeIds, viewedId],
   );
 
   const edges: PuddleEdge[] = useMemo(

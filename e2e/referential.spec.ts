@@ -25,6 +25,8 @@ async function shop(page: Page) {
 
 test('a referential rule reads another node, draws a dashed reference, and shows an error when that node breaks', async ({ page }) => {
   await shop(page);
+  // Only nodes a reference is drawn between get its hidden ends, so wire ports stay the only handles elsewhere.
+  await expect(page.locator('.puddle-ref-handle')).toHaveCount(0);
   await addRule(page, 'Exists in another node');
   await expect(settings(page).getByText('Pick a node first.')).toBeVisible();
   await settings(page).getByRole('button', { name: 'customer_id', exact: true }).click();
@@ -41,6 +43,9 @@ test('a referential rule reads another node, draws a dashed reference, and shows
   const ref = page.getByTestId('ref-Transform 1->shop-orders.csv');
   await expect(ref).toBeAttached();
   await expect(ref).toHaveClass(/ui-wire--ref/);
+  await expect(node(page, 'Transform 1').locator('.puddle-ref-handle.source')).toHaveCount(1);
+  await expect(node(page, 'shop-orders.csv').locator('.puddle-ref-handle.target')).toHaveCount(1);
+  await expect(node(page, 'shop-customers.csv').locator('.puddle-ref-handle')).toHaveCount(0);
 
   await row.getByRole('button', { name: 'Show failing rows' }).click();
   await expectRows(page, 1);
