@@ -33,7 +33,15 @@ export const SourceZ = z.object({
       fsHandleRef: z.string().optional(),
     })
     .optional(),
-  url: z.object({ href: z.string(), headers: z.record(z.string(), z.string()).optional() }).optional(),
+  url: z
+    .object({
+      href: z.string(),
+      headers: z.record(z.string(), z.string()).optional(),
+      /** Hash of the first 1 MB when last fetched, to notice when the file at the address has changed. */
+      headHash: z.string().optional(),
+      size: z.number().nonnegative().optional(),
+    })
+    .optional(),
   clipboard: z.object({ text: z.string() }).optional(),
   format: SourceFormatZ,
   parseOptions: ParseOptionsZ.default({}),

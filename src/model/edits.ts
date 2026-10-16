@@ -70,7 +70,7 @@ export function removeNodes(project: Project, ids: string[]): Project {
   };
 }
 
-export function updateSource(project: Project, sourceId: string, patch: Partial<Pick<Source, 'parseOptions' | 'detectedSchema' | 'name' | 'file'>>): Project {
+export function updateSource(project: Project, sourceId: string, patch: Partial<Pick<Source, 'parseOptions' | 'detectedSchema' | 'name' | 'file' | 'url'>>): Project {
   return { ...project, sources: project.sources.map((s) => (s.id === sourceId ? { ...s, ...patch } : s)) };
 }
 

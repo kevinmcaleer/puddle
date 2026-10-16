@@ -36,7 +36,7 @@ A Docker image (nginx serving the static build) behind a Cloudflare Tunnel at pu
 | `src/engine/` | DuckDB-WASM in a Web Worker and the typed `EngineClient` (priorities, cancellation, plain-word errors) |
 | `src/model/` | The project graph: Zod schemas, wiring rules, step edits, grouping, undo and redo |
 | `src/compiler/` | The pure graph-to-SQL compiler (steps, and joins over two inputs), step registry, schema cache and the schema book joins read their inputs’ columns from |
-| `src/sources/` | Adding sources: format detection, file handles, clipboard text, and choosing files again on reopen |
+| `src/sources/` | Adding sources: format detection, file handles, clipboard text, web addresses (fetched again on reopen), and choosing files again on reopen |
 | `src/persistence/` | IndexedDB autosave, `.puddle.json` export and import, format migrations |
 | `src/home/` | The projects home screen and the rename and delete dialogs |
 | `src/canvas/` | The node canvas on React Flow: nodes, wires, auto layout |
@@ -48,6 +48,7 @@ A Docker image (nginx serving the static build) behind a Cloudflare Tunnel at pu
 | `src/pwa/` | The service worker (precached app, engine and extensions for offline use), its precache list and the web app manifest |
 | `src/export/` | Exports from Output nodes: the quality gate, `COPY ... TO` into DuckDB's in-memory file system, download or clipboard, and the export log |
 | `src/inspector/` | The right-hand panel: source read options, applied steps, step settings and node notes |
+| `src/notes/` | The project notes panel: Markdown written and previewed, rendered with raw HTML off and links in a new tab |
 | `src/results/` | The results table on Glide Data Grid: paging, headers with type and quality |
 | `tests/` | Engine integration tests, fixtures and helpers |
 | `e2e/` | Playwright tests |

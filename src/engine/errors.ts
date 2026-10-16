@@ -43,6 +43,9 @@ export function toEngineError(e: unknown): EngineError {
   if (/^(Binder|Catalog) Error/i.test(line)) {
     const col = /column "?([^"\s]+)"? not found/i.exec(raw) ?? /Referenced column "?([^"\s]+)"?/i.exec(raw);
     if (col) return new EngineError('missing', `Column ${col[1]} doesn't exist at this point in the flow. Pick a column that exists upstream.`, raw);
+    // A date or number function given text: say which step reads it, not DuckDB's candidate list.
+    if (/No function matches the given name and argument types '[^']*\(.*VARCHAR/i.test(raw))
+      return new EngineError('missing', 'A column used here is text where dates or numbers are needed. Add a Parse dates or Parse numbers step before this one.', raw);
     const table = /Table with name ([^\s]+) does not exist/i.exec(raw);
     if (table) return new EngineError('missing', `${table[1]} isn't loaded. Re-select the file for this source.`, raw);
     return new EngineError('missing', `${body}.`, raw);

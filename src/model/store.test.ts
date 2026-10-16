@@ -13,6 +13,32 @@ describe('project store', () => {
     expect(useProjectStore.getState().history.present.name).toBe('Renamed');
   });
 
+  it('makes a session of in-place edits one undo step', () => {
+    const before = useProjectStore.getState().history.present;
+    const past = useProjectStore.getState().history.past.length;
+    for (const notes of ['#', '# P', '# Plan']) useProjectStore.getState().amend((p) => ({ ...p, notes }));
+    useProjectStore.getState().checkpoint(before);
+    const { history } = useProjectStore.getState();
+    expect(history.past.length).toBe(past + 1);
+    expect(history.present.notes).toBe('# Plan');
+    expect(history.present.updatedAt >= before.updatedAt).toBe(true);
+    useProjectStore.getState().undo();
+    expect(useProjectStore.getState().history.present).toBe(before);
+    useProjectStore.getState().redo();
+    expect(useProjectStore.getState().history.present.notes).toBe('# Plan');
+    const again = useProjectStore.getState().history;
+    useProjectStore.getState().checkpoint(again.present);
+    expect(useProjectStore.getState().history).toBe(again);
+  });
+
+  it('ignores a session that began in another project', () => {
+    const other = useProjectStore.getState().history.present;
+    useProjectStore.getState().load({ ...other, id: 'another-project', notes: 'theirs' });
+    const history = useProjectStore.getState().history;
+    useProjectStore.getState().checkpoint(other);
+    expect(useProjectStore.getState().history).toBe(history);
+  });
+
   it('records no step when an edit changes nothing', () => {
     const s = useProjectStore.getState();
     const past = s.history.past.length;

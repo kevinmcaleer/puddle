@@ -1,8 +1,9 @@
 import { autoLayout } from '../canvas/layout';
 import { suggestJoinKey } from '../compiler';
 import { useFlowStore } from '../flow/status';
-import { addNode, nodeById, setJoinSpec, useProjectStore, type AddableNodeType, type ColumnSchema, type Source } from '../model';
+import { addNode, nodeById, setJoinSpec, useProjectStore, type AddableNodeType, type ColumnSchema, type Source, type SourceFormat } from '../model';
 import { addClipboardSource, addFileSource } from '../sources/add';
+import { addUrlSource } from '../sources/url';
 import { useSession } from './session';
 
 const report = (e: unknown) => useSession.getState().notify({ tone: 'fail', text: e instanceof Error ? e.message : String(e) });
@@ -39,6 +40,11 @@ export async function addPastedText(text: string) {
   } catch (e) {
     report(e);
   }
+}
+
+/** Add a source from a web address, below the existing sources. Throws, in plain words, when it can't be read. */
+export async function addUrl(address: string, format?: SourceFormat) {
+  selectSource(await addUrlSource(address, { format, position: nextSourcePosition() }));
 }
 
 /** Read the clipboard (asks for permission the first time) and add it as a source. */

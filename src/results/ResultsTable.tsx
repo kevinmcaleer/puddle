@@ -14,6 +14,7 @@ import { HEADER_HEIGHT, headerColors, makeDrawHeader } from './header';
 import { PageLoader, type Row } from './pages';
 import { detachedMessage } from '../sources/attach';
 import { ReattachButton } from '../sources/ReattachButton';
+import { UrlProblemBanner } from '../sources/UrlPanel';
 import { parseProfile, parseTypeSniff, qualityOf, type ColumnProfile } from './profile';
 import { useResultsStore } from './state';
 
@@ -205,6 +206,12 @@ export function ResultsTable({ project }: { project: Project }) {
   if (status.state === 'detached') {
     const node = project.nodes.find((n) => n.id === nodeId);
     const source = node?.type === 'source' ? project.sources.find((x) => x.id === node.sourceId) : undefined;
+    if (source?.kind === 'url')
+      return (
+        <div className="p-4" data-testid="results-url">
+          <UrlProblemBanner source={source} />
+        </div>
+      );
     return (
       <div className="p-4" data-testid="results-detached">
         <Banner tone="warn" title="This file isn’t connected" action={source && <ReattachButton source={source} />}>

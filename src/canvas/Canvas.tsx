@@ -18,6 +18,7 @@ import { useFlowStore } from '../flow/status';
 import { JOIN_TYPES } from '../compiler';
 import { canConnect, canGroup, connect, freePort, groupNodes, hasOutput, inputPorts, moveNodes, newId, parsePort, removeNodes, samePort, setCollapsed, upstreamIds, useProject, useProjectStore, type GraphNode } from '../model';
 import { Banner, Button } from '../ui';
+import { hostOf } from '../sources/url';
 import { formatLabel } from './formatLabel';
 import { portBroken } from './ports';
 import { PuddleNode, type PuddleFlowNode } from './PuddleNode';
@@ -33,6 +34,7 @@ function detailFor(node: GraphNode, sources: ReturnType<typeof useProject>['sour
   if (node.type !== 'source') return undefined;
   const s = sources.find((x) => x.id === node.sourceId);
   if (!s) return 'Source';
+  if (s.kind === 'url' && s.url) return `${hostOf(s.url.href)} · ${formatLabel(s.format)}`;
   return s.kind === 'clipboard' ? `Source · Pasted ${formatLabel(s.format)}` : `Source · ${formatLabel(s.format)}`;
 }
 
