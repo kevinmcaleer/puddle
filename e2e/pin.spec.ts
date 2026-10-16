@@ -148,6 +148,15 @@ function wide(rows = 400, cols = 14) {
   return { name: 'wide.csv', mimeType: 'text/csv', buffer: Buffer.from([header.join(','), ...lines].join('\n')) };
 }
 
+/**
+ * Scroll with the wheel in notches of at most 300px. Firefox scrolls a single wheel event by at most a page of the
+ * grid, so one big event moves it only a few rows there; the same distance in notches scrolls alike everywhere.
+ */
+async function wheel(page: Page, dx: number, dy: number) {
+  const steps = Math.ceil(Math.max(Math.abs(dx), Math.abs(dy)) / 300);
+  for (let i = 0; i < steps; i++) await page.mouse.wheel(dx / steps, dy / steps);
+}
+
 test('compared grids scroll together, by row and by matching column', async ({ page }) => {
   await openApp(page);
   await addFiles(page, [wide()]);
@@ -173,22 +182,22 @@ test('compared grids scroll together, by row and by matching column', async ({ p
   // Scroll the left grid down: the right one follows to the same row.
   const box = (await main.boundingBox())!;
   await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
-  await page.mouse.wheel(0, 1500);
+  await wheel(page, 0, 1500);
   await expect.poll(async () => Number(await main.getAttribute('data-first-row'))).toBeGreaterThan(10);
   await together('data-first-row').toMatch(/^[1-9]\d*$/);
   const down = Number(await main.getAttribute('data-first-row'));
 
   // Scroll it sideways: the right one shows the same column at its left edge.
-  await page.mouse.wheel(600, 0);
+  await wheel(page, 600, 0);
   await expect.poll(async () => (await main.getAttribute('data-first-column')) ?? '').toMatch(/^column_/);
   await together('data-first-column').toMatch(/^column_/);
 
   // And the other way round, straight after the right grid followed the left one. Regression: a scroll that came
   // soon after following was taken for the follow's echo and never reached the other grid.
   const right = (await other.boundingBox())!;
-  await page.mouse.wheel(0, 120);
+  await wheel(page, 0, 120);
   await page.mouse.move(right.x + right.width / 2, right.y + right.height / 2);
-  await page.mouse.wheel(0, -900);
+  await wheel(page, 0, -900);
   await expect.poll(async () => Number(await other.getAttribute('data-first-row'))).toBeLessThan(down);
   await together('data-first-row').toMatch(/^\d+$/);
   expect(Number(await main.getAttribute('data-first-row'))).toBeLessThan(down);
