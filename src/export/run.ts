@@ -88,7 +88,7 @@ export async function runExport(
     format: spec.format,
     fileName: spec.format === 'clipboard' ? 'Clipboard' : fileName,
     rows,
-    ...(gate.state === 'blocked' ? { overridden: gate.blocking.map((b) => ({ nodeName: b.nodeName, rule: b.label })) } : {}),
+    ...(gate.state === 'blocked' ? { overridden: gate.blocking.map((b) => ({ nodeName: b.nodeName, rule: b.label, nodeId: b.nodeId, ruleId: b.ruleId })) } : {}),
   };
 }
 

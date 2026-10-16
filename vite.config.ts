@@ -80,5 +80,7 @@ export default defineConfig({
     include: ['src/**/*.test.{ts,tsx}', 'tests/**/*.test.{ts,tsx}'],
     setupFiles: ['./tests/setup.ts'],
     testTimeout: 30_000,
+    // The quality report inlines the design system's CSS (?raw); without this, tests would see it empty.
+    css: { include: [/src\/design-system\/.*\.css/] },
   },
 });
