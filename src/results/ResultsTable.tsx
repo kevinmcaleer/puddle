@@ -211,7 +211,9 @@ function Grid({ engine, project, target, columns, pane = 'main', sync, other, on
         leading.current = false;
         const next = follow(to, names, at.current.x);
         if (next.row === at.current.y && next.col === at.current.x) return;
-        editor.current?.scrollTo(next.col, next.row, next.horizontal ? 'both' : 'vertical', 0, 0, { hAlign: 'start', vAlign: 'start' });
+        // Aim a pixel into the cell: the grid scrolls by a distance measured on screen, and a browser that rounds it
+        // down (WebKit) would otherwise stop a fraction short and show the row or column before.
+        editor.current?.scrollTo(next.col, next.row, next.horizontal ? 'both' : 'vertical', -1, -1, { hAlign: 'start', vAlign: 'start' });
       }),
     [sync, pane, names],
   );

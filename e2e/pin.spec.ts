@@ -157,7 +157,8 @@ async function wheel(page: Page, dx: number, dy: number) {
   for (let i = 0; i < steps; i++) await page.mouse.wheel(dx / steps, dy / steps);
 }
 
-test('compared grids scroll together, by row and by matching column', async ({ page }) => {
+/** wide.csv and a Transform after it, compared side by side: the two grids, and a check that they show the same spot. */
+async function compareWide(page: Page) {
   await openApp(page);
   await addFiles(page, [wide()]);
   await expect(node(page, 'wide.csv')).toHaveAttribute('data-status', 'ok');
@@ -178,6 +179,11 @@ test('compared grids scroll together, by row and by matching column', async ({ p
   // Where each grid is scrolled to, once both have settled on the same spot.
   const spot = async (attr: string) => [await main.getAttribute(attr), await other.getAttribute(attr)];
   const together = (attr: string) => expect.poll(async () => { const [a, b] = await spot(attr); return a === b ? a : `${a} vs ${b}`; }, { timeout: 10_000 });
+  return { main, other, together };
+}
+
+test('compared grids scroll together, by row and by matching column', async ({ page }) => {
+  const { main, other, together } = await compareWide(page);
 
   // Scroll the left grid down: the right one follows to the same row.
   const box = (await main.boundingBox())!;
@@ -210,4 +216,30 @@ test('compared grids scroll together, by row and by matching column', async ({ p
   await expect.poll(async () => Number(await other.getAttribute('data-first-row'))).toBeLessThan(down);
   await together('data-first-row').toMatch(/^\d+$/);
   expect(Number(await main.getAttribute('data-first-row'))).toBeLessThan(down);
+});
+
+test('a grid that follows lands on the same row and column when the browser rounds where it scrolls to', async ({ page }) => {
+  // Regression (WebKit): the following grid is scrolled to the other's spot by a distance measured on screen, which
+  // can come out a fraction of a pixel short. It then showed the row above ("53 vs 52"). Here every scroll the app
+  // makes lands 0.6px short, as a browser rounding that distance down would.
+  await page.addInitScript(() => {
+    const scrollTo = Element.prototype.scrollTo;
+    Element.prototype.scrollTo = function (this: Element, ...args: unknown[]) {
+      const to = args[0];
+      if (this.classList.contains('dvn-scroller') && to && typeof to === 'object') {
+        const { left, top, ...rest } = to as ScrollToOptions;
+        return Reflect.apply(scrollTo, this, [{ ...rest, left: left == null ? left : left - 0.6, top: top == null ? top : top - 0.6 }]);
+      }
+      return Reflect.apply(scrollTo, this, args);
+    } as typeof Element.prototype.scrollTo;
+  });
+  const { main, together } = await compareWide(page);
+  const box = (await main.boundingBox())!;
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await wheel(page, 0, 1500);
+  await expect.poll(async () => Number(await main.getAttribute('data-first-row'))).toBeGreaterThan(10);
+  await together('data-first-row').toMatch(/^[1-9]\d*$/);
+  await wheel(page, 600, 0);
+  await expect.poll(async () => (await main.getAttribute('data-first-column')) ?? '').toMatch(/^column_/);
+  await together('data-first-column').toMatch(/^column_/);
 });
