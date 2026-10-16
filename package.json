@@ -34,6 +34,7 @@
     "markdown-it": "15.0.2",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
+    "xlsx": "file:vendor/xlsx-0.20.3.tgz",
     "zod": "^4.6.7",
     "zustand": "^5.0.15"
   },

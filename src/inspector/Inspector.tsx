@@ -17,6 +17,8 @@ import { useAttachments } from '../sources/attachments';
 import { DetachedMessage } from '../sources/ReconnectBanner';
 import { ReattachButton } from '../sources/ReattachButton';
 import { UrlPanel } from '../sources/UrlPanel';
+import { isExcelSource } from '../sources/excel';
+import { ExcelPanel } from '../sources/ExcelPanel';
 import { DELIMITERS, delimiterValue, ENCODINGS, hasParseOptions, LOCALES, parseNullStrings, withOption } from './options';
 
 function SourceOptions({ source }: { source: Source }) {
@@ -199,6 +201,7 @@ export function Inspector() {
       </div>
       {source && source.kind === 'file' && <AttachmentBanner source={source} />}
       {source && source.kind === 'url' && <UrlPanel source={source} />}
+      {source && isExcelSource(source) && <ExcelPanel source={source} />}
       {source && hasParseOptions(source) && <SourceOptions source={source} />}
       {node.type === 'output' && <OutputPanel node={node} />}
       {node.type === 'source' && <KeepPanel key={node.id} node={node} />}
