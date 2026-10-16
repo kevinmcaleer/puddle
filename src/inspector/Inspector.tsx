@@ -4,6 +4,7 @@ import { formatLabel } from '../canvas/formatLabel';
 import { nodeById, setParseOptions, useProject, useProjectStore, type ParseOptions, type ProjectSettings as ProjectSettingsT, type Source } from '../model';
 import { Banner, columnKind, Field, Icon, NODE_KIND, Section, Select, Switch, TypeTag } from '../ui';
 import { CommitInput } from '../steps/StepForm';
+import { JoinPanel } from './JoinPanel';
 import { NodeNotes } from './NodeNotes';
 import { OutputPanel } from './OutputPanel';
 import { RulesPanel } from './RulesPanel';
@@ -11,6 +12,7 @@ import { TransformPanel } from './TransformPanel';
 import { useAttachments } from '../sources/attachments';
 import { detachedMessage } from '../sources/attach';
 import { ReattachButton } from '../sources/ReattachButton';
+import { UrlPanel } from '../sources/UrlPanel';
 import { DELIMITERS, delimiterValue, ENCODINGS, hasParseOptions, LOCALES, parseNullStrings, withOption } from './options';
 
 function SourceOptions({ source }: { source: Source }) {
@@ -138,6 +140,16 @@ export function Inspector() {
       </>
     );
 
+  if (node.type === 'join')
+    return (
+      <>
+        <JoinPanel node={node} />
+        <Columns nodeId={node.id} />
+        <RulesPanel node={node} />
+        <NodeNotes node={node} />
+      </>
+    );
+
   const kind = NODE_KIND[node.type];
   const source = node.type === 'source' ? project.sources.find((s) => s.id === node.sourceId) : undefined;
   return (
@@ -150,6 +162,7 @@ export function Inspector() {
         </div>
       </div>
       {source && source.kind === 'file' && <AttachmentBanner source={source} />}
+      {source && source.kind === 'url' && <UrlPanel source={source} />}
       {source && hasParseOptions(source) && <SourceOptions source={source} />}
       {node.type === 'output' && <OutputPanel node={node} />}
       <Columns nodeId={node.id} />

@@ -14,6 +14,7 @@ import { createNodeBackend } from '../helpers/nodeBackend';
 import { flow, src } from '../helpers/projects';
 
 const cust = src({ id: 'cust', format: 'csv' });
+const cust2 = src({ id: 'cust2', format: 'csv' });
 // Row 3 has no email: a sample of the first two rows passes, the full data fails.
 const emailRule: Rule = { id: 'email', type: 'notEmpty', label: 'email is never empty', enabled: true, severity: 'fail', params: { column: 'email' } };
 
@@ -26,7 +27,7 @@ beforeAll(async () => {
       beforeQuery: (sql) => (sql.includes('/* slow */') ? new Promise<void>((r) => (release = r)) : Promise.resolve()),
     }),
   );
-  await engine.registerBuffer(sourceFileName(cust), new Uint8Array(readFileSync(join(__dirname, '../fixtures', 'customers.csv'))));
+  for (const s of [cust, cust2]) await engine.registerBuffer(sourceFileName(s), new Uint8Array(readFileSync(join(__dirname, '../fixtures', 'customers.csv'))));
 });
 afterAll(() => engine.close());
 beforeEach(() => {
@@ -79,6 +80,30 @@ describe('sample mode', () => {
     const delivered: number[] = [];
     const deliver: Delivery = async (blob) => void delivered.push(blob.size);
     const entry = await runExport(engine, applySample(p, sample), 'out', { gate, override: true, deliver });
+    expect(entry.rows).toBe(4);
+  });
+});
+
+describe('sample mode with a Join', () => {
+  it('exports every joined row even though the flow only described the sample', async () => {
+    const base = flow({
+      sources: [cust, cust2],
+      nodes: [
+        { id: 'a', type: 'source', sourceId: cust.id },
+        { id: 'b', type: 'source', sourceId: cust2.id },
+        { id: 'j', type: 'join', joinSpec: { kind: 'inner', keys: [{ left: 'id', right: 'id' }] } },
+        { id: 'out', type: 'output' },
+      ],
+      wires: [['a', 'j', 'left'], ['b', 'j', 'right'], ['j', 'out']],
+    });
+    const p = { ...base, settings: { ...base.settings, sampleThresholdRows: 2 } };
+    await countSources(engine, p);
+    const sample = currentSample(p);
+    expect(sample?.sources).toEqual({ cust: 4, cust2: 4 });
+    await evaluateFlow(engine, applySample(p, sample));
+    expect(useFlowStore.getState().nodes.out?.status.state).toBe('ok');
+    const gate = await exportGateFor(engine, p, 'out', sample);
+    const entry = await runExport(engine, p, 'out', { gate, deliver: async () => undefined });
     expect(entry.rows).toBe(4);
   });
 });

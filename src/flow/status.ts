@@ -1,13 +1,14 @@
 import { create } from 'zustand';
-import { compile, CompileError, compileCount, SchemaCache, upstreamKey } from '../compiler';
-import { tableRows, toEngineError, type EngineClient } from '../engine';
-import { inputEdges, topoSort, type ColumnSchema, type Project } from '../model';
+import { compile, CompileError, compileCount, SchemaCache, UnwiredError, upstreamKey } from '../compiler';
+import { EngineError, tableRows, toEngineError, type EngineClient } from '../engine';
+import { inputEdges, topoSort, type ColumnSchema, type Port, type Project } from '../model';
 
 /**
  * What the canvas knows about each node's output:
  * - ok: it compiles and DuckDB can describe it (rows arrive later from a background count);
  * - unwired: it has no input yet, which isn't an error;
- * - error: this node is where the flow breaks (bad step, missing column, unreadable file);
+ * - error: this node is where the flow breaks (bad step, missing column, unreadable file); `ports` names the
+ *   inputs whose wires carry the cause, when it's one input of several (a join key missing on one side);
  * - blocked: something upstream is broken, so this node dims;
  * - detached: a source whose file needs choosing again after the project was reopened.
  */
@@ -16,7 +17,7 @@ export type NodeStatus =
   | { state: 'detached' }
   | { state: 'ok'; columns: ColumnSchema[]; rows?: number }
   | { state: 'unwired' }
-  | { state: 'error'; message: string; /** Stop was pressed before it finished; Run again retries. */ stopped?: boolean }
+  | { state: 'error'; message: string; ports?: Port[]; /** Stop was pressed before it finished; Run again retries. */ stopped?: boolean }
   | { state: 'blocked' };
 
 interface Entry {
@@ -103,10 +104,19 @@ export async function evaluateFlow(engine: EngineClient, project: Project, isDet
       continue;
     }
     try {
-      compile(project, { nodeId: id });
+      // A Join compiles from its inputs' columns: describe them first (usually already cached).
+      await cache.prepare(project, { nodeId: id });
+      if (gen !== generation) return;
+      compile(project, { nodeId: id }, { schemas: cache.book });
     } catch (e) {
-      const unwired = e instanceof CompileError && /has no input/.test(e.message);
-      next[id] = { key, status: unwired ? { state: 'unwired' } : { state: 'error', message: (e as Error).message } };
+      if (gen !== generation) return;
+      const ports = e instanceof CompileError ? e.ports : undefined;
+      // Describing a Join's inputs can be stopped too.
+      const stopped = e instanceof EngineError && e.code === 'stopped';
+      next[id] = {
+        key,
+        status: e instanceof UnwiredError ? { state: 'unwired' } : { state: 'error', message: (e as Error).message, ...(ports ? { ports } : {}), ...(stopped ? { stopped: true } : {}) },
+      };
       continue;
     }
     try {

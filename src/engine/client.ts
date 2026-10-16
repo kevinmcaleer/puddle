@@ -117,6 +117,10 @@ export class EngineClient {
     await this.wrap(() => this.backend.registerBuffer(name, new TextEncoder().encode(text)));
   }
 
+  async registerUrl(name: string, url: string): Promise<void> {
+    await this.wrap(() => this.backend.registerUrl(name, url));
+  }
+
   async registerBuffer(name: string, data: Uint8Array): Promise<void> {
     await this.wrap(() => this.backend.registerBuffer(name, data));
   }

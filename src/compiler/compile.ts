@@ -1,5 +1,7 @@
-import { hashValue, inputEdges, nodeById, topoSort, upstreamIds, type GraphNode, type Project, type Rule } from '../model';
-import { CompileError } from './errors';
+import { hashValue, inputEdge, inputEdges, inputPorts, nodeById, topoSort, upstreamIds, type ColumnSchema, type GraphNode, type JoinNode, type Project, type Rule } from '../model';
+import { CompileError, PendingSchemaError, UnwiredError } from './errors';
+import { compileJoin, joinCondition, joinProblems } from './join';
+import { knownSchemas, type SchemaBook } from './schemaBook';
 import { sourceRelation } from './sources';
 import { cteName, ident, num, str } from './sql';
 import { rulePredicate } from './rules';
@@ -24,19 +26,50 @@ export interface Compiled {
   nodeIds: string[];
 }
 
-function inputCte(project: Project, node: GraphNode, out: Map<string, string>): string {
-  const [edge] = inputEdges(project, node.id);
-  if (!edge) throw new CompileError(`${node.name} has no input. Connect a wire into it.`, node.id);
-  const cte = out.get(edge.from.nodeId);
-  if (!cte) throw new CompileError(`${node.name} is connected to a node that no longer exists.`, node.id);
-  return cte;
+export interface CompileOptions {
+  /** Where a Join reads its inputs' columns. The app's shared book by default. */
+  schemas?: SchemaBook;
 }
 
-/**
- * Compile the flow upstream of a node into one WITH chain: one CTE per source, one per enabled step,
- * and a final SELECT of the target. Pure: the same project and target always give the same SQL.
- */
-export function compile(project: Project, target: Target): Compiled {
+/** The CTE behind each input of a node, by port, in port order. Throws UnwiredError for an empty input. */
+function inputCtes(project: Project, node: GraphNode, out: Map<string, string>): Map<string, string> {
+  const ports = inputPorts(project, node);
+  const ctes = new Map<string, string>();
+  for (const port of ports) {
+    const edge = inputEdge(project, node.id, port.id);
+    if (!edge) {
+      const input = ports.length === 1 ? 'input' : `${port.label.toLowerCase()} input`;
+      throw new UnwiredError(`${node.name} has no ${input}. Connect a wire into it.`, node.id, port.id);
+    }
+    const cte = out.get(edge.from.nodeId);
+    if (!cte) throw new CompileError(`${node.name} is connected to a node that no longer exists.`, node.id);
+    ctes.set(String(port.id), cte);
+  }
+  return ctes;
+}
+
+const inputCte = (project: Project, node: GraphNode, out: Map<string, string>) => [...inputCtes(project, node, out).values()][0]!;
+
+/** The columns arriving at each input of a Join, from the book; throws while either is still unknown. */
+function joinInputColumns(project: Project, node: JoinNode, book: SchemaBook): { left: ColumnSchema[]; right: ColumnSchema[] } {
+  const read = (port: 'left' | 'right') => {
+    const edge = inputEdge(project, node.id, port)!;
+    const columns = book.get(upstreamKey(project, { nodeId: edge.from.nodeId }));
+    if (!columns) throw new PendingSchemaError(`${node.name} is still reading the columns of its ${port} input.`, node.id);
+    return columns;
+  };
+  return { left: read('left'), right: read('right') };
+}
+
+interface Built {
+  node: GraphNode;
+  ctes: string[];
+  /** The CTE holding each compiled node's output. */
+  out: Map<string, string>;
+  order: string[];
+}
+
+function build(project: Project, target: Target, book: SchemaBook): Built {
   const node = nodeById(project, target.nodeId);
   if (!node) throw new CompileError('That node no longer exists.', target.nodeId);
   const order = topoSort(project, upstreamIds(project, target.nodeId));
@@ -69,12 +102,34 @@ export function compile(project: Project, target: Target): Compiled {
         out.set(n.id, cur);
         break;
       }
+      case 'join': {
+        const inputs = inputCtes(project, n, out);
+        const fail = (p: ReturnType<typeof joinProblems>[number] | undefined) => {
+          if (p) throw new CompileError(p.message, n.id, undefined, p.side ? [p.side] : undefined);
+        };
+        fail(joinProblems(n.joinSpec)[0]);
+        const { left, right } = joinInputColumns(project, n, book);
+        fail(joinProblems(n.joinSpec, left, right)[0]);
+        const name = cteName(n.id);
+        ctes.push(`${name} AS (${compileJoin(n.joinSpec, { left: inputs.get('left')!, right: inputs.get('right')! }, left, right)})`);
+        out.set(n.id, name);
+        break;
+      }
       case 'output':
         out.set(n.id, inputCte(project, n, out));
         break;
     }
   }
+  return { node, ctes, out, order };
+}
 
+/**
+ * Compile the flow upstream of a node into one WITH chain: one CTE per source, one per enabled step, one per
+ * join over its two inputs' CTEs, and a final SELECT of the target. Pure: the same project, target and known
+ * input schemas always give the same SQL.
+ */
+export function compile(project: Project, target: Target, options: CompileOptions = {}): Compiled {
+  const { node, ctes, out, order } = build(project, target, options.schemas ?? knownSchemas);
   let output = out.get(target.nodeId)!;
   if (target.failingRuleId) {
     const rule = node.rules.find((r) => r.id === target.failingRuleId);
@@ -128,8 +183,9 @@ export function compileCount(project: Project, target: Target): string {
 }
 
 /**
- * A key that changes exactly when the target's output could change: node types, wiring, steps up to the
- * target step, and source formats, options and file identity. Names, notes and positions are ignored.
+ * A key that changes exactly when the target's output could change: node types, wiring (which input each wire
+ * goes into), steps up to the target step, join settings, and source formats, options and file identity, on
+ * every branch upstream. Names, notes and positions are ignored.
  */
 export function upstreamKey(project: Project, target: Target): string {
   const ids = upstreamIds(project, target.nodeId);
@@ -139,12 +195,13 @@ export function upstreamKey(project: Project, target: Target): string {
       const inputs = inputEdges(project, n.id).map((e) => [e.from.nodeId, e.to.port]);
       if (n.type === 'source') {
         const s = project.sources.find((x) => x.id === n.sourceId);
-        return { id: n.id, type: n.type, inputs, source: s && { id: s.id, format: s.format, parseOptions: s.parseOptions, file: s.file?.headHash, size: s.file?.size, clip: s.clipboard?.text, sample: s.sampleRows } };
+        return { id: n.id, type: n.type, inputs, source: s && { id: s.id, format: s.format, parseOptions: s.parseOptions, file: s.file?.headHash, size: s.file?.size, clip: s.clipboard?.text, url: s.url && [s.url.href, s.url.headHash], sample: s.sampleRows } };
       }
       if (n.type === 'transform') {
         const steps = n.id === target.nodeId && target.stepIndex != null ? n.steps.slice(0, target.stepIndex + 1) : n.steps;
         return { id: n.id, type: n.type, inputs, steps: steps.map((s) => ({ type: s.type, enabled: s.enabled, params: s.params })) };
       }
+      if (n.type === 'join') return { id: n.id, type: n.type, inputs, join: n.joinSpec };
       return { id: n.id, type: n.type, inputs };
     })
     .sort((a, b) => (a.id < b.id ? -1 : 1));
@@ -177,4 +234,28 @@ export function compileRules(project: Project, nodeId: string, rules: Rule[]): s
   const flags = rules.map((r, i) => `(${rulePredicate(r)}) AS ${ident(`r${i}`)}`);
   const counts = rules.map((_, i) => `count(*) FILTER (WHERE NOT coalesce(${ident(`r${i}`)}, false)) AS ${ident(`f${i}`)}`);
   return `SELECT count(*) AS total, ${counts.join(', ')} FROM (SELECT ${flags.join(', ')} FROM (${sql}))`;
+}
+
+/**
+ * Whether a Join multiplies rows, in one row: `left_rows` and `right_rows` in its inputs, `rows` out of it,
+ * `pairs` of matching left and right rows, and how many left (`matched_left`) and right (`matched_right`)
+ * rows have a match. More pairs than matched left rows means some left row matched several right rows.
+ */
+export function compileJoinCheck(project: Project, nodeId: string, options: CompileOptions = {}): string {
+  const { node, ctes, out } = build(project, { nodeId }, options.schemas ?? knownSchemas);
+  if (node.type !== 'join') throw new CompileError(`${node.name} isn’t a Join node.`, node.id);
+  const input = (port: 'left' | 'right') => out.get(inputEdge(project, nodeId, port)!.from.nodeId)!;
+  const [l, r, j] = [input('left'), input('right'), out.get(nodeId)!];
+  const L = ident('l');
+  const R = ident('r');
+  const on = joinCondition(node.joinSpec, L, R);
+  const parts = [
+    `(SELECT count(*) FROM ${l}) AS left_rows`,
+    `(SELECT count(*) FROM ${r}) AS right_rows`,
+    `(SELECT count(*) FROM ${j}) AS "rows"`,
+    `(SELECT count(*) FROM ${l} AS ${L} INNER JOIN ${r} AS ${R} ON ${on}) AS pairs`,
+    `(SELECT count(*) FROM ${l} AS ${L} SEMI JOIN ${r} AS ${R} ON ${on}) AS matched_left`,
+    `(SELECT count(*) FROM ${r} AS ${R} SEMI JOIN ${l} AS ${L} ON ${on}) AS matched_right`,
+  ];
+  return `WITH ${ctes.join(',\n  ')}\nSELECT ${parts.join(', ')}`;
 }

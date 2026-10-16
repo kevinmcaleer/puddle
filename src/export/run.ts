@@ -7,7 +7,7 @@ import { isStopped, tableRows, toEngineError, type EngineClient } from '../engin
 import { describeBlock, exportGate, type Gate } from '../flow/gate';
 import { useRuleStore, type RuleResult } from '../flow/rules';
 import { currentSample, sampledUpstream, type Sample } from '../flow/sample';
-import { useFlowStore } from '../flow/status';
+import { schemaCacheFor, useFlowStore } from '../flow/status';
 import { logExport, newId, nodeById, topoSort, upstreamIds, useProjectStore, type ExportLogEntry, type Project } from '../model';
 import { copyText, saveBlob } from './deliver';
 
@@ -58,12 +58,21 @@ export async function runExport(
 }
 
 /**
+ * In sample mode the flow only described the sampled copy, so a Join upstream doesn't know its inputs' columns on
+ * the full data yet. Describe them (cheap: DESCRIBE doesn't read rows) before compiling the full-data queries.
+ */
+async function prepareFullData(engine: EngineClient, project: Project, nodeId: string) {
+  await schemaCacheFor(engine).prepare(project, { nodeId });
+}
+
+/**
  * The quality gate an export goes through. Rule results on screen come from the sample in sample mode, and a
  * sample passing says nothing about the rest, so the upstream rules are checked again on the full data first.
  */
 export async function exportGateFor(engine: EngineClient, project: Project, nodeId: string, sample: Sample | null): Promise<Gate> {
   const stored = useRuleStore.getState().nodes;
   if (!sampledUpstream(project, nodeId, sample).length) return exportGate(project, nodeId, stored);
+  await prepareFullData(engine, project, nodeId);
   const results: Record<string, { results: Record<string, RuleResult> }> = {};
   for (const id of topoSort(project, upstreamIds(project, nodeId))) {
     const rules = nodeById(project, id)?.rules.filter((r) => r.enabled && r.severity === 'fail') ?? [];
@@ -111,6 +120,7 @@ async function exportOne(nodeId: string, override: boolean): Promise<Omit<Export
   const node = nodeById(project, nodeId);
   busy(nodeId, true);
   try {
+    await prepareFullData(engine, project, nodeId);
     const gate = await exportGateFor(engine, project, nodeId, currentSample(project));
     if (gate.state === 'blocked' && !override && sampledUpstream(project, nodeId, currentSample(project)).length)
       throw new Error(`Export blocked on the full data. ${gate.blocking.map(describeBlock).join(' ')} Run on full data to see the failing rows, or to export anyway.`);

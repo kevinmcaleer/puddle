@@ -17,6 +17,8 @@ import { exportAll, ExportBlockedBanner, ExportButton } from '../export';
 import { ResultsTable } from '../results/ResultsTable';
 import { useResultsStore } from '../results/state';
 import { ACCEPT } from '../sources/detect';
+import { UrlDialog } from '../sources/UrlDialog';
+import { openUrlDialog } from '../sources/urlDialog';
 import { Button, Menu, ResultsBar, StatusBadge, StatusStrip, Toolbar, type NodeKind } from '../ui';
 import { ActivityControl } from './ActivityControl';
 import { addFiles, addNodeAfterSelection, addPastedText, layoutFlow, pasteFromClipboard } from './actions';
@@ -154,6 +156,7 @@ export function AppShell() {
             button={{ variant: 'primary', icon: 'plus' }}
             items={[
               { label: 'Choose files', icon: 'source', hint: 'CSV, TSV, JSON, Parquet', onSelect: chooseFiles },
+              { label: 'From URL', icon: 'link', hint: 'https address', onSelect: () => openUrlDialog() },
               { label: 'Paste from clipboard', icon: 'paste', onSelect: () => void pasteFromClipboard() },
             ]}
           />
@@ -162,6 +165,7 @@ export function AppShell() {
             button={{ icon: 'transform' }}
             items={[
               { label: 'Transform', icon: 'transform', onSelect: () => addNodeAfterSelection('transform') },
+              { label: 'Join', icon: 'join', hint: 'Two inputs', onSelect: () => addNodeAfterSelection('join') },
               { label: 'Output', icon: 'output', onSelect: () => addNodeAfterSelection('output') },
             ]}
           />
@@ -238,6 +242,7 @@ export function AppShell() {
 
         <Strip />
       </div>
+      <UrlDialog onChooseFile={chooseFiles} />
     </ReactFlowProvider>
   );
 }

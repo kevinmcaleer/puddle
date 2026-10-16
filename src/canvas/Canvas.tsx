@@ -6,17 +6,21 @@ import {
   ReactFlow,
   useReactFlow,
   type Connection,
+  type EdgeChange,
   type NodeChange,
   type OnMove,
 } from '@xyflow/react';
 import '@xyflow/react/dist/base.css';
 import { useCallback, useMemo, useState, type DragEvent } from 'react';
-import { addFiles } from '../app/actions';
+import { addFiles, addNodeAfterSelection } from '../app/actions';
 import { useSession } from '../app/session';
 import { useFlowStore } from '../flow/status';
-import { canConnect, canGroup, connect, groupNodes, moveNodes, newId, removeNodes, setCollapsed, upstreamIds, useProject, useProjectStore, type GraphNode } from '../model';
+import { JOIN_TYPES } from '../compiler';
+import { canConnect, canGroup, connect, freePort, groupNodes, hasOutput, inputPorts, moveNodes, newId, parsePort, removeNodes, samePort, setCollapsed, upstreamIds, useProject, useProjectStore, type GraphNode } from '../model';
 import { Banner, Button } from '../ui';
+import { hostOf } from '../sources/url';
 import { formatLabel } from './formatLabel';
+import { portBroken } from './ports';
 import { PuddleNode, type PuddleFlowNode } from './PuddleNode';
 import { WireEdge, type WireFlowEdge } from './WireEdge';
 import './canvas.css';
@@ -25,16 +29,20 @@ const nodeTypes = { puddle: PuddleNode };
 const edgeTypes = { wire: WireEdge };
 
 function detailFor(node: GraphNode, sources: ReturnType<typeof useProject>['sources']): string | undefined {
+  // A Join shows its type under its name.
+  if (node.type === 'join') return `Join · ${JOIN_TYPES[node.joinSpec.kind].label}`;
   if (node.type !== 'source') return undefined;
   const s = sources.find((x) => x.id === node.sourceId);
   if (!s) return 'Source';
+  if (s.kind === 'url' && s.url) return `${hostOf(s.url.href)} · ${formatLabel(s.format)}`;
   return s.kind === 'clipboard' ? `Source · Pasted ${formatLabel(s.format)}` : `Source · ${formatLabel(s.format)}`;
 }
 
-/** Shown when several nodes are selected: group them into one, or say why they can't be. */
+/** Shown when several nodes are selected: group them into one, or say why they can't be; two can be joined. */
 function GroupBar({ ids }: { ids: string[] }) {
   const project = useProject();
   const check = canGroup(project, ids);
+  const joinable = ids.length === 2 && ids.every((id) => project.nodes.some((n) => n.id === id && hasOutput(n)));
   return (
     <div className="absolute bottom-4 left-1/2 z-panel -translate-x-1/2" data-testid="group-bar">
       <div className="ui-popover flex w-auto items-center gap-3 px-3 py-2">
@@ -50,6 +58,11 @@ function GroupBar({ ids }: { ids: string[] }) {
         >
           Group into one node
         </Button>
+        {joinable && (
+          <Button size="sm" variant="secondary" icon="join" onClick={() => addNodeAfterSelection('join')}>
+            Join these two
+          </Button>
+        )}
       </div>
     </div>
   );
@@ -64,6 +77,8 @@ export function Canvas({ onAddSource }: { onAddSource: () => void }) {
   const statuses = useFlowStore((s) => s.nodes);
   const [dragging, setDragging] = useState<Record<string, { x: number; y: number }>>({});
   const [hoveredEdge, setHoveredEdge] = useState<string | null>(null);
+  // Selected wires, so Delete removes a wire on its own. Nodes' selection lives in the session.
+  const [selectedEdges, setSelectedEdges] = useState<string[]>([]);
   const [dropping, setDropping] = useState(false);
   const rf = useReactFlow();
 
@@ -85,21 +100,26 @@ export function Canvas({ onAddSource }: { onAddSource: () => void }) {
   const edges: WireFlowEdge[] = useMemo(
     () =>
       project.edges.map((e) => {
-        const to = statuses[e.to.nodeId]?.status.state;
+        const to = statuses[e.to.nodeId]?.status;
         const from = statuses[e.from.nodeId]?.status.state;
-        const broken = to === 'error' && from === 'ok';
+        // A wire turns red when the node it feeds breaks on what it carries (on this input, when the error says which).
+        const broken = !!to && portBroken(to, e.to.port) && from === 'ok';
         const active = activeIds.has(e.from.nodeId) && activeIds.has(e.to.nodeId);
         const name = (id: string) => project.nodes.find((n) => n.id === id)?.name ?? id;
+        const target = project.nodes.find((n) => n.id === e.to.nodeId);
+        const ports = target ? inputPorts(project, target) : [];
+        const port = ports.length > 1 ? ports.find((p) => samePort(p.id, e.to.port))?.label : undefined;
         return {
           id: e.id,
           type: 'wire',
           source: e.from.nodeId,
           target: e.to.nodeId,
           targetHandle: String(e.to.port),
-          data: { state: broken ? 'broken' : active ? 'active' : 'idle', fromNodeId: e.from.nodeId, hovered: hoveredEdge === e.id, label: `${name(e.from.nodeId)}->${name(e.to.nodeId)}` },
+          selected: selectedEdges.includes(e.id),
+          data: { state: broken ? 'broken' : active ? 'active' : 'idle', fromNodeId: e.from.nodeId, hovered: hoveredEdge === e.id, label: `${name(e.from.nodeId)}->${name(e.to.nodeId)}`, port },
         };
       }),
-    [project.edges, project.nodes, statuses, activeIds, hoveredEdge],
+    [project, statuses, activeIds, hoveredEdge, selectedEdges],
   );
 
   const onNodesChange = useCallback(
@@ -122,13 +142,16 @@ export function Canvas({ onAddSource }: { onAddSource: () => void }) {
 
   const onConnect = useCallback(
     (c: Connection) => {
-      const check = canConnect(useProjectStore.getState().history.present, c.source, c.target);
-      if (!check.ok) {
-        useSession.getState().notify({ tone: 'warn', text: check.reason });
+      const present = useProjectStore.getState().history.present;
+      // The input the wire was dropped on; the first free one when React Flow doesn't say.
+      const port = parsePort(c.targetHandle) ?? freePort(present, c.target);
+      const check = canConnect(present, c.source, c.target, port);
+      if (!check.ok || port == null) {
+        useSession.getState().notify({ tone: 'warn', text: check.ok ? 'That node has no free input.' : check.reason });
         return;
       }
       useSession.getState().notify(null);
-      apply((p) => connect(p, { id: newId('e'), from: { nodeId: c.source }, to: { nodeId: c.target, port: 0 } }));
+      apply((p) => connect(p, { id: newId('e'), from: { nodeId: c.source }, to: { nodeId: c.target, port } }));
     },
     [apply],
   );
@@ -162,6 +185,12 @@ export function Canvas({ onAddSource }: { onAddSource: () => void }) {
         edgeTypes={edgeTypes}
         defaultViewport={project.view.canvasViewport}
         onNodesChange={onNodesChange}
+        onEdgesChange={(changes: EdgeChange<WireFlowEdge>[]) => {
+          const select = changes.flatMap((c) => (c.type === 'select' ? [c] : []));
+          if (select.length) setSelectedEdges((ids) => [...ids.filter((id) => !select.some((c) => c.id === id)), ...select.filter((c) => c.selected).map((c) => c.id)]);
+        }}
+        // Selecting a wire leaves the nodes, so Delete only takes the wire.
+        onEdgeClick={() => useSession.getState().select(null)}
         onConnect={onConnect}
         onMoveEnd={onMoveEnd}
         onNodeClick={(e, n) => {
@@ -171,10 +200,11 @@ export function Canvas({ onAddSource }: { onAddSource: () => void }) {
         }}
         onNodeDoubleClick={(_e, n) => n.data.node.type === 'transform' && apply((p) => setCollapsed(p, n.id, n.data.node.collapsed !== false))}
         onPaneClick={() => useSession.getState().select(null)}
-        onDelete={({ nodes: delNodes, edges: delEdges }) =>
+        onDelete={({ nodes: delNodes, edges: delEdges }) => {
           // One undo step for the whole deletion, nodes and wires together.
-          apply((p) => removeNodes({ ...p, edges: p.edges.filter((e) => !delEdges.some((d) => d.id === e.id)) }, delNodes.map((n) => n.id)))
-        }
+          apply((p) => removeNodes({ ...p, edges: p.edges.filter((e) => !delEdges.some((d) => d.id === e.id)) }, delNodes.map((n) => n.id)));
+          setSelectedEdges([]);
+        }}
         onEdgeMouseEnter={(_e, edge) => setHoveredEdge(edge.id)}
         onEdgeMouseLeave={() => setHoveredEdge(null)}
         deleteKeyCode={['Delete', 'Backspace']}

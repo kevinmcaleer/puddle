@@ -2,7 +2,7 @@ import { flow, src, step } from '../../tests/helpers/projects';
 import type { ParseOptions, Source } from '../model';
 import { rulePredicate } from './rules';
 import { compile, compileCount, compileDateDetection, compileRules, compileDisplayPage, compilePreview, compileProfile, compileTypeSniff, upstreamKey } from './compile';
-import { CompileError } from './errors';
+import { CompileError, UnwiredError } from './errors';
 import { SchemaCache } from './schemaCache';
 import { ident, setExtensionRepository, str } from './sql';
 import { sourceRelation } from './sources';
@@ -139,6 +139,26 @@ describe('step snapshots', () => {
     ['parseNumbers', { columns: ['id'], decimal: '.' }],
     ['parseNumbers', { columns: ['id'], decimal: ',' }],
     ['parseDates', { columns: ['joined'], formats: ['%Y-%m-%d %H:%M:%S', "%d %b '%y"], onError: 'fail' }],
+    ['extractDatePart', { columns: ['joined'], part: 'year', replace: false }],
+    ['extractDatePart', { columns: ['joined', 'id'], part: 'weekdayName', replace: true }],
+    ['shiftDates', { columns: ['joined'], direction: 'add', by: 'fixed', amount: 2, unit: 'quarters', keepTime: false }],
+    ['shiftDates', { columns: ['joined'], direction: 'subtract', by: 'column', amountColumn: 'id', unit: 'seconds', keepTime: true }],
+    ['dateDifference', { start: 'joined', end: 'left on', unit: 'weeks', into: 'tenure' }],
+    ['truncateDates', { columns: ['joined'], to: 'quarter' }],
+    ['formatDates', { columns: ['joined'], format: "%d %b '%y" }],
+    ['roundNumbers', { columns: ['id'], mode: 'places', places: 0 }],
+    ['roundNumbers', { columns: ['id'], mode: 'places', places: 2 }],
+    ['roundNumbers', { columns: ['id'], mode: 'up', places: 1 }],
+    ['roundNumbers', { columns: ['id'], mode: 'down', places: 0 }],
+    ['roundNumbers', { columns: ['id'], mode: 'nearest', places: 0, nearest: 0.05 }],
+    ['absoluteValue', { columns: ['id'] }],
+    ['bucketNumbers', { column: 'id', mode: 'width', width: 10, start: 0, edges: [], into: 'band' }],
+    ['bucketNumbers', { column: 'id', mode: 'width', width: 0.5, start: -1, edges: [], into: 'band' }],
+    ['bucketNumbers', { column: 'id', mode: 'edges', edges: [18, 65], into: "o'clock" }],
+    ['standardise', { columns: ['id'], method: 'zscore' }],
+    ['standardise', { columns: ['id'], method: 'minmax' }],
+    ['convertUnits', { columns: ['id'], from: 'mi', to: 'km' }],
+    ['convertUnits', { columns: ['id'], from: 'f', to: 'c' }],
   ])('%s %j', (type, params) => {
     expect(compile(cleanFlow([step('s', type, params)]), { nodeId: 'clean' }).sql).toMatchSnapshot();
   });
@@ -147,7 +167,9 @@ describe('step snapshots', () => {
 describe('errors', () => {
   it('names the node that has no input', () => {
     const p = flow({ nodes: [{ id: 't', type: 'transform' }] });
-    expect(() => compile(p, { nodeId: 't' })).toThrow(new CompileError('t has no input. Connect a wire into it.', 't'));
+    // An empty input is its own kind of CompileError, so the canvas can call the node unwired rather than broken.
+    expect(() => compile(p, { nodeId: 't' })).toThrow(new UnwiredError('t has no input. Connect a wire into it.', 't', 0));
+    expect(() => compile(p, { nodeId: 't' })).toThrow(CompileError);
   });
 
   it('rejects unknown step types and bad params with the step named', () => {
@@ -198,6 +220,14 @@ describe('upstreamKey', () => {
     expect(upstreamKey(cleanFlow([step('s1', 'trimWhitespace', { columns: ['email'] })]), { nodeId: 'clean' })).not.toBe(key);
     expect(upstreamKey({ ...p, sources: [src({ id: 'cust', format: 'csv', parseOptions: { delimiter: ';' } })] }, { nodeId: 'clean' })).not.toBe(key);
     expect(upstreamKey({ ...p, sources: [src({ id: 'cust', format: 'csv', file: { originalName: 'c.csv', size: 1, lastModified: 0, headHash: 'abc' } })] }, { nodeId: 'clean' })).not.toBe(key);
+  });
+
+  it('changes when a URL source’s address or fetched file changes', () => {
+    const at = (href: string, headHash?: string) => upstreamKey({ ...cleanFlow(), sources: [src({ id: 'cust', format: 'csv', kind: 'url', url: { href, headHash } })] }, { nodeId: 'clean' });
+    const key = at('https://x.org/a.csv', 'h1');
+    expect(at('https://x.org/a.csv', 'h1')).toBe(key);
+    expect(at('https://x.org/a.csv', 'h2')).not.toBe(key);
+    expect(at('https://x.org/b.csv', 'h1')).not.toBe(key);
   });
 });
 
