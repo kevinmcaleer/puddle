@@ -79,6 +79,19 @@ export function formatDateText(text: string, f: DisplayFormat): string {
   return parts.map((p) => (p.type === 'second' ? p.value + fraction : p.value)).join('') + (m[8] ? ` ${m[8]}` : '');
 }
 
+const instantFormats = new Map<string, Intl.DateTimeFormat>();
+
+/**
+ * A moment (an ISO time such as a save or sync time) in this computer's time zone, written the display locale's way
+ * with a short month name: 16 Oct 2026, 09:30 in en-GB, 16. Okt. 2026, 09:30 in de-DE. With `seconds`, to the second.
+ */
+export function formatInstant(iso: string, seconds = false, f: DisplayFormat = displayFormat()): string {
+  const key = `${f.locale}|${seconds}`;
+  let fmt = instantFormats.get(key);
+  if (!fmt) instantFormats.set(key, (fmt = new Intl.DateTimeFormat(f.locale, { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', ...(seconds && { second: '2-digit' }) })));
+  return fmt.format(new Date(iso));
+}
+
 /** A value from the results table (DuckDB's text for it) as it's shown, by the column's kind. */
 export function formatValue(text: string, kind: ColumnKind, f: DisplayFormat = displayFormat()): string {
   if (kind === 'integer' || kind === 'decimal') return formatNumberText(text, f.locale);

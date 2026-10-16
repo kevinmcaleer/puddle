@@ -7,6 +7,7 @@ import { runAgain } from '../flow/rerun';
 import { sampledUpstream, useSample } from '../flow/sample';
 import { useFlowStore, useNodeStatus } from '../flow/status';
 import { addRule, dismissSuggestion, newId, nodeById, removeRule, updateRule, useProject, useProjectStore, type GraphNode, type Project, type Rule } from '../model';
+import { QualityReportButton } from '../report';
 import { newRule, ruleErrors, ruleForm, ruleForms, ruleLabel, showFailing, useSuggestions, type Suggestion } from '../rules';
 import { FormFields, type OtherNode } from '../steps/StepForm';
 import { Button, Field, fullCount, Menu, RuleRow, Section, Select, Switch, useDisplayFormat } from '../ui';
@@ -158,6 +159,12 @@ export function RulesPanel({ node }: { node: GraphNode }) {
         </div>
       ) : (
         <p className="text-ink-muted">No rules yet. Add one to say what this data should look like.</p>
+      )}
+      {/* An Output node offers the report next to its export instead. */}
+      {node.rules.length > 0 && node.type !== 'output' && (
+        <div className="pt-2">
+          <QualityReportButton node={node} />
+        </div>
       )}
       <Suggestions node={node} />
     </Section>

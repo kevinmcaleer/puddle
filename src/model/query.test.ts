@@ -3,7 +3,7 @@ import { addNode } from './edits';
 import { GraphError, inputPorts } from './graph';
 import { initHistory, pushHistory, undo } from './history';
 import { parseProject } from './project';
-import { addQueryField, addQueryJoin, addQueryTable, moveQueryField, moveQueryTable, removeQueryField, removeQueryJoin, removeQueryTable, setQueryJoinKind, updateQueryField } from './query';
+import { addQueryField, addQueryJoin, addQueryTable, moveQueryField, moveQueryTable, removeQueryField, removeQueryJoin, removeQueryTable, setQueryJoinKind, setQuerySpec, updateQueryField } from './query';
 import type { Project, QueryNode } from './schema';
 
 const base = () =>
@@ -133,5 +133,33 @@ describe('query nodes', () => {
     expect(spec(h.present).joins).toHaveLength(1);
     h = undo(h);
     expect(h.present).toEqual(p0);
+  });
+});
+
+describe('the Totals row', () => {
+  const withSum = () => {
+    let p = addQueryField(addQueryField(twoTables(), 'q', { port: 1, column: 'customer_id' }, undefined, 'f1'), 'q', { port: 1, column: 'total' }, undefined, 'f2');
+    p = setQuerySpec(p, 'q', { totals: true });
+    return updateQueryField(p, 'q', 'f2', { total: 'sum', alias: 'Spend' });
+  };
+
+  it('is off in a new query, and in a project saved before it existed', () => {
+    expect(spec(addNode(base(), 'query', { x: 0, y: 0 }, [], 'q2')).totals).toBe(false);
+    const saved = JSON.parse(JSON.stringify(withSum()));
+    delete saved.nodes.find((n: { id: string }) => n.id === 'q').querySpec.totals;
+    expect(spec(parseProject(saved)).totals).toBe(false);
+  });
+
+  it('turning it off keeps each field’s Total, so turning it on again brings them back', () => {
+    const off = setQuerySpec(withSum(), 'q', { totals: false });
+    expect(spec(off).fields.map((f) => f.total)).toEqual([undefined, 'sum']);
+    expect(setQuerySpec(off, 'q', { totals: true })).toEqual(withSum());
+  });
+
+  it('round-trips Totals, expressions and Where fields through the project format', () => {
+    let p = updateQueryField(withSum(), 'q', 'f1', { total: 'expression', expression: 'count(*)' });
+    p = addQueryField(p, 'q', { port: 1, column: 'status' }, undefined, 'f3');
+    p = updateQueryField(p, 'q', 'f3', { total: 'where', show: false, criteria: { op: '=', value: 'shipped' } });
+    expect(parseProject(JSON.parse(JSON.stringify(p)))).toEqual(p);
   });
 });

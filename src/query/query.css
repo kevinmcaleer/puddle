@@ -20,7 +20,14 @@
 .puddle-qd-end.is-all { fill: var(--wire); }
 .puddle-qd-lines .is-selected .puddle-qd-end { stroke: var(--wire-active); }
 .puddle-qd-lines .is-selected .puddle-qd-end.is-all { fill: var(--wire-active); }
-.puddle-qd-grid { grid-row: 4; overflow-x: auto; border-top: 1px solid var(--line-strong); }
+/*
+ * The grid is a plain grid item, so its row is as tall as its content and the designer scrolls instead. Scrolling
+ * sideways happens inside it, in an ordinary block whose height includes its own scrollbar: a scroll container as the
+ * grid item would shrink to nothing in its row, and sized by min-height: max-content Firefox leaves out the scrollbar,
+ * which then covers the last row.
+ */
+.puddle-qd-grid { grid-row: 4; min-width: 0; border-top: 1px solid var(--line-strong); }
+.puddle-qd-grid__scroll { overflow-x: auto; }
 .puddle-qd-grid table { border-collapse: collapse; }
 .puddle-qd-grid th { position: sticky; left: 0; z-index: 1; padding: var(--space-1) var(--space-3); text-align: left; background: var(--surface-panel); border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); white-space: nowrap; }
 .puddle-qd-cell { width: calc(var(--size-node-width) - var(--space-8)); padding: var(--space-1) var(--space-2); border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); vertical-align: middle; }

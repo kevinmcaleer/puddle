@@ -1,11 +1,11 @@
 import { useRef } from 'react';
 import { duplicateProject, importProject, newProject, openProject, useWorkspace } from '../persistence/workspace';
 import { THEME_ICON, THEME_LABEL, useTheme } from '../app/theme';
-import { Banner, Button, Menu, Toolbar } from '../ui';
+import { Banner, Button, formatInstant, Menu, Toolbar, useDisplayFormat } from '../ui';
 import { openProjectDialog } from './dialogs';
+import { PROVIDERS } from '../sync';
+import { openSyncDialog } from '../sync/dialogs';
 
-const updated = (iso: string) =>
-  new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }).format(new Date(iso));
 
 const plural = (n: number, one: string) => `${n} ${one}${n === 1 ? '' : 's'}`;
 
@@ -13,12 +13,14 @@ const plural = (n: number, one: string) => `${n} ${one}${n === 1 ? '' : 's'}`;
 export function HomeScreen() {
   const { projects, error } = useWorkspace();
   const theme = useTheme();
+  const display = useDisplayFormat();
   const importInput = useRef<HTMLInputElement>(null);
 
   return (
     <div className="grid h-full grid-rows-[auto_minmax(0,1fr)] bg-surface-canvas text-body text-ink" data-testid="home">
       <Toolbar>
         <Button variant="ghost" icon="export" onClick={() => importInput.current?.click()}>Import project</Button>
+        <Button variant="ghost" icon="refresh" onClick={() => openSyncDialog({ kind: 'open', provider: 'gist' })}>Open from {PROVIDERS.gist.label}</Button>
         <Button variant="primary" icon="plus" onClick={() => void newProject()}>New project</Button>
         <Button
           variant="ghost"
@@ -57,7 +59,7 @@ export function HomeScreen() {
                   <button type="button" className="min-w-0 flex-1 cursor-pointer bg-transparent text-left text-ink" onClick={() => void openProject(p.id)}>
                     <div className="truncate text-body-strong">{p.name}</div>
                     <div className="text-label text-ink-muted">
-                      {plural(p.sources, 'source')} · {plural(p.nodes, 'node')} · Updated {updated(p.updatedAt)}
+                      {plural(p.sources, 'source')} · {plural(p.nodes, 'node')} · Updated {formatInstant(p.updatedAt, false, display)}
                     </div>
                   </button>
                   <Menu

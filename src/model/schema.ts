@@ -189,6 +189,12 @@ export const QUERY_CRITERIA_OPS = ['=', '<>', '<', '<=', '>', '>=', 'contains', 
 
 export const QueryCriteriaZ = z.object({ op: z.enum(QUERY_CRITERIA_OPS), value: z.string().default('') });
 
+/**
+ * A field's Total, when the grid has its Totals row: group by it, summarise it, an expression of summaries, or Where
+ * (filter rows on it before grouping, without showing it).
+ */
+export const QUERY_TOTALS = ['group', 'sum', 'avg', 'min', 'max', 'count', 'countDistinct', 'first', 'last', 'stdev', 'var', 'expression', 'where'] as const;
+
 /** One column of the query grid: a field of one table ("*" for all of them), and what to do with it. */
 export const QueryFieldZ = z.object({
   id: z.string().min(1),
@@ -200,6 +206,10 @@ export const QueryFieldZ = z.object({
   show: z.boolean().default(true),
   sort: z.enum(['none', 'asc', 'desc']).default('none'),
   criteria: QueryCriteriaZ.optional(),
+  /** Its Total while the Totals row is on; Group by when unset. Kept while Totals is off, so turning it back on restores it. */
+  total: z.enum(QUERY_TOTALS).optional(),
+  /** A DuckDB expression over the tables' columns, using summaries such as sum(total), for the Expression total. */
+  expression: z.string().optional(),
 });
 
 export const QuerySpecZ = z.object({
@@ -209,15 +219,17 @@ export const QuerySpecZ = z.object({
   fields: z.array(QueryFieldZ).default([]),
   /** Leave out rows that repeat another row exactly. */
   distinct: z.boolean().default(false),
+  /** The Totals row: group the rows by some fields and summarise the others. */
+  totals: z.boolean().default(false),
 });
 
-export const DEFAULT_QUERY_SPEC = { tables: [], joins: [], fields: [], distinct: false } as const satisfies z.input<typeof QuerySpecZ>;
+export const DEFAULT_QUERY_SPEC = { tables: [], joins: [], fields: [], distinct: false, totals: false } as const satisfies z.input<typeof QuerySpecZ>;
 
 /**
  * A query built in the designer, as in Microsoft Access: each numbered input is a table, join lines run between their
  * columns, and the grid picks the fields, their order, sorting and criteria.
  */
-export const QueryNodeZ = z.object({ ...NodeBase, type: z.literal('query'), querySpec: QuerySpecZ.default({ tables: [], joins: [], fields: [], distinct: false }) });
+export const QueryNodeZ = z.object({ ...NodeBase, type: z.literal('query'), querySpec: QuerySpecZ.default({ tables: [], joins: [], fields: [], distinct: false, totals: false }) });
 
 export const NodeZ = z.discriminatedUnion('type', [SourceNodeZ, TransformNodeZ, JoinNodeZ, AppendNodeZ, LookupNodeZ, QueryNodeZ, OutputNodeZ]);
 
@@ -260,7 +272,8 @@ export const ExportLogEntryZ = z.object({
   format: OutputSpecZ.shape.format,
   fileName: z.string(),
   rows: z.number().int().nonnegative(),
-  overridden: z.array(z.object({ nodeName: z.string(), rule: z.string() })).optional(),
+  /** The failing rules exported past; the ids (absent on older entries) let a quality report match them to the rule. */
+  overridden: z.array(z.object({ nodeName: z.string(), rule: z.string(), nodeId: z.string().optional(), ruleId: z.string().optional() })).optional(),
   /** Stop was pressed: nothing was saved. */
   cancelled: z.boolean().optional(),
 });
@@ -306,6 +319,7 @@ export type QueryJoinKind = (typeof QUERY_JOIN_KINDS)[number];
 export type QueryFieldRef = z.infer<typeof QueryFieldRefZ>;
 export type QueryJoin = z.infer<typeof QueryJoinZ>;
 export type QueryCriteriaOp = (typeof QUERY_CRITERIA_OPS)[number];
+export type QueryTotal = (typeof QUERY_TOTALS)[number];
 export type QueryCriteria = z.infer<typeof QueryCriteriaZ>;
 export type QueryField = z.infer<typeof QueryFieldZ>;
 export type QuerySpec = z.infer<typeof QuerySpecZ>;

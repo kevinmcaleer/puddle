@@ -1,4 +1,4 @@
-import { abbreviate, formatBytes, formatDateText, formatNumberText, formatValue, fullCount } from './format';
+import { abbreviate, formatBytes, formatDateText, formatInstant, formatNumberText, formatValue, fullCount } from './format';
 
 describe('formatBytes', () => {
   it('writes sizes in binary units', () => {
@@ -52,5 +52,15 @@ describe('display locale formatting', () => {
     expect([abbreviate(1204, gb), abbreviate(12_345, gb), abbreviate(1_250_000, gb), abbreviate(12_000_000, gb)]).toEqual(['1,204', '12k', '1.3M', '12M']);
     expect([abbreviate(1204, de), abbreviate(1_250_000, de)]).toEqual(['1.204', '1,3M']);
     expect(abbreviate(null, gb)).toBeNull();
+  });
+});
+
+describe('formatInstant', () => {
+  it('writes a moment the display locale’s way, to the second when asked', () => {
+    const iso = '2026-10-16T08:30:05.000Z';
+    // In this computer's time zone, so only the date and the minutes and seconds are pinned.
+    expect(formatInstant(iso, false, { locale: 'en-GB', dates: 'locale' })).toMatch(/^1[67] Oct 2026, \d\d:30$/);
+    expect(formatInstant(iso, true, { locale: 'en-GB', dates: 'locale' })).toMatch(/^1[67] Oct 2026, \d\d:30:05$/);
+    expect(formatInstant(iso, false, { locale: 'de-DE', dates: 'locale' })).toMatch(/^1[67]\. Okt\. 2026, \d\d:30$/);
   });
 });
