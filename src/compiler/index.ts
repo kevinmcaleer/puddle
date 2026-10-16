@@ -20,6 +20,7 @@ export {
 export { CompileError, PendingSchemaError, UnwiredError } from './errors';
 export { compileJoin, JOIN_TYPES, joinColumns, joinProblems, keepsRightColumns, suggestJoinKey, type JoinColumn, type JoinProblem } from './join';
 export { appendColumns, appendProblems, compileAppend, type AppendColumn, type AppendInput, type AppendProblem } from './append';
+export { compileQuery, CRITERIA_OPS, crossJoinedTables, joinPlan, QUERY_JOIN_TYPES, queryColumns, queryProblems, tableAlias, type QueryColumn, type QueryJoinStep, type QueryProblem, type QueryTable } from './query';
 export { knownSchemas, SchemaBook } from './schemaBook';
 export { cleanCustomSql, customSqlProblem, INPUT_NAME, lexSql, SqlRefusal, type SqlToken, type SqlTokenKind } from './customSql';
 export { describeType, typeFamily, typesFit } from './types';

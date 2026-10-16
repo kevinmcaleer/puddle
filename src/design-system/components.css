@@ -56,7 +56,7 @@ body { font-family: var(--font-ui); font-size: 13px; line-height: 20px; -webkit-
 .ui-node__chip { flex: none; display: grid; place-items: center; width: 26px; height: 26px; border-radius: var(--radius-sm); }
 .ui-node[data-kind="source"] .ui-node__chip { background: var(--node-source-tint); color: var(--node-source); }
 .ui-node[data-kind="transform"] .ui-node__chip { background: var(--node-transform-tint); color: var(--node-transform); }
-.ui-node[data-kind="join"] .ui-node__chip, .ui-node[data-kind="append"] .ui-node__chip { background: var(--node-combine-tint); color: var(--node-combine); }
+.ui-node[data-kind="join"] .ui-node__chip, .ui-node[data-kind="append"] .ui-node__chip, .ui-node[data-kind="query"] .ui-node__chip { background: var(--node-combine-tint); color: var(--node-combine); }
 .ui-node[data-kind="check"] .ui-node__chip { background: var(--node-check-tint); color: var(--node-check); }
 .ui-node[data-kind="output"] .ui-node__chip { background: var(--node-output-tint); color: var(--node-output); }
 .ui-node__titles { min-width: 0; flex: 1; }

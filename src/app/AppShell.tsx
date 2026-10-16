@@ -14,6 +14,7 @@ import { sampledUpstream, useSample, useViewProject } from '../flow/sample';
 import { SampleBanner } from '../results/SampleBanner';
 import { describeProfile } from '../results/profile';
 import { exportAll, ExportBlockedBanner, ExportButton } from '../export';
+import { QueryDesigner } from '../query/QueryDesigner';
 import { ResultsTable } from '../results/ResultsTable';
 import { useResultsStore } from '../results/state';
 import { ACCEPT } from '../sources/detect';
@@ -132,6 +133,8 @@ export function AppShell() {
   const canRedo = useProjectStore((s) => s.history.future.length > 0);
   const theme = useTheme();
   const notesOpen = useSession((s) => s.notesOpen);
+  const designerId = useSession((s) => s.designerNodeId);
+  const designing = designerId ? nodeById(project, designerId) : undefined;
   const fileInput = useRef<HTMLInputElement>(null);
   useFlowEvaluation();
   useShortcuts();
@@ -167,6 +170,7 @@ export function AppShell() {
               { label: 'Transform', icon: 'transform', onSelect: () => addNodeAfterSelection('transform') },
               { label: 'Join', icon: 'join', hint: 'Two inputs', onSelect: () => addNodeAfterSelection('join') },
               { label: 'Append', icon: 'append', hint: 'Stack rows', onSelect: () => addNodeAfterSelection('append') },
+              { label: 'Query', icon: 'query', hint: 'Design with tables', onSelect: () => addNodeAfterSelection('query') },
               { label: 'Output', icon: 'output', onSelect: () => addNodeAfterSelection('output') },
             ]}
           />
@@ -223,7 +227,7 @@ export function AppShell() {
 
         <div className="grid min-h-0 grid-cols-[minmax(0,1fr)_var(--size-inspector)]">
           <main className="min-h-0" aria-label="Canvas">
-            <Canvas onAddSource={chooseFiles} />
+            {designing?.type === 'query' ? <QueryDesigner node={designing} /> : <Canvas onAddSource={chooseFiles} />}
           </main>
 
           {notesOpen ? (
