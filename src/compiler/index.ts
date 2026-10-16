@@ -5,6 +5,7 @@ export {
   compileDisplayPage,
   compileJoinCheck,
   compileLookupCheck,
+  compilePivotValues,
   compilePreview,
   compileProfile,
   compileRules,
