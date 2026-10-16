@@ -99,7 +99,7 @@ function ZoneBox({ zone, label, draft: d, columns, commit }: { zone: Zone; label
             label={
               <Menu
                 align="start"
-                className="flex min-w-0 flex-1"
+                className="flex min-w-0 flex-auto"
                 label={name}
                 items={moves(i)}
                 renderTrigger={(t) => (
