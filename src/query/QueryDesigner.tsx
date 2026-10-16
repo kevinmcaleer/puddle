@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState, type DragEvent, type PointerEvent as ReactPointerEvent } from 'react';
 import { useSession } from '../app/session';
+import { cardKind } from '../canvas/kind';
 import { CRITERIA_OPS, crossJoinedTables } from '../compiler';
 import { useFlowStore } from '../flow/status';
 import {
@@ -384,7 +385,7 @@ export function QueryDesigner({ node }: { node: QueryNode }) {
           button={{ size: 'sm', icon: 'plus', variant: 'primary', disabled: !candidates.length }}
           items={candidates.map((n) => ({
             label: n.name,
-            icon: NODE_KIND[n.type].icon,
+            icon: NODE_KIND[cardKind(n.type)].icon,
             hint: tables.some((t) => t.fromId === n.id) ? 'Again' : undefined,
             onSelect: () => {
               try {

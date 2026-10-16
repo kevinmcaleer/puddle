@@ -1,4 +1,4 @@
-import { createProject, parseProject, type AppendSpec, type JoinSpec, type QuerySpec, type Port, type Project, type Source, type Step } from '../../src/model';
+import { createProject, parseProject, type AppendSpec, type JoinSpec, type LookupSpec, type QuerySpec, type Port, type Project, type Source, type Step } from '../../src/model';
 
 type SourceInit = Pick<Source, 'id' | 'format'> & Partial<Source>;
 
@@ -13,6 +13,7 @@ interface FlowInit {
     | { id: string; type: 'transform'; steps?: Step[] }
     | { id: string; type: 'join'; joinSpec?: Partial<JoinSpec> }
     | { id: string; type: 'append'; appendSpec?: Partial<AppendSpec> }
+    | { id: string; type: 'lookup'; lookupSpec?: Partial<LookupSpec> }
     | { id: string; type: 'query'; querySpec?: Partial<QuerySpec> }
     | { id: string; type: 'output' }
   >;

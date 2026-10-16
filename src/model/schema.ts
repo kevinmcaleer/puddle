@@ -148,6 +148,26 @@ export const DEFAULT_APPEND_SPEC = { match: 'name', tagRows: false, tagColumn: '
 /** Stacks its inputs' rows, in input order. Inputs are numbered ports; a free one is always offered after the last. */
 export const AppendNodeZ = z.object({ ...NodeBase, type: z.literal('append'), appendSpec: AppendSpecZ.default({ ...DEFAULT_APPEND_SPEC }) });
 
+/** One pair of columns that must be equal: a column of the main input and one of the lookup input. */
+export const LookupKeyZ = z.object({ main: z.string(), lookup: z.string() });
+
+export const LookupSpecZ = z.object({
+  /** A main row matches a lookup row when every pair is equal. */
+  keys: z.array(LookupKeyZ).default([]),
+  /** The lookup input's columns brought across, in order. */
+  columns: z.array(z.string()).default([]),
+  /** Added to a brought column whose name the main input already uses. */
+  suffix: z.string().default('_lookup'),
+  /** Fill the brought columns of a main row whose key has no match with `defaultValue`, instead of leaving them empty. */
+  useDefault: z.boolean().default(false),
+  defaultValue: z.string().default(''),
+});
+
+export const DEFAULT_LOOKUP_SPEC = { keys: [], columns: [], suffix: '_lookup', useDefault: false, defaultValue: '' } as const satisfies z.input<typeof LookupSpecZ>;
+
+/** Brings columns across from its lookup input by key, one match per main row, so the main input's row count never changes. */
+export const LookupNodeZ = z.object({ ...NodeBase, type: z.literal('lookup'), lookupSpec: LookupSpecZ.default({ ...DEFAULT_LOOKUP_SPEC, keys: [], columns: [] }) });
+
 /** How a Query join line matches rows: inner keeps matches only; left and right keep every row of that end's table. */
 export const QUERY_JOIN_KINDS = ['inner', 'left', 'right', 'full'] as const;
 
@@ -197,10 +217,10 @@ export const DEFAULT_QUERY_SPEC = { tables: [], joins: [], fields: [], distinct:
  */
 export const QueryNodeZ = z.object({ ...NodeBase, type: z.literal('query'), querySpec: QuerySpecZ.default({ tables: [], joins: [], fields: [], distinct: false }) });
 
-export const NodeZ = z.discriminatedUnion('type', [SourceNodeZ, TransformNodeZ, JoinNodeZ, AppendNodeZ, QueryNodeZ, OutputNodeZ]);
+export const NodeZ = z.discriminatedUnion('type', [SourceNodeZ, TransformNodeZ, JoinNodeZ, AppendNodeZ, LookupNodeZ, QueryNodeZ, OutputNodeZ]);
 
-/** Named input ports. Join uses left and right; nodes with one input, and the numbered inputs of Append and Query, use an index. */
-export const NAMED_PORTS = ['left', 'right'] as const;
+/** Named input ports: Join's left and right, Lookup's main and lookup. Nodes with one input, and the numbered inputs of Append and Query, use an index. */
+export const NAMED_PORTS = ['left', 'right', 'main', 'lookup'] as const;
 
 export const PortZ = z.union([z.number().int().nonnegative(), z.enum(NAMED_PORTS)]);
 
@@ -274,6 +294,9 @@ export type JoinSpec = z.infer<typeof JoinSpecZ>;
 export type JoinNode = z.infer<typeof JoinNodeZ>;
 export type AppendSpec = z.infer<typeof AppendSpecZ>;
 export type AppendNode = z.infer<typeof AppendNodeZ>;
+export type LookupKey = z.infer<typeof LookupKeyZ>;
+export type LookupSpec = z.infer<typeof LookupSpecZ>;
+export type LookupNode = z.infer<typeof LookupNodeZ>;
 export type QueryJoinKind = (typeof QUERY_JOIN_KINDS)[number];
 export type QueryFieldRef = z.infer<typeof QueryFieldRefZ>;
 export type QueryJoin = z.infer<typeof QueryJoinZ>;

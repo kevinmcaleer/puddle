@@ -33,6 +33,10 @@ const edgeTypes = { wire: WireEdge };
 function detailFor(node: GraphNode, sources: ReturnType<typeof useProject>['sources'], edges: ReturnType<typeof useProject>['edges']): string | undefined {
   // A Join shows its type under its name.
   if (node.type === 'join') return `Join · ${JOIN_TYPES[node.joinSpec.kind].label}`;
+  if (node.type === 'lookup') {
+    const n = node.lookupSpec.columns.length;
+    return `Lookup · ${n ? `${n} ${n === 1 ? 'column' : 'columns'}` : 'no columns yet'}`;
+  }
   if (node.type === 'append') {
     const n = edges.filter((e) => e.to.nodeId === node.id).length;
     return `Append · ${n} ${n === 1 ? 'input' : 'inputs'}${node.appendSpec.match === 'position' ? ' by position' : ''}`;
@@ -48,7 +52,7 @@ function detailFor(node: GraphNode, sources: ReturnType<typeof useProject>['sour
   return s.kind === 'clipboard' ? `Source · Pasted ${formatLabel(s.format)}` : `Source · ${formatLabel(s.format)}`;
 }
 
-/** Shown when several nodes are selected: group them into one, or say why they can't be; join two, append them, or query them. */
+/** Shown when several nodes are selected: group them into one, or say why they can't be; join two, look up from one into the other, append them, or query them. */
 function GroupBar({ ids }: { ids: string[] }) {
   const project = useProject();
   const check = canGroup(project, ids);
@@ -71,6 +75,11 @@ function GroupBar({ ids }: { ids: string[] }) {
         {combinable && ids.length === 2 && (
           <Button size="sm" variant="secondary" icon="join" onClick={() => addNodeAfterSelection('join')}>
             Join these two
+          </Button>
+        )}
+        {combinable && ids.length === 2 && (
+          <Button size="sm" variant="secondary" icon="join" onClick={() => addNodeAfterSelection('lookup')}>
+            Look up from the second
           </Button>
         )}
         {combinable && (

@@ -9,6 +9,7 @@ import { useNodeStatus } from '../flow/status';
 import { hasNumberedInputs, inputPorts, useProject, type GraphNode } from '../model';
 import { urlProblem, useUrlFetches } from '../sources/url';
 import { NodeCard } from '../ui';
+import { cardKind } from './kind';
 import { portBroken, portName, portsHeight, portTop } from './ports';
 
 export type PuddleNodeData = { node: GraphNode; viewed: boolean; label?: ReactNode; detail?: string };
@@ -44,7 +45,7 @@ export function PuddleNode({ data, selected }: NodeProps<PuddleFlowNode>) {
   return (
     <div data-testid={`node-${node.name}`} data-status={status.state} data-rules={rule?.status} data-export={node.type === 'output' && ok ? (blocked ? 'blocked' : 'ready') : undefined} data-fetch={fetch?.state}>
       <NodeCard
-        kind={node.type}
+        kind={cardKind(node.type)}
         name={node.name}
         detail={detail}
         steps={steps}

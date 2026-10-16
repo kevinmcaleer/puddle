@@ -6,6 +6,7 @@ import { Banner, columnKind, Field, Icon, NODE_KIND, Section, Select, Switch, Ty
 import { CommitInput } from '../steps/StepForm';
 import { AppendPanel } from './AppendPanel';
 import { JoinPanel } from './JoinPanel';
+import { LookupPanel } from './LookupPanel';
 import { KeepPanel } from './KeepPanel';
 import { NodeNotes } from './NodeNotes';
 import { OutputPanel } from './OutputPanel';
@@ -158,6 +159,16 @@ export function Inspector() {
     return (
       <>
         <AppendPanel node={node} />
+        <KeepPanel key={node.id} node={node} />
+        <Columns nodeId={node.id} />
+        <RulesPanel node={node} />
+        <NodeNotes node={node} />
+      </>
+    );
+  if (node.type === 'lookup')
+    return (
+      <>
+        <LookupPanel node={node} />
         <KeepPanel key={node.id} node={node} />
         <Columns nodeId={node.id} />
         <RulesPanel node={node} />
