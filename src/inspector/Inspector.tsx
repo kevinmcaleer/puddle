@@ -4,12 +4,14 @@ import { formatLabel } from '../canvas/formatLabel';
 import { nodeById, setParseOptions, useProject, useProjectStore, type ParseOptions, type ProjectSettings as ProjectSettingsT, type Source } from '../model';
 import { Banner, columnKind, Field, Icon, NODE_KIND, Section, Select, Switch, TypeTag } from '../ui';
 import { CommitInput } from '../steps/StepForm';
+import { NodeNotes } from './NodeNotes';
 import { OutputPanel } from './OutputPanel';
 import { RulesPanel } from './RulesPanel';
 import { TransformPanel } from './TransformPanel';
 import { useAttachments } from '../sources/attachments';
 import { DetachedMessage } from '../sources/ReconnectBanner';
 import { ReattachButton } from '../sources/ReattachButton';
+import { UrlPanel } from '../sources/UrlPanel';
 import { DELIMITERS, delimiterValue, ENCODINGS, hasParseOptions, LOCALES, parseNullStrings, withOption } from './options';
 
 function SourceOptions({ source }: { source: Source }) {
@@ -133,6 +135,7 @@ export function Inspector() {
         <TransformPanel node={node} />
         <Columns nodeId={node.id} />
         <RulesPanel node={node} />
+        <NodeNotes node={node} />
       </>
     );
 
@@ -148,10 +151,12 @@ export function Inspector() {
         </div>
       </div>
       {source && source.kind === 'file' && <AttachmentBanner source={source} />}
+      {source && source.kind === 'url' && <UrlPanel source={source} />}
       {source && hasParseOptions(source) && <SourceOptions source={source} />}
       {node.type === 'output' && <OutputPanel node={node} />}
       <Columns nodeId={node.id} />
       <RulesPanel node={node} />
+      <NodeNotes node={node} />
     </div>
   );
 }

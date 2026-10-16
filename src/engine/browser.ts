@@ -43,7 +43,13 @@ export async function createBrowserBackend(): Promise<DuckBackend> {
   const worker = new Worker(bundle.mainWorker!);
   const db = new duckdb.AsyncDuckDB(new duckdb.VoidLogger(), worker);
   await db.instantiate(bundle.mainModule, bundle.pthreadWorker);
-  await db.open({ path: ':memory:', query: { castBigIntToDouble: false } });
+  await db.open({
+    path: ':memory:',
+    query: { castBigIntToDouble: false },
+    // URL sources registered by address (Parquet on servers with range support) are read by HTTP range
+    // requests; this build otherwise downloads the whole file on every open.
+    filesystem: { forceFullHTTPReads: false, allowFullHTTPReads: true, reliableHeadRequests: true },
+  });
   const conn = await db.connect();
 
   let spill = false;
@@ -88,6 +94,7 @@ export async function createBrowserBackend(): Promise<DuckBackend> {
       }
     },
     registerFile: (name, file) => db.registerFileHandle(name, file, duckdb.DuckDBDataProtocol.BROWSER_FILEREADER, true),
+    registerUrl: (name, url) => db.registerFileURL(name, url, duckdb.DuckDBDataProtocol.HTTP, false),
     registerBuffer: (name, data) => db.registerFileBuffer(name, data),
     dropFile: async (name) => {
       await db.dropFile(name);

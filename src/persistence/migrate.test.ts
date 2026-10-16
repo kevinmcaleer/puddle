@@ -11,6 +11,23 @@ describe('project files', () => {
     expect(readProjectFile(writeProjectFile(p))).toEqual(p);
   });
 
+  it('keeps project notes and every kind of node note through .puddle.json, text exactly as written', () => {
+    const notes = '# Orders\n\n<script>alert(1)</script> and [docs](https://duckdb.org)';
+    const p = {
+      ...createProject('Notes'),
+      notes,
+      sources: [{ id: 's1', name: 'a.csv', kind: 'clipboard' as const, clipboard: { text: 'a\n1' }, format: 'csv' as const, parseOptions: {}, detectedSchema: [] }],
+      nodes: [
+        { id: 'n1', type: 'source' as const, sourceId: 's1', name: 'a.csv', notes: 'Sent weekly by finance.', position: { x: 0, y: 0 }, rules: [] },
+        { id: 'n2', type: 'transform' as const, name: 'Clean', notes: 'Drops test rows.', position: { x: 1, y: 0 }, rules: [], steps: [] },
+        { id: 'n3', type: 'output' as const, name: 'Out', notes: '<b>for</b> the board', position: { x: 2, y: 0 }, rules: [], outputSpec: { format: 'csv' as const, options: {} } },
+      ],
+    };
+    const back = readProjectFile(writeProjectFile(p));
+    expect(back.notes).toBe(notes);
+    expect(back.nodes.map((n) => n.notes)).toEqual(['Sent weekly by finance.', 'Drops test rows.', '<b>for</b> the board']);
+  });
+
   it('opens a project written before files were versioned (fixture)', () => {
     const p = readProjectFile(fixture('unversioned.puddle.json'));
     expect(p.formatVersion).toBe(FORMAT_VERSION);
@@ -55,6 +72,14 @@ describe('project files', () => {
     const text = writeProjectFile(readProjectFile(fixture('v1.puddle.json')));
     expect(text).toContain('"headHash"');
     expect(text).not.toMatch(/Ada Lovelace/);
+  });
+
+  it('keeps a URL source’s address and head hash, and still opens one saved with only the address', () => {
+    const p = createProject('Web');
+    const url = { ...p, sources: [{ id: 's1', name: 'a.csv', kind: 'url' as const, format: 'csv' as const, url: { href: 'https://x.org/a.csv', headHash: 'abc', size: 9 }, parseOptions: {}, detectedSchema: [] }] };
+    expect(readProjectFile(writeProjectFile(url)).sources[0]!.url).toEqual({ href: 'https://x.org/a.csv', headHash: 'abc', size: 9 });
+    const bare = { ...url, sources: [{ ...url.sources[0]!, url: { href: 'https://x.org/a.csv' } }] };
+    expect(readProjectFile(writeProjectFile(bare)).sources[0]!.url).toEqual({ href: 'https://x.org/a.csv' });
   });
 
   it('names the file after the project', () => {

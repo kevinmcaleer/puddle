@@ -25,6 +25,8 @@ export interface NodeCardProps {
   dimmed?: boolean;
   expanded?: boolean;
   brokenInput?: boolean;
+  /** The node's note: a small marker in the header shows it on hover. */
+  note?: string;
   style?: CSSProperties;
   className?: string;
   onClick?: MouseEventHandler<HTMLDivElement>;
@@ -34,7 +36,7 @@ export interface NodeCardProps {
 
 /** The node card. The canvas wraps this in a React Flow custom node and swaps the ports for handles. */
 export function NodeCard({
-  kind = 'transform', name, detail, rows, cols, steps, rule, selected, viewed, pinned, error, dimmed, expanded, brokenInput,
+  kind = 'transform', name, detail, rows, cols, steps, rule, selected, viewed, pinned, error, dimmed, expanded, brokenInput, note,
   style, className, onClick, renderPorts,
 }: NodeCardProps) {
   const k = NODE_KIND[kind];
@@ -65,6 +67,11 @@ export function NodeCard({
           <div className="ui-node__name" title={name}>{name}</div>
           <div className="ui-node__kind">{sub}</div>
         </div>
+        {note && (
+          <span className="flex-none self-start text-ink-muted" title={note} aria-label={`Note: ${note}`} role="img" data-testid="node-note">
+            <Icon name="notes" size={14} />
+          </span>
+        )}
       </div>
       {error && (
         <div className="ui-node__error">

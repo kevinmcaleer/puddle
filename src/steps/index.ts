@@ -5,5 +5,6 @@ import './columns';
 import './rows';
 import './text';
 import './dates';
+import './numbers';
 
-export { defineStepForm, fieldErrors, labelFor, schemaErrors, newStep, relabel, stepForm, stepForms, type DefaultsContext, type FieldSpec, type StepForm, type StepGroup } from './forms';
+export { defineStepForm, fieldErrors, labelFor, schemaErrors, newStep, relabel, stepForm, stepForms, textColumnsProblem, type DefaultsContext, type ExpectedKind, type FieldSpec, type StepForm, type StepGroup } from './forms';

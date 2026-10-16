@@ -15,6 +15,16 @@ export function pushHistory<T>(h: History<T>, next: T, limit = HISTORY_LIMIT): H
   return { past: past.length > limit ? past.slice(past.length - limit) : past, present: next, future: [] };
 }
 
+/**
+ * Record changes made in place since `before` (typing into a text field, saved as you go without undo steps) as
+ * one undoable step: undo returns to `before`.
+ */
+export function checkpoint<T>(h: History<T>, before: T, limit = HISTORY_LIMIT): History<T> {
+  if (Object.is(before, h.present) || Object.is(before, h.past[h.past.length - 1])) return h;
+  const past = [...h.past, before];
+  return { past: past.length > limit ? past.slice(past.length - limit) : past, present: h.present, future: [] };
+}
+
 export function undo<T>(h: History<T>): History<T> {
   if (!h.past.length) return h;
   return { past: h.past.slice(0, -1), present: h.past[h.past.length - 1]!, future: [h.present, ...h.future] };

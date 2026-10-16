@@ -18,6 +18,7 @@ import { useSession } from '../app/session';
 import { useFlowStore } from '../flow/status';
 import { canConnect, canGroup, connect, groupNodes, moveNodes, newId, removeNodes, setCollapsed, upstreamIds, useProject, useProjectStore, type GraphNode } from '../model';
 import { Banner, Button } from '../ui';
+import { hostOf } from '../sources/url';
 import { formatLabel } from './formatLabel';
 import { PuddleNode, type PuddleFlowNode } from './PuddleNode';
 import { WireEdge, type WireFlowEdge } from './WireEdge';
@@ -30,6 +31,7 @@ function detailFor(node: GraphNode, sources: ReturnType<typeof useProject>['sour
   if (node.type !== 'source') return undefined;
   const s = sources.find((x) => x.id === node.sourceId);
   if (!s) return 'Source';
+  if (s.kind === 'url' && s.url) return `${hostOf(s.url.href)} · ${formatLabel(s.format)}`;
   return s.kind === 'clipboard' ? `Source · Pasted ${formatLabel(s.format)}` : `Source · ${formatLabel(s.format)}`;
 }
 
