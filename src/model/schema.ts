@@ -158,7 +158,10 @@ export const ProjectViewZ = z.object({
   viewedStepIndex: z.number().int().nonnegative().optional(),
   /** The results table shows only the viewed node's rows that fail this rule. */
   failingRuleId: z.string().optional(),
+  /** The results table stays on the viewed node while other nodes are clicked. */
   pinned: z.boolean().default(false),
+  /** With the table pinned, a second node shown next to it. */
+  compare: z.object({ nodeId: z.string().min(1) }).optional(),
   canvasViewport: z.object({ x: z.number(), y: z.number(), zoom: z.number().positive() }).default({ x: 0, y: 0, zoom: 1 }),
 });
 

@@ -1,6 +1,7 @@
 // Pure project edits used by the canvas, sources and inspector. Each returns a new project.
 import { hasOutput, inputPorts, nodeById, removeNode } from './graph';
 import { newId } from './ids';
+import { viewWithout } from './view';
 import { DEFAULT_JOIN_SPEC, type GraphNode, type NodeType, type ParseOptions, type Project, type Source } from './schema';
 
 type Position = { x: number; y: number };
@@ -14,10 +15,11 @@ export function nextNodeName(project: Project, type: NodeType): string {
   for (let i = 1; ; i++) if (!used.has(`${base} ${i}`)) return `${base} ${i}`;
 }
 
-/** Add a source and the Source node that reads it. */
+/** Add a source and the Source node that reads it, and view it unless the results table is pinned. */
 export function addSource(project: Project, source: Source, position: Position, nodeId = newId('n')): Project {
   const node: GraphNode = { id: nodeId, type: 'source', name: source.name, sourceId: source.id, position, rules: [] };
-  return { ...project, sources: [...project.sources, source], nodes: [...project.nodes, node], view: { ...project.view, viewedNodeId: nodeId, viewedStepIndex: undefined } };
+  const view = project.view.pinned ? project.view : { ...project.view, viewedNodeId: nodeId, viewedStepIndex: undefined };
+  return { ...project, sources: [...project.sources, source], nodes: [...project.nodes, node], view };
 }
 
 export type AddableNodeType = Exclude<NodeType, 'source'>;
@@ -57,17 +59,12 @@ export function setCollapsed(project: Project, nodeId: string, collapsed: boolea
   return { ...project, nodes: project.nodes.map((n) => (n.id === nodeId ? { ...n, collapsed } : n)) };
 }
 
-/** Remove nodes and their wires, plus sources no longer read by any node. Clears the view if it pointed at one. */
+/** Remove nodes and their wires, plus sources no longer read by any node. Clears the view of any it pointed at. */
 export function removeNodes(project: Project, ids: string[]): Project {
   let p = project;
   for (const id of ids) p = removeNode(p, id);
   const used = new Set(p.nodes.flatMap((n) => (n.type === 'source' ? [n.sourceId] : [])));
-  const viewGone = p.view.viewedNodeId && !p.nodes.some((n) => n.id === p.view.viewedNodeId);
-  return {
-    ...p,
-    sources: p.sources.filter((s) => used.has(s.id)),
-    view: viewGone ? { ...p.view, viewedNodeId: undefined, viewedStepIndex: undefined } : p.view,
-  };
+  return { ...p, sources: p.sources.filter((s) => used.has(s.id)), view: viewWithout(p) };
 }
 
 export function updateSource(project: Project, sourceId: string, patch: Partial<Pick<Source, 'parseOptions' | 'detectedSchema' | 'name' | 'file' | 'url'>>): Project {

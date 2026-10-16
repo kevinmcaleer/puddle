@@ -14,6 +14,7 @@ import { sampledUpstream, useSample, useViewProject } from '../flow/sample';
 import { SampleBanner } from '../results/SampleBanner';
 import { describeProfile } from '../results/profile';
 import { exportAll, ExportBlockedBanner, ExportButton } from '../export';
+import { compareWith, isPinShortcut, offeredNode, togglePin, viewHere } from '../results/pin';
 import { ResultsTable } from '../results/ResultsTable';
 import { useResultsStore } from '../results/state';
 import { ACCEPT } from '../sources/detect';
@@ -40,11 +41,16 @@ function EngineBadge({ status }: { status: EngineStatus }) {
 
 const isTyping = (t: EventTarget | null) => t instanceof HTMLElement && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName));
 
-/** Undo and redo from the keyboard, and pasting rows onto the canvas, anywhere outside a text field. */
+/** Undo and redo from the keyboard, P to pin the results, and pasting rows onto the canvas, anywhere outside a text field. */
 function useShortcuts() {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (isTyping(e.target) || !(e.ctrlKey || e.metaKey) || e.key.toLowerCase() !== 'z' && e.key.toLowerCase() !== 'y') return;
+      if (isTyping(e.target)) return;
+      if (isPinShortcut(e)) {
+        e.preventDefault();
+        return togglePin();
+      }
+      if (!(e.ctrlKey || e.metaKey) || e.key.toLowerCase() !== 'z' && e.key.toLowerCase() !== 'y') return;
       e.preventDefault();
       const { undo, redo } = useProjectStore.getState();
       if (e.key.toLowerCase() === 'y' || e.shiftKey) redo();
@@ -66,16 +72,61 @@ function useShortcuts() {
   }, []);
 }
 
+/** Pinned, a node selected elsewhere can take the table's place or sit beside it. */
+function PinOffer() {
+  const project = useProject();
+  const selected = useSession((s) => s.selectedNodeId);
+  const node = offeredNode(project, selected);
+  if (!node) return null;
+  return (
+    <div className="flex items-center gap-2 px-3 pb-2" data-testid="pin-offer">
+      <span className="text-label text-ink-muted">{node.name} is selected.</span>
+      <Button size="sm" variant="secondary" icon="eye" onClick={() => viewHere(node.id)}>
+        View here
+      </Button>
+      <Button size="sm" variant="secondary" icon="compare" onClick={() => compareWith(node.id)}>
+        Compare
+      </Button>
+    </div>
+  );
+}
+
 function ResultsTitle() {
   const project = useProject();
   const node = project.view.viewedNodeId ? nodeById(project, project.view.viewedNodeId) : undefined;
   if (!node) return <ResultsBar title="Nothing to view yet" kind="output" />;
   const step = project.view.viewedStepIndex;
   const kind: NodeKind = node.type;
+  const pinned = project.view.pinned;
   const failing = project.view.failingRuleId ? node.rules.find((r) => r.id === project.view.failingRuleId) : undefined;
   const title = failing ? `${node.name} · failing ${failing.label}` : step == null ? node.name : `${node.name} · step ${step + 1}`;
+  const pin = (
+    <Button
+      variant="ghost"
+      size="sm"
+      icon="pin"
+      iconOnly
+      aria-label={pinned ? 'Unpin results' : 'Pin results'}
+      title={pinned ? 'Unpin results (P)' : 'Pin results (P)'}
+      aria-pressed={pinned}
+      className={pinned ? 'text-accent-ink' : undefined}
+      data-testid="pin-toggle"
+      onClick={togglePin}
+    />
+  );
   return (
-    <ResultsBar title={<span data-testid="results-title">{title}</span>} kind={kind} action={node.type === 'output' && !failing ? <ExportButton node={node} /> : undefined}>
+    <ResultsBar
+      title={<span data-testid="results-title">{title}</span>}
+      kind={kind}
+      pinned={pinned}
+      action={
+        <>
+          {pin}
+          {node.type === 'output' && !failing && <ExportButton node={node} />}
+        </>
+      }
+    >
+      <PinOffer />
       <SampleBanner />
       {node.type === 'output' && !failing && <ExportBlockedBanner node={node} className="px-3 pb-2" />}
       {failing ? (

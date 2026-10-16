@@ -20,6 +20,7 @@ import { useFlowStore } from '../flow/status';
 import { JOIN_TYPES } from '../compiler';
 import { canConnect, canGroup, connect, freePort, groupNodes, hasOutput, inputPorts, moveNodes, newId, parsePort, removeNodes, samePort, setCollapsed, upstreamIds, useProject, useProjectStore, type GraphNode } from '../model';
 import { Banner, Button } from '../ui';
+import { viewNode } from '../results/pin';
 import { hostOf } from '../sources/url';
 import { formatLabel } from './formatLabel';
 import { portBroken } from './ports';
@@ -200,7 +201,7 @@ export function Canvas({ onAddSource }: { onAddSource: () => void }) {
         onNodeClick={(e, n) => {
           if (e.shiftKey || e.metaKey || e.ctrlKey) return useSession.getState().toggleSelected(n.id);
           useSession.getState().select(n.id);
-          setView({ viewedNodeId: n.id, viewedStepIndex: undefined });
+          viewNode(n.id);
         }}
         onNodeDoubleClick={(_e, n) => n.data.node.type === 'transform' && apply((p) => setCollapsed(p, n.id, n.data.node.collapsed !== false))}
         onPaneClick={() => useSession.getState().select(null)}

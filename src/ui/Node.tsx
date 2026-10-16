@@ -21,6 +21,8 @@ export interface NodeCardProps {
   selected?: boolean;
   viewed?: boolean;
   pinned?: boolean;
+  /** Shown next to the pinned node in the results table. */
+  comparing?: boolean;
   error?: string;
   dimmed?: boolean;
   expanded?: boolean;
@@ -36,7 +38,7 @@ export interface NodeCardProps {
 
 /** The node card. The canvas wraps this in a React Flow custom node and swaps the ports for handles. */
 export function NodeCard({
-  kind = 'transform', name, detail, rows, cols, steps, rule, selected, viewed, pinned, error, dimmed, expanded, brokenInput, note,
+  kind = 'transform', name, detail, rows, cols, steps, rule, selected, viewed, pinned, comparing, error, dimmed, expanded, brokenInput, note,
   style, className, onClick, renderPorts,
 }: NodeCardProps) {
   const k = NODE_KIND[kind];
@@ -45,7 +47,7 @@ export function NodeCard({
   const inputs = k.inputs === 2 ? ['33%', '67%'] : k.inputs ? ['50%'] : [];
   return (
     <div
-      className={cx('ui-node', selected && 'is-selected', viewed && 'is-viewed', error && 'has-error', dimmed && 'is-dimmed', className)}
+      className={cx('ui-node', selected && 'is-selected', (viewed || comparing) && 'is-viewed', error && 'has-error', dimmed && 'is-dimmed', className)}
       data-kind={kind}
       style={style}
       onClick={onClick}
@@ -55,10 +57,10 @@ export function NodeCard({
         : inputs.map((top, i) => (
             <span key={i} className={cx('ui-port ui-port--in', brokenInput && 'is-broken')} style={{ top, marginTop: 'calc(var(--size-handle) / -2)' }} />
           ))}
-      {(viewed || pinned) && (
-        <span className="ui-node__eye">
-          <Icon name={pinned ? 'pin' : 'eye'} size={12} />
-          {pinned ? 'Pinned' : 'Viewing'}
+      {(viewed || pinned || comparing) && (
+        <span className="ui-node__eye" data-testid="node-pill">
+          <Icon name={pinned ? 'pin' : comparing ? 'compare' : 'eye'} size={12} />
+          {pinned ? 'Pinned' : comparing ? 'Comparing' : 'Viewing'}
         </span>
       )}
       <div className="ui-node__head">
