@@ -13,7 +13,7 @@ export {
   splitByPosition,
   type ColumnTypeName,
 } from './columns';
-export { duplicateRows, FILTER_OPS, fillRows, filterRows, headerNames, promoteHeaders, removeBlankRows, removeRows, sortRows, type FilterOp } from './rows';
+export { Condition, duplicateRows, FILTER_OPS, fillRows, filterRows, headerNames, promoteHeaders, removeBlankRows, removeRows, sortRows, type FilterOp } from './rows';
 export { escapeRegex, extractText, findReplace, padText, regexProblem, textLength } from './text';
 export {
   DATE_PARTS,
@@ -33,3 +33,16 @@ export {
 } from './dates';
 export { absoluteValue, bucketLabels, bucketNumbers, convertExpr, convertUnits, decimalsOf, roundNumbers, standardise, UNITS, type Unit } from './numbers';
 export { collapseSpaces, emptyToNull, parseNumbers, removeNonPrinting } from './clean';
+export {
+  AGGREGATES,
+  filteredInput,
+  MAX_PIVOT_VALUES,
+  pivot,
+  pivotOutputs,
+  pivotValuesQuery,
+  valueName,
+  type Aggregate,
+  type PivotOutput,
+  type PivotParams,
+  type PivotValue,
+} from './reshape';

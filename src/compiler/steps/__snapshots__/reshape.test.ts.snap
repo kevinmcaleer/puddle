@@ -1,0 +1,24 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`pivot step > compiles a group by, a pivot and a filtered pivot > group by 1`] = `
+"SELECT "region", sum("total") AS "sum of total", count(DISTINCT "id") AS "count distinct of id" FROM "n_in" GROUP BY "region"
+ORDER BY "region" ASC NULLS LAST"
+`;
+
+exports[`pivot step > compiles a group by, a pivot and a filtered pivot > pivot 1`] = `
+"SELECT "region", "__puddle_p0_v0" AS "2024-01 sum of total", "__puddle_p0_v1" AS "2024-01 list of rep", "__puddle_p1_v0" AS "it's sum of total", "__puddle_p1_v1" AS "it's list of rep" FROM (
+  PIVOT (SELECT "region", CAST("month" AS VARCHAR) AS "__puddle_pivot", "total" AS "__puddle_v0", "rep" AS "__puddle_v1", "__puddle_row" FROM (SELECT *, row_number() OVER () AS "__puddle_row" FROM "n_in"))
+  ON "__puddle_pivot" IN ('2024-01' AS "__puddle_p0", 'it''s' AS "__puddle_p1")
+  USING sum("__puddle_v0") AS "v0", string_agg(CAST("__puddle_v1" AS VARCHAR), ', ' ORDER BY "__puddle_row") AS "v1"
+  GROUP BY "region"
+)
+ORDER BY "region" ASC NULLS LAST"
+`;
+
+exports[`pivot step > compiles a group by, a pivot and a filtered pivot > pivot with filters and no rows 1`] = `
+"SELECT "__puddle_p0_v0" AS "2024-01 sum of total" FROM (
+  PIVOT (SELECT CAST("month" AS VARCHAR) AS "__puddle_pivot", "total" AS "__puddle_v0" FROM (SELECT * FROM "n_in" WHERE coalesce((lower(CAST("region" AS VARCHAR)) = 'north'), false)))
+  ON "__puddle_pivot" IN ('2024-01' AS "__puddle_p0")
+  USING sum("__puddle_v0") AS "v0"
+)"
+`;

@@ -1,10 +1,11 @@
 import type { ColumnSchema } from '../model';
 import { Banner, Button, columnKind, cx, Field, Select, Switch, TypeTag, type ColumnKind } from '../ui';
-import { FILTER_OPS } from '../compiler';
 import type { Detection } from '../dates';
 import { CommitInput } from './CommitInput';
+import { Conditions, type Condition } from './Conditions';
 import { DateFormatsInput } from './DateFormatsInput';
 import { ExpressionInput } from './ExpressionInput';
+import { PivotEditor, type ReadPivotValues } from './PivotEditor';
 import { fieldErrors, stepForm, textColumnsProblem, type ExpectedKind, type FieldSpec } from './forms';
 
 type Params = Record<string, unknown>;
@@ -56,30 +57,6 @@ function Renames({ value, columns, onChange }: { value: { from: string; to: stri
         </div>
       ))}
       <Button variant="ghost" size="sm" icon="plus" onClick={() => onChange([...value, { from: columns[0]?.name ?? '', to: columns[0]?.name ?? '' }])}>Add rename</Button>
-    </div>
-  );
-}
-
-type Condition = { column: string; op: string; value: string };
-
-const OPS = Object.entries(FILTER_OPS).map(([value, label]) => ({ value, label }));
-const NO_VALUE = new Set(['empty', 'notEmpty']);
-
-function Conditions({ value, columns, onChange }: { value: Condition[]; columns: ColumnSchema[]; onChange: (v: Condition[]) => void }) {
-  const set = (i: number, patch: Partial<Condition>) => onChange(value.map((c, k) => (k === i ? { ...c, ...patch } : c)));
-  return (
-    <div className="flex flex-col gap-2">
-      {value.map((c, i) => (
-        <div key={i} className="flex flex-col gap-1 border-b border-line pb-2">
-          <div className="grid grid-cols-[1fr_1fr_auto] items-center gap-2">
-            <Select aria-label={`Condition ${i + 1} column`} options={[...new Set([c.column, ...columns.map((x) => x.name)])]} value={c.column} onChange={(e) => set(i, { column: e.target.value })} />
-            <Select aria-label={`Condition ${i + 1} comparison`} options={OPS} value={c.op} onChange={(e) => set(i, { op: e.target.value })} />
-            <Button variant="ghost" size="sm" icon="cross" iconOnly aria-label={`Remove condition ${i + 1}`} onClick={() => onChange(value.filter((_, k) => k !== i))} />
-          </div>
-          {!NO_VALUE.has(c.op) && <CommitInput key={c.value} aria-label={`Condition ${i + 1} value`} mono value={c.value} onCommit={(v) => set(i, { value: v })} />}
-        </div>
-      ))}
-      <Button variant="ghost" size="sm" icon="plus" onClick={() => onChange([...value, { column: columns[0]?.name ?? '', op: 'equals', value: '' }])}>Add condition</Button>
     </div>
   );
 }
@@ -162,6 +139,9 @@ function FieldInput({ field, value, params, columns, error, detectDates, onChang
     }
     case 'renames':
       return <Renames value={Array.isArray(value) ? (value as { from: string; to: string }[]) : []} columns={columns} onChange={onChange} />;
+    case 'pivot':
+      // Drawn by FormFields: the pivot editor edits all of the step's settings, not one of them.
+      return null;
   }
 }
 
@@ -197,6 +177,7 @@ export function FormFields({
   errors,
   columns,
   detectDates,
+  readPivotValues,
   onChange,
   testId,
 }: {
@@ -205,13 +186,16 @@ export function FormFields({
   errors: Record<string, string>;
   columns: ColumnSchema[];
   detectDates?: (column: string) => Promise<Detection>;
+  readPivotValues?: ReadPivotValues;
   onChange: (params: Params) => void;
   testId?: string;
 }) {
   return (
     <div className="flex flex-col gap-3" data-testid={testId}>
       {fields.filter((f) => !f.when || f.when(params)).map((f) =>
-        f.kind === 'switch' ? (
+        f.kind === 'pivot' ? (
+          <PivotEditor key={f.key} params={params} errors={errors} columns={columns} readValues={readPivotValues} onChange={onChange} />
+        ) : f.kind === 'switch' ? (
           <FieldInput key={f.key} field={f} value={params[f.key]} params={params} columns={columns} onChange={(v) => onChange({ ...params, [f.key]: v })} />
         ) : (
           <Field key={f.key} label={f.label} htmlFor={`step-${f.key}`} hint={f.liveHint?.(params) ?? f.hint} error={errors[f.key]}>
@@ -225,8 +209,33 @@ export function FormFields({
 }
 
 /** The settings form for one step. */
-export function StepForm({ type, params, columns, detectDates, onChange }: { type: string; params: Params; columns: ColumnSchema[]; detectDates?: (column: string) => Promise<Detection>; onChange: (params: Params) => void }) {
+export function StepForm({
+  type,
+  params,
+  columns,
+  detectDates,
+  readPivotValues,
+  onChange,
+}: {
+  type: string;
+  params: Params;
+  columns: ColumnSchema[];
+  detectDates?: (column: string) => Promise<Detection>;
+  readPivotValues?: ReadPivotValues;
+  onChange: (params: Params) => void;
+}) {
   const form = stepForm(type);
   if (!form) return <p className="text-ink-muted">This step type has no settings form.</p>;
-  return <FormFields testId="step-form" fields={form.fields} params={params} errors={fieldErrors({ type, params })} columns={columns} detectDates={detectDates} onChange={onChange} />;
+  return (
+    <FormFields
+      testId="step-form"
+      fields={form.fields}
+      params={params}
+      errors={fieldErrors({ type, params })}
+      columns={columns}
+      detectDates={detectDates}
+      readPivotValues={readPivotValues}
+      onChange={onChange}
+    />
+  );
 }

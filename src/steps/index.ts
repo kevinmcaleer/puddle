@@ -6,5 +6,6 @@ import './rows';
 import './text';
 import './dates';
 import './numbers';
+import './pivot';
 
 export { defineStepForm, fieldErrors, labelFor, schemaErrors, newStep, relabel, stepForm, stepForms, textColumnsProblem, type DefaultsContext, type ExpectedKind, type FieldSpec, type StepForm, type StepGroup } from './forms';

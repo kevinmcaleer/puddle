@@ -5,7 +5,7 @@ import { knownSchemas, type SchemaBook } from './schemaBook';
 import { sourceRelation } from './sources';
 import { cteName, ident, num, str } from './sql';
 import { rulePredicate } from './rules';
-import { stepParams } from './steps';
+import { pivotValuesQuery, stepParams, type Condition } from './steps';
 
 export const PAGE_SIZE = 500;
 
@@ -221,6 +221,14 @@ export function compileDateDetection(project: Project, target: Target, column: s
     return `SELECT ${num(i)} AS i, ${str(f)} AS format, count(*) FILTER (WHERE ${reads}) AS matched, count(*) AS total, any_value(v) FILTER (WHERE ${reads}) AS example FROM s`;
   });
   return `WITH s AS (${values})\nSELECT format, matched, total, example FROM (\n  ${tried.join('\n  UNION ALL ')}\n) ORDER BY i`;
+}
+
+/**
+ * The values a pivot's Columns field would turn into columns, read from the data arriving at the step after its
+ * filters: one row per value (`v`, as text), at most one more than can become columns.
+ */
+export function compilePivotValues(project: Project, target: Target, pivot: { column: string; filters: Condition[] }): string {
+  return pivotValuesQuery(pivot, `(${compile(project, target).sql})`);
 }
 
 /**
