@@ -1,4 +1,4 @@
-import { canRedo, canUndo, initHistory, pushHistory, redo, undo } from './history';
+import { canRedo, canUndo, checkpoint, initHistory, pushHistory, redo, undo } from './history';
 
 describe('history', () => {
   it('undoes and redoes snapshots in order', () => {
@@ -29,5 +29,36 @@ describe('history', () => {
     expect(pushHistory(h, h.present)).toBe(h);
     expect(undo(h)).toBe(h);
     expect(redo(h)).toBe(h);
+  });
+
+  it('turns changes made in place since a snapshot into one undo step', () => {
+    let h = pushHistory(initHistory('a'), 'b');
+    const before = h.present;
+    // Typing amends the present without undo steps.
+    h = { ...h, present: 'bc' };
+    h = { ...h, present: 'bcd' };
+    h = checkpoint(h, before);
+    expect(h.past).toEqual(['a', 'b']);
+    expect(h.present).toBe('bcd');
+    h = undo(h);
+    expect(h.present).toBe('b');
+    expect(redo(h).present).toBe('bcd');
+  });
+
+  it('adds no step when nothing changed since the snapshot, and caps the past', () => {
+    const h = initHistory('a');
+    expect(checkpoint(h, h.present)).toBe(h);
+    let capped = initHistory(0);
+    for (let i = 1; i <= 3; i++) capped = pushHistory(capped, i, 3);
+    capped = checkpoint({ ...capped, present: 9 }, 3, 3);
+    expect(capped.past).toEqual([1, 2, 3]);
+  });
+
+  it('drops the redo branch when an editing session closes', () => {
+    let h = undo(pushHistory(initHistory('a'), 'b'));
+    expect(h.future).toEqual(['b']);
+    const before = h.present;
+    h = checkpoint({ ...h, present: 'ax' }, before);
+    expect(h.future).toEqual([]);
   });
 });

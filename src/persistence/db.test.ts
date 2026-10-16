@@ -20,6 +20,12 @@ describe('IndexedDB project store', () => {
     expect(await loadProject('nope')).toBeUndefined();
   });
 
+  it('keeps project notes', async () => {
+    const p = { ...createProject('Noted'), notes: '## Next\n\n- check totals' };
+    await saveProject(p);
+    expect((await loadProject(p.id))!.notes).toBe('## Next\n\n- check totals');
+  });
+
   it('lists summaries, most recently updated first', async () => {
     const a = { ...createProject('Older'), updatedAt: '2026-01-01T00:00:00.000Z' };
     const b = { ...createProject('Newer'), updatedAt: '2026-02-01T00:00:00.000Z' };
