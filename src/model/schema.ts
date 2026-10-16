@@ -111,13 +111,35 @@ export const OutputSpecZ = z.object({
 
 export const OutputNodeZ = z.object({ ...NodeBase, type: z.literal('output'), outputSpec: OutputSpecZ.default({ format: 'csv', options: {} }) });
 
-export const NodeZ = z.discriminatedUnion('type', [SourceNodeZ, TransformNodeZ, OutputNodeZ]);
+/** How a Join node matches rows: anti keeps left rows with no match, semi keeps left rows with one. */
+export const JOIN_KINDS = ['inner', 'left', 'right', 'full', 'anti', 'semi'] as const;
+
+export const JoinKeyZ = z.object({ left: z.string(), right: z.string() });
+
+export const JoinSpecZ = z.object({
+  kind: z.enum(JOIN_KINDS).default('left'),
+  /** Pairs of columns that must be equal, all of them, for a left row to match a right row. */
+  keys: z.array(JoinKeyZ).default([]),
+  /** Added to a right column whose name the left side already uses. */
+  suffix: z.string().default('_right'),
+});
+
+export const DEFAULT_JOIN_SPEC = { kind: 'left', keys: [], suffix: '_right' } as const satisfies z.input<typeof JoinSpecZ>;
+
+export const JoinNodeZ = z.object({ ...NodeBase, type: z.literal('join'), joinSpec: JoinSpecZ.default({ ...DEFAULT_JOIN_SPEC, keys: [] }) });
+
+export const NodeZ = z.discriminatedUnion('type', [SourceNodeZ, TransformNodeZ, JoinNodeZ, OutputNodeZ]);
+
+/** Named input ports. Join uses left and right; nodes with one input, or numbered inputs, use an index. */
+export const NAMED_PORTS = ['left', 'right'] as const;
+
+export const PortZ = z.union([z.number().int().nonnegative(), z.enum(NAMED_PORTS)]);
 
 export const EdgeZ = z.object({
   id: z.string().min(1),
   from: z.object({ nodeId: z.string().min(1) }),
-  /** port: input index on the target; "left" and "right" arrive with Join nodes in Phase 2. */
-  to: z.object({ nodeId: z.string().min(1), port: z.union([z.number().int().nonnegative(), z.enum(['left', 'right'])]).default(0) }),
+  /** port: which input of the target the wire goes into (see inputPorts in graph.ts). */
+  to: z.object({ nodeId: z.string().min(1), port: PortZ.default(0) }),
 });
 
 export const ProjectSettingsZ = z.object({
@@ -175,6 +197,11 @@ export type Rule = z.infer<typeof RuleZ>;
 export type SourceNode = z.infer<typeof SourceNodeZ>;
 export type TransformNode = z.infer<typeof TransformNodeZ>;
 export type OutputNode = z.infer<typeof OutputNodeZ>;
+export type JoinKind = (typeof JOIN_KINDS)[number];
+export type JoinKey = z.infer<typeof JoinKeyZ>;
+export type JoinSpec = z.infer<typeof JoinSpecZ>;
+export type JoinNode = z.infer<typeof JoinNodeZ>;
+export type Port = z.infer<typeof PortZ>;
 export type GraphNode = z.infer<typeof NodeZ>;
 export type NodeType = GraphNode['type'];
 export type Edge = z.infer<typeof EdgeZ>;

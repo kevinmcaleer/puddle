@@ -1,4 +1,4 @@
-import { createProject, parseProject, type Project, type Source, type Step } from '../../src/model';
+import { createProject, parseProject, type JoinSpec, type Port, type Project, type Source, type Step } from '../../src/model';
 
 type SourceInit = Pick<Source, 'id' | 'format'> & Partial<Source>;
 
@@ -11,9 +11,11 @@ interface FlowInit {
   nodes: Array<
     | { id: string; type: 'source'; sourceId: string }
     | { id: string; type: 'transform'; steps?: Step[] }
+    | { id: string; type: 'join'; joinSpec?: Partial<JoinSpec> }
     | { id: string; type: 'output' }
   >;
-  wires?: Array<[from: string, to: string]>;
+  /** A wire goes into input 0 unless it names a port ("left", "right"). */
+  wires?: Array<[from: string, to: string, port?: Port]>;
 }
 
 /** Build a valid project from a compact description. */
@@ -24,6 +26,6 @@ export function flow({ sources = [], nodes, wires = [] }: FlowInit): Project {
     id: 'p1',
     sources,
     nodes: nodes.map((n) => ({ name: n.id, ...n })),
-    edges: wires.map(([from, to], i) => ({ id: `e${i}`, from: { nodeId: from }, to: { nodeId: to, port: 0 } })),
+    edges: wires.map(([from, to, port = 0], i) => ({ id: `e${i}`, from: { nodeId: from }, to: { nodeId: to, port } })),
   });
 }

@@ -146,6 +146,7 @@ export function AppShell() {
             button={{ icon: 'transform' }}
             items={[
               { label: 'Transform', icon: 'transform', onSelect: () => addNodeAfterSelection('transform') },
+              { label: 'Join', icon: 'join', hint: 'Two inputs', onSelect: () => addNodeAfterSelection('join') },
               { label: 'Output', icon: 'output', onSelect: () => addNodeAfterSelection('output') },
             ]}
           />
