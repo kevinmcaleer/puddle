@@ -58,3 +58,28 @@ test('a revalidated file keeps the cross-origin isolation headers', async ({ pag
   expect(again.status()).toBe(304);
   expect(again.headers()).toMatchObject({ 'cross-origin-opener-policy': 'same-origin', 'cross-origin-embedder-policy': 'require-corp' });
 });
+
+test('DuckDB that fails to start is started once more', async ({ page }) => {
+  // Regression (WebKit): now and then DuckDB's worker failed while starting ("access to a null reference") and the app
+  // stayed on "DuckDB didn't start". Here the first DuckDB worker answers every request with that error.
+  await page.addInitScript(() => {
+    const Real = window.Worker;
+    let failed = false;
+    window.Worker = class extends Real {
+      constructor(url: string | URL, options?: WorkerOptions) {
+        const broken = !failed && String(url).includes('duckdb');
+        if (broken) failed = true;
+        const script = `onmessage = (e) => postMessage({ messageId: 0, requestId: e.data.messageId, type: 'ERROR', data: { name: 'TypeError', message: 'access to a null reference' } });`;
+        super(broken ? URL.createObjectURL(new Blob([script], { type: 'text/javascript' })) : url, options);
+      }
+    };
+  });
+  const warnings: string[] = [];
+  page.on('console', (m) => void (m.type() === 'warning' && warnings.push(m.text())));
+  await openApp(page);
+  expect(warnings.some((w) => w.startsWith("DuckDB didn't start (instantiate: access to a null reference)"))).toBe(true);
+  await addFiles(page, [fixture('customers.csv')]);
+  await expect(node(page, 'customers.csv')).toHaveAttribute('data-status', 'ok', { timeout: 20_000 });
+  await node(page, 'customers.csv').click();
+  await expectRows(page, 4);
+});

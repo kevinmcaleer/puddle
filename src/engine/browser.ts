@@ -37,12 +37,39 @@ function memoryOutput(db: duckdb.AsyncDuckDB, name: string): OutputFile {
   };
 }
 
-/** DuckDB-WASM in a dedicated Web Worker: `eh`, or `mvp` on browsers without WASM exceptions. */
+/**
+ * DuckDB-WASM in a dedicated Web Worker: `eh`, or `mvp` on browsers without WASM exceptions. Starting it now and
+ * then fails in Safari (WebKit) with "access to a null reference" from inside the worker; a fresh worker starts, so
+ * a failed start is tried once more, and the console says where the first one failed.
+ */
 export async function createBrowserBackend(): Promise<DuckBackend> {
+  const step = { name: 'loading' };
+  try {
+    return await startBackend(step);
+  } catch (e) {
+    const err = e instanceof Error ? e : new Error(String(e));
+    console.warn(`DuckDB didn't start (${step.name}: ${err.message}), so it is starting again.${err.stack ? `\n${err.stack}` : ''}`);
+    return startBackend({ name: 'loading' });
+  }
+}
+
+/** One try at starting DuckDB. `step` says how far it got; a failed start stops its worker. */
+async function startBackend(step: { name: string }): Promise<DuckBackend> {
   const bundle = await duckdb.selectBundle(BUNDLES);
   const worker = new Worker(bundle.mainWorker!);
+  try {
+    return await openBackend(bundle, worker, step);
+  } catch (e) {
+    worker.terminate();
+    throw e;
+  }
+}
+
+async function openBackend(bundle: duckdb.DuckDBBundle, worker: Worker, step: { name: string }): Promise<DuckBackend> {
   const db = new duckdb.AsyncDuckDB(new duckdb.VoidLogger(), worker);
+  step.name = 'instantiate';
   await db.instantiate(bundle.mainModule, bundle.pthreadWorker);
+  step.name = 'open';
   await db.open({
     path: ':memory:',
     query: { castBigIntToDouble: false },
@@ -50,6 +77,7 @@ export async function createBrowserBackend(): Promise<DuckBackend> {
     // requests; this build otherwise downloads the whole file on every open.
     filesystem: { forceFullHTTPReads: false, allowFullHTTPReads: true, reliableHeadRequests: true },
   });
+  step.name = 'connect';
   const conn = await db.connect();
 
   let spill = false;
@@ -61,8 +89,10 @@ export async function createBrowserBackend(): Promise<DuckBackend> {
   }
 
   const name = bundleName(bundle);
+  step.name = 'version';
   const version = await db.getVersion();
   // Use the extensions this site serves, when its build includes them for this DuckDB version.
+  step.name = 'extensions';
   const extensions = await selfHostedRepository(version, `wasm_${name}`, new URL(import.meta.env.BASE_URL, location.href).href);
   if (extensions) for (const sql of setExtensionRepository(extensions)) await conn.query(sql);
 
