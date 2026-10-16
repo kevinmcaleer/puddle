@@ -187,6 +187,15 @@ test('compared grids scroll together, by row and by matching column', async ({ p
   await together('data-first-row').toMatch(/^[1-9]\d*$/);
   const down = Number(await main.getAttribute('data-first-row'));
 
+  // The grid that follows can keep moving after the person stops, as Firefox's smooth scrolling does. Regression:
+  // those late moves were passed back once a short window after following had closed, so the grids took turns
+  // following each other and came to rest on different rows. Only the grid the person scrolled leads.
+  await page.waitForTimeout(400);
+  await other.locator('.dvn-scroller').evaluate((el) => el.scrollBy({ top: 2000 }));
+  await expect.poll(async () => Number(await other.getAttribute('data-first-row'))).toBeGreaterThan(down);
+  await page.waitForTimeout(400);
+  expect(Number(await main.getAttribute('data-first-row'))).toBe(down);
+
   // Scroll it sideways: the right one shows the same column at its left edge.
   await wheel(page, 600, 0);
   await expect.poll(async () => (await main.getAttribute('data-first-column')) ?? '').toMatch(/^column_/);
