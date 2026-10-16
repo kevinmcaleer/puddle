@@ -1,5 +1,5 @@
 import { flow, src } from '../../tests/helpers/projects';
-import { addNode, addSource, moveNodes, nextNodeName, removeNodes, setCollapsed, setParseOptions } from './edits';
+import { addNode, addSource, moveNodes, nextNodeName, removeNodes, setCollapsed, setKeepResult, setParseOptions } from './edits';
 import { createProject } from './project';
 
 const withSource = () => addSource(createProject('T'), src({ id: 's1', format: 'csv', name: 'a.csv' }), { x: 10, y: 20 }, 'n1');
@@ -40,6 +40,15 @@ describe('project edits', () => {
   it('collapses and expands a node', () => {
     const p = addNode(withSource(), 'transform', { x: 0, y: 0 }, 'n1', 't1');
     expect(setCollapsed(p, 't1', false).nodes.find((n) => n.id === 't1')!.collapsed).toBe(false);
+  });
+
+  it('keeps a node\'s result and stops keeping it, but never an Output node\'s', () => {
+    let p = addNode(addNode(withSource(), 'transform', { x: 0, y: 0 }, 'n1', 't1'), 'output', { x: 0, y: 0 }, 't1', 'o1');
+    p = setKeepResult(p, 't1', true);
+    expect(p.nodes.find((n) => n.id === 't1')!.pinnedResult).toBe(true);
+    p = setKeepResult(p, 't1', false);
+    expect('pinnedResult' in p.nodes.find((n) => n.id === 't1')!).toBe(false);
+    expect(setKeepResult(p, 'o1', true).nodes.find((n) => n.id === 'o1')!.pinnedResult).toBeUndefined();
   });
 
   it('removes nodes with their wires and orphaned sources, and clears a view that pointed at them', () => {
