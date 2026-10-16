@@ -152,6 +152,8 @@ describe('step snapshots', () => {
     ['emptyToNull', { columns: ['name', 'id'] }],
     ['parseNumbers', { columns: ['id'], decimal: '.' }],
     ['parseNumbers', { columns: ['id'], decimal: ',' }],
+    ['parseNumbers', { columns: ['id'], decimal: '.', locale: 'de-DE' }],
+    ['parseDates', { columns: ['joined'], formats: ['%d. %B %Y'], onError: 'empty', locale: 'de-DE' }],
     ['parseDates', { columns: ['joined'], formats: ['%Y-%m-%d %H:%M:%S', "%d %b '%y"], onError: 'fail' }],
     ['extractDatePart', { columns: ['joined'], part: 'year', replace: false }],
     ['extractDatePart', { columns: ['joined', 'id'], part: 'weekdayName', replace: true }],

@@ -1,5 +1,5 @@
 // Editor forms for the Dates step group. Parse dates detects formats when the step is added and again in the form.
-import { DATE_PARTS, INTERVAL_UNITS, TRUNCATE_TO } from '../compiler';
+import { DATE_PARTS, INTERVAL_UNITS, PARSE_LOCALES, TRUNCATE_TO } from '../compiler';
 import { describeFormat, strftime } from '../dates';
 import { columnKind } from '../ui/columnKind';
 import { isKind, pickColumns, pickKind } from './basic';
@@ -19,6 +19,13 @@ defineStepForm({
   group: 'Dates',
   fields: [
     { key: 'columns', label: 'Columns', kind: 'columns' },
+    {
+      key: 'locale',
+      label: 'Locale',
+      kind: 'select',
+      options: [{ value: '', label: 'Not set (English names, ask when unclear)' }, ...Object.entries(PARSE_LOCALES).map(([value, l]) => ({ value, label: `${l.label} (${l.dayFirst ? 'day' : 'month'} first)` }))],
+      hint: 'Reads its month and day names, and its day and month order when values could be either. Kept with the step.',
+    },
     { key: 'formats', label: 'Formats', kind: 'dateFormats', hint: 'Tried in order; each value is read by the first that fits.' },
     {
       key: 'onError',
@@ -31,8 +38,8 @@ defineStepForm({
     },
   ],
   detectsDates: true,
-  // An ambiguous day and month order leaves formats empty, so the form asks.
-  defaults: (ctx) => ({ columns: pickColumns(ctx).slice(0, 1), formats: ctx.dates?.best ? [ctx.dates.best] : [], onError: 'empty' }),
+  // An ambiguous day and month order leaves formats empty, so the form asks. No locale until one is picked.
+  defaults: (ctx) => ({ columns: pickColumns(ctx).slice(0, 1), formats: ctx.dates?.best ? [ctx.dates.best] : [], onError: 'empty', locale: undefined }),
 });
 
 defineStepForm({

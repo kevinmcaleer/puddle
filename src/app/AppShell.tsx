@@ -24,7 +24,7 @@ import { useExcelSources } from '../sources/excel';
 import { UrlDialog } from '../sources/UrlDialog';
 import { openUrlDialog } from '../sources/urlDialog';
 import { cardKind } from '../canvas/kind';
-import { Button, Menu, ResultsBar, StatusBadge, StatusStrip, Toolbar, type NodeKind } from '../ui';
+import { Button, Menu, ResultsBar, StatusBadge, StatusStrip, Toolbar, useDisplayFormat, type NodeKind } from '../ui';
 import { ActivityControl } from './ActivityControl';
 import { addFiles, addNodeAfterSelection, chooseFiles as pickSourceFiles, addPastedText, groupSelection, layoutFlow, pasteFromClipboard, searchAddStep, selectNeighbour, viewSelected } from './actions';
 import { useEngineStore, type EngineStatus } from './engine';
@@ -126,6 +126,7 @@ function Strip() {
   const node = viewed ? nodeById(project, viewed) : undefined;
   const results = useRuleStore((s) => (viewed ? s.nodes[viewed]?.results : undefined));
   const sample = useSample(project);
+  const display = useDisplayFormat();
   const end = (
     <>
       <ActivityControl />
@@ -140,7 +141,7 @@ function Strip() {
   const detail = (
     <>
       {rules && sampled && <span data-testid="rules-on-sample">Rules checked on the sample</span>}
-      {one && p && <span data-testid="column-profile">{one} · {describeProfile(p)}</span>}
+      {one && p && <span data-testid="column-profile">{one} · {describeProfile(p, display)}</span>}
     </>
   );
   return <StatusStrip rows={rows} cols={cols} ms={ms} rules={rules} kept={kept} sample={sampled && sample ? sample.rows : undefined} detail={(rules && sampled) || (one && p) ? detail : undefined} end={end} />;

@@ -19,3 +19,13 @@ describe('column profiles', () => {
     expect(describeProfile({ empty: 0, looksLike: { kind: 'dates', share: 1 } })).toBe('0% empty · looks like dates');
   });
 });
+
+describe('profiles in a display locale', () => {
+  it('shows the smallest and largest as the column’s values are shown', () => {
+    const rows = [{ column_name: 'when', null_pct: 0, approx_unique: 1500, min: '2026-01-31', max: '2026-12-31' }];
+    const p = parseProfile(rows, { when: 'date' }).when!;
+    expect(p.kind).toBe('date');
+    expect(describeProfile(p, { locale: 'de-DE', dates: 'locale' })).toBe('about 1.500 distinct · 31.01.2026 to 31.12.2026 · 0% empty');
+    expect(describeProfile(p, { locale: 'en-GB', dates: 'iso' })).toBe('about 1,500 distinct · 2026-01-31 to 2026-12-31 · 0% empty');
+  });
+});

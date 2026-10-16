@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { parseLocale } from '../compiler';
 import { describeFormat, type Detection } from '../dates';
 import { Banner, Button, cx } from '../ui';
 import { CommitInput } from './CommitInput';
@@ -7,34 +8,39 @@ const pct = (matched: number, total: number) => (total ? `${Math.round((matched 
 
 /**
  * The formats a parse dates step tries, in order, with the formats detected on its column and how many
- * values each reads. Day and month order is never chosen for the user: an ambiguous column asks.
+ * values each reads. Day and month order is never guessed: an ambiguous column asks, or follows the step's locale
+ * (and follows it again when the locale changes), saying so either way.
  */
 export function DateFormatsInput({
   id,
   value,
   column,
+  locale,
   detect,
   onChange,
 }: {
   id: string;
   value: string[];
   column: string;
-  detect?: (column: string) => Promise<Detection>;
+  /** The step's locale, which settles an unclear day and month order. */
+  locale?: string;
+  detect?: (column: string, locale?: string) => Promise<Detection>;
   onChange: (v: string[]) => void;
 }) {
-  const [found, setFound] = useState<{ column: string; detection: Detection } | null>(null);
+  const [found, setFound] = useState<{ key: string; detection: Detection } | null>(null);
+  const key = `${column}|${locale ?? ''}`;
   useEffect(() => {
     if (!detect || !column) return;
     let live = true;
-    detect(column).then(
-      (detection) => live && setFound({ column, detection }),
-      () => live && setFound({ column, detection: { ranked: [] } }),
+    detect(column, locale).then(
+      (detection) => live && setFound({ key, detection }),
+      () => live && setFound({ key, detection: { ranked: [] } }),
     );
     return () => {
       live = false;
     };
-  }, [detect, column]);
-  const detection = found?.column === column ? found.detection : undefined;
+  }, [detect, column, locale, key]);
+  const detection = found?.key === key ? found.detection : undefined;
   const add = (f: string) => !value.includes(f) && onChange([...value, f]);
   const amb = detection?.ambiguous;
   // Which of the two orders is in use (the earlier one, if both), shown either way so it's never settled silently.
@@ -43,6 +49,23 @@ export function DateFormatsInput({
   const chosen = di < 0 && mi < 0 ? undefined : mi < 0 || (di >= 0 && di < mi) ? 'day' : 'month';
   const rate = (f: string) => detection?.ranked.find((m) => m.format === f);
   const swap = (from: string, to: string) => onChange(value.includes(to) ? value.filter((x) => x !== from) : value.map((x) => (x === from ? to : x)));
+
+  // The locale's order is used once detection for a column and locale is in: when no order is chosen yet, and in
+  // place of the other order when the locale or column has just changed. An order picked by hand, or a format removed,
+  // under the same locale stands.
+  const seen = useRef<string | null>(null);
+  const byLocale = amb?.byLocale ? parseLocale(amb.byLocale) : undefined;
+  useEffect(() => {
+    if (!detection || seen.current === key) return;
+    const first = seen.current === null;
+    seen.current = key;
+    if (!amb || !byLocale) return;
+    const want = byLocale.dayFirst ? 'day' : 'month';
+    if (chosen === want || (chosen && first)) return;
+    const [from, to] = want === 'day' ? [amb.monthFirst, amb.dayFirst] : [amb.dayFirst, amb.monthFirst];
+    if (chosen) swap(from, to);
+    else onChange([to, ...value]);
+  });
 
   return (
     <div id={id} className="flex flex-col gap-2" data-testid="date-formats">
@@ -69,7 +92,8 @@ export function DateFormatsInput({
             </Button>
           }
         >
-          {amb.example ? `${amb.example} could be read either way; ` : 'These values could be read either way; '}check this is the order the data uses.
+          {amb.example ? `${amb.example} could be read either way; ` : 'These values could be read either way; '}
+          {byLocale && chosen === (byLocale.dayFirst ? 'day' : 'month') ? `this is the order ${byLocale.label} uses.` : 'check this is the order the data uses.'}
         </Banner>
       )}
 

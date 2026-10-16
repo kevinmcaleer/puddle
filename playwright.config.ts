@@ -19,7 +19,8 @@ export default defineConfig({
     ...(process.env.E2E_BROWSER_LOGS ? [['./e2e/helpers/failure-context.ts'] as const] : []),
   ],
   // The service worker would precache the 36 MB engine in every test; e2e/container tests it.
-  use: { baseURL: `http://localhost:${port}`, trace: 'retain-on-failure', serviceWorkers: 'block' },
+  // Numbers and dates are shown in the browser's locale, so it's fixed here rather than taken from the machine.
+  use: { baseURL: `http://localhost:${port}`, trace: 'retain-on-failure', serviceWorkers: 'block', locale: 'en-GB' },
   projects: browserProjects(),
   webServer: {
     command: `npm run build && npx vite preview --port ${port} --strictPort`,
