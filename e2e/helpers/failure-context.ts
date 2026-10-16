@@ -17,7 +17,7 @@ export default class FailureContext implements Reporter {
       return;
     }
     const lines = text.split('\n');
-    const shown = lines.slice(0, 200).join('\n') + (lines.length > 200 ? `\n… ${lines.length - 200} more lines` : '');
+    const shown = lines.slice(0, 400).join('\n') + (lines.length > 400 ? `\n… ${lines.length - 400} more lines` : '');
     console.log(`\n--- The page when "${test.titlePath().slice(1).join(' › ')}" failed ---\n${shown}\n--- end ---\n`);
   }
 }

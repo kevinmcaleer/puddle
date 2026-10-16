@@ -138,3 +138,32 @@ test('deleting a node removes it and its wires, and undo brings them back', asyn
   await expect(node(page, 'Output 1')).toBeAttached();
   await expect(page.getByTestId('wire-customers.csv->Output 1')).toBeAttached();
 });
+
+// Regression: the canvas handed React Flow its nodes without their measured size each time the flow changed, so
+// every node was hidden for a frame until measured again. A click in that frame landed on the pane and cleared the
+// selection, and a node added next came out unwired (Firefox CI).
+test('nodes stay visible while the flow updates around them', async ({ page }) => {
+  await openApp(page);
+  await addFiles(page, [fixture('customers.csv')]);
+  await expect(node(page, 'customers.csv')).toHaveAttribute('data-status', 'ok');
+  // From here on, note every time a node on the canvas is hidden.
+  await page.evaluate(() => {
+    const hidden: string[] = [];
+    (window as unknown as { __hidden: string[] }).__hidden = hidden;
+    const check = () => {
+      for (const el of Array.from(document.querySelectorAll<HTMLElement>('.react-flow__node')))
+        if (el.style.visibility === 'hidden' && el.dataset.seen) hidden.push(el.getAttribute('data-id') ?? '?');
+        else el.dataset.seen = '1';
+    };
+    new MutationObserver(check).observe(document.body, { subtree: true, attributes: true, attributeFilter: ['style'] });
+  });
+  await node(page, 'customers.csv').click();
+  await page.getByRole('button', { name: 'Add node' }).click();
+  await page.getByRole('menuitem', { name: 'Transform' }).click();
+  await expect(node(page, 'Transform 1')).toHaveAttribute('data-status', 'ok');
+  await page.getByRole('button', { name: 'Add node' }).click();
+  await page.getByRole('menuitem', { name: 'Output' }).click();
+  await expect(node(page, 'Output 1')).toHaveAttribute('data-status', 'ok');
+  await expect(page.getByTestId('wire-Transform 1->Output 1')).toBeAttached();
+  expect(await page.evaluate(() => (window as unknown as { __hidden: string[] }).__hidden)).toEqual([]);
+});

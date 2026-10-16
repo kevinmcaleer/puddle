@@ -32,9 +32,10 @@ export function PuddleNode({ data, selected }: NodeProps<PuddleFlowNode>) {
   const keepKey = useMemo(() => (node.pinnedResult ? upstreamKey(view, { nodeId: node.id }) : null), [view, node.pinnedResult, node.id]);
   const kept = keepKey != null && node.type !== 'output' ? keptView(keptEntry, keepKey) : null;
   const numbered = hasNumberedInputs(node);
-  // An Append or Query gains an input as its last one is wired: React Flow has to measure the new handle.
+  // An Append or Query gains an input as its last one is wired, and a rule's reference adds a hidden handle: React
+  // Flow has to measure the new handle (the canvas keeps each node's measured size, so nothing else makes it).
   const updateInternals = useUpdateNodeInternals();
-  useEffect(() => updateInternals(node.id), [updateInternals, node.id, ports.length]);
+  useEffect(() => updateInternals(node.id), [updateInternals, node.id, ports.length, data.refIn, data.refOut]);
   const allResults = useRuleStore((s) => s.nodes);
   const own = ok ? summarise(node.rules, allResults[node.id]?.results) : undefined;
   // An Output node shows when a failing rule upstream blocks its export, even with no rules of its own.
