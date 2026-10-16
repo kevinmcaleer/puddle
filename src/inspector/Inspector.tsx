@@ -4,6 +4,7 @@ import { formatLabel } from '../canvas/formatLabel';
 import { nodeById, setParseOptions, useProject, useProjectStore, type ParseOptions, type ProjectSettings as ProjectSettingsT, type Source } from '../model';
 import { Banner, columnKind, Field, Icon, NODE_KIND, Section, Select, Switch, TypeTag } from '../ui';
 import { CommitInput } from '../steps/StepForm';
+import { JoinPanel } from './JoinPanel';
 import { NodeNotes } from './NodeNotes';
 import { OutputPanel } from './OutputPanel';
 import { RulesPanel } from './RulesPanel';
@@ -133,6 +134,16 @@ export function Inspector() {
     return (
       <>
         <TransformPanel node={node} />
+        <Columns nodeId={node.id} />
+        <RulesPanel node={node} />
+        <NodeNotes node={node} />
+      </>
+    );
+
+  if (node.type === 'join')
+    return (
+      <>
+        <JoinPanel node={node} />
         <Columns nodeId={node.id} />
         <RulesPanel node={node} />
         <NodeNotes node={node} />

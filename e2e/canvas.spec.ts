@@ -108,6 +108,22 @@ test('a broken source breaks its node and dims everything downstream', async ({ 
   await expect(node(page, 'Output 1')).toHaveAttribute('data-status', 'ok');
 });
 
+test('a wire can be selected and deleted on its own, and undo brings it back', async ({ page }) => {
+  await openApp(page);
+  await addFiles(page, [fixture('customers.csv')]);
+  await node(page, 'customers.csv').click();
+  await page.getByRole('button', { name: 'Add node' }).click();
+  await page.getByRole('menuitem', { name: 'Output' }).click();
+  await expect(node(page, 'Output 1')).toHaveAttribute('data-status', 'ok');
+  await page.getByTestId('wire-customers.csv->Output 1').click({ force: true });
+  await page.keyboard.press('Delete');
+  await expect(page.getByTestId('wire-customers.csv->Output 1')).not.toBeAttached();
+  await expect(node(page, 'Output 1')).toHaveAttribute('data-status', 'unwired');
+  await expect(node(page, 'customers.csv')).toBeAttached();
+  await page.keyboard.press('Control+z');
+  await expect(node(page, 'Output 1')).toHaveAttribute('data-status', 'ok');
+});
+
 test('deleting a node removes it and its wires, and undo brings them back', async ({ page }) => {
   await openApp(page);
   await addFiles(page, [fixture('customers.csv')]);
