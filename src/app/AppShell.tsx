@@ -14,6 +14,8 @@ import { exportAll, ExportBlockedBanner, ExportButton } from '../export';
 import { ResultsTable } from '../results/ResultsTable';
 import { useResultsStore } from '../results/state';
 import { ACCEPT } from '../sources/detect';
+import { UrlDialog } from '../sources/UrlDialog';
+import { openUrlDialog } from '../sources/urlDialog';
 import { Button, Menu, ResultsBar, StatusBadge, StatusStrip, Toolbar, type NodeKind } from '../ui';
 import { addFiles, addNodeAfterSelection, addPastedText, layoutFlow, pasteFromClipboard } from './actions';
 import { useEngineStore, type EngineStatus } from './engine';
@@ -133,6 +135,7 @@ export function AppShell() {
             button={{ variant: 'primary', icon: 'plus' }}
             items={[
               { label: 'Choose files', icon: 'source', hint: 'CSV, TSV, JSON, Parquet', onSelect: chooseFiles },
+              { label: 'From URL', icon: 'link', hint: 'https address', onSelect: () => openUrlDialog() },
               { label: 'Paste from clipboard', icon: 'paste', onSelect: () => void pasteFromClipboard() },
             ]}
           />
@@ -201,6 +204,7 @@ export function AppShell() {
 
         <Strip />
       </div>
+      <UrlDialog onChooseFile={chooseFiles} />
     </ReactFlowProvider>
   );
 }

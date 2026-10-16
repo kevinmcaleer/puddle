@@ -10,6 +10,7 @@ import { TransformPanel } from './TransformPanel';
 import { useAttachments } from '../sources/attachments';
 import { detachedMessage } from '../sources/attach';
 import { ReattachButton } from '../sources/ReattachButton';
+import { UrlPanel } from '../sources/UrlPanel';
 import { DELIMITERS, delimiterValue, ENCODINGS, hasParseOptions, LOCALES, parseNullStrings, withOption } from './options';
 
 function SourceOptions({ source }: { source: Source }) {
@@ -148,6 +149,7 @@ export function Inspector() {
         </div>
       </div>
       {source && source.kind === 'file' && <AttachmentBanner source={source} />}
+      {source && source.kind === 'url' && <UrlPanel source={source} />}
       {source && hasParseOptions(source) && <SourceOptions source={source} />}
       {node.type === 'output' && <OutputPanel node={node} />}
       <Columns nodeId={node.id} />

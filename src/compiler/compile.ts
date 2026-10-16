@@ -138,7 +138,7 @@ export function upstreamKey(project: Project, target: Target): string {
       const inputs = inputEdges(project, n.id).map((e) => [e.from.nodeId, e.to.port]);
       if (n.type === 'source') {
         const s = project.sources.find((x) => x.id === n.sourceId);
-        return { id: n.id, type: n.type, inputs, source: s && { id: s.id, format: s.format, parseOptions: s.parseOptions, file: s.file?.headHash, size: s.file?.size, clip: s.clipboard?.text } };
+        return { id: n.id, type: n.type, inputs, source: s && { id: s.id, format: s.format, parseOptions: s.parseOptions, file: s.file?.headHash, size: s.file?.size, clip: s.clipboard?.text, url: s.url && [s.url.href, s.url.headHash] } };
       }
       if (n.type === 'transform') {
         const steps = n.id === target.nodeId && target.stepIndex != null ? n.steps.slice(0, target.stepIndex + 1) : n.steps;
