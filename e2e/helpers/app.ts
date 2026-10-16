@@ -6,6 +6,21 @@ export const fixture = (name: string) => join(import.meta.dirname, '../../tests/
 export const fixtureText = (name: string) => readFileSync(fixture(name), 'utf8');
 
 /**
+ * With E2E_BROWSER_LOGS set (CI does), print the page's errors, warnings and failed requests, including the engine
+ * worker's, into the test output: the job log then says why a browser misbehaved without the trace.
+ */
+function logBrowserTrouble(page: Page) {
+  page.on('console', (m) => {
+    // The suite blocks the service worker on purpose (see playwright.config.ts), so that warning is left out.
+    if ((m.type() === 'error' || m.type() === 'warning') && !m.text().startsWith('Service Worker registration blocked')) console.log(`[browser ${m.type()}] ${m.text()}`);
+  });
+  page.on('pageerror', (e) => console.log(`[page error] ${e.message}`));
+  page.on('requestfailed', (r) => console.log(`[request failed] ${r.url()} ${r.failure()?.errorText ?? ''}`));
+  page.on('crash', () => console.log('[page crashed]'));
+  page.on('worker', (w) => w.on('close', () => console.log(`[worker closed] ${w.url()}`)));
+}
+
+/**
  * Open the app and wait for DuckDB, which every data flow needs.
  *
  * Chromium's own file picker (`showOpenFilePicker`) can't be driven by Playwright: with a file chooser being
@@ -14,6 +29,7 @@ export const fixtureText = (name: string) => readFileSync(fixture(name), 'utf8')
  * `fileSystemAccess: true` and install their own picker over the origin private file system.
  */
 export async function openApp(page: Page, { fileSystemAccess = false }: { fileSystemAccess?: boolean } = {}) {
+  if (process.env.E2E_BROWSER_LOGS) logBrowserTrouble(page);
   if (!fileSystemAccess) await page.addInitScript(() => Object.defineProperty(window, 'showOpenFilePicker', { value: undefined, configurable: true }));
   await page.goto('/');
   await expect(page.getByTestId('engine-ready')).toBeVisible({ timeout: 45_000 });
