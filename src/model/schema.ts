@@ -42,6 +42,11 @@ export const SourceZ = z.object({
       /** Hash of the first 1 MB when last fetched, to notice when the file at the address has changed. */
       headHash: z.string().optional(),
       size: z.number().nonnegative().optional(),
+      /**
+       * A sample dataset shipped with Puddle (src/samples), by file name: read from wherever Puddle is served (and so
+       * offline, from the service worker's cache) rather than from `href`, which only records where it was first read.
+       */
+      sample: z.string().optional(),
     })
     .optional(),
   clipboard: z.object({ text: z.string() }).optional(),

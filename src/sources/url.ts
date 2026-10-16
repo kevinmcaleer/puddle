@@ -6,6 +6,7 @@ import { addSource, newId, updateSource, useProjectStore, type Source, type Sour
 import { markAttached } from './attachments';
 import { formatFromName, knownFormat, SourceError } from './detect';
 import { headHash } from './hash';
+import { isSampleFile, sampleAddress } from '../samples/catalog';
 
 /**
  * Sources read from a web address (plan D8). The browser fetches the file itself, so the server must allow
@@ -186,12 +187,24 @@ const setFetch = (sourceId: string, f: UrlFetch) => useUrlFetches.setState((s) =
 /** True once a URL source's file has been fetched and registered in this tab. */
 export const urlFetched = (sourceId: string) => useUrlFetches.getState().fetches[sourceId]?.state === 'ok';
 
+/**
+ * Where a URL source is read from: its address, or for a sample shipped with Puddle, the sample next to the app
+ * wherever it is served now (so a sample project still reads after a move, and offline from the service worker).
+ * Already checked, so it skips parseAddress (a sample on a plain-http LAN host is still same-origin).
+ */
+export function addressOf(source: Source): URL | string {
+  const sample = source.url?.sample;
+  if (!isSampleFile(sample)) return source.url?.href ?? '';
+  const base = typeof document !== 'undefined' ? document.baseURI : new URL('..', source.url!.href).href;
+  return sampleAddress(sample, base);
+}
+
 /** Hand what was fetched to DuckDB under the source's file name, replacing what was there. */
 async function register(source: Source, fetched: Fetched) {
   const engine = await whenEngine();
   const name = sourceFileName(source);
   await engine.dropFile(name).catch(() => undefined);
-  if (fetched.ranged) await engine.registerUrl(name, source.url!.href);
+  if (fetched.ranged) await engine.registerUrl(name, String(addressOf(source)));
   else await engine.registerBuffer(name, fetched.data!);
 }
 
@@ -236,7 +249,7 @@ export function loadUrlSource(source: Source, opts: FetchOptions & { refresh?: b
     if (!opts.refresh) markAttached(source.id, 'detached');
     setFetch(source.id, { state: 'fetching' });
     try {
-      const fetched = await fetchAddress(source.url.href, { ...opts, format: source.format });
+      const fetched = await fetchAddress(addressOf(source), { ...opts, format: source.format });
       await register(source, fetched);
       const current = useProjectStore.getState().history.present.sources.find((s) => s.id === source.id);
       const before = current?.url?.headHash ?? source.url.headHash;
