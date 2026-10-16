@@ -223,6 +223,14 @@ test('a grid that follows lands on the same row and column when the browser roun
   // can come out a fraction of a pixel short. It then showed the row above ("53 vs 52"). Here every scroll the app
   // makes lands 0.6px short, as a browser rounding that distance down would.
   await page.addInitScript(() => {
+    const top = Object.getOwnPropertyDescriptor(Element.prototype, 'scrollTop')!;
+    Object.defineProperty(Element.prototype, 'scrollTop', {
+      configurable: true,
+      get: top.get,
+      set(this: Element, value: number) {
+        top.set!.call(this, this.classList.contains('dvn-scroller') ? value - 0.6 : value);
+      },
+    });
     const scrollTo = Element.prototype.scrollTo;
     Element.prototype.scrollTo = function (this: Element, ...args: unknown[]) {
       const to = args[0];

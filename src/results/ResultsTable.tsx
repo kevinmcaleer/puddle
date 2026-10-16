@@ -97,6 +97,9 @@ interface PaneProps {
   onColumns?: (pane: Pane, columns: string[] | undefined) => void;
 }
 
+/** Each row's height in the grid. */
+const ROW_HEIGHT = 28;
+
 /**
  * Which grid leads when comparing: the one the person last scrolled, clicked or typed in. Only the leading grid's
  * moves are passed on; the other only follows. A time window after following (the earlier way) failed in Firefox,
@@ -123,6 +126,7 @@ function Grid({ engine, project, target, columns, pane = 'main', sync, other, on
   const names = useMemo(() => columns.map((c) => c.name), [columns]);
   const only = useMemo(() => onlyHere(names, other), [names, other]);
   const editor = useRef<DataEditorRef>(null);
+  const box = useRef<HTMLDivElement>(null);
   const at = useRef({ x: 0, y: 0 });
   const leading = useRef(false);
 
@@ -211,9 +215,15 @@ function Grid({ engine, project, target, columns, pane = 'main', sync, other, on
         leading.current = false;
         const next = follow(to, names, at.current.x);
         if (next.row === at.current.y && next.col === at.current.x) return;
-        // Aim a pixel into the cell: the grid scrolls by a distance measured on screen, and a browser that rounds it
-        // down (WebKit) would otherwise stop a fraction short and show the row or column before.
-        editor.current?.scrollTo(next.col, next.row, next.horizontal ? 'both' : 'vertical', -1, -1, { hAlign: 'start', vAlign: 'start' });
+        // The row is set where it belongs, a pixel into it, rather than through the grid's scrollTo, which moves by a
+        // distance measured on screen: in WebKit that came out a fraction short (the row before), and in Firefox the
+        // grids came to rest rows apart. Only the leading grid passes its moves on, so nothing corrected either.
+        // (`.dvn-scroller` is the grid's scrolling element.) The column goes first, through the grid, as its scrollTo
+        // writes the vertical position back.
+        if (next.horizontal) editor.current?.scrollTo(next.col, next.row, 'horizontal', -1, 0, { hAlign: 'start' });
+        const scroller = box.current?.querySelector<HTMLElement>('.dvn-scroller');
+        if (scroller) scroller.scrollTop = next.row * ROW_HEIGHT + 1;
+        else editor.current?.scrollTo(next.col, next.row, 'vertical', 0, -1, { vAlign: 'start' });
       }),
     [sync, pane, names],
   );
@@ -248,6 +258,7 @@ function Grid({ engine, project, target, columns, pane = 'main', sync, other, on
   };
   const grid = (
     <div
+      ref={box}
       className="min-h-0 w-full flex-1"
       data-testid={main ? 'results-table' : 'results-table-compare'}
       data-failing-columns={[...failingCols].map((i) => columns[i]?.name).join(',')}
@@ -270,7 +281,7 @@ function Grid({ engine, project, target, columns, pane = 'main', sync, other, on
         drawCell={failingCols.size ? drawCell : undefined}
         drawHeader={drawHeader}
         headerHeight={HEADER_HEIGHT}
-        rowHeight={28}
+        rowHeight={ROW_HEIGHT}
         rowMarkers="number"
         smoothScrollX
         smoothScrollY

@@ -144,6 +144,18 @@ test('a table follows the pointer when the moves land outside its header', async
   expect(await tablePlace(page, 1)).toEqual({ port: 1, x: before.x + 160, y: before.y + 60 });
 });
 
+test('a table dragged by its header with the mouse moves with it', async ({ page }) => {
+  await queryShop(page);
+  const before = await tablePlace(page, 1);
+  const head = page.getByTestId('query-table-2').locator('.puddle-qd-table__head');
+  const at = (await head.boundingBox())!;
+  await page.mouse.move(at.x + 40, at.y + at.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(at.x + 200, at.y + at.height / 2 + 60, { steps: 5 });
+  await page.mouse.up();
+  expect(await tablePlace(page, 1)).toEqual({ port: 1, x: before.x + 160, y: before.y + 60 });
+});
+
 test('a table moved in the designer stays where it was put, with its join lines following', async ({ page }) => {
   await queryShop(page);
   await field(page, 1, 'customer_id').dragTo(field(page, 2, 'customer_id'));
