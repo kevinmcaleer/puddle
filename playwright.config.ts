@@ -12,7 +12,12 @@ export default defineConfig({
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: 0,
-  reporter: process.env.CI ? [['github'], ['list']] : 'list',
+  reporter: [
+    ...(process.env.CI ? [['github'] as const] : []),
+    ['list'] as const,
+    // With E2E_BROWSER_LOGS (CI), each failure also prints what the page showed.
+    ...(process.env.E2E_BROWSER_LOGS ? [['./e2e/helpers/failure-context.ts'] as const] : []),
+  ],
   // The service worker would precache the 36 MB engine in every test; e2e/container tests it.
   use: { baseURL: `http://localhost:${port}`, trace: 'retain-on-failure', serviceWorkers: 'block' },
   projects: browserProjects(),

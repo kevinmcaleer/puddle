@@ -1,7 +1,7 @@
 /// <reference types="vitest/config" />
 import { readdirSync, statSync, writeFileSync } from 'node:fs';
 import { join, relative, sep } from 'node:path';
-import { defineConfig, type Plugin } from 'vite';
+import { defineConfig, type Connect, type Plugin } from 'vite';
 import react from '@vitejs/plugin-react';
 import tokens from './src/design-system/tokens.json';
 import { iconSvg, tokenColour, webManifest } from './src/pwa/manifest';
@@ -44,11 +44,26 @@ const isolationHeaders = {
   'Cross-Origin-Embedder-Policy': 'require-corp',
 };
 
+/**
+ * The isolation headers on every response of the dev and preview servers, 304s included. Vite's own `headers`
+ * option leaves them off a 304, and Safari then refuses the DuckDB worker it revalidated, so the engine never
+ * starts after a reload.
+ */
+function isolation(): Plugin {
+  const set: Connect.NextHandleFunction = (_req, res, next) => {
+    for (const [name, value] of Object.entries(isolationHeaders)) res.setHeader(name, value);
+    next();
+  };
+  return {
+    name: 'puddle-isolation',
+    configureServer: (server) => void server.middlewares.use(set),
+    configurePreviewServer: (server) => void server.middlewares.use(set),
+  };
+}
+
 export default defineConfig({
-  plugins: [react(), precache()],
+  plugins: [react(), precache(), isolation()],
   define: { __PUDDLE_BUILD__: JSON.stringify(build) },
-  server: { headers: isolationHeaders },
-  preview: { headers: isolationHeaders },
   worker: { format: 'es' },
   optimizeDeps: { exclude: ['@duckdb/duckdb-wasm'] },
   build: {

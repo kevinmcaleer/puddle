@@ -44,3 +44,17 @@ test('the note about files not being kept can be dismissed', async ({ page }) =>
   await expect(banner).toHaveCount(0);
   await expect(node(page, 'orders.tsv')).toHaveAttribute('data-status', 'detached');
 });
+
+// Regression: the preview server left the isolation headers off a 304, so after a reload Safari refused the DuckDB
+// worker it had revalidated ("blocked by Cross-Origin-Embedder-Policy") and the engine never started.
+test('a revalidated file keeps the cross-origin isolation headers', async ({ page, request }) => {
+  await openApp(page);
+  const worker = await page.evaluate(() => performance.getEntriesByType('resource').map((e) => e.name).find((n) => /duckdb-browser-eh\.worker/.test(n)));
+  expect(worker).toBeTruthy();
+  const first = await request.get(worker!);
+  const etag = first.headers()['etag'];
+  expect(etag).toBeTruthy();
+  const again = await request.get(worker!, { headers: { 'If-None-Match': etag! } });
+  expect(again.status()).toBe(304);
+  expect(again.headers()).toMatchObject({ 'cross-origin-opener-policy': 'same-origin', 'cross-origin-embedder-policy': 'require-corp' });
+});
