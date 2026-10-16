@@ -5,14 +5,15 @@ import { useEngineStore } from '../app/engine';
 import { useSession } from '../app/session';
 import { useTheme } from '../app/theme';
 import { compileDisplayPage, compileProfile, compileTypeSniff, PAGE_SIZE, ruleColumns, upstreamKey, type Target } from '../compiler';
-import { isCancelled, tableRows, toEngineError, type EngineClient } from '../engine';
+import { isCancelled, isStopped, tableRows, toEngineError, type EngineClient } from '../engine';
+import { runAgain } from '../flow/rerun';
 import { countRows, schemaCacheFor, useNodeStatus } from '../flow/status';
 import { nodeById, type ColumnSchema, type Project } from '../model';
-import { Banner, columnKind, glideTheme } from '../ui';
+import { Banner, Button, columnKind, glideTheme } from '../ui';
 import { failingCells, nullTheme, resultCell } from './cells';
 import { HEADER_HEIGHT, headerColors, makeDrawHeader } from './header';
 import { PageLoader, type Row } from './pages';
-import { detachedMessage } from '../sources/attach';
+import { DetachedMessage } from '../sources/ReconnectBanner';
 import { ReattachButton } from '../sources/ReattachButton';
 import { UrlProblemBanner } from '../sources/UrlPanel';
 import { parseProfile, parseTypeSniff, qualityOf, type ColumnProfile } from './profile';
@@ -35,7 +36,7 @@ function useThemeTick() {
 function createLoader(engine: EngineClient, project: Project, target: Target, columns: string[]): PageLoader {
   return new PageLoader(async (page) => {
     const t0 = performance.now();
-    const r = await engine.query(compileDisplayPage(project, target, columns, page), page === 0 ? { supersede: 'preview' } : {});
+    const r = await engine.query(compileDisplayPage(project, target, columns, page), page === 0 ? { supersede: 'preview', label: 'Reading rows' } : { label: 'Reading rows' });
     if (page === 0) useResultsStore.getState().set({ ms: performance.now() - t0 });
     return tableRows(r.table).map((row): Row => columns.map((c) => (row[c] == null ? null : String(row[c]))));
   }, PAGE_SIZE);
@@ -46,14 +47,33 @@ function createLoader(engine: EngineClient, project: Project, target: Target, co
  * what text columns look like. `onUpdate` gets each stage as it lands.
  */
 async function loadProfile(engine: EngineClient, project: Project, target: Target, columns: ColumnSchema[], onUpdate: (p: Record<string, ColumnProfile>) => void) {
-  const r = await engine.query(compileProfile(project, target), { priority: 'background', supersede: 'profile' });
+  const r = await engine.query(compileProfile(project, target), { priority: 'background', supersede: 'profile', label: 'Profiling columns' });
   const profile = parseProfile(tableRows(r.table));
   onUpdate(profile);
   const text = columns.filter((c) => columnKind(c.type) === 'text').map((c) => c.name);
   if (!text.length) return;
-  const sniff = await engine.query(compileTypeSniff(project, target, text), { priority: 'background', supersede: 'profile' });
+  const sniff = await engine.query(compileTypeSniff(project, target, text), { priority: 'background', supersede: 'profile', label: 'Profiling columns' });
   const looks = parseTypeSniff(tableRows(sniff.table)[0] ?? {}, text);
   onUpdate(Object.fromEntries(Object.entries(profile).map(([c, p]) => [c, looks[c] ? { ...p, looksLike: looks[c] } : p])));
+}
+
+/** Stop was pressed while this was being read. */
+function Stopped() {
+  return (
+    <div className="p-4" data-testid="results-stopped">
+      <Banner
+        tone="info"
+        title="Stopped"
+        action={
+          <Button size="sm" variant="secondary" onClick={runAgain}>
+            Run again
+          </Button>
+        }
+      >
+        Puddle stopped reading this result before it finished.
+      </Banner>
+    </div>
+  );
 }
 
 const EMPTY_SELECTION: GridSelection = { columns: CompactSelection.empty(), rows: CompactSelection.empty() };
@@ -145,6 +165,7 @@ function Grid({ engine, project, target, columns }: { engine: EngineClient; proj
     useSession.getState().setSelectedColumns(s.columns.toArray().map((i) => columns[i]!.name));
   };
 
+  if (isStopped(loader.error)) return <Stopped />;
   if (loader.error && !isCancelled(loader.error))
     return (
       <div className="p-4">
@@ -215,7 +236,7 @@ export function ResultsTable({ project }: { project: Project }) {
     return (
       <div className="p-4" data-testid="results-detached">
         <Banner tone="warn" title="This file isn’t connected" action={source && <ReattachButton source={source} />}>
-          {source ? detachedMessage(source) : 'Choose the file again to read it.'}
+          {source ? <DetachedMessage source={source} /> : 'Choose the file again to read it.'}
         </Banner>
       </div>
     );
@@ -226,6 +247,7 @@ export function ResultsTable({ project }: { project: Project }) {
         <Banner tone="warn">A node upstream is broken or its file isn’t connected. Fix it to see these rows.</Banner>
       </div>
     );
+  if (status.state === 'error' && status.stopped) return <Stopped />;
   if (status.state === 'error')
     return (
       <div className="p-4" data-testid="results-error">

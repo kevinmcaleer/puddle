@@ -33,6 +33,7 @@ export {
 } from './dates';
 export { absoluteValue, bucketLabels, bucketNumbers, convertExpr, convertUnits, decimalsOf, roundNumbers, standardise, UNITS, type Unit } from './numbers';
 export { collapseSpaces, emptyToNull, parseNumbers, removeNonPrinting } from './clean';
+export { CUSTOM_SQL_OPENER, customSql, customSqlErrorLine } from './advanced';
 export {
   AGGREGATES,
   filteredInput,

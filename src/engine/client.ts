@@ -1,7 +1,7 @@
 import type { Table } from 'apache-arrow';
 import { EngineError, toEngineError } from './errors';
 import { Scheduler } from './scheduler';
-import type { ColumnSchema, DuckBackend, EngineInfo, OutputFile, QueryOptions, QueryResult } from './types';
+import type { Activity, ColumnSchema, DuckBackend, EngineInfo, OutputFile, QueryOptions, QueryResult } from './types';
 
 const now = () => (typeof performance !== 'undefined' ? performance.now() : Date.now());
 
@@ -57,6 +57,20 @@ export class EngineClient {
     return this.scheduler.size;
   }
 
+  /** The query running now, for the Stop control. */
+  get activity(): Activity | null {
+    return this.scheduler.activity;
+  }
+
+  onActivity(fn: (a: Activity | null) => void): () => void {
+    return this.scheduler.subscribe(fn);
+  }
+
+  /** Stop the running query in DuckDB and drop the queued ones; each rejects with an EngineError coded "stopped". */
+  stop(): number {
+    return this.scheduler.stop();
+  }
+
   query(sql: string, opts: QueryOptions = {}): Promise<QueryResult> {
     return this.scheduler.submit(async (signal) => {
       const t0 = now();
@@ -70,7 +84,7 @@ export class EngineClient {
     return this.scheduler.submit(async (signal) => {
       const table = await this.backend.query(`DESCRIBE ${sql}`, signal);
       return tableRows(table).map((r) => ({ name: String(r.column_name), type: String(r.column_type) }));
-    }, opts);
+    }, { label: 'Reading columns', ...opts });
   }
 
   /**

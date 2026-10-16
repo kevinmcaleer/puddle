@@ -27,7 +27,7 @@ import { CommitInput, StepForm } from '../steps/StepForm';
 import { Banner, Button, Field, Menu, Section, StepList, Switch, type MenuItem } from '../ui';
 import { useStepColumns, useStepErrors } from './useStepColumns';
 
-const GROUPS: StepGroup[] = ['Clean', 'Columns', 'Rows', 'Text', 'Dates', 'Numbers', 'Reshape'];
+const GROUPS: StepGroup[] = ['Clean', 'Columns', 'Rows', 'Text', 'Dates', 'Numbers', 'Reshape', 'Advanced'];
 
 const apply = (edit: Parameters<ReturnType<typeof useProjectStore.getState>['apply']>[0]) => useProjectStore.getState().apply(edit);
 

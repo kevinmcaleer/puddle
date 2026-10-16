@@ -13,6 +13,8 @@ import {
 import '@xyflow/react/dist/base.css';
 import { useCallback, useMemo, useState, type DragEvent } from 'react';
 import { addFiles, addNodeAfterSelection } from '../app/actions';
+import { droppedFiles } from '../sources/handles';
+import { ReconnectBanner } from '../sources/ReconnectBanner';
 import { useSession } from '../app/session';
 import { useFlowStore } from '../flow/status';
 import { JOIN_TYPES } from '../compiler';
@@ -161,7 +163,9 @@ export function Canvas({ onAddSource }: { onAddSource: () => void }) {
   const onDrop = async (e: DragEvent) => {
     e.preventDefault();
     setDropping(false);
-    await addFiles(e.dataTransfer.files, rf.screenToFlowPosition({ x: e.clientX, y: e.clientY }));
+    const at = rf.screenToFlowPosition({ x: e.clientX, y: e.clientY });
+    // Handles (Chromium) must be asked for before anything is awaited, while the drop's data is still readable.
+    await addFiles(await droppedFiles(e.dataTransfer), at);
   };
 
   return (
@@ -231,13 +235,16 @@ export function Canvas({ onAddSource }: { onAddSource: () => void }) {
 
       {selectedNodeIds.length > 1 && <GroupBar ids={selectedNodeIds} />}
 
-      {notice && (
-        <div className="absolute left-4 right-4 top-4 z-panel mx-auto max-w-[560px]" data-testid="canvas-notice">
-          <Banner tone={notice.tone} action={<Button variant="ghost" size="sm" onClick={() => useSession.getState().notify(null)}>Dismiss</Button>}>
-            {notice.text}
-          </Banner>
-        </div>
-      )}
+      <div className="pointer-events-none absolute left-4 right-4 top-4 z-panel mx-auto flex max-w-[560px] flex-col gap-2 [&>*]:pointer-events-auto">
+        <ReconnectBanner />
+        {notice && (
+          <div data-testid="canvas-notice">
+            <Banner tone={notice.tone} action={<Button variant="ghost" size="sm" onClick={() => useSession.getState().notify(null)}>Dismiss</Button>}>
+              {notice.text}
+            </Banner>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
