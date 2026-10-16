@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState, type DragEvent, type PointerEvent as ReactPointerEvent } from 'react';
 import { useSession } from '../app/session';
 import { cardKind } from '../canvas/kind';
-import { CRITERIA_OPS, crossJoinedTables } from '../compiler';
+import { CRITERIA_OPS, crossJoinedTables, defaultNames, fieldTotal, TOTALS, totalsProblems } from '../compiler';
 import { useFlowStore } from '../flow/status';
 import {
   addQueryField,
@@ -16,14 +16,17 @@ import {
   updateQueryField,
   useProject,
   useProjectStore,
+  type ColumnSchema,
   type Project,
   type QueryCriteriaOp,
   type QueryField,
   type QueryFieldRef,
   type QueryNode,
+  type QueryTotal,
 } from '../model';
 import { viewNode } from '../results/pin';
 import { CommitInput } from '../steps/CommitInput';
+import { ExpressionInput } from '../steps/ExpressionInput';
 import { Banner, Button, columnKind, cx, Icon, Menu, NODE_KIND, Select, Switch, TypeTag } from '../ui';
 import { designerTables, refKey, tableCandidates, useDesigner, type DesignerTable } from './tables';
 import './query.css';
@@ -45,6 +48,8 @@ const SORTS = [
 ];
 
 const OPS = [{ value: '', label: 'No criteria' }, ...Object.entries(CRITERIA_OPS).map(([value, o]) => ({ value, label: o.label }))];
+
+const TOTAL_OPTIONS = Object.entries(TOTALS).map(([value, t]) => ({ value, label: t.label }));
 
 interface Line {
   id: string;
@@ -285,19 +290,48 @@ function useGridDrop(node: QueryNode) {
   return { over, props };
 }
 
-/** The query grid, as in Access: a column per field, with its table, name, sort, whether it shows, and criteria. */
+type Row = 'Field' | 'Table' | 'Total' | 'Name' | 'Sort' | 'Show' | 'Criteria';
+
+/**
+ * The query grid, as in Access: a column per field, with its table, name, sort, whether it shows, and criteria; and
+ * with Totals on, how it's grouped or summarised.
+ */
 function QueryGrid({ node, tables }: { node: QueryNode; tables: DesignerTable[] }) {
   const { fields } = node.querySpec;
   const { over, props } = useGridDrop(node);
   const label = (f: QueryField) => (f.column === '*' ? `${tables.find((t) => t.port === f.port)?.label ?? `input ${f.port + 1}`}.*` : f.column);
   const update = (f: QueryField, patch: Partial<QueryField>) => apply((p) => updateQueryField(p, node.id, f.id, patch));
   const cell = (i: number, extra?: string) => ({ className: cx('puddle-qd-cell', over === i && 'is-over', extra), ...props(i) });
-  const ROWS = ['Field', 'Table', 'Name', 'Sort', 'Show', 'Criteria'] as const;
+  const { totals } = node.querySpec;
+  // The Total row sits under Table, as in Access, while Totals is on.
+  const rows: Row[] = totals ? ['Field', 'Table', 'Total', 'Name', 'Sort', 'Show', 'Criteria'] : ['Field', 'Table', 'Name', 'Sort', 'Show', 'Criteria'];
+  const names = defaultNames(node.querySpec);
+  const columns: ColumnSchema[] = tables.flatMap((t) => t.columns ?? []);
 
-  const content = (row: (typeof ROWS)[number], f: QueryField) => {
+  const content = (row: Row, f: QueryField) => {
     const all = f.column === '*';
     const name = label(f);
     switch (row) {
+      case 'Total': {
+        const total = fieldTotal(node.querySpec, f)!;
+        return (
+          <div className="flex flex-col gap-1">
+            <Select aria-label={`Total for ${name}`} options={TOTAL_OPTIONS} value={total} onChange={(e) => update(f, { total: e.target.value === 'group' ? undefined : (e.target.value as QueryTotal) })} />
+            {total === 'expression' && (
+              <ExpressionInput
+                key={f.expression ?? ''}
+                id={`query-expression-${f.id}`}
+                rows={1}
+                aria-label={`Expression for ${name}`}
+                value={f.expression ?? ''}
+                columns={columns}
+                placeholder={`sum(${all ? 'column' : f.column})`}
+                onCommit={(v) => update(f, { expression: v.trim() || undefined })}
+              />
+            )}
+          </div>
+        );
+      }
       case 'Field':
         return (
           <div
@@ -316,7 +350,7 @@ function QueryGrid({ node, tables }: { node: QueryNode; tables: DesignerTable[] 
       case 'Table':
         return <span className="puddle-qd-tablename">{tables.find((t) => t.port === f.port)?.label ?? `Input ${f.port + 1} (no table)`}</span>;
       case 'Name':
-        return all ? <span className="text-ink-subtle">Their own names</span> : <CommitInput key={f.alias ?? ''} mono value={f.alias ?? ''} placeholder={f.column} aria-label={`Name for ${name}`} onCommit={(v) => update(f, { alias: v.trim() || undefined })} />;
+        return all ? <span className="text-ink-subtle">Their own names</span> : <CommitInput key={f.alias ?? ''} mono value={f.alias ?? ''} placeholder={names.get(f.id)} aria-label={`Name for ${name}`} onCommit={(v) => update(f, { alias: v.trim() || undefined })} />;
       case 'Sort':
         return all ? null : <Select aria-label={`Sort ${name}`} options={SORTS} value={f.sort} onChange={(e) => update(f, { sort: e.target.value as QueryField['sort'] })} />;
       case 'Show':
@@ -343,7 +377,7 @@ function QueryGrid({ node, tables }: { node: QueryNode; tables: DesignerTable[] 
     <div className="puddle-qd-grid" data-testid="query-grid">
       <table>
         <tbody>
-          {ROWS.map((row) => (
+          {rows.map((row) => (
             <tr key={row}>
               <th scope="row" className="ui-eyebrow">{row}</th>
               {fields.map((f, i) => (
@@ -374,6 +408,8 @@ export function QueryDesigner({ node }: { node: QueryNode }) {
   const cross = crossJoinedTables(node.querySpec, tables.map((t) => t.port));
   const candidates = tableCandidates(project, node.id);
   const selectJoin = useDesigner((s) => s.selectJoin);
+  const { totals } = node.querySpec;
+  const problems = totalsProblems(node.querySpec, tables.map((t) => ({ ...t, columns: t.columns ?? [] })));
 
   // The node's rows show below while it's being designed, unless the results table is pinned.
   useEffect(() => {
@@ -390,6 +426,18 @@ export function QueryDesigner({ node }: { node: QueryNode }) {
         <Icon name="query" />
         <span className="text-body-strong text-ink" data-testid="query-designer-title">{node.name}</span>
         <span className="flex-1" />
+        <Button
+          variant="ghost"
+          size="sm"
+          icon="totals"
+          aria-pressed={totals}
+          title={totals ? 'Hide the Total row' : 'Group and summarise with a Total row'}
+          className={totals ? 'bg-surface-hover text-ink' : undefined}
+          data-testid="query-totals-toggle"
+          onClick={() => apply((p) => setQuerySpec(p, node.id, { totals: !totals }))}
+        >
+          Totals
+        </Button>
         <Switch id="query-distinct" label="Unique values" checked={node.querySpec.distinct} onChange={(distinct) => apply((p) => setQuerySpec(p, node.id, { distinct }))} />
         <Menu
           label="Add table"
@@ -409,12 +457,27 @@ export function QueryDesigner({ node }: { node: QueryNode }) {
           }))}
         />
       </div>
-      {(error || cross.length > 0) && (
+      {(error || cross.length > 0 || problems.length > 0) && (
         <div className="puddle-qd-notes">
           {error && (
             <Banner tone="warn" action={<Button variant="ghost" size="sm" onClick={() => setError(null)}>Dismiss</Button>}>
               {error}
             </Banner>
+          )}
+          {problems.length > 0 && (
+            <div data-testid="query-totals-problems">
+              <Banner tone="warn" title={problems.length === 1 ? 'This query can’t run yet' : `This query can’t run yet: ${problems.length} problems`}>
+                {problems.length === 1 ? (
+                  problems[0]!.message
+                ) : (
+                  <ul className="flex flex-col gap-1">
+                    {problems.map((p) => (
+                      <li key={p.field}>{p.message}</li>
+                    ))}
+                  </ul>
+                )}
+              </Banner>
+            </div>
           )}
           {cross.length > 0 && (
             <div data-testid="query-cross-join">

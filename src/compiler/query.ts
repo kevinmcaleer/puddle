@@ -1,7 +1,9 @@
 // Query nodes, built in the query designer: tables joined by the lines drawn between their columns, then the grid's
-// fields, criteria and sorting, as one SELECT.
-import type { ColumnSchema, QueryCriteria, QueryCriteriaOp, QueryField, QueryJoin, QueryJoinKind, QuerySpec } from '../model';
+// fields, criteria and sorting, as one SELECT. With the Totals row on, the same SELECT groups and summarises: Where
+// fields filter rows before grouping, and criteria on the other fields filter the groups.
+import type { ColumnSchema, QueryCriteria, QueryCriteriaOp, QueryField, QueryJoin, QueryJoinKind, QuerySpec, QueryTotal } from '../model';
 import { ident, num, str } from './sql';
+import { expressionProblem } from './steps/columns';
 import { describeType, typeFamily, typesFit } from './types';
 
 /** One table of a query: a wired input, by its port. */
@@ -34,6 +36,65 @@ export const CRITERIA_OPS: Record<QueryCriteriaOp, { label: string; needsValue: 
 };
 
 const COMPARE = new Set<QueryCriteriaOp>(['=', '<>', '<', '<=', '>', '>=']);
+
+interface TotalInfo {
+  label: string;
+  /** Starts the name a summary gets unless renamed, as in Access: SumOfAmount. */
+  prefix?: string;
+  /** The summary over a column. */
+  sql?: (col: string) => string;
+  /** Only numbers can be summarised this way. */
+  numeric?: boolean;
+  /** The summary's type, when it isn't the column's own. */
+  type?: string;
+}
+
+/** The Totals row's choices, in the order the grid offers them. */
+export const TOTALS: Record<QueryTotal, TotalInfo> = {
+  group: { label: 'Group by' },
+  sum: { label: 'Sum', prefix: 'Sum', sql: (c) => `sum(${c})`, numeric: true },
+  avg: { label: 'Average', prefix: 'Avg', sql: (c) => `avg(${c})`, numeric: true, type: 'DOUBLE' },
+  min: { label: 'Min', prefix: 'Min', sql: (c) => `min(${c})` },
+  max: { label: 'Max', prefix: 'Max', sql: (c) => `max(${c})` },
+  count: { label: 'Count', prefix: 'Count', sql: (c) => `count(${c})`, type: 'BIGINT' },
+  countDistinct: { label: 'Count distinct', prefix: 'CountDistinct', sql: (c) => `count(DISTINCT ${c})`, type: 'BIGINT' },
+  first: { label: 'First', prefix: 'First', sql: (c) => `first(${c})` },
+  last: { label: 'Last', prefix: 'Last', sql: (c) => `last(${c})` },
+  stdev: { label: 'StDev', prefix: 'StDev', sql: (c) => `stddev_samp(${c})`, numeric: true, type: 'DOUBLE' },
+  var: { label: 'Var', prefix: 'Var', sql: (c) => `var_samp(${c})`, numeric: true, type: 'DOUBLE' },
+  expression: { label: 'Expression' },
+  where: { label: 'Where' },
+};
+
+/** A field's Total: Group by unless chosen, and none while the Totals row is off. */
+export const fieldTotal = (spec: Pick<QuerySpec, 'totals'>, f: Pick<QueryField, 'total'>): QueryTotal | undefined => (spec.totals ? (f.total ?? 'group') : undefined);
+
+/**
+ * Where a field's criteria go: WHERE filters rows, before any grouping; HAVING filters the groups, so it takes the
+ * criteria on grouped and summarised fields. Without the Totals row everything is WHERE.
+ */
+export const criteriaPlace = (spec: Pick<QuerySpec, 'totals'>, f: Pick<QueryField, 'total'>): 'where' | 'having' => {
+  const total = fieldTotal(spec, f);
+  return !total || total === 'where' ? 'where' : 'having';
+};
+
+/** Whether the field is in the result: shown, and not a Where field (which only filters). */
+const inResult = (spec: QuerySpec, f: QueryField) => f.show && fieldTotal(spec, f) !== 'where';
+
+/**
+ * The names fields get unless renamed, by field id: the column's own, or Access's for a summary (SumOfAmount) and
+ * for an expression (Expr1, Expr2 in grid order).
+ */
+export function defaultNames(spec: QuerySpec): Map<string, string> {
+  const names = new Map<string, string>();
+  let expr = 0;
+  for (const f of spec.fields) {
+    const total = fieldTotal(spec, f);
+    const prefix = total && TOTALS[total].prefix;
+    names.set(f.id, total === 'expression' ? `Expr${++expr}` : prefix && f.column !== '*' ? `${prefix}Of${f.column}` : f.column);
+  }
+  return names;
+}
 
 export interface QueryProblem {
   message: string;
@@ -73,14 +134,16 @@ export function queryColumns(spec: QuerySpec, tables: QueryTable[]): QueryColumn
     taken.add(fold(n));
     return n;
   };
+  const defaults = defaultNames(spec);
   for (const f of spec.fields) {
     const table = tables.find((t) => t.port === f.port);
-    if (!f.show || !table) continue;
+    if (!inResult(spec, f) || !table) continue;
     const cols = f.column === '*' ? table.columns : table.columns.filter((c) => c.name === f.column);
     for (const c of cols) {
-      const as = name(f.column !== '*' && f.alias?.trim() ? f.alias.trim() : c.name);
-      const sql = `${tableAlias(f.port)}.${ident(c.name)}`;
-      out.push({ name: as, type: c.type, field: f.id, sql: as === c.name ? sql : `${sql} AS ${ident(as)}` });
+      const as = name(f.column !== '*' && f.alias?.trim() ? f.alias.trim() : f.column === '*' ? c.name : defaults.get(f.id)!);
+      const raw = `${tableAlias(f.port)}.${ident(c.name)}`;
+      const sql = f.column === '*' ? raw : fieldTerm(spec, f);
+      out.push({ name: as, type: resultType(spec, f, c.type), field: f.id, sql: as === c.name && sql === raw ? sql : `${sql} AS ${ident(as)}` });
     }
   }
   return out;
@@ -129,7 +192,8 @@ export const crossJoinedTables = (spec: QuerySpec, ports: number[]) => joinPlan(
 /**
  * What's wrong with a query given its tables (the wired inputs, with their columns): nothing in the grid, a field or
  * join line on a table or column that's gone, join lines whose types can't be compared, criteria that can't be
- * read, two fields given the same name. Empty when it's ready to run.
+ * read, two fields given the same name, and with the Totals row on, totals that can't work (see totalsProblem).
+ * Empty when it's ready to run.
  */
 export function queryProblems(spec: QuerySpec, tables: QueryTable[]): QueryProblem[] {
   const problems: QueryProblem[] = [];
@@ -146,6 +210,7 @@ export function queryProblems(spec: QuerySpec, tables: QueryTable[]): QueryProbl
     }
     if (f.column === '*') {
       if (f.sort !== 'none' || f.criteria) problems.push({ field: f.id, port: f.port, message: `Sort and filter on a single field of ${t.label}, not *.` });
+      else if (spec.totals) problems.push({ field: f.id, message: starTotals(t.label) });
       continue;
     }
     const col = t.columns.find((c) => c.name === f.column);
@@ -153,10 +218,19 @@ export function queryProblems(spec: QuerySpec, tables: QueryTable[]): QueryProbl
       problems.push({ field: f.id, port: f.port, message: `${f.column} isn’t in ${t.label} any more.` });
       continue;
     }
+    const totalProblem = totalsProblem(spec, f, col);
+    if (totalProblem) {
+      problems.push({ field: f.id, message: totalProblem });
+      continue;
+    }
     const c = f.criteria;
     if (c && CRITERIA_OPS[c.op].needsValue) {
-      if (!c.value.trim()) problems.push({ field: f.id, message: `Give ${f.column} a value to compare with.` });
-      else if (COMPARE.has(c.op) && typeFamily(col.type) === 'number' && !isNumber(c.value)) problems.push({ field: f.id, message: `${f.column} is a number, so compare it with a number, not “${c.value}”.` });
+      const type = resultType(spec, f, col.type);
+      const what = fieldTotal(spec, f) === 'expression' ? `the expression for ${f.column}` : f.column;
+      // A summary is called by its name in the result: SumOftotal, or what it was renamed.
+      const called = (spec.totals && f.alias?.trim()) || defaultNames(spec).get(f.id)!;
+      if (!c.value.trim()) problems.push({ field: f.id, message: `Give ${what} a value to compare with.` });
+      else if (COMPARE.has(c.op) && typeFamily(type) === 'number' && !isNumber(c.value)) problems.push({ field: f.id, message: `${called} is a number, so compare it with a number, not “${c.value}”.` });
     }
   }
 
@@ -176,10 +250,11 @@ export function queryProblems(spec: QuerySpec, tables: QueryTable[]): QueryProbl
 
   // An alias someone typed must be free; other names are numbered instead.
   const seen = new Set<string>();
+  const defaults = defaultNames(spec);
   for (const f of spec.fields) {
     const t = table(f.port);
-    if (!f.show || !t) continue;
-    const names = f.column === '*' ? t.columns.map((c) => c.name) : [f.alias?.trim() || f.column];
+    if (!inResult(spec, f) || !t) continue;
+    const names = f.column === '*' ? t.columns.map((c) => c.name) : [f.alias?.trim() || defaults.get(f.id)!];
     if (f.column !== '*' && f.alias?.trim() && seen.has(fold(f.alias.trim()))) problems.push({ field: f.id, message: `Two fields are called ${f.alias.trim()}. Give one of them another name.` });
     names.forEach((n) => seen.add(fold(n)));
   }
@@ -187,6 +262,48 @@ export function queryProblems(spec: QuerySpec, tables: QueryTable[]): QueryProbl
   if (spec.distinct && spec.fields.some((f) => !f.show && f.sort !== 'none'))
     problems.push({ message: 'A hidden field can’t sort unique values. Show it, or turn off Unique values.' });
   return problems;
+}
+
+const starTotals = (label: string) => `Totals work on single fields, not ${label}.*. Take it out of the grid, or drag in the fields to group or summarise.`;
+
+/**
+ * The problems queryProblems finds with the Totals row, for the designer to explain beside the grid. Fields on a
+ * table or column it can't see are left to queryProblems.
+ */
+export function totalsProblems(spec: QuerySpec, tables: QueryTable[]): QueryProblem[] {
+  if (!spec.totals) return [];
+  return spec.fields.flatMap((f) => {
+    const t = tables.find((x) => x.port === f.port);
+    if (!t) return [];
+    if (f.column === '*') return f.sort === 'none' && !f.criteria ? [{ field: f.id, message: starTotals(t.label) }] : [];
+    const col = t.columns.find((c) => c.name === f.column);
+    const message = col && totalsProblem(spec, f, col);
+    return message ? [{ field: f.id, message }] : [];
+  });
+}
+
+/**
+ * What's wrong with a field's Total, when the grid has its Totals row: a sum or average of something that isn't a
+ * number, an expression that's missing or can't be read, or a Where field that shows, sorts or has no criteria.
+ */
+function totalsProblem(spec: QuerySpec, f: QueryField, col: ColumnSchema): string | undefined {
+  const total = fieldTotal(spec, f);
+  if (!total) return undefined;
+  const info = TOTALS[total];
+  if (info.numeric && !['number', 'null'].includes(typeFamily(col.type)))
+    return `${info.label} needs numbers, and ${f.column} is ${describeType(col.type)}. Pick Count, Min or Max for it, or change its type with Change type.`;
+  if (total === 'expression') {
+    const expr = f.expression?.trim() ?? '';
+    if (!expr) return `Write the expression for ${f.column}, such as sum(${f.column}), or pick another Total.`;
+    const problem = expressionProblem(expr);
+    if (problem) return `The expression for ${f.column} can’t be read: ${problem}.`;
+  }
+  if (total === 'where') {
+    if (f.show) return `${f.column} is a Where field: it filters rows before they’re grouped, so it can’t show. Turn off its Show, or pick another Total.`;
+    if (!f.criteria) return `${f.column} is a Where field, so give it criteria to filter on, or pick another Total.`;
+    if (f.sort !== 'none') return `${f.column} is a Where field, so the grouped result has no ${f.column} to sort on. Turn off its sort.`;
+  }
+  return undefined;
 }
 
 /** A criterion as a SQL condition on a column of a known type. */
@@ -205,13 +322,31 @@ function criterionSql(col: string, type: string, c: QueryCriteria): string {
     case 'notEmpty':
       return `(${col} IS NOT NULL AND trim(CAST(${col} AS VARCHAR)) <> '')`;
     default: {
-      const literal = typeFamily(type) === 'number' && isNumber(v) ? num(Number(v)) : str(v);
+      // An expression's type isn't known: a number is compared as one.
+      const literal = (typeFamily(type) === 'number' || type === '') && isNumber(v) ? num(Number(v)) : str(v);
       return `${col} ${c.op} ${literal}`;
     }
   }
 }
 
 const fieldSql = (f: Pick<QueryField, 'port' | 'column'>) => `${tableAlias(f.port)}.${ident(f.column)}`;
+
+/**
+ * What a field stands for in the SELECT, its criteria and its sort: its column, the summary of it, or its expression.
+ */
+export function fieldTerm(spec: Pick<QuerySpec, 'totals'>, f: QueryField): string {
+  const total = fieldTotal(spec, f);
+  if (total === 'expression') return `(${f.expression?.trim() ?? ''})`;
+  const summary = total && TOTALS[total].sql;
+  return summary ? summary(fieldSql(f)) : fieldSql(f);
+}
+
+/** The type of what a field stands for, given its column's type; empty for an expression, whose type isn't known. */
+export function resultType(spec: Pick<QuerySpec, 'totals'>, f: Pick<QueryField, 'total'>, columnType: string): string {
+  const total = fieldTotal(spec, f);
+  if (total === 'expression') return '';
+  return (total && TOTALS[total].type) ?? columnType;
+}
 
 /** The query as one SELECT over its tables' CTEs. Assumes queryProblems found nothing. */
 export function compileQuery(spec: QuerySpec, tables: Array<QueryTable & { cte: string }>): string {
@@ -223,14 +358,21 @@ export function compileQuery(spec: QuerySpec, tables: Array<QueryTable & { cte: 
     if (s.kind === 'CROSS') from.push(`CROSS JOIN ${rel}`);
     else from.push(`${s.kind} JOIN ${rel} ON ${s.lines.map((j) => `${fieldSql(j.left)} = ${fieldSql(j.right)}`).join(' AND ')}`);
   }
-  const type = (f: QueryField) => tables.find((t) => t.port === f.port)!.columns.find((c) => c.name === f.column)!.type;
-  const where = spec.fields.filter((f) => f.criteria && f.column !== '*').map((f) => criterionSql(fieldSql(f), type(f), f.criteria!));
-  const order = spec.fields.filter((f) => f.sort !== 'none' && f.column !== '*').map((f) => `${fieldSql(f)} ${f.sort === 'asc' ? 'ASC' : 'DESC'}`);
+  const type = (f: QueryField) => resultType(spec, f, tables.find((t) => t.port === f.port)!.columns.find((c) => c.name === f.column)!.type);
+  const single = spec.fields.filter((f) => f.column !== '*');
+  const criteria = (place: 'where' | 'having') => single.filter((f) => f.criteria && criteriaPlace(spec, f) === place).map((f) => criterionSql(fieldTerm(spec, f), type(f), f.criteria!));
+  const [where, having] = [criteria('where'), criteria('having')];
+  // Every Group by field groups, shown or not, as in Access.
+  const group = [...new Set(single.filter((f) => fieldTotal(spec, f) === 'group').map(fieldSql))];
+  // The sort applies to the grouped result, so it's on what each field stands for there.
+  const order = single.filter((f) => f.sort !== 'none').map((f) => `${fieldTerm(spec, f)} ${f.sort === 'asc' ? 'ASC' : 'DESC'}`);
   const columns = queryColumns(spec, tables).map((c) => c.sql);
   return [
     `SELECT ${spec.distinct ? 'DISTINCT ' : ''}${columns.join(', ')}`,
     `FROM ${from.join(' ')}`,
     ...(where.length ? [`WHERE ${where.join(' AND ')}`] : []),
+    ...(group.length ? [`GROUP BY ${group.join(', ')}`] : []),
+    ...(having.length ? [`HAVING ${having.join(' AND ')}`] : []),
     ...(order.length ? [`ORDER BY ${order.join(', ')}`] : []),
   ].join(' ');
 }
