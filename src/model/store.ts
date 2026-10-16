@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { canRedo, canUndo, checkpoint, initHistory, pushHistory, redo, undo, type History } from './history';
 import { createProject } from './project';
+import { carryPin } from './view';
 import type { Project, ProjectView } from './schema';
 
 export interface ProjectState {
@@ -27,6 +28,13 @@ export interface ProjectState {
 const keepLog = (h: History<Project>, from: Project): History<Project> =>
   h.present.exportLog === from.exportLog ? h : { ...h, present: { ...h.present, exportLog: from.exportLog } };
 
+/** Undo and redo keep what isn't an undo step: the export log, and the pinned table and comparison. */
+const keep = (h: History<Project>, from: Project): History<Project> => {
+  const logged = keepLog(h, from);
+  const pinned = carryPin(logged.present, from);
+  return pinned === logged.present ? logged : { ...logged, present: pinned };
+};
+
 export const useProjectStore = create<ProjectState>((set, get) => ({
   history: initHistory(createProject()),
   apply: (edit) =>
@@ -41,6 +49,9 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       const next = { ...history.present.view, ...view };
       // Viewing something else stops showing one rule's failing rows, unless the change says otherwise.
       if (!('failingRuleId' in view) && ('viewedNodeId' in view || 'viewedStepIndex' in view)) next.failingRuleId = undefined;
+      // Only a viewed node can be pinned, and a node is never compared with itself.
+      if (!next.viewedNodeId) next.pinned = false;
+      if (next.compare && (!next.pinned || next.compare.nodeId === next.viewedNodeId)) next.compare = undefined;
       return { history: { ...history, present: { ...history.present, view: next } } };
     }),
   amend: (edit) =>
@@ -55,9 +66,9 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       const next = checkpoint(history, before);
       return next === history ? {} : { history: { ...next, present: { ...next.present, updatedAt: new Date().toISOString() } } };
     }),
-  // The export log records what happened, so undo and redo keep the latest one.
-  undo: () => set(({ history }) => ({ history: keepLog(undo(history), history.present) })),
-  redo: () => set(({ history }) => ({ history: keepLog(redo(history), history.present) })),
+  // The export log records what happened, so undo and redo keep the latest one; likewise the pin.
+  undo: () => set(({ history }) => ({ history: keep(undo(history), history.present) })),
+  redo: () => set(({ history }) => ({ history: keep(redo(history), history.present) })),
   canUndo: () => canUndo(get().history),
   canRedo: () => canRedo(get().history),
 }));

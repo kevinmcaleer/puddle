@@ -53,6 +53,7 @@ export const SHORTCUTS = [
   { id: 'export', area: 'Results', label: 'Export the viewed Output', keys: [k('e')] },
   { id: 'export-all', area: 'Results', label: 'Export all', keys: [k('e', { shift: true })] },
   { id: 'toggle-results', area: 'Results', label: 'Show or hide the results', keys: [k('r')] },
+  { id: 'pin', area: 'Results', label: 'Pin or unpin the results', keys: [k('p')] },
 
   { id: 'add-step', area: 'Steps', label: 'Search the Add step menu', keys: [k('/')] },
   { id: 'move-step', area: 'Steps', label: 'Move the focused step up or down', keys: [k('ArrowUp', { alt: true }), k('ArrowDown', { alt: true })], handledBy: 'step list' },

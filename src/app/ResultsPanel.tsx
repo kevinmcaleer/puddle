@@ -46,7 +46,7 @@ export function ResultsPanel({ bar, children }: { bar: ReactNode; children: Reac
           onKeyDown={onKeyDown}
         />
       )}
-      <div className="flex items-center border-b border-line [&_.ui-resultsbar]:border-b-0">
+      <div className="flex items-center border-b border-line has-[.is-pinned]:bg-accent-tint [&_.ui-resultsbar]:border-b-0">
         <div className="min-w-0 flex-1">{bar}</div>
         <Button
           variant="ghost"

@@ -19,6 +19,21 @@ describe('NodeCard note marker', () => {
   });
 });
 
+describe('NodeCard pill', () => {
+  afterEach(cleanup);
+
+  it('says Viewing, Pinned or Comparing', () => {
+    const { rerender } = render(<NodeCard kind="source" name="a" viewed />);
+    expect(screen.getByTestId('node-pill').textContent).toBe('Viewing');
+    rerender(<NodeCard kind="source" name="a" viewed pinned />);
+    expect(screen.getByTestId('node-pill').textContent).toBe('Pinned');
+    rerender(<NodeCard kind="source" name="a" comparing />);
+    expect(screen.getByTestId('node-pill').textContent).toBe('Comparing');
+    rerender(<NodeCard kind="source" name="a" />);
+    expect(screen.queryByTestId('node-pill')).toBeNull();
+  });
+});
+
 describe('NodeCard kept result', () => {
   afterEach(cleanup);
 

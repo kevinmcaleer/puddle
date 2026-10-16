@@ -114,7 +114,7 @@ export function groupNodes(project: Project, ids: string[]): Project {
     ...project,
     nodes: project.nodes.filter((n) => !absorbed.has(n.id)).map((n) => (n.id === headId ? { ...head, steps } : n)),
     edges: project.edges.filter((e) => !innerEdges.has(e.id)).map((e) => (e.from.nodeId === last ? { ...e, from: { nodeId: headId! } } : e)),
-    view: absorbed.has(project.view.viewedNodeId ?? '') ? { ...project.view, viewedNodeId: headId, viewedStepIndex: undefined } : project.view,
+    view: groupedView(project.view, absorbed, headId!),
   };
 }
 
@@ -160,4 +160,12 @@ export function splitNode(project: Project, nodeId: string, at: number, newNodeI
     nodes: project.nodes.flatMap((n) => (n.id === nodeId ? [{ ...node, steps: node.steps.slice(0, at) }, created] : [n])),
     edges: [...project.edges.map((e) => (outs.includes(e) ? { ...e, from: { nodeId: created.id } } : e)), { id: edgeId, from: { nodeId }, to: { nodeId: created.id, port: 0 } }],
   };
+}
+
+/** Viewing a node that is grouped views the group; comparing one ends the comparison. */
+function groupedView(view: Project['view'], absorbed: Set<string>, headId: string): Project['view'] {
+  const viewed = absorbed.has(view.viewedNodeId ?? '') ? headId : view.viewedNodeId;
+  const compareGone = !!view.compare && (absorbed.has(view.compare.nodeId) || view.compare.nodeId === viewed);
+  if (viewed === view.viewedNodeId && !compareGone) return view;
+  return { ...view, ...(viewed !== view.viewedNodeId && { viewedNodeId: viewed, viewedStepIndex: undefined }), ...(compareGone && { compare: undefined }) };
 }

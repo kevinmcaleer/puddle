@@ -31,10 +31,11 @@ const GROUPS: StepGroup[] = ['Clean', 'Columns', 'Rows', 'Text', 'Dates', 'Numbe
 
 const apply = (edit: Parameters<ReturnType<typeof useProjectStore.getState>['apply']>[0]) => useProjectStore.getState().apply(edit);
 
-/** Select a step: the inspector edits it and the results table shows the data after it. */
+/** Select a step: the inspector edits it and, unless the table is pinned, the results table shows the data after it. */
 function viewStep(nodeId: string, index: number, step: Step | undefined) {
   useSession.getState().selectStep(step?.id ?? null);
-  useProjectStore.getState().setView({ viewedNodeId: nodeId, viewedStepIndex: step ? index : undefined });
+  const { history, setView } = useProjectStore.getState();
+  if (!history.present.view.pinned) setView({ viewedNodeId: nodeId, viewedStepIndex: step ? index : undefined });
 }
 
 function AddStepMenu({ node, after }: { node: TransformNode; after: number }) {

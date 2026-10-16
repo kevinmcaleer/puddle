@@ -22,6 +22,7 @@ import {
   type QueryFieldRef,
   type QueryNode,
 } from '../model';
+import { viewNode } from '../results/pin';
 import { CommitInput } from '../steps/CommitInput';
 import { Banner, Button, columnKind, cx, Icon, Menu, NODE_KIND, Select, Switch, TypeTag } from '../ui';
 import { designerTables, refKey, tableCandidates, useDesigner, type DesignerTable } from './tables';
@@ -364,9 +365,9 @@ export function QueryDesigner({ node }: { node: QueryNode }) {
   const candidates = tableCandidates(project, node.id);
   const selectJoin = useDesigner((s) => s.selectJoin);
 
-  // The node's rows show below while it's being designed.
+  // The node's rows show below while it's being designed, unless the results table is pinned.
   useEffect(() => {
-    useProjectStore.getState().setView({ viewedNodeId: node.id, viewedStepIndex: undefined });
+    viewNode(node.id);
     return () => selectJoin(null);
   }, [node.id, selectJoin]);
 

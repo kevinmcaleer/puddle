@@ -64,8 +64,13 @@ describe('matching a key press', () => {
     expect(shortcutFor(press('ArrowUp'), false)?.id).toBe('select-above');
   });
 
-  it('does not bind P, which pinning the results will take', () => {
-    expect(shortcutFor(press('p'), false)).toBeUndefined();
+  it('pins with P alone, not with Ctrl, Cmd or Alt', () => {
+    expect(shortcutFor(press('p'), false)?.id).toBe('pin');
+    expect(shortcutFor(press('P'), false)?.id).toBe('pin');
+    expect(shortcutFor(press('p'), true)?.id).toBe('pin');
+    expect(shortcutFor(press('p', { ctrlKey: true }), false)).toBeUndefined();
+    expect(shortcutFor(press('p', { metaKey: true }), true)).toBeUndefined();
+    expect(shortcutFor(press('p', { altKey: true }), false)).toBeUndefined();
   });
 });
 

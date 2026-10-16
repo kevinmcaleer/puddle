@@ -9,6 +9,8 @@ export const HEADER_HEIGHT = 52;
 export interface HeaderInfo {
   kind: ColumnKind;
   quality?: Quality;
+  /** Comparing two results: this column is only on this side. */
+  only?: boolean;
 }
 
 /** Token colours, read when the theme changes; canvas drawing can't use CSS variables. */
@@ -17,14 +19,17 @@ export function headerColors(el: Element = document.documentElement) {
   const v = (n: string) => cs.getPropertyValue('--' + n).trim();
   return {
     bg: v('surface-sunken'), bgSelected: v('brand-tint'), ink: v('ink'), muted: v('ink-muted'), line: v('line'),
-    tagBg: v('surface-raised'), valid: v('pass'), empty: v('line-strong'), error: v('fail'), brand: v('brand'),
+    tagBg: v('surface-raised'), valid: v('pass'), empty: v('line-strong'), error: v('fail'), brand: v('brand'), only: v('accent-ink'),
     mono: v('font-mono'), ui: v('font-ui'),
   };
 }
 
 export type HeaderColors = ReturnType<typeof headerColors>;
 
-/** Glide header: type tag, column name in mono, menu chevron, and the quality bar along the bottom (D19). */
+/**
+ * Glide header: type tag, column name in mono, menu chevron, and the quality bar along the bottom (D19). Comparing
+ * two results, a column only on one side says so under its name.
+ */
 export function makeDrawHeader(info: (col: number) => HeaderInfo | undefined, c: HeaderColors): DrawHeaderCallback {
   return ({ ctx, column, columnIndex, rect, isSelected }, drawContent) => {
     // The row-number column keeps Glide's own header.
@@ -69,6 +74,12 @@ export function makeDrawHeader(info: (col: number) => HeaderInfo | undefined, c:
     ctx.lineTo(x + width - 12, mid + 2);
     ctx.lineTo(x + width - 8, mid - 2);
     ctx.stroke();
+
+    if (h?.only) {
+      ctx.font = `600 10px ${c.ui}`;
+      ctx.fillStyle = c.only;
+      ctx.fillText('Only here', x + pad, y + 31);
+    }
 
     // Quality bar: valid, empty, error.
     const q = h?.quality;

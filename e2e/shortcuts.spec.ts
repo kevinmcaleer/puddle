@@ -25,6 +25,8 @@ test('? lists every shortcut by area, in mono, and Escape closes it', async ({ p
   await expect(dialog).toBeVisible();
   for (const area of ['General', 'Canvas', 'Results', 'Steps']) await expect(dialog.getByRole('region', { name: area })).toBeVisible();
   await expect(dialog.locator('[data-shortcut="layout"] + dd kbd')).toHaveText('L');
+  await expect(dialog.getByRole('region', { name: 'Results' }).locator('[data-shortcut="pin"]')).toHaveText('Pin or unpin the results');
+  await expect(dialog.locator('[data-shortcut="pin"] + dd kbd')).toHaveText('P');
   // Keys don't run shortcuts behind the dialog.
   await page.keyboard.press('a');
   await page.keyboard.press('Escape');
