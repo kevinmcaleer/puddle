@@ -4,6 +4,7 @@ export function wirePath(x1: number, y1: number, x2: number, y2: number): string
   return `M${x1},${y1} C${x1 + dx},${y1} ${x2 - dx},${y2} ${x2},${y2}`;
 }
 
-export type WireState = 'idle' | 'active' | 'broken';
+/** `ref` is a rule's reference to another node: dashed, and carries no data. */
+export type WireState = 'idle' | 'active' | 'broken' | 'ref';
 
 export const wireClass = (state: WireState) => (state === 'idle' ? 'ui-wire' : `ui-wire ui-wire--${state}`);

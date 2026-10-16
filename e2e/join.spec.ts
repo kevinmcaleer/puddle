@@ -19,6 +19,23 @@ async function joinShop(page: Page, via: 'menu' | 'selection bar' = 'menu') {
   await expect(node(page, 'Join 1')).toHaveAttribute('data-status', 'ok');
 }
 
+/** Wait until a node sits wholly inside the visible canvas and has stopped moving (Fit View animates). */
+async function expectOnCanvas(page: Page, name: string) {
+  let last = '';
+  await expect(async () => {
+    const canvas = (await page.getByTestId('canvas').boundingBox())!;
+    const box = (await node(page, name).boundingBox())!;
+    expect(box.y).toBeGreaterThanOrEqual(canvas.y);
+    expect(box.y + box.height).toBeLessThanOrEqual(canvas.y + canvas.height);
+    expect(box.x).toBeGreaterThanOrEqual(canvas.x);
+    expect(box.x + box.width).toBeLessThanOrEqual(canvas.x + canvas.width);
+    const now = JSON.stringify(box);
+    const before = last;
+    last = now;
+    expect(now).toBe(before);
+  }).toPass({ intervals: [150] });
+}
+
 /** Apply an edit to the project through the store, as one undoable step. */
 async function edit(page: Page, fn: string) {
   await page.evaluate((body) => {
@@ -169,6 +186,14 @@ test('grouping the nodes before a join and ungrouping them keep it working', asy
      return { ...p, nodes: [...p.nodes, a, b], edges: [...edges, { id: 'g1', from: { nodeId: c.id }, to: { nodeId: 'ta', port: 0 } }, { id: 'g2', from: { nodeId: 'ta' }, to: { nodeId: 'tb', port: 0 } }, { id: 'g3', from: { nodeId: 'tb' }, to: { nodeId: j.id, port: 'right' } }] };`,
   );
   await expect(node(page, 'Join 1')).toHaveAttribute('data-status', 'ok');
+  // Upper and Trim land below the visible canvas, under the results. Clicking a node there makes Playwright scroll
+  // the canvas, which React Flow undoes at once, so the click could end on the pane and select nothing. Bring every
+  // node into view first, as a person would, once they show their row counts and so have their full height.
+  await expect(node(page, 'Upper')).toContainText('5 rows');
+  await expect(node(page, 'Trim')).toContainText('5 rows');
+  await page.getByRole('button', { name: 'Fit View' }).click();
+  await expectOnCanvas(page, 'Upper');
+  await expectOnCanvas(page, 'Trim');
   await node(page, 'Upper').click();
   await node(page, 'Trim').click({ modifiers: ['Shift'] });
   await page.getByRole('button', { name: 'Group into one node' }).click();
