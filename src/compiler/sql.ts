@@ -22,6 +22,12 @@ export function bool(value: boolean): string {
 
 export const list = (items: string[]) => items.join(', ');
 
+/**
+ * An expression that stops the query with a message for the user, when a step finds its input isn't what it was
+ * set up for. The engine shows the message as written: it recognises the "Puddle: " prefix.
+ */
+export const stepFailure = (message: string) => `error(${str(`Puddle: ${message}`)})`;
+
 /** A DuckDB list literal of strings: ['a', 'b']. */
 export const strList = (items: string[]) => '[' + items.map(str).join(', ') + ']';
 

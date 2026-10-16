@@ -1,0 +1,32 @@
+/* The query designer: tables and join lines over the canvas surface, the field grid below. Tokens only. */
+.puddle-qd { display: grid; grid-template-rows: auto auto minmax(calc(var(--size-row) * 8), 1fr) auto; height: 100%; min-height: 0; overflow: auto; background: var(--surface-panel); }
+.puddle-qd-bar { display: flex; align-items: center; gap: var(--space-2); padding: var(--space-2) var(--space-3); border-bottom: 1px solid var(--line); }
+.puddle-qd-notes { display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-2) var(--space-3); border-bottom: 1px solid var(--line); }
+.puddle-qd-pane { grid-row: 3; position: relative; overflow: auto; min-height: 0; background-color: var(--surface-canvas); background-image: radial-gradient(var(--canvas-dot) 1px, transparent 1px); background-size: var(--space-4) var(--space-4); }
+.puddle-qd-empty { position: absolute; inset: 0; display: grid; place-items: center; color: var(--ink-muted); pointer-events: none; }
+.puddle-qd-table { position: absolute; z-index: var(--z-canvas-node); width: calc(var(--size-node-width) - var(--space-8)); background: var(--surface-raised); border: 1px solid var(--line); border-radius: var(--radius-md); box-shadow: var(--shadow-node); }
+.puddle-qd-table__head { display: flex; align-items: center; gap: var(--space-2); padding: var(--space-1) var(--space-1) var(--space-1) var(--space-2); border-bottom: 1px solid var(--line); background: var(--node-combine-tint); border-radius: var(--radius-md) var(--radius-md) 0 0; cursor: grab; touch-action: none; user-select: none; }
+.puddle-qd-table__name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; color: var(--ink); }
+.puddle-qd-table__fields { list-style: none; margin: 0; padding: var(--space-1) 0; max-height: calc(var(--size-row) * 8); overflow: auto; }
+.puddle-qd-field { display: flex; align-items: center; gap: var(--space-2); height: var(--size-row); padding: 0 var(--space-2); cursor: grab; }
+.puddle-qd-field:hover { background: var(--surface-hover); }
+.puddle-qd-field.is-over { background: var(--brand-tint); box-shadow: inset 0 0 0 1px var(--brand); }
+.puddle-qd-field.is-muted { height: auto; padding: var(--space-2); color: var(--ink-muted); cursor: default; }
+.puddle-qd-field .ui-col { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.puddle-qd-field__all { display: inline-flex; justify-content: center; min-width: calc(var(--space-6) + var(--space-1)); font-family: var(--font-mono); color: var(--ink-muted); }
+.puddle-qd-lines { position: absolute; top: 0; left: 0; z-index: var(--z-panel); pointer-events: none; overflow: visible; }
+.puddle-qd-hit { fill: none; stroke: transparent; stroke-width: var(--space-3); pointer-events: stroke; cursor: pointer; }
+.puddle-qd-end { fill: var(--surface-raised); stroke: var(--wire); stroke-width: 1.5; }
+.puddle-qd-end.is-all { fill: var(--wire); }
+.puddle-qd-lines .is-selected .puddle-qd-end { stroke: var(--wire-active); }
+.puddle-qd-lines .is-selected .puddle-qd-end.is-all { fill: var(--wire-active); }
+.puddle-qd-grid { grid-row: 4; overflow-x: auto; border-top: 1px solid var(--line-strong); }
+.puddle-qd-grid table { border-collapse: collapse; }
+.puddle-qd-grid th { position: sticky; left: 0; z-index: 1; padding: var(--space-1) var(--space-3); text-align: left; background: var(--surface-panel); border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); white-space: nowrap; }
+.puddle-qd-cell { width: calc(var(--size-node-width) - var(--space-8)); padding: var(--space-1) var(--space-2); border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); vertical-align: middle; }
+.puddle-qd-cell.is-spare { background: var(--surface-sunken); }
+.puddle-qd-cell.is-over { background: var(--brand-tint); box-shadow: inset 2px 0 0 var(--brand); }
+.puddle-qd-colhead { display: flex; align-items: center; gap: var(--space-1); cursor: grab; }
+.puddle-qd-colhead .ui-col { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.puddle-qd-grip { color: var(--ink-subtle); }
+.puddle-qd-tablename { color: var(--ink-muted); }
