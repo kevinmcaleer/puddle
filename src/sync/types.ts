@@ -2,7 +2,16 @@
 // project behind this interface, and the controller (controller.ts) gives them all the same states, offline
 // queue and conflict handling.
 
-export type ProviderId = 'gist';
+export type ProviderId = 'gist' | 'drive';
+
+/**
+ * What to carry on with after signing in on the provider's own page: start syncing the project, show "Open from", or
+ * resume a project that stopped on an expired sign-in.
+ */
+export interface SignInReturn {
+  then: 'link' | 'open' | 'resume';
+  projectId: string | null;
+}
 
 /** A remote project file as the provider reports it. */
 export interface RemoteFile {
@@ -31,8 +40,16 @@ export interface SyncProvider {
   id: ProviderId;
   /** "GitHub Gist", used in sentences such as "Sync to GitHub Gist". */
   label: string;
-  /** Check the credential, keep it on this device and say who it signs in as. */
+  /**
+   * Check the credential, keep it on this device and say who it signs in as. GitHub Gist takes a pasted token; Google
+   * Drive the answer its sign-in page sends back.
+   */
   connect(credential: string): Promise<string>;
+  /**
+   * Providers that sign in on their own page (Google Drive) leave for it here; the app comes back to `connect` and
+   * `after`. Providers without it take a credential pasted into the dialog.
+   */
+  signIn?(after: SignInReturn): Promise<void>;
   /** Forget the credential. Remote files stay where they are. */
   disconnect(): Promise<void>;
   /** Who the stored credential signs in as, or null when not connected. */

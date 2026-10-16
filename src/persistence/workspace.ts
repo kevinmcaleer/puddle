@@ -226,6 +226,19 @@ export async function replaceProject(project: Project) {
   await show(project);
 }
 
+/**
+ * Save the open project now, even if it is untouched, so the page can leave (to sign in to Google Drive) and reopen
+ * it on coming back.
+ */
+export async function keepOpenProject() {
+  await flush();
+  if (useWorkspace.getState().screen !== 'editor') return;
+  const project = useProjectStore.getState().history.present;
+  if (stored.has(project.id)) return;
+  await saveProject(project);
+  stored.add(project.id);
+}
+
 /** Save a project beside the others without opening it. */
 export async function saveProjectCopy(project: Project) {
   await saveProject(project);
