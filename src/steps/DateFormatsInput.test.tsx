@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { act, cleanup, render, screen } from '@testing-library/react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { Detection } from '../dates';
 import { DateFormatsInput } from './DateFormatsInput';
@@ -18,13 +18,15 @@ const detect = vi.fn(async (_column: string, locale?: string): Promise<Detection
   return { ranked, best: locale === 'en-US' ? '%m/%d/%Y' : '%d/%m/%Y', ambiguous: { ...amb, byLocale: locale } };
 });
 
-let setLocale: (l: string | undefined) => void = () => undefined;
-let setFormats: (f: string[]) => void = () => undefined;
+/** The test's handles on the harness's state, set once it renders. */
+const controls: { setLocale: (l: string | undefined) => void; setFormats: (f: string[]) => void } = { setLocale: () => undefined, setFormats: () => undefined };
 function Harness({ initial, locale: start }: { initial: string[]; locale?: string }) {
   const [value, setValue] = useState(initial);
   const [locale, set] = useState(start);
-  setLocale = set;
-  setFormats = setValue;
+  useEffect(() => {
+    controls.setLocale = set;
+    controls.setFormats = setValue;
+  }, []);
   return (
     <>
       <output data-testid="value">{value.join(',')}</output>
@@ -56,16 +58,16 @@ describe('DateFormatsInput with a locale', () => {
     render(<Harness initial={['%d/%m/%Y']} />);
     await settle();
     expect(value()).toBe('%d/%m/%Y');
-    await act(async () => setLocale('en-US'));
+    await act(async () => controls.setLocale('en-US'));
     await settle();
     expect(value()).toBe('%m/%d/%Y');
-    await act(async () => setFormats(['%d/%m/%Y']));
+    await act(async () => controls.setFormats(['%d/%m/%Y']));
     await settle();
     expect(value()).toBe('%d/%m/%Y');
-    await act(async () => setFormats([]));
+    await act(async () => controls.setFormats([]));
     await settle();
     expect(value()).toBe('');
-    await act(async () => setLocale('en-GB'));
+    await act(async () => controls.setLocale('en-GB'));
     await settle();
     expect(value()).toBe('%d/%m/%Y');
   });
