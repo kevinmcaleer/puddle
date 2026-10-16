@@ -1,0 +1,30 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`lookup SQL > a clashing column and a default 1`] = `
+"WITH "n_o" AS (SELECT * FROM read_csv('src_orders.csv')),
+  "n_c" AS (SELECT * FROM read_csv('src_customers.csv')),
+  "n_k" AS (SELECT "m"."order_id", "m"."customer_id", "m"."status", CASE WHEN "r"."__puddle_hit" THEN "r"."name" ELSE ' n/a ' END AS "name", CASE WHEN "r"."__puddle_hit" THEN "r"."status" ELSE ' n/a ' END AS "status_lookup" FROM (SELECT *, row_number() OVER () AS "__puddle_row" FROM "n_o") AS "m" LEFT JOIN (SELECT * EXCLUDE ("__puddle_order"), true AS "__puddle_hit" FROM (SELECT *, row_number() OVER () AS "__puddle_order" FROM "n_c") QUALIFY row_number() OVER (PARTITION BY "customer_id" ORDER BY "__puddle_order") = 1) AS "r" ON "m"."customer_id" = "r"."customer_id" ORDER BY "m"."__puddle_row")
+SELECT * FROM "n_k""
+`;
+
+exports[`lookup SQL > counts matches, duplicate keys and missing keys in one row 1`] = `
+"WITH "n_o" AS (SELECT * FROM read_csv('src_orders.csv')),
+  "n_c" AS (SELECT * FROM read_csv('src_customers.csv')),
+  "n_k" AS (SELECT "m"."order_id", "m"."customer_id", "m"."status", "r"."name" FROM (SELECT *, row_number() OVER () AS "__puddle_row" FROM "n_o") AS "m" LEFT JOIN (SELECT * EXCLUDE ("__puddle_order"), true AS "__puddle_hit" FROM (SELECT *, row_number() OVER () AS "__puddle_order" FROM "n_c") QUALIFY row_number() OVER (PARTITION BY "customer_id" ORDER BY "__puddle_order") = 1) AS "r" ON "m"."customer_id" = "r"."customer_id" ORDER BY "m"."__puddle_row"),
+  "n_k_dups" AS (SELECT "customer_id" FROM "n_c" GROUP BY ALL HAVING count(*) > 1)
+SELECT (SELECT count(*) FROM "n_o") AS "rows", (SELECT count(*) FROM "n_o" AS "m" SEMI JOIN (SELECT * EXCLUDE ("__puddle_order"), true AS "__puddle_hit" FROM (SELECT *, row_number() OVER () AS "__puddle_order" FROM "n_c") QUALIFY row_number() OVER (PARTITION BY "customer_id" ORDER BY "__puddle_order") = 1) AS "r" ON "m"."customer_id" = "r"."customer_id") AS matched, (SELECT count(*) FROM (SELECT DISTINCT "m"."customer_id" FROM "n_o" AS "m" SEMI JOIN "n_k_dups" AS "r" ON "m"."customer_id" = "r"."customer_id")) AS dup_keys, (SELECT count(*) FROM "n_o" AS "m" SEMI JOIN "n_k_dups" AS "r" ON "m"."customer_id" = "r"."customer_id") AS dup_rows, (SELECT concat_ws(', ', coalesce(CAST("m"."customer_id" AS VARCHAR), '(empty)')) FROM "n_o" AS "m" SEMI JOIN "n_k_dups" AS "r" ON "m"."customer_id" = "r"."customer_id" LIMIT 1) AS dup_example, (SELECT count(*) FROM (SELECT DISTINCT "m"."customer_id" FROM "n_o" AS "m" ANTI JOIN (SELECT * EXCLUDE ("__puddle_order"), true AS "__puddle_hit" FROM (SELECT *, row_number() OVER () AS "__puddle_order" FROM "n_c") QUALIFY row_number() OVER (PARTITION BY "customer_id" ORDER BY "__puddle_order") = 1) AS "r" ON "m"."customer_id" = "r"."customer_id")) AS missing_keys, (SELECT concat_ws(', ', coalesce(CAST("m"."customer_id" AS VARCHAR), '(empty)')) FROM "n_o" AS "m" ANTI JOIN (SELECT * EXCLUDE ("__puddle_order"), true AS "__puddle_hit" FROM (SELECT *, row_number() OVER () AS "__puddle_order" FROM "n_c") QUALIFY row_number() OVER (PARTITION BY "customer_id" ORDER BY "__puddle_order") = 1) AS "r" ON "m"."customer_id" = "r"."customer_id" LIMIT 1) AS missing_example"
+`;
+
+exports[`lookup SQL > one column 1`] = `
+"WITH "n_o" AS (SELECT * FROM read_csv('src_orders.csv')),
+  "n_c" AS (SELECT * FROM read_csv('src_customers.csv')),
+  "n_k" AS (SELECT "m"."order_id", "m"."customer_id", "m"."status", "r"."name" FROM (SELECT *, row_number() OVER () AS "__puddle_row" FROM "n_o") AS "m" LEFT JOIN (SELECT * EXCLUDE ("__puddle_order"), true AS "__puddle_hit" FROM (SELECT *, row_number() OVER () AS "__puddle_order" FROM "n_c") QUALIFY row_number() OVER (PARTITION BY "customer_id" ORDER BY "__puddle_order") = 1) AS "r" ON "m"."customer_id" = "r"."customer_id" ORDER BY "m"."__puddle_row")
+SELECT * FROM "n_k""
+`;
+
+exports[`lookup SQL > two keys 1`] = `
+"WITH "n_o" AS (SELECT * FROM read_csv('src_orders.csv')),
+  "n_c" AS (SELECT * FROM read_csv('src_customers.csv')),
+  "n_k" AS (SELECT "m"."order_id", "m"."customer_id", "m"."status", "r"."name" FROM (SELECT *, row_number() OVER () AS "__puddle_row" FROM "n_o") AS "m" LEFT JOIN (SELECT * EXCLUDE ("__puddle_order"), true AS "__puddle_hit" FROM (SELECT *, row_number() OVER () AS "__puddle_order" FROM "n_c") QUALIFY row_number() OVER (PARTITION BY "customer_id", "status" ORDER BY "__puddle_order") = 1) AS "r" ON "m"."customer_id" = "r"."customer_id" AND "m"."status" = "r"."status" ORDER BY "m"."__puddle_row")
+SELECT * FROM "n_k""
+`;

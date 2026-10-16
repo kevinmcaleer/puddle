@@ -119,7 +119,7 @@ exports[`sources > parquet with {} 1`] = `"read_parquet('src_x.parquet')"`;
 
 exports[`sources > tsv with {} 1`] = `"read_csv('src_x.tsv', delim = '	')"`;
 
-exports[`sources > xlsx with {} 1`] = `""src_x""`;
+exports[`sources > xlsx with {} 1`] = `""src_x_87c4bb5369a4""`;
 
 exports[`step snapshots > absoluteValue {"columns":["id"]} 1`] = `
 "WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv')),

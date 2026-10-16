@@ -6,15 +6,19 @@ import { Banner, columnKind, Field, Icon, NODE_KIND, Section, Select, Switch, Ty
 import { CommitInput } from '../steps/StepForm';
 import { AppendPanel } from './AppendPanel';
 import { JoinPanel } from './JoinPanel';
+import { LookupPanel } from './LookupPanel';
 import { KeepPanel } from './KeepPanel';
 import { NodeNotes } from './NodeNotes';
 import { OutputPanel } from './OutputPanel';
+import { QueryPanel } from './QueryPanel';
 import { RulesPanel } from './RulesPanel';
 import { TransformPanel } from './TransformPanel';
 import { useAttachments } from '../sources/attachments';
 import { DetachedMessage } from '../sources/ReconnectBanner';
 import { ReattachButton } from '../sources/ReattachButton';
 import { UrlPanel } from '../sources/UrlPanel';
+import { isExcelSource } from '../sources/excel';
+import { ExcelPanel } from '../sources/ExcelPanel';
 import { DELIMITERS, delimiterValue, ENCODINGS, hasParseOptions, LOCALES, parseNullStrings, withOption } from './options';
 
 function SourceOptions({ source }: { source: Source }) {
@@ -163,6 +167,26 @@ export function Inspector() {
         <NodeNotes node={node} />
       </>
     );
+  if (node.type === 'lookup')
+    return (
+      <>
+        <LookupPanel node={node} />
+        <KeepPanel key={node.id} node={node} />
+        <Columns nodeId={node.id} />
+        <RulesPanel node={node} />
+        <NodeNotes node={node} />
+      </>
+    );
+
+  if (node.type === 'query')
+    return (
+      <>
+        <QueryPanel node={node} />
+        <Columns nodeId={node.id} />
+        <RulesPanel node={node} />
+        <NodeNotes node={node} />
+      </>
+    );
 
   const kind = NODE_KIND[node.type];
   const source = node.type === 'source' ? project.sources.find((s) => s.id === node.sourceId) : undefined;
@@ -177,6 +201,7 @@ export function Inspector() {
       </div>
       {source && source.kind === 'file' && <AttachmentBanner source={source} />}
       {source && source.kind === 'url' && <UrlPanel source={source} />}
+      {source && isExcelSource(source) && <ExcelPanel source={source} />}
       {source && hasParseOptions(source) && <SourceOptions source={source} />}
       {node.type === 'output' && <OutputPanel node={node} />}
       {node.type === 'source' && <KeepPanel key={node.id} node={node} />}

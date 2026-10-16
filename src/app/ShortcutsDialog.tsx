@@ -3,7 +3,7 @@ import { Dialog } from '../ui';
 import { useSession } from './session';
 import { comboKeys, isMac, SHORTCUT_AREAS, SHORTCUTS, type Shortcut } from './shortcuts';
 
-const WHERE: Partial<Record<NonNullable<Shortcut['handledBy']>, string>> = { canvas: 'on the canvas', 'step list': 'in the applied steps' };
+const WHERE: Partial<Record<NonNullable<Shortcut['handledBy']>, string>> = { canvas: 'on the canvas', 'step list': 'in the applied steps', 'query designer': 'in the Query designer' };
 
 /** Every keyboard shortcut, by area, straight from the registry (?). */
 export function ShortcutsDialog() {

@@ -63,6 +63,9 @@ export async function createNodeBackend(opts: { beforeQuery?: (sql: string) => P
     async dropFile(name) {
       db.dropFile(name);
     },
+    async insertArrow(name, ipc) {
+      conn.insertArrowFromIPCStream(ipc, { name, create: true });
+    },
     // The Node build's COPY writes to the real disk, so exports go to a temp folder and are read back from it.
     async openOutput(name) {
       const path = join(outDir, name);

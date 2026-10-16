@@ -1,4 +1,4 @@
-import type { Source } from '../model';
+import { hashValue, type Source } from '../model';
 import { CompileError } from './errors';
 import { bool, ident, str, strList } from './sql';
 
@@ -9,10 +9,17 @@ export function sourceFileName(source: Source): string {
   return `src_${source.id}.${EXT[source.format]}`;
 }
 
-/** Excel is parsed by SheetJS into an Arrow table and registered as a table, not read as a file. */
+/**
+ * Excel is parsed by SheetJS into an Arrow table and registered as a table, not read as a file. The name follows
+ * the file and the read options, so a table read with other options (or from another file) is never mistaken for it.
+ */
 export function sourceTableName(source: Source): string {
-  return `src_${source.id}`;
+  const o = source.parseOptions;
+  return `src_${source.id}_${hashValue([source.file?.headHash ?? null, o.sheet ?? null, o.headerRow ?? null, o.range ?? null]).slice(0, 12)}`;
 }
+
+/** Drop a source's table (an Excel sheet read with options no longer in use). */
+export const dropTable = (name: string) => `DROP TABLE IF EXISTS ${ident(name)}`;
 
 /** The table function call that reads a source, e.g. read_csv('src_a.csv', delim = ','). */
 export function sourceRelation(source: Source): string {

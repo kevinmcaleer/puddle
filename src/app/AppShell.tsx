@@ -15,11 +15,14 @@ import { sampledUpstream, useSample, useViewProject } from '../flow/sample';
 import { SampleBanner } from '../results/SampleBanner';
 import { describeProfile } from '../results/profile';
 import { exportAll, ExportBlockedBanner, ExportButton, exportViewed } from '../export';
+import { QueryDesigner } from '../query/QueryDesigner';
 import { ResultsTable } from '../results/ResultsTable';
 import { useResultsStore } from '../results/state';
 import { ACCEPT } from '../sources/detect';
+import { useExcelSources } from '../sources/excel';
 import { UrlDialog } from '../sources/UrlDialog';
 import { openUrlDialog } from '../sources/urlDialog';
+import { cardKind } from '../canvas/kind';
 import { Button, Menu, ResultsBar, StatusBadge, StatusStrip, Toolbar, type NodeKind } from '../ui';
 import { ActivityControl } from './ActivityControl';
 import { addFiles, addNodeAfterSelection, chooseFiles as pickSourceFiles, addPastedText, groupSelection, layoutFlow, pasteFromClipboard, searchAddStep, selectNeighbour, viewSelected } from './actions';
@@ -47,7 +50,7 @@ function ResultsTitle() {
   const node = project.view.viewedNodeId ? nodeById(project, project.view.viewedNodeId) : undefined;
   if (!node) return <ResultsBar title="Nothing to view yet" kind="output" />;
   const step = project.view.viewedStepIndex;
-  const kind: NodeKind = node.type;
+  const kind: NodeKind = cardKind(node.type);
   const failing = project.view.failingRuleId ? node.rules.find((r) => r.id === project.view.failingRuleId) : undefined;
   const title = failing ? `${node.name} · failing ${failing.label}` : step == null ? node.name : `${node.name} · step ${step + 1}`;
   return (
@@ -110,8 +113,11 @@ export function AppShell() {
   const theme = useTheme();
   const notesOpen = useSession((s) => s.notesOpen);
   const inspectorOpen = useSession((s) => s.inspectorOpen);
+  const designerId = useSession((s) => s.designerNodeId);
+  const designing = designerId ? nodeById(project, designerId) : undefined;
   const fileInput = useRef<HTMLInputElement>(null);
   const canvas = useRef<HTMLElement>(null);
+  useExcelSources();
   useFlowEvaluation();
 
   const importInput = useRef<HTMLInputElement>(null);
@@ -169,6 +175,8 @@ export function AppShell() {
               { label: 'Transform', icon: 'transform', shortcut: shortcutText('add-transform'), onSelect: () => addNodeAfterSelection('transform') },
               { label: 'Join', icon: 'join', hint: 'Two inputs', onSelect: () => addNodeAfterSelection('join') },
               { label: 'Append', icon: 'append', hint: 'Stack rows', onSelect: () => addNodeAfterSelection('append') },
+              { label: 'Lookup', icon: 'join', hint: 'Bring columns across', onSelect: () => addNodeAfterSelection('lookup') },
+              { label: 'Query', icon: 'query', hint: 'Design with tables', onSelect: () => addNodeAfterSelection('query') },
               { label: 'Output', icon: 'output', shortcut: shortcutText('add-output'), onSelect: () => addNodeAfterSelection('output') },
             ]}
           />
@@ -244,7 +252,7 @@ export function AppShell() {
 
         <div className={inspectorOpen ? 'grid min-h-0 grid-cols-[minmax(0,1fr)_var(--size-inspector)]' : 'grid min-h-0 grid-cols-[minmax(0,1fr)]'}>
           <main ref={canvas} tabIndex={-1} className="min-h-0 focus-visible:outline-none" aria-label="Canvas">
-            <Canvas onAddSource={chooseFiles} />
+            {designing?.type === 'query' ? <QueryDesigner node={designing} /> : <Canvas onAddSource={chooseFiles} />}
           </main>
 
           {!inspectorOpen ? null : notesOpen ? (

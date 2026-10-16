@@ -22,9 +22,9 @@ export interface Shortcut {
   keys: KeyCombo[];
   /**
    * Where the key is handled when not by the app-wide handler: the browser's paste event, the canvas (React Flow
-   * deletes selected nodes), or the focused step in the applied-steps list.
+   * deletes selected nodes), the focused step in the applied-steps list, or the Query designer.
    */
-  handledBy?: 'paste' | 'canvas' | 'step list';
+  handledBy?: 'paste' | 'canvas' | 'step list' | 'query designer';
 }
 
 const k = (key: string, mods: Omit<KeyCombo, 'key'> = {}): KeyCombo => ({ key, ...mods });
@@ -47,6 +47,7 @@ export const SHORTCUTS = [
   { id: 'select-above', area: 'Canvas', label: 'Select the connected node above', keys: [k('ArrowUp')] },
   { id: 'select-below', area: 'Canvas', label: 'Select the connected node below', keys: [k('ArrowDown')] },
   { id: 'delete-nodes', area: 'Canvas', label: 'Delete the selected nodes or wire', keys: [k('Delete'), k('Backspace')], handledBy: 'canvas' },
+  { id: 'delete-query-join', area: 'Canvas', label: 'Delete the selected join line', keys: [k('Delete'), k('Backspace')], handledBy: 'query designer' },
 
   { id: 'view', area: 'Results', label: 'View the selected node', keys: [k('v')] },
   { id: 'export', area: 'Results', label: 'Export the viewed Output', keys: [k('e')] },
@@ -61,7 +62,7 @@ export const SHORTCUTS = [
 export type ShortcutId = (typeof SHORTCUTS)[number]['id'];
 
 /** The shortcuts the app-wide key handler runs (the rest are handled where they happen). */
-export type GlobalShortcutId = Exclude<ShortcutId, 'paste' | 'delete-nodes' | 'move-step' | 'delete-step'>;
+export type GlobalShortcutId = Exclude<ShortcutId, 'paste' | 'delete-nodes' | 'delete-query-join' | 'move-step' | 'delete-step'>;
 
 export const shortcut = (id: ShortcutId): Shortcut => SHORTCUTS.find((s) => s.id === id)! as Shortcut;
 

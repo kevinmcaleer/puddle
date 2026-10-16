@@ -31,6 +31,10 @@ const NOTES = [
   '[bad](javascript:window.__hacked=true)',
 ].join('\n');
 
+/** The open project's notes, as the app holds them. */
+const openNotes = (page: Page) =>
+  page.evaluate(() => (globalThis.__puddle as unknown as { store: { getState(): { history: { present: { notes?: string } } } } }).store.getState().history.present.notes ?? null);
+
 const notesBox = (page: Page) => page.getByLabel('Project notes', { exact: true }).and(page.locator('textarea'));
 
 test('project notes are written in Markdown, render safely, undo as one step and survive reload, export and import', async ({ page, browser }) => {
@@ -89,6 +93,8 @@ test('project notes are written in Markdown, render safely, undo as one step and
   const other = await clean.newPage();
   await openApp(other);
   await other.getByTestId('import-input').setInputFiles(path);
+  // The panel opens on Preview only for a project that already has notes, so wait for the import to open first.
+  await expect.poll(() => openNotes(other)).toBe(NOTES);
   await other.getByRole('button', { name: 'Notes' }).click();
   await expect(other.getByTestId('notes-preview')).toContainText('<script>window.__hacked = true</script>');
   await other.getByRole('tab', { name: 'Write' }).click();
