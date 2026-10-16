@@ -3,6 +3,7 @@ import { useEffect, useRef } from 'react';
 import { Canvas } from '../canvas/Canvas';
 import { useFlowEvaluation } from '../flow/useFlowEvaluation';
 import { Inspector } from '../inspector/Inspector';
+import { NotesPanel } from '../notes/NotesPanel';
 import { nodeById, useProject, useProjectStore } from '../model';
 import { openProjectDialog } from '../home/dialogs';
 import { exportProject, goHome, importProject } from '../persistence/workspace';
@@ -109,6 +110,7 @@ export function AppShell() {
   const canUndo = useProjectStore((s) => s.history.past.length > 0);
   const canRedo = useProjectStore((s) => s.history.future.length > 0);
   const theme = useTheme();
+  const notesOpen = useSession((s) => s.notesOpen);
   const fileInput = useRef<HTMLInputElement>(null);
   useFlowEvaluation();
   useShortcuts();
@@ -148,7 +150,17 @@ export function AppShell() {
           <Button variant="ghost" icon="export" disabled={!project.nodes.some((n) => n.type === 'output')} onClick={() => void exportAll()}>Export all</Button>
           <Button variant="ghost" icon="undo" iconOnly aria-label="Undo" title="Undo (Ctrl+Z)" disabled={!canUndo} onClick={undo} />
           <Button variant="ghost" icon="redo" iconOnly aria-label="Redo" title="Redo (Ctrl+Shift+Z)" disabled={!canRedo} onClick={redo} />
-          <Button variant="ghost" icon="notes" iconOnly aria-label="Notes" />
+          <Button
+            variant="ghost"
+            icon="notes"
+            iconOnly
+            aria-label="Notes"
+            title="Project notes"
+            aria-pressed={notesOpen}
+            className={notesOpen ? 'bg-surface-hover text-ink' : undefined}
+            data-testid="notes-toggle"
+            onClick={() => useSession.getState().setNotesOpen(!notesOpen)}
+          />
           <Button
             variant="ghost"
             icon={THEME_ICON[theme.preference]}
@@ -190,9 +202,15 @@ export function AppShell() {
             <Canvas onAddSource={chooseFiles} />
           </main>
 
-          <aside className="min-h-0 overflow-auto border-l border-line bg-surface-panel" aria-label="Inspector" data-testid="inspector">
-            <Inspector />
-          </aside>
+          {notesOpen ? (
+            <aside className="min-h-0 overflow-hidden border-l border-line bg-surface-panel" aria-label="Project notes">
+              <NotesPanel />
+            </aside>
+          ) : (
+            <aside className="min-h-0 overflow-auto border-l border-line bg-surface-panel" aria-label="Inspector" data-testid="inspector">
+              <Inspector />
+            </aside>
+          )}
         </div>
 
         <ResultsPanel bar={<ResultsTitle />}>

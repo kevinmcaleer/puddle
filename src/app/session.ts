@@ -12,11 +12,14 @@ interface SessionState {
   selectedColumns: string[];
   /** A short message shown over the canvas, e.g. why a wire was refused. */
   notice: { tone: 'info' | 'warn' | 'fail'; text: string } | null;
+  /** The project notes panel is open in the right-hand dock, in place of the inspector. */
+  notesOpen: boolean;
   select: (id: string | null) => void;
   toggleSelected: (id: string) => void;
   selectStep: (id: string | null) => void;
   setSelectedColumns: (cols: string[]) => void;
   notify: (notice: SessionState['notice']) => void;
+  setNotesOpen: (open: boolean) => void;
 }
 
 export const useSession = create<SessionState>((set) => ({
@@ -25,7 +28,9 @@ export const useSession = create<SessionState>((set) => ({
   selectedStepId: null,
   selectedColumns: [],
   notice: null,
-  select: (id) => set({ selectedNodeId: id, selectedNodeIds: id ? [id] : [], selectedStepId: null }),
+  notesOpen: false,
+  // Picking a node shows it in the inspector, so the notes panel makes way.
+  select: (id) => set((s) => ({ selectedNodeId: id, selectedNodeIds: id ? [id] : [], selectedStepId: null, notesOpen: id ? false : s.notesOpen })),
   toggleSelected: (id) =>
     set((s) => {
       const has = s.selectedNodeIds.includes(id);
@@ -35,4 +40,5 @@ export const useSession = create<SessionState>((set) => ({
   selectStep: (selectedStepId) => set({ selectedStepId }),
   setSelectedColumns: (selectedColumns) => set({ selectedColumns }),
   notify: (notice) => set({ notice }),
+  setNotesOpen: (notesOpen) => set({ notesOpen }),
 }));

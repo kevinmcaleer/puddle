@@ -4,6 +4,7 @@ import { formatLabel } from '../canvas/formatLabel';
 import { nodeById, setParseOptions, useProject, useProjectStore, type ParseOptions, type ProjectSettings as ProjectSettingsT, type Source } from '../model';
 import { Banner, columnKind, Field, Icon, NODE_KIND, Section, Select, Switch, TypeTag } from '../ui';
 import { CommitInput } from '../steps/StepForm';
+import { NodeNotes } from './NodeNotes';
 import { OutputPanel } from './OutputPanel';
 import { RulesPanel } from './RulesPanel';
 import { TransformPanel } from './TransformPanel';
@@ -133,6 +134,7 @@ export function Inspector() {
         <TransformPanel node={node} />
         <Columns nodeId={node.id} />
         <RulesPanel node={node} />
+        <NodeNotes node={node} />
       </>
     );
 
@@ -152,6 +154,7 @@ export function Inspector() {
       {node.type === 'output' && <OutputPanel node={node} />}
       <Columns nodeId={node.id} />
       <RulesPanel node={node} />
+      <NodeNotes node={node} />
     </div>
   );
 }

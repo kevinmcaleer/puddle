@@ -11,7 +11,6 @@ import {
   moveStep,
   removeStep,
   renameNode,
-  setNodeNotes,
   splitNode,
   ungroupNode,
   updateStep,
@@ -141,7 +140,7 @@ function StepSettings({ node, index, error }: { node: TransformNode; index: numb
   );
 }
 
-/** The inspector for a Transform node: header, applied steps, the selected step's settings, notes. */
+/** The inspector for a Transform node: header, applied steps, the selected step's settings. */
 export function TransformPanel({ node }: { node: TransformNode }) {
   const project = useProject();
   const status = useNodeStatus(node.id);
@@ -184,17 +183,6 @@ export function TransformPanel({ node }: { node: TransformNode }) {
         )}
       </Section>
       {selected >= 0 && <StepSettings node={node} index={selected} error={errors[selected]} />}
-      <Section title="Notes">
-        <textarea
-          key={node.notes ?? ''}
-          aria-label="Node notes"
-          className="ui-input min-h-[var(--size-row)] w-full resize-y py-1"
-          rows={3}
-          defaultValue={node.notes ?? ''}
-          placeholder="Why this node exists, what it expects."
-          onBlur={(e) => e.target.value !== (node.notes ?? '') && apply((p) => setNodeNotes(p, node.id, e.target.value))}
-        />
-      </Section>
     </div>
   );
 }

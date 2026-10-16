@@ -1,0 +1,22 @@
+/* Rendered project notes, on the design system's type scale. */
+.puddle-notes { @apply text-body text-ink; overflow-wrap: anywhere; }
+.puddle-notes > :first-child { margin-top: 0; }
+.puddle-notes > :last-child { margin-bottom: 0; }
+.puddle-notes h1 { @apply mb-2 mt-4 font-display text-title; }
+.puddle-notes h2 { @apply mb-2 mt-4 font-display text-heading; }
+.puddle-notes h3, .puddle-notes h4, .puddle-notes h5, .puddle-notes h6 { @apply mb-1 mt-3 text-body-strong; }
+.puddle-notes p, .puddle-notes ul, .puddle-notes ol, .puddle-notes blockquote, .puddle-notes pre, .puddle-notes table { @apply mb-3 mt-0; }
+.puddle-notes ul { @apply list-disc pl-6; }
+.puddle-notes ol { @apply list-decimal pl-6; }
+.puddle-notes li + li { @apply mt-1; }
+.puddle-notes a { @apply text-brand underline; }
+.puddle-notes a:hover { @apply text-brand-hover; }
+.puddle-notes strong { @apply font-semibold; }
+.puddle-notes code { @apply rounded-xs bg-surface-sunken px-1 font-mono text-code; }
+.puddle-notes pre { @apply overflow-auto rounded-sm bg-surface-sunken p-3; }
+.puddle-notes pre code { @apply bg-transparent p-0; }
+.puddle-notes blockquote { @apply border-l-2 border-line-strong pl-3 text-ink-muted; }
+.puddle-notes hr { @apply my-4 border-0 border-t border-line; }
+.puddle-notes table { @apply border-collapse text-data; }
+.puddle-notes th, .puddle-notes td { @apply border border-line px-2 py-1 text-left; }
+.puddle-notes th { @apply text-data-strong; }

@@ -48,6 +48,7 @@ A Docker image (nginx serving the static build) behind a Cloudflare Tunnel at pu
 | `src/pwa/` | The service worker (precached app, engine and extensions for offline use), its precache list and the web app manifest |
 | `src/export/` | Exports from Output nodes: the quality gate, `COPY ... TO` into DuckDB's in-memory file system, download or clipboard, and the export log |
 | `src/inspector/` | The right-hand panel: source read options, applied steps, step settings and node notes |
+| `src/notes/` | The project notes panel: Markdown written and previewed, rendered with raw HTML off and links in a new tab |
 | `src/results/` | The results table on Glide Data Grid: paging, headers with type and quality |
 | `tests/` | Engine integration tests, fixtures and helpers |
 | `e2e/` | Playwright tests |

@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { canRedo, canUndo, initHistory, pushHistory, redo, undo, type History } from './history';
+import { canRedo, canUndo, checkpoint, initHistory, pushHistory, redo, undo, type History } from './history';
 import { createProject } from './project';
 import type { Project, ProjectView } from './schema';
 
@@ -13,6 +13,11 @@ export interface ProjectState {
   setView: (view: Partial<ProjectView>) => void;
   /** Record derived facts (such as a source's detected schema) without adding an undo step. */
   amend: (edit: (p: Project) => Project) => void;
+  /**
+   * Close an editing session: changes `amend`ed in since `before` (such as typing project notes) become one undo
+   * step, not one per keystroke.
+   */
+  checkpoint: (before: Project) => void;
   undo: () => void;
   redo: () => void;
   canUndo: () => boolean;
@@ -42,6 +47,13 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     set(({ history }) => {
       const next = edit(history.present);
       return next === history.present ? {} : { history: { ...history, present: next } };
+    }),
+  checkpoint: (before) =>
+    set(({ history }) => {
+      // A session that began in another project (one opened or imported meanwhile) has nothing to record here.
+      if (before.id !== history.present.id) return {};
+      const next = checkpoint(history, before);
+      return next === history ? {} : { history: { ...next, present: { ...next.present, updatedAt: new Date().toISOString() } } };
     }),
   // The export log records what happened, so undo and redo keep the latest one.
   undo: () => set(({ history }) => ({ history: keepLog(undo(history), history.present) })),

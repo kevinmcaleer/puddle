@@ -37,6 +37,7 @@ export function PuddleNode({ data, selected }: NodeProps<PuddleFlowNode>) {
         error={status.state === 'error' ? status.message : status.state === 'detached' ? 'File not connected. Choose it again in the inspector.' : undefined}
         dimmed={status.state === 'blocked'}
         brokenInput={status.state === 'error'}
+        note={node.notes?.trim() || undefined}
         renderPorts={({ inputs, output }) => (
           <>
             {inputs.map((top, i) => (

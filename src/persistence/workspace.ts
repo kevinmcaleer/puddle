@@ -56,7 +56,7 @@ function show(project: Project) {
 }
 
 /** A project is saved once it has been edited; opening a blank one and leaving it doesn't clutter the list. */
-const worthSaving = (p: Project, edited: boolean) => stored.has(p.id) || edited || p.sources.length > 0 || p.nodes.length > 0;
+const worthSaving = (p: Project, edited: boolean) => stored.has(p.id) || edited || p.sources.length > 0 || p.nodes.length > 0 || p.notes.length > 0;
 
 let pending: ReturnType<typeof setTimeout> | null = null;
 let saving: Promise<void> = Promise.resolve();
