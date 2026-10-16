@@ -36,6 +36,9 @@ import { ResultsPanel } from './ResultsPanel';
 import { ShortcutsDialog } from './ShortcutsDialog';
 import { shortcutText, withShortcut, type GlobalShortcutId } from './shortcuts';
 import { useShortcuts } from './useShortcuts';
+import { PROVIDERS, useSync } from '../sync';
+import { openSyncDialog } from '../sync/dialogs';
+import { SyncConflictBanner } from '../sync/SyncDialogs';
 import { useSession } from './session';
 import { THEME_ICON, THEME_LABEL, useTheme } from './theme';
 
@@ -140,8 +143,26 @@ function HelpMenu() {
   );
 }
 
+/** The strip's sync badge: nothing for a project that doesn't sync. */
+function useSyncBadge() {
+  const status = useSync((s) => s.status);
+  const provider = useSync((s) => s.provider);
+  const error = useSync((s) => s.error);
+  if (status === 'off' || !provider) return {};
+  const label = PROVIDERS[provider].label;
+  const title = {
+    synced: `Saved to ${label}`,
+    pending: `Changes are on their way to ${label}`,
+    offline: `Offline: changes sync to ${label} when you’re back online`,
+    conflict: `The ${label} copy changed too: choose which version to keep`,
+    error: error ?? `Couldn’t sync to ${label}`,
+  }[status];
+  return { sync: status, syncTitle: title };
+}
+
 function Strip() {
   const engine = useEngineStore((s) => s.status);
+  const syncBadge = useSyncBadge();
   const project = useProject();
   const viewed = project.view.viewedNodeId;
   const { rows, cols, ms, profile } = useResultsStore();
@@ -156,7 +177,7 @@ function Strip() {
       <EngineBadge status={engine} />
     </>
   );
-  if (!node) return <StatusStrip kept={kept} end={end} />;
+  if (!node) return <StatusStrip kept={kept} end={end} {...syncBadge} />;
   const one = selected.length === 1 ? selected[0]! : undefined;
   const p = one ? profile?.[one] : undefined;
   const sampled = sampledUpstream(project, node.id, sample).length > 0;
@@ -167,7 +188,7 @@ function Strip() {
       {one && p && <span data-testid="column-profile">{one} · {describeProfile(p)}</span>}
     </>
   );
-  return <StatusStrip rows={rows} cols={cols} ms={ms} rules={rules} kept={kept} sample={sampled && sample ? sample.rows : undefined} detail={(rules && sampled) || (one && p) ? detail : undefined} end={end} />;
+  return <StatusStrip rows={rows} cols={cols} ms={ms} rules={rules} kept={kept} sample={sampled && sample ? sample.rows : undefined} detail={(rules && sampled) || (one && p) ? detail : undefined} end={end} {...syncBadge} />;
 }
 
 /**
@@ -220,13 +241,14 @@ export function AppShell() {
 
   return (
     <ReactFlowProvider>
-      <div className="grid h-full min-w-[960px] grid-rows-[auto_minmax(0,1fr)_auto_auto] bg-surface-panel text-body text-ink">
+      <div className="grid h-full min-w-[960px] grid-rows-[auto_auto_minmax(0,1fr)_auto_auto] bg-surface-panel text-body text-ink">
         <Toolbar
           project={project.name}
           projectMenu={[
             { label: 'Rename', icon: 'text', onSelect: () => openProjectDialog({ kind: 'rename', id: project.id, name: project.name }) },
             { label: 'Export project', icon: 'export', hint: '.puddle.json', onSelect: exportProject },
             { label: 'Import project', icon: 'source', onSelect: () => importInput.current?.click() },
+            { label: `Sync to ${PROVIDERS.gist.label}`, icon: 'refresh', onSelect: () => openSyncDialog({ kind: 'project', provider: 'gist' }) },
             { label: 'All projects', icon: 'layout', onSelect: () => void goHome() },
           ]}
         >
@@ -296,6 +318,9 @@ export function AppShell() {
             onClick={() => session().setShortcutsOpen(true)}
           />
         </Toolbar>
+        <div>
+          <SyncConflictBanner />
+        </div>
         <input
           ref={importInput}
           type="file"

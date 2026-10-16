@@ -41,6 +41,7 @@ A Docker image (nginx serving the static build) behind a Cloudflare Tunnel at pu
 | `src/sources/` | Adding sources: format detection, file handles, clipboard text, web addresses (fetched again on reopen), choosing files again on reopen (on Chromium, reconnecting them with one permission click through stored file handles), and Excel sources (sheet, header row and range, kept loaded as DuckDB tables) |
 | `src/excel/` | SheetJS in a Web Worker: reading `.xlsx` sheets into typed columns and Arrow tables for DuckDB, and writing Excel exports from Arrow batches. Excel's limits and sheet-name rules live in `limits.ts`, which doesn't load SheetJS |
 | `src/persistence/` | IndexedDB autosave, `.puddle.json` export and import, format migrations |
+| `src/sync/` | Optional project sync through one provider-agnostic layer (`SyncProvider`): sync states, the offline queue, conflict choices and "Open from"; GitHub Gist is the first provider. Credentials and sync links stay in IndexedDB on this device; the synced file is the `.puddle.json` less pasted rows |
 | `src/home/` | The projects home screen and the rename and delete dialogs |
 | `src/samples/` | The onboarding samples: the catalogue of messy datasets in `public/samples/` (written by `scripts/make-samples.mjs`), the Try a sample picker, and `openSample`, which opens one as a new project |
 | `src/tour/` | The guided tour: its stops, the popover that points at each part of the screen (following layout changes), the first-launch offer and progress kept in this browser |
@@ -50,9 +51,10 @@ A Docker image (nginx serving the static build) behind a Cloudflare Tunnel at pu
 | `src/dates/` | Date format detection: candidate `strptime` formats, ranking by match rate, day and month ambiguity |
 | `src/quickfix/` | The quick-fix bar: one click on the selected columns adds one step where the viewed data is |
 | `src/rules/` | Quality rule forms and labels; rules compile in `src/compiler/rules.ts` and are checked per node by `src/flow/rules.ts` |
+| `src/report/` | Quality reports: what the rules found (counts, overrides from the export log, sources with row counts and head hashes, opt-in failing rows) written as Markdown, JSON or one self-contained HTML file, and the export dialog |
 | `src/pwa/` | The service worker (precached app, engine and extensions for offline use), its precache list and the web app manifest |
 | `src/export/` | Exports from Output nodes: the quality gate, `COPY ... TO` into DuckDB's in-memory file system (Excel workbooks instead go through the Excel worker), download or clipboard, and the export log |
-| `src/query/` | The query designer, in place of the canvas for a Query node: its tables and the join lines dragged between their fields, and the grid of fields with names, sorting, criteria and Show |
+| `src/query/` | The query designer, in place of the canvas for a Query node: its tables and the join lines dragged between their fields, and the grid of fields with names, sorting, criteria and Show, and its Totals row for grouping and summarising |
 | `src/inspector/` | The right-hand panel: source read options, applied steps, step settings and node notes |
 | `src/notes/` | The project notes panel: Markdown written and previewed, rendered with raw HTML off and links in a new tab |
 | `src/results/` | The results table on Glide Data Grid: paging, headers with type and quality |

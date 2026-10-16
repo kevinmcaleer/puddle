@@ -4,6 +4,7 @@ import { SHEET_ROWS, sheetNameProblem, toSheetName } from '../excel/limits';
 import { ExportBlockedBanner, ExportButton } from '../export';
 import { useNodeStatus } from '../flow/status';
 import { setOutputSpec, useProject, useProjectStore, type OutputNode } from '../model';
+import { QualityReportButton } from '../report';
 import { CommitInput } from '../steps/CommitInput';
 import { Banner, Button, Field, Section, Select, Switch } from '../ui';
 
@@ -110,6 +111,9 @@ export function OutputPanel({ node }: { node: OutputNode }) {
           <ExportBlockedBanner node={node} />
           <div>
             <ExportButton node={node} size="md" />
+          </div>
+          <div>
+            <QualityReportButton node={node} />
           </div>
         </div>
       </Section>

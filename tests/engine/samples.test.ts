@@ -68,7 +68,10 @@ describe('opening a sample', () => {
     const project = await open('contacts');
     const source = project.sources[0]!;
     expect(source.url!.href).toBe(server.url('/app/samples/contacts.csv'));
-    expect(server.requests.some((r) => r.path === '/app/samples/contacts.csv')).toBe(true);
+    const reads = server.requests.filter((r) => r.path === '/app/samples/contacts.csv');
+    expect(reads.length).toBeGreaterThan(0);
+    // One plain GET each, as the service worker precached it, so it is answered from there offline (Firefox too).
+    expect(reads.every((r) => r.method === 'GET' && r.range == null)).toBe(true);
   });
 
   it('refuses a sample that doesn’t exist', async () => {
