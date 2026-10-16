@@ -204,7 +204,7 @@ describe('sample mode', () => {
     const p = cleanFlow();
     const sampled = { ...p, sources: p.sources.map((s) => ({ ...s, sampleRows: 1000 })) };
     const sql = compile(sampled, { nodeId: 'clean' }).sql;
-    expect(sql).toContain(`"n_src" AS (SELECT * FROM read_csv('src_cust.csv') LIMIT 1000)`);
+    expect(sql).toContain(`"n_src" AS (SELECT * FROM read_csv('src_cust.csv', null_padding = true) LIMIT 1000)`);
     expect(sql.replace(' LIMIT 1000', '')).toBe(compile(p, { nodeId: 'clean' }).sql);
     expect(sql).toMatchSnapshot();
   });

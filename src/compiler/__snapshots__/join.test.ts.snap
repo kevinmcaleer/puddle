@@ -1,50 +1,50 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
 exports[`join SQL > anti join over both inputs’ CTEs 1`] = `
-"WITH "n_o" AS (SELECT * FROM read_csv('src_orders.csv')),
-  "n_c" AS (SELECT * FROM read_csv('src_customers.csv')),
+"WITH "n_o" AS (SELECT * FROM read_csv('src_orders.csv', null_padding = true)),
+  "n_c" AS (SELECT * FROM read_csv('src_customers.csv', null_padding = true)),
   "n_j" AS (SELECT "l"."order_id", "l"."customer_id", "l"."status" FROM "n_o" AS "l" ANTI JOIN "n_c" AS "r" ON "l"."customer_id" = "r"."customer_id")
 SELECT * FROM "n_j""
 `;
 
 exports[`join SQL > counts inputs, output and matches for the multiplication warning 1`] = `
-"WITH "n_o" AS (SELECT * FROM read_csv('src_orders.csv')),
-  "n_c" AS (SELECT * FROM read_csv('src_customers.csv')),
+"WITH "n_o" AS (SELECT * FROM read_csv('src_orders.csv', null_padding = true)),
+  "n_c" AS (SELECT * FROM read_csv('src_customers.csv', null_padding = true)),
   "n_j" AS (SELECT "l"."order_id", "l"."customer_id", "l"."status", "r"."name", "r"."status" AS "status_right" FROM "n_o" AS "l" LEFT JOIN "n_c" AS "r" ON "l"."customer_id" = "r"."customer_id")
 SELECT (SELECT count(*) FROM "n_o") AS left_rows, (SELECT count(*) FROM "n_c") AS right_rows, (SELECT count(*) FROM "n_j") AS "rows", (SELECT count(*) FROM "n_o" AS "l" INNER JOIN "n_c" AS "r" ON "l"."customer_id" = "r"."customer_id") AS pairs, (SELECT count(*) FROM "n_o" AS "l" SEMI JOIN "n_c" AS "r" ON "l"."customer_id" = "r"."customer_id") AS matched_left, (SELECT count(*) FROM "n_c" AS "r" SEMI JOIN "n_o" AS "l" ON "l"."customer_id" = "r"."customer_id") AS matched_right"
 `;
 
 exports[`join SQL > full join over both inputs’ CTEs 1`] = `
-"WITH "n_o" AS (SELECT * FROM read_csv('src_orders.csv')),
-  "n_c" AS (SELECT * FROM read_csv('src_customers.csv')),
+"WITH "n_o" AS (SELECT * FROM read_csv('src_orders.csv', null_padding = true)),
+  "n_c" AS (SELECT * FROM read_csv('src_customers.csv', null_padding = true)),
   "n_j" AS (SELECT "l"."order_id", coalesce("l"."customer_id", "r"."customer_id") AS "customer_id", "l"."status", "r"."name", "r"."status" AS "status_right" FROM "n_o" AS "l" FULL JOIN "n_c" AS "r" ON "l"."customer_id" = "r"."customer_id")
 SELECT * FROM "n_j""
 `;
 
 exports[`join SQL > inner join over both inputs’ CTEs 1`] = `
-"WITH "n_o" AS (SELECT * FROM read_csv('src_orders.csv')),
-  "n_c" AS (SELECT * FROM read_csv('src_customers.csv')),
+"WITH "n_o" AS (SELECT * FROM read_csv('src_orders.csv', null_padding = true)),
+  "n_c" AS (SELECT * FROM read_csv('src_customers.csv', null_padding = true)),
   "n_j" AS (SELECT "l"."order_id", "l"."customer_id", "l"."status", "r"."name", "r"."status" AS "status_right" FROM "n_o" AS "l" INNER JOIN "n_c" AS "r" ON "l"."customer_id" = "r"."customer_id")
 SELECT * FROM "n_j""
 `;
 
 exports[`join SQL > left join over both inputs’ CTEs 1`] = `
-"WITH "n_o" AS (SELECT * FROM read_csv('src_orders.csv')),
-  "n_c" AS (SELECT * FROM read_csv('src_customers.csv')),
+"WITH "n_o" AS (SELECT * FROM read_csv('src_orders.csv', null_padding = true)),
+  "n_c" AS (SELECT * FROM read_csv('src_customers.csv', null_padding = true)),
   "n_j" AS (SELECT "l"."order_id", "l"."customer_id", "l"."status", "r"."name", "r"."status" AS "status_right" FROM "n_o" AS "l" LEFT JOIN "n_c" AS "r" ON "l"."customer_id" = "r"."customer_id")
 SELECT * FROM "n_j""
 `;
 
 exports[`join SQL > right join over both inputs’ CTEs 1`] = `
-"WITH "n_o" AS (SELECT * FROM read_csv('src_orders.csv')),
-  "n_c" AS (SELECT * FROM read_csv('src_customers.csv')),
+"WITH "n_o" AS (SELECT * FROM read_csv('src_orders.csv', null_padding = true)),
+  "n_c" AS (SELECT * FROM read_csv('src_customers.csv', null_padding = true)),
   "n_j" AS (SELECT "l"."order_id", coalesce("l"."customer_id", "r"."customer_id") AS "customer_id", "l"."status", "r"."name", "r"."status" AS "status_right" FROM "n_o" AS "l" RIGHT JOIN "n_c" AS "r" ON "l"."customer_id" = "r"."customer_id")
 SELECT * FROM "n_j""
 `;
 
 exports[`join SQL > semi join over both inputs’ CTEs 1`] = `
-"WITH "n_o" AS (SELECT * FROM read_csv('src_orders.csv')),
-  "n_c" AS (SELECT * FROM read_csv('src_customers.csv')),
+"WITH "n_o" AS (SELECT * FROM read_csv('src_orders.csv', null_padding = true)),
+  "n_c" AS (SELECT * FROM read_csv('src_customers.csv', null_padding = true)),
   "n_j" AS (SELECT "l"."order_id", "l"."customer_id", "l"."status" FROM "n_o" AS "l" SEMI JOIN "n_c" AS "r" ON "l"."customer_id" = "r"."customer_id")
 SELECT * FROM "n_j""
 `;

@@ -71,6 +71,21 @@ describe('engine', () => {
     ]);
   });
 
+  // Regression: a bank statement whose header ends in a comma, with an unquoted comma in one description, was read
+  // as a single column (the sniffer gave up on the comma), and failed to read at all with the delimiter set to comma.
+  // The unquoted comma pushes that row's text into Debit Amount, so the column stays text, as in Power Query.
+  it.each([[{}], [{ delimiter: ',' }]] as const)('splits ragged CSV rows on the delimiter (options %j)', async (parseOptions) => {
+    const s = src({ id: `bank_${Object.keys(parseOptions).length}`, format: 'csv', parseOptions });
+    await load(s, 'bank-statement.csv');
+    const p = single(s);
+    const columns = (await engine.describe(compile(p, { nodeId: 'out' }).sql)).map((c) => c.name);
+    expect(columns.slice(0, 8)).toEqual(['Transaction Date', 'Transaction Type', 'Sort Code', 'Account Number', 'Transaction Description', 'Debit Amount', 'Credit Amount', 'Balance']);
+    const [{ n }] = (await rows(compileCount(p, { nodeId: 'out' }))) as [{ n: number }];
+    expect(n).toBe(25);
+    const [first] = (await rows(compilePreview(p, { nodeId: 'out' }))) as Record<string, unknown>[];
+    expect(first).toMatchObject({ 'Transaction Type': 'TFR', 'Sort Code': "'12-24-82", 'Account Number': '06564201', 'Transaction Description': 'ADVICE CONFIRMS', 'Debit Amount': '12.50' });
+  });
+
   it('runs a cleaning flow end to end, per step', async () => {
     const s = src({ id: 'cust', format: 'csv' });
     await load(s, 'customers.csv');
