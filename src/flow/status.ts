@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { compile, CompileError, compileCount, SchemaCache, UnwiredError, upstreamKey } from '../compiler';
-import { tableRows, toEngineError, type EngineClient } from '../engine';
+import { EngineError, tableRows, toEngineError, type EngineClient } from '../engine';
 import { inputEdges, topoSort, type ColumnSchema, type Port, type Project } from '../model';
 
 /**
@@ -17,7 +17,7 @@ export type NodeStatus =
   | { state: 'detached' }
   | { state: 'ok'; columns: ColumnSchema[]; rows?: number }
   | { state: 'unwired' }
-  | { state: 'error'; message: string; ports?: Port[] }
+  | { state: 'error'; message: string; ports?: Port[]; /** Stop was pressed before it finished; Run again retries. */ stopped?: boolean }
   | { state: 'blocked' };
 
 interface Entry {
@@ -65,7 +65,7 @@ export function countRows(engine: EngineClient, project: Project, nodeId: string
     } catch (e) {
       return Promise.reject(e instanceof Error ? e : new Error(String(e)));
     }
-    hit = engine.query(sql, { priority: 'background' }).then((r) => Number(tableRows(r.table)[0]!.n));
+    hit = engine.query(sql, { priority: 'background', label: 'Counting rows' }).then((r) => Number(tableRows(r.table)[0]!.n));
     counts.set(key, hit);
     hit.catch(() => counts.delete(key));
   }
@@ -121,7 +121,12 @@ export async function evaluateFlow(engine: EngineClient, project: Project, isDet
     } catch (e) {
       if (gen !== generation) return;
       const ports = e instanceof CompileError ? e.ports : undefined;
-      next[id] = { key, status: e instanceof UnwiredError ? { state: 'unwired' } : { state: 'error', message: (e as Error).message, ...(ports ? { ports } : {}) } };
+      // Describing a Join's inputs can be stopped too.
+      const stopped = e instanceof EngineError && e.code === 'stopped';
+      next[id] = {
+        key,
+        status: e instanceof UnwiredError ? { state: 'unwired' } : { state: 'error', message: (e as Error).message, ...(ports ? { ports } : {}), ...(stopped ? { stopped: true } : {}) },
+      };
       continue;
     }
     try {
@@ -140,7 +145,8 @@ export async function evaluateFlow(engine: EngineClient, project: Project, isDet
       );
     } catch (e) {
       if (gen !== generation) return;
-      next[id] = { key, status: { state: 'error', message: toEngineError(e).message } };
+      const err = toEngineError(e);
+      next[id] = { key, status: { state: 'error', message: err.message, ...(err.code === 'stopped' ? { stopped: true } : {}) } };
     }
     publish();
   }

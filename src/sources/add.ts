@@ -3,6 +3,7 @@ import { sourceFileName } from '../compiler';
 import { addSource, newId, useProjectStore, type Source } from '../model';
 import { formatFromName, formatFromText, SourceError, sourceName } from './detect';
 import { markAttached } from './attachments';
+import { keepHandle, type FileHandle } from './handles';
 import { headHash } from './hash';
 
 /** Files picked this session, by source id. Projects store references, never the data (plan D6). */
@@ -19,8 +20,11 @@ function engineOrThrow() {
   return engine;
 }
 
-/** Register a file with DuckDB (by handle, never copied) and add a Source node for it. */
-export async function addFileSource(file: File, position = { x: 80, y: 80 }): Promise<Source> {
+/**
+ * Register a file with DuckDB (by handle, never copied) and add a Source node for it. A file system handle, where
+ * the browser gave one, is kept so the file reconnects with a permission click next time.
+ */
+export async function addFileSource(file: File, position = { x: 80, y: 80 }, handle?: FileHandle): Promise<Source> {
   const format = formatFromName(file.name);
   const engine = engineOrThrow();
   const source: Source = {
@@ -36,6 +40,7 @@ export async function addFileSource(file: File, position = { x: 80, y: 80 }): Pr
   files.set(source.id, file);
   markAttached(source.id);
   useProjectStore.getState().apply((p) => addSource(p, source, position));
+  keepHandle(source.id, handle);
   return source;
 }
 

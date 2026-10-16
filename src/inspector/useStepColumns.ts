@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react';
 import { useEngineStore } from '../app/engine';
-import { CompileError, upstreamKey } from '../compiler';
-import { toEngineError } from '../engine';
+import { compile, CompileError, customSqlErrorLine, upstreamKey } from '../compiler';
+import { toEngineError, type EngineError } from '../engine';
 import { schemaCacheFor, useFlowStore } from '../flow/status';
-import { inputEdges, type ColumnSchema, type Project } from '../model';
+import { inputEdges, nodeById, type ColumnSchema, type Project } from '../model';
 
 const NONE: ColumnSchema[] = [];
 
@@ -50,7 +50,7 @@ export function useStepErrors(project: Project, nodeId: string, broken: boolean,
         try {
           await cache.get(project, { nodeId, stepIndex: k });
         } catch (e) {
-          const message = e instanceof CompileError ? e.message : toEngineError(e).message;
+          const message = e instanceof CompileError ? e.message : withQueryLine(project, nodeId, k, toEngineError(e));
           if (live) setFound({ key, errors: { [k]: message } });
           return;
         }
@@ -63,4 +63,17 @@ export function useStepErrors(project: Project, nodeId: string, broken: boolean,
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [engine, key, stepCount]);
   return key && found?.key === key ? found.errors : {};
+}
+
+/** An engine error on a custom SQL step, with the line of the user's query DuckDB points at. */
+export function withQueryLine(project: Project, nodeId: string, stepIndex: number, error: EngineError): string {
+  const node = nodeById(project, nodeId);
+  const step = node?.type === 'transform' ? node.steps[stepIndex] : undefined;
+  if (step?.type !== 'customSql' || !error.detail) return error.message;
+  try {
+    const at = customSqlErrorLine(compile(project, { nodeId, stepIndex }).sql, String(step.params.query ?? ''), error.detail);
+    return at ? `${error.message} Line ${at.line} of the query: ${at.text}` : error.message;
+  } catch {
+    return error.message;
+  }
 }

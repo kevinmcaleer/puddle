@@ -22,6 +22,12 @@ describe('compileExport', () => {
     expect(compileExport(p, 'out', "o'ut.file", spec)).toMatchSnapshot();
   });
 
+  it('always exports the full data, even from a sample-mode copy of the project', () => {
+    const sampled = { ...p, sources: p.sources.map((s) => ({ ...s, sampleRows: 100 })) };
+    expect(compileExport(sampled, 'out', 'f')).toBe(compileExport(p, 'out', 'f'));
+    expect(compileExport(sampled, 'out', 'f')).not.toContain('LIMIT 100');
+  });
+
   it('uses the node’s own settings, and only exports Output nodes', () => {
     expect(compileExport(p, 'out', 'f')).toContain('(FORMAT csv, HEADER true, DELIMITER \',\')');
     expect(() => compileExport(p, 'src', 'f')).toThrow(/isn’t an Output node/);

@@ -1,6 +1,6 @@
 import 'fake-indexeddb/auto';
 import { createProject } from '../model';
-import { closeDb, deleteProject, listProjects, loadProject, saveProject } from './db';
+import { closeDb, copyHandles, deleteHandles, deleteProject, listProjects, loadHandles, loadProject, saveHandle, saveProject } from './db';
 
 afterEach(async () => {
   await closeDb();
@@ -42,5 +42,54 @@ describe('IndexedDB project store', () => {
     await saveProject(p);
     await deleteProject(p.id);
     expect(await listProjects()).toEqual([]);
+  });
+});
+
+describe('IndexedDB file handles', () => {
+  // fake-indexeddb can't clone a real FileSystemFileHandle; any cloneable value stands in for one.
+  const handle = (name: string) => ({ kind: 'file', name });
+
+  it('keeps handles by project and source, replacing a source’s earlier one', async () => {
+    await saveHandle('p1', 's1', handle('a.csv'));
+    await saveHandle('p1', 's2', handle('b.csv'));
+    await saveHandle('p2', 's1', handle('other.csv'));
+    await saveHandle('p1', 's1', handle('a2.csv'));
+    expect(await loadHandles('p1')).toEqual(new Map([['s1', handle('a2.csv')], ['s2', handle('b.csv')]]));
+    expect(await loadHandles('p2')).toEqual(new Map([['s1', handle('other.csv')]]));
+    expect(await loadHandles('none')).toEqual(new Map());
+  });
+
+  it('deletes a project’s handles, or only those of sources it no longer has', async () => {
+    await saveHandle('p1', 's1', handle('a.csv'));
+    await saveHandle('p1', 's2', handle('b.csv'));
+    await saveHandle('p2', 's1', handle('other.csv'));
+    await deleteHandles('p1', ['s2']);
+    expect([...(await loadHandles('p1')).keys()]).toEqual(['s2']);
+    await deleteHandles('p1');
+    expect((await loadHandles('p1')).size).toBe(0);
+    expect((await loadHandles('p2')).size).toBe(1);
+  });
+
+  it('copies handles to a duplicated project', async () => {
+    await saveHandle('p1', 's1', handle('a.csv'));
+    await copyHandles('p1', 'copy');
+    expect(await loadHandles('copy')).toEqual(new Map([['s1', handle('a.csv')]]));
+    expect((await loadHandles('p1')).size).toBe(1);
+  });
+
+  it('keeps projects saved by the previous database version when it adds the handles store', async () => {
+    await closeDb();
+    await new Promise<void>((resolve, reject) => {
+      const req = indexedDB.open('puddle', 1);
+      req.onupgradeneeded = () => req.result.createObjectStore('projects', { keyPath: 'id' }).put({ ...createProject('From v1'), id: 'old' });
+      req.onsuccess = () => {
+        req.result.close();
+        resolve();
+      };
+      req.onerror = () => reject(req.error);
+    });
+    expect((await loadProject('old'))!.name).toBe('From v1');
+    await saveHandle('old', 's1', handle('a.csv'));
+    expect((await loadHandles('old')).size).toBe(1);
   });
 });

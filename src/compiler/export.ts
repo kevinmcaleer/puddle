@@ -71,7 +71,9 @@ export function compileExport(project: Project, nodeId: string, path: string, sp
   if (!node) throw new CompileError('That node is no longer in the project.', nodeId);
   const s = spec ?? (node.type === 'output' ? node.outputSpec : undefined);
   if (!s) throw new CompileError(`${node.name} isn’t an Output node.`, nodeId);
-  return `COPY (${compile(project, { nodeId }).sql}) TO ${str(path)} (${copyOptions(s)})`;
+  // Exports always read the full data, even if handed a sample-mode copy of the project.
+  const full = { ...project, sources: project.sources.map((src) => (src.sampleRows == null ? src : { ...src, sampleRows: undefined })) };
+  return `COPY (${compile(full, { nodeId }).sql}) TO ${str(path)} (${copyOptions(s)})`;
 }
 
 /** A safe file name for an export: the one given, or the node's name, always with the format's extension. */

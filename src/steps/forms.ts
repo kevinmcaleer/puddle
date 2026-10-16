@@ -28,6 +28,8 @@ type FieldKind =
   | { key: string; label: string; kind: 'list'; of: 'text' | 'number'; hint?: string }
   /** A DuckDB SQL expression, with the step's columns offered for insertion. */
   | { key: string; label: string; kind: 'expression'; hint?: string }
+  /** A whole DuckDB query over the step's input, multi-line, with the input's columns offered for insertion. */
+  | { key: string; label: string; kind: 'sql'; hint?: string; placeholder?: string }
   /** Filter conditions: column, comparison and value per row. */
   | { key: string; label: string; kind: 'conditions'; hint?: string }
   /** Sort keys: column and direction per row. */
@@ -35,7 +37,7 @@ type FieldKind =
   /** strptime formats tried in order, with detected formats and their match rates offered. */
   | { key: string; label: string; kind: 'dateFormats'; hint?: string };
 
-export type StepGroup = 'Clean' | 'Columns' | 'Rows' | 'Text' | 'Dates' | 'Numbers';
+export type StepGroup = 'Clean' | 'Columns' | 'Rows' | 'Text' | 'Dates' | 'Numbers' | 'Advanced';
 
 export interface DefaultsContext {
   /** Columns selected in the results table. */

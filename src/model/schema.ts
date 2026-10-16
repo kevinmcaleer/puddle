@@ -46,6 +46,11 @@ export const SourceZ = z.object({
   format: SourceFormatZ,
   parseOptions: ParseOptionsZ.default({}),
   detectedSchema: z.array(ColumnSchemaZ).default([]),
+  /**
+   * Sample mode: read only the first this-many rows. Set only on the in-memory copy that previews, profiles and
+   * rules compile from (flow/sample.ts); the project itself never has it, so exports always read everything.
+   */
+  sampleRows: z.number().int().positive().optional(),
 });
 
 /**
@@ -94,6 +99,8 @@ const NodeBase = {
   position: PositionZ.default({ x: 0, y: 0 }),
   collapsed: z.boolean().optional(),
   rules: z.array(RuleZ).default([]),
+  /** Suggested rules dismissed for this node, by suggestion key (rule type and column), so they stay dismissed. */
+  dismissedSuggestions: z.array(z.string()).optional(),
   /** Materialise as a table for reuse (Phase 2). */
   pinnedResult: z.boolean().optional(),
 };
@@ -180,6 +187,8 @@ export const ExportLogEntryZ = z.object({
   fileName: z.string(),
   rows: z.number().int().nonnegative(),
   overridden: z.array(z.object({ nodeName: z.string(), rule: z.string() })).optional(),
+  /** Stop was pressed: nothing was saved. */
+  cancelled: z.boolean().optional(),
 });
 
 export const ProjectZ = z.object({

@@ -92,7 +92,8 @@ function build(project: Project, target: Target, book: SchemaBook): Built {
         const source = project.sources.find((s) => s.id === n.sourceId);
         if (!source) throw new CompileError(`${n.name} has lost its source. Add the file again.`, n.id);
         const name = cteName(n.id);
-        ctes.push(`${name} AS (SELECT * FROM ${sourceRelation(source)})`);
+        const sample = source.sampleRows != null ? ` LIMIT ${num(source.sampleRows)}` : '';
+        ctes.push(`${name} AS (SELECT * FROM ${sourceRelation(source)}${sample})`);
         out.set(n.id, name);
         break;
       }
@@ -214,7 +215,7 @@ export function upstreamKey(project: Project, target: Target): string {
       const inputs = inputEdges(project, n.id).map((e) => [e.from.nodeId, e.to.port]);
       if (n.type === 'source') {
         const s = project.sources.find((x) => x.id === n.sourceId);
-        return { id: n.id, type: n.type, inputs, source: s && { id: s.id, format: s.format, parseOptions: s.parseOptions, file: s.file?.headHash, size: s.file?.size, clip: s.clipboard?.text, url: s.url && [s.url.href, s.url.headHash] } };
+        return { id: n.id, type: n.type, inputs, source: s && { id: s.id, format: s.format, parseOptions: s.parseOptions, file: s.file?.headHash, size: s.file?.size, clip: s.clipboard?.text, url: s.url && [s.url.href, s.url.headHash], sample: s.sampleRows } };
       }
       if (n.type === 'transform') {
         const steps = n.id === target.nodeId && target.stepIndex != null ? n.steps.slice(0, target.stepIndex + 1) : n.steps;
@@ -255,6 +256,37 @@ export function compileRules(project: Project, nodeId: string, rules: Rule[]): s
   const flags = rules.map((r, i) => `(${rulePredicate(r)}) AS ${ident(`r${i}`)}`);
   const counts = rules.map((_, i) => `count(*) FILTER (WHERE NOT coalesce(${ident(`r${i}`)}, false)) AS ${ident(`f${i}`)}`);
   return `SELECT count(*) AS total, ${counts.join(', ')} FROM (SELECT ${flags.join(', ')} FROM (${sql}))`;
+}
+
+/** What a suggested rule needs confirmed about one column before it is offered. */
+export interface SuggestionCheck {
+  column: string;
+  /** Count values that are empty (null or blank text). */
+  blank?: boolean;
+  /** Count values with spaces at either end. */
+  edges?: boolean;
+  /** Count distinct values exactly (profiling's count is approximate). */
+  distinct?: boolean;
+  /** List the distinct values, as text and sorted. */
+  values?: boolean;
+}
+
+/**
+ * One row of exact facts behind suggested rules, at background priority: `rows`, and per check i `nn<i>`
+ * (non-null values) plus `blank<i>`, `edges<i>`, `distinct<i>` and `values<i>` as asked for.
+ */
+export function compileSuggestionChecks(project: Project, target: Target, checks: SuggestionCheck[]): string {
+  const parts = ['count(*) AS "rows"'];
+  checks.forEach((c, i) => {
+    const col = ident(c.column);
+    const text = `CAST(${col} AS VARCHAR)`;
+    parts.push(`count(${col}) AS ${ident(`nn${i}`)}`);
+    if (c.blank) parts.push(`count(*) FILTER (WHERE coalesce(trim(${text}), '') = '') AS ${ident(`blank${i}`)}`);
+    if (c.edges) parts.push(`count(*) FILTER (WHERE ${text} <> trim(${text})) AS ${ident(`edges${i}`)}`);
+    if (c.distinct) parts.push(`count(DISTINCT ${col}) AS ${ident(`distinct${i}`)}`);
+    if (c.values) parts.push(`list_sort(list(DISTINCT ${text}) FILTER (WHERE ${col} IS NOT NULL)) AS ${ident(`values${i}`)}`);
+  });
+  return `SELECT ${parts.join(', ')} FROM (${compile(project, target).sql})`;
 }
 
 /**

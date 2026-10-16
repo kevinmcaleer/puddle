@@ -27,6 +27,16 @@ export interface QueryOptions {
    * whether it is still queued or already running. The preview pane uses "preview".
    */
   supersede?: string;
+  /** What the query is doing, in a few words ("Counting rows"), for the Stop control. */
+  label?: string;
+}
+
+/** The query DuckDB is running now, for the Stop control. */
+export interface Activity {
+  label: string;
+  priority: Priority;
+  /** Date.now() when it started running. */
+  startedAt: number;
 }
 
 export interface EngineInfo {
