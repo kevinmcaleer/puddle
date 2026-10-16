@@ -155,6 +155,21 @@ export function newProject(name?: string) {
   return show(createProject(name));
 }
 
+/**
+ * Open a project built here rather than loaded (a sample), saved straight away so it is on the home screen even if
+ * the tab closes before anything changes. Saving can fail (storage blocked): it still opens, as an unsaved project.
+ */
+export async function openNewProject(project: Project) {
+  await flush();
+  try {
+    await saveProject(project);
+    stored.add(project.id);
+  } catch {
+    // Autosave says so on the next change.
+  }
+  await show(project);
+}
+
 export async function goHome() {
   // Forget the open project first, so a reload straight after this lands on the home screen too.
   remember(null);

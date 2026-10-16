@@ -21,6 +21,7 @@ import { ResultsTable } from '../results/ResultsTable';
 import { useResultsStore } from '../results/state';
 import { ACCEPT } from '../sources/detect';
 import { useExcelSources } from '../sources/excel';
+import { SamplesDialog } from '../samples/SamplePicker';
 import { UrlDialog } from '../sources/UrlDialog';
 import { openUrlDialog } from '../sources/urlDialog';
 import { cardKind } from '../canvas/kind';
@@ -345,6 +346,7 @@ export function AppShell() {
         <Strip />
       </div>
       <UrlDialog onChooseFile={chooseFiles} />
+      <SamplesDialog />
       <ShortcutsDialog />
     </ReactFlowProvider>
   );

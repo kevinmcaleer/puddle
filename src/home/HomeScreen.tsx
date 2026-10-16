@@ -2,6 +2,7 @@ import { useRef } from 'react';
 import { duplicateProject, importProject, newProject, openProject, useWorkspace } from '../persistence/workspace';
 import { THEME_ICON, THEME_LABEL, useTheme } from '../app/theme';
 import { Banner, Button, Menu, Toolbar } from '../ui';
+import { SamplePicker } from '../samples/SamplePicker';
 import { openProjectDialog } from './dialogs';
 import { PROVIDERS } from '../sync';
 import { openSyncDialog } from '../sync/dialogs';
@@ -11,7 +12,7 @@ const updated = (iso: string) =>
 
 const plural = (n: number, one: string) => `${n} ${one}${n === 1 ? '' : 's'}`;
 
-/** The projects home screen: every project saved in this browser, with create, open, rename, duplicate, delete. */
+/** The projects home screen: every project saved in this browser, with create, open, rename, duplicate, delete, and the samples to try. */
 export function HomeScreen() {
   const { projects, error } = useWorkspace();
   const theme = useTheme();
@@ -52,7 +53,7 @@ export function HomeScreen() {
           </div>
           {error && <Banner tone="fail" title="That didn’t work">{error}</Banner>}
           {projects.length === 0 ? (
-            <Banner tone="info" title="No projects yet">Start a new project, or import a .puddle.json file.</Banner>
+            <Banner tone="info" title="No projects yet">Start a new project, import a .puddle.json file, or try a sample below.</Banner>
           ) : (
             <ul className="flex flex-col divide-y divide-line rounded-md border border-line bg-surface-panel" aria-label="Projects">
               {projects.map((p) => (
@@ -77,6 +78,9 @@ export function HomeScreen() {
               ))}
             </ul>
           )}
+          <div className="rounded-md border border-line bg-surface-panel" data-testid="home-samples">
+            <SamplePicker />
+          </div>
         </div>
       </main>
     </div>

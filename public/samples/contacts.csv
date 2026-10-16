@@ -1,0 +1,54 @@
+name,email,phone,city,signed_up
+  alice patel   ,alice.patel@example.com,07700 900441,  Manchester,2024-03-02
+  Bob Nguyen,bob.nguyen@example.com,+44 7700 900510,  London ,2024-08-02
+Chloe  Taylor,chloe.taylor@example.com,07700900803,  Leeds,2024-10-10
+DEV JONES   ,dev.jones@example.com,+44 7700 900430,manchester ,2024-01-16
+Ewan  Evans   ,ewan.evans@example.com,+44 7700 900791, Glasgow   ,2024-09-01
+  FATIMA ROSSI , fatima.rossi@example.com,+44 7700 900658,glasgow,2024-08-21
+George Okafor ,george.okafor@example.com,07700 900976,leeds ,2024-11-06
+ Hana Chen   ,hana.chen@example.com,+44 7700 900162,bristol   ,2024-03-01
+ Isaac Chen, isaac.chen@example.com,07700900493,MANCHESTER,2024-03-11
+Jade Brown,,07700900544,  york   ,2024-12-07
+DEV JONES   ,dev.jones@example.com,+44 7700 900430,manchester ,2024-01-16
+  Kofi Nguyen,kofi.nguyen@example.com,07700 900847,Manchester ,2024-06-12
+  Leila Murphy ,leila.murphy@example.com,07700900296,York,2024-10-01
+Mateo Evans ,,07700 900104,Belfast,2024-10-12
+Nora Ali ,,07700 900452, belfast,2024-10-03
+OMAR EVANS,,07700 900499, Belfast,2024-05-22
+priya nguyen ,priya.nguyen@example.com,+44 7700 900269,  Bristol,2024-06-22
+Quinn Taylor,quinn.taylor@example.com,07700 900595,  LONDON,2024-06-01
+  Kofi Nguyen,kofi.nguyen@example.com,07700 900847,Manchester ,2024-06-12
+  Rosa Patel,rosa.patel@example.com,+44 7700 900837, Bristol   ,2024-10-12
+Sam Patel , sam.patel@example.com,07700 900330,Glasgow,2024-08-22
+ TARIQ GARCIA ,tariq.garcia@example.com,07700900566,  belfast,2024-08-28
+  Uma Evans   ,uma.evans@example.com,07700900267, Belfast,2024-01-22
+vik kowalski,vik.kowalski@example.com,07700 900501,  York,2024-11-06
+Wren Patel, wren.patel@example.com,07700 900566,Leeds,2024-11-15
+yusuf smith ,yusuf.smith@example.com,+44 7700 900542, Glasgow,2024-09-03
+  Zoe Patel ,zoe.patel@example.com,07700 900771,BELFAST ,2024-04-08
+Sam Patel , sam.patel@example.com,07700 900330,Glasgow,2024-08-22
+ Alice Rossi,alice.rossi@example.com,07700 900557,Bristol,2024-03-02
+ Bob Brown   , bob.brown@example.com,+44 7700 900832,  York,2024-12-19
+Chloe Garcia,chloe.garcia@example.com,+44 7700 900287,London ,2024-11-22
+dev kowalski,,+44 7700 900296, London,2024-02-02
+Ewan Taylor,ewan.taylor@example.com,07700 900741,CARDIFF   ,2024-04-12
+ Fatima Evans,fatima.evans@example.com,07700 900781,Bristol,2024-10-15
+George Brown,george.brown@example.com,07700900998,london,2024-04-27
+HANA OKAFOR ,hana.okafor@example.com,07700 900112,manchester ,2024-05-12
+  Isaac Okafor,isaac.okafor@example.com,07700900990,Glasgow,2024-11-25
+  JADE HUGHES,jade.hughes@example.com,+44 7700 900755,  Leeds,2024-02-01
+dev kowalski,,+44 7700 900296, London,2024-02-02
+KOFI JONES ,kofi.jones@example.com,07700900690,glasgow ,2024-06-21
+Leila Okafor ,leila.okafor@example.com,+44 7700 900473,Leeds   ,2024-11-23
+ Mateo Nguyen,mateo.nguyen@example.com,+44 7700 900299, Leeds   ,2024-12-02
+Nora Murphy ,nora.murphy@example.com,07700 900554, York   ,2024-07-08
+Omar Murphy,omar.murphy@example.com,07700 900975,Belfast ,2024-08-14
+ PRIYA EVANS,priya.evans@example.com,07700900928,Glasgow   ,2024-06-09
+Quinn Murphy, quinn.murphy@example.com,07700900588, cardiff,2024-09-20
+Rosa Evans ,rosa.evans@example.com,+44 7700 900805,Glasgow,2024-02-27
+Leila Okafor ,leila.okafor@example.com,+44 7700 900473,Leeds   ,2024-11-23
+Sam Taylor,sam.taylor@example.com,07700900360,york   ,2024-01-09
+  TARIQ TAYLOR ,tariq.taylor@example.com,+44 7700 900954, glasgow ,2024-07-26
+  uma brown,uma.brown@example.com,+44 7700 900783,  London,2024-11-05
+Vik Brown   ,vik.brown@example.com,+44 7700 900811, LONDON,2024-11-08
+Wren Chen ,wren.chen@example.com,+44 7700 900682, YORK,2024-09-27

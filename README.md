@@ -43,6 +43,7 @@ A Docker image (nginx serving the static build) behind a Cloudflare Tunnel at pu
 | `src/persistence/` | IndexedDB autosave, `.puddle.json` export and import, format migrations |
 | `src/sync/` | Optional project sync through one provider-agnostic layer (`SyncProvider`): sync states, the offline queue, conflict choices and "Open from"; GitHub Gist is the first provider. Credentials and sync links stay in IndexedDB on this device; the synced file is the `.puddle.json` less pasted rows |
 | `src/home/` | The projects home screen and the rename and delete dialogs |
+| `src/samples/` | The onboarding samples: the catalogue of messy datasets in `public/samples/` (written by `scripts/make-samples.mjs`), the Try a sample picker, and `openSample`, which opens one as a new project |
 | `src/canvas/` | The node canvas on React Flow: nodes, wires, auto layout |
 | `src/flow/` | Each node's live status (columns, row count, broken, dimmed), kept in step with the project; sample mode above the row threshold |
 | `src/steps/` | Each step type's editor form (`defineStepForm`): its Add step menu entry, fields and defaults; the expression editor |
