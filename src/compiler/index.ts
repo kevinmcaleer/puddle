@@ -12,7 +12,10 @@ export {
   compileRules,
   compileSuggestionChecks,
   compileTypeSniff,
+  fullData,
   needsInputSchemas,
+  refKeys,
+  ruleContext,
   PAGE_SIZE,
   upstreamKey,
   type CompileOptions,
@@ -33,5 +36,5 @@ export { SchemaCache } from './schemaCache';
 export { dropTable, sourceFileName, sourceRelation, sourceTableName } from './sources';
 export { bool, cteName, ident, list, num, stepFailure, str, strList } from './sql';
 export * from './steps';
-export { defineRule, PATTERN_PRESETS, ruleColumns, ruleDef, ruleParams, rulePredicate, ruleTypes, type PatternPreset, type RuleDef } from './rules';
+export { defineRule, describeRule, PATTERN_PRESETS, READS_AS_TYPES, ruleColumns, ruleDef, ruleParams, rulePredicate, ruleRefs, ruleScope, ruleTypes, type NodeNames, type PatternPreset, type ReadsAs, type RuleContext, type RuleDef } from './rules';
 export { compileExport, compileFullCount, compileFullData, compileSheetExport, CSV_DELIMITERS, EXPORT_FORMATS, exportFileName, exportOptions, PARQUET_COMPRESSION, sheetColumn, type ExportFormat, type OutputSpec, type XlsxExportOptions } from './export';

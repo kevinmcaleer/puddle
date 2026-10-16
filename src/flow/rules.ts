@@ -1,9 +1,9 @@
 // Rule results per node: evaluated after the preview, at background priority, one query per node.
 import { create } from 'zustand';
-import { CompileError, compileRules, upstreamKey } from '../compiler';
+import { CompileError, compileRules, fullData, refKeys, ruleRefs, upstreamKey } from '../compiler';
 import { tableRows, toEngineError, type EngineClient } from '../engine';
-import { hashValue, type Project, type Rule } from '../model';
-import { useFlowStore } from './status';
+import { hashValue, nodeById, type Project, type Rule } from '../model';
+import { schemaCacheFor, useFlowStore, type NodeStatus } from './status';
 
 export type RuleResult = { state: 'pending' } | { state: 'ok'; failures: number; total: number } | { state: 'error'; message: string };
 
@@ -49,7 +49,8 @@ export function ruleTally(rules: Rule[], results: Record<string, RuleResult> | u
   return t;
 }
 
-const keyFor = (project: Project, nodeId: string, rules: Rule[]) => hashValue([upstreamKey(project, { nodeId }), rules.map((r) => [r.id, r.type, r.params])]);
+// A rule that reads another node is re-checked when that node changes too.
+const keyFor = (project: Project, nodeId: string, rules: Rule[]) => hashValue([upstreamKey(project, { nodeId }), rules.map((r) => [r.id, r.type, r.params, refKeys(project, r)])]);
 
 /** Check each node's enabled rules on its output, once its preview is ok. Unchanged nodes keep their results. */
 export async function evaluateRules(engine: EngineClient, project: Project): Promise<void> {
@@ -75,30 +76,87 @@ export async function evaluateRules(engine: EngineClient, project: Project): Pro
 async function checkNode(engine: EngineClient, project: Project, nodeId: string, rules: Rule[], key: string) {
   const set = (results: Record<string, RuleResult>) =>
     useRuleStore.setState((s) => (s.nodes[nodeId]?.key === key ? { nodes: { ...s.nodes, [nodeId]: { key, results } } } : s));
-  const run = async (batch: Rule[]) => {
-    const r = tableRows((await engine.query(compileRules(project, nodeId, batch), { priority: 'background', supersede: `rules:${nodeId}`, label: 'Checking rules' })).table)[0]!;
-    return batch.map((_, i) => ({ failures: Number(r[`f${i}`]), total: Number(r.total) }));
+  const statusOf = (id: string) => useFlowStore.getState().nodes[id]?.status;
+  const results = await checkRules(engine, project, nodeId, rules, { priority: 'background', label: 'Checking rules', supersede: `rules:${nodeId}`, statusOf });
+  if (results) set(results);
+}
+
+const WHY: Partial<Record<NodeStatus['state'], string>> = {
+  error: 'has an error',
+  blocked: 'is held up by an error before it',
+  unwired: 'isn’t connected yet',
+  detached: 'has no file connected',
+};
+
+/** Why a rule can't read the other node it names, if it can't: an error, never a pass. */
+function refProblem(project: Project, rule: Rule, statusOf?: (nodeId: string) => NodeStatus | undefined): string | undefined {
+  for (const id of ruleRefs(rule)) {
+    const other = nodeById(project, id);
+    if (!other) return 'The node this rule reads is no longer in the project.';
+    const why = statusOf && WHY[statusOf(id)?.state ?? 'pending'];
+    if (why) return `${other.name} ${why}, so this rule can’t be checked.`;
+  }
+  return undefined;
+}
+
+const messageOf = (e: unknown) => (e instanceof CompileError ? e.message : toEngineError(e).message);
+
+/**
+ * Check rules of one node. Rules on the node's own rows go in one query; a rule that reads another node runs as
+ * its own query, so a problem with that node only affects it. Resolves to undefined when superseded. Stop
+ * marks every rule stopped rather than retrying them.
+ */
+export async function checkRules(
+  engine: EngineClient,
+  project: Project,
+  nodeId: string,
+  rules: Rule[],
+  opts: { priority: 'preview' | 'background'; label: string; supersede?: string; statusOf?: (nodeId: string) => NodeStatus | undefined },
+): Promise<Record<string, RuleResult> | undefined> {
+  const run = async (batch: Rule[], supersede?: string) => {
+    const r = tableRows((await engine.query(compileRules(project, nodeId, batch), { priority: opts.priority, label: opts.label, ...(supersede ? { supersede } : {}) })).table)[0]!;
+    return batch.map((_, i): RuleResult => ({ state: 'ok', failures: Number(r[`f${i}`]), total: Number(r.total) }));
   };
-  try {
-    const counts = await run(rules);
-    set(Object.fromEntries(rules.map((r, i) => [r.id, { state: 'ok', ...counts[i]! }])));
-  } catch (e) {
-    const code = toEngineError(e).code;
-    if (code === 'cancelled') return;
-    // Stop was pressed: say so on every rule, rather than retrying them one by one.
-    if (code === 'stopped') return set(Object.fromEntries(rules.map((r) => [r.id, { state: 'error', message: toEngineError(e).message }])));
-    // One bad rule fails the batch: check them one by one to say which.
-    const results: Record<string, RuleResult> = {};
-    for (const rule of rules) {
-      try {
-        const [c] = await engine
-          .query(compileRules(project, nodeId, [rule]), { priority: 'background', label: 'Checking rules' })
-          .then((r) => [tableRows(r.table)[0]!]);
-        results[rule.id] = { state: 'ok', failures: Number(c!.f0), total: Number(c!.total) };
-      } catch (err) {
-        results[rule.id] = { state: 'error', message: err instanceof CompileError ? err.message : toEngineError(err).message };
+  const results: Record<string, RuleResult> = {};
+  const local = rules.filter((r) => !ruleRefs(r).length);
+  const reading = rules.filter((r) => ruleRefs(r).length);
+  const stoppedAll = (e: unknown) => Object.fromEntries(rules.map((r) => [r.id, { state: 'error', message: toEngineError(e).message } as RuleResult]));
+
+  if (local.length) {
+    try {
+      const counts = await run(local, opts.supersede);
+      local.forEach((r, i) => (results[r.id] = counts[i]!));
+    } catch (e) {
+      const code = toEngineError(e).code;
+      if (code === 'cancelled') return undefined;
+      if (code === 'stopped') return stoppedAll(e);
+      // One bad rule fails the batch: check them one by one to say which.
+      for (const rule of local) {
+        try {
+          results[rule.id] = (await run([rule]))[0]!;
+        } catch (err) {
+          if (toEngineError(err).code === 'stopped') return stoppedAll(err);
+          results[rule.id] = { state: 'error', message: messageOf(err) };
+        }
       }
     }
-    set(results);
   }
+  for (const rule of reading) {
+    const problem = refProblem(project, rule, opts.statusOf);
+    if (problem) {
+      results[rule.id] = { state: 'error', message: problem };
+      continue;
+    }
+    try {
+      // The other node is read on the full data: a Join or Append in it needs its inputs described first.
+      for (const id of ruleRefs(rule)) await schemaCacheFor(engine).prepare(fullData(project), { nodeId: id });
+      results[rule.id] = (await run([rule]))[0]!;
+    } catch (err) {
+      const code = toEngineError(err).code;
+      if (code === 'cancelled') return undefined;
+      if (code === 'stopped') return stoppedAll(err);
+      results[rule.id] = { state: 'error', message: messageOf(err) };
+    }
+  }
+  return results;
 }

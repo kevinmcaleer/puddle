@@ -1,7 +1,7 @@
 // Exports: an Output node's rows written by DuckDB's COPY ... TO, so the file never passes through JavaScript rows.
 import { z } from 'zod';
 import { nodeById, type ColumnSchema, type OutputNode, type Project } from '../model';
-import { compile } from './compile';
+import { compile, fullData } from './compile';
 import { CompileError } from './errors';
 import { bool, ident, list, str } from './sql';
 
@@ -72,9 +72,6 @@ function copyOptions(spec: Pick<OutputSpec, 'format' | 'options'>): string {
       throw new CompileError('Excel workbooks are written by SheetJS, not COPY. Use compileSheetExport.');
   }
 }
-
-/** Exports always read the full data, even if handed a sample-mode copy of the project. */
-const fullData = (project: Project): Project => ({ ...project, sources: project.sources.map((src) => (src.sampleRows == null ? src : { ...src, sampleRows: undefined })) });
 
 /** Write an Output node's rows to `path` in its format. DuckDB answers with the number of rows written. */
 export function compileExport(project: Project, nodeId: string, path: string, spec?: Pick<OutputSpec, 'format' | 'options'>): string {

@@ -63,9 +63,9 @@ exports[`quality rules > noEdgeSpaces {"column":"name"} 1`] = `""name" IS NULL O
 
 exports[`quality rules > notEmpty {"column":"email"} 1`] = `"NOT (coalesce(trim(CAST("email" AS VARCHAR)), '') = '')"`;
 
-exports[`quality rules > readsAs {"column":"joined","as":"date"} 1`] = `"coalesce(trim(CAST("joined" AS VARCHAR)), '') = '' OR TRY_CAST(trim(CAST("joined" AS VARCHAR)) AS DATE) IS NOT NULL"`;
+exports[`quality rules > readsAs {"column":"joined","as":"date"} 1`] = `"coalesce(trim(CAST("joined" AS VARCHAR)), '') = '' OR (TRY_CAST(trim(CAST("joined" AS VARCHAR)) AS DATE) IS NOT NULL)"`;
 
-exports[`quality rules > readsAs {"column":"na\\"me","as":"number"} 1`] = `"coalesce(trim(CAST("na""me" AS VARCHAR)), '') = '' OR TRY_CAST(trim(CAST("na""me" AS VARCHAR)) AS DOUBLE) IS NOT NULL"`;
+exports[`quality rules > readsAs {"column":"na\\"me","as":"number"} 1`] = `"coalesce(trim(CAST("na""me" AS VARCHAR)), '') = '' OR (TRY_CAST(trim(CAST("na""me" AS VARCHAR)) AS DOUBLE) IS NOT NULL)"`;
 
 exports[`quality rules > shows only the rows a rule fails, keyed apart from the full preview 1`] = `
 "WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv')),

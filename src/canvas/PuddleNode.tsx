@@ -14,7 +14,8 @@ import { NodeCard } from '../ui';
 import { cardKind } from './kind';
 import { portBroken, portName, portsHeight, portTop } from './ports';
 
-export type PuddleNodeData = { node: GraphNode; viewed: boolean; label?: ReactNode; detail?: string };
+/** `refIn` and `refOut`: a rule's dashed reference ends or starts here (see RefEdge). */
+export type PuddleNodeData = { node: GraphNode; viewed: boolean; label?: ReactNode; detail?: string; refIn?: boolean; refOut?: boolean };
 export type PuddleFlowNode = Node<PuddleNodeData, 'puddle'>;
 
 /** A graph node on the canvas: the design system's NodeCard with React Flow handles where its ports sit. */
@@ -96,6 +97,9 @@ export function PuddleNode({ data, selected }: NodeProps<PuddleFlowNode>) {
               </Handle>
             ))}
             {output && <Handle type="source" position={Position.Right} className="ui-port" />}
+            {/* Ends for a rule's dashed reference to another node (see RefEdge), only where one is drawn. */}
+            {data.refIn && <Handle type="target" id="ref-in" position={Position.Top} className="puddle-ref-handle" isConnectable={false} isConnectableStart={false} isConnectableEnd={false} />}
+            {data.refOut && <Handle type="source" id="ref-out" position={Position.Bottom} className="puddle-ref-handle" isConnectable={false} isConnectableStart={false} isConnectableEnd={false} />}
           </>
         )}
       />
