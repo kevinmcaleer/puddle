@@ -183,8 +183,10 @@ test('compared grids scroll together, by row and by matching column', async ({ p
   await expect.poll(async () => (await main.getAttribute('data-first-column')) ?? '').toMatch(/^column_/);
   await together('data-first-column').toMatch(/^column_/);
 
-  // And the other way round.
+  // And the other way round, straight after the right grid followed the left one. Regression: a scroll that came
+  // soon after following was taken for the follow's echo and never reached the other grid.
   const right = (await other.boundingBox())!;
+  await page.mouse.wheel(0, 120);
   await page.mouse.move(right.x + right.width / 2, right.y + right.height / 2);
   await page.mouse.wheel(0, -900);
   await expect.poll(async () => Number(await other.getAttribute('data-first-row'))).toBeLessThan(down);

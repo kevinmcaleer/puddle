@@ -93,7 +93,10 @@ interface PaneProps {
   onColumns?: (pane: Pane, columns: string[] | undefined) => void;
 }
 
-/** After following the other grid, this grid's own scroll events are echoes, not the user scrolling. */
+/**
+ * After following the other grid, this grid's own scroll events are echoes, not the user scrolling, for a moment.
+ * Any wheel, pointer or key input on the grid ends that moment at once: it is the user scrolling.
+ */
 const ECHO_MS = 150;
 
 /** One result's grid. The parent keys it by the result, so a new result starts from fresh state. */
@@ -233,6 +236,9 @@ function Grid({ engine, project, target, columns, pane = 'main', sync, other, on
     );
 
   const rows = total ?? loaded;
+  const userScrolls = () => {
+    quietUntil.current = 0;
+  };
   const grid = (
     <div
       className="min-h-0 w-full flex-1"
@@ -245,6 +251,9 @@ function Grid({ engine, project, target, columns, pane = 'main', sync, other, on
       data-selected={selection.columns.toArray().map((i) => columns[i]?.name).join(',')}
       data-first-row={spot.y}
       data-first-column={names[spot.x] ?? ''}
+      onWheelCapture={userScrolls}
+      onPointerDownCapture={userScrolls}
+      onKeyDownCapture={userScrolls}
     >
       <DataEditor
         ref={editor}
