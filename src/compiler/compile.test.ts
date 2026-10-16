@@ -2,7 +2,7 @@ import { flow, src, step } from '../../tests/helpers/projects';
 import type { ParseOptions, Source } from '../model';
 import { rulePredicate } from './rules';
 import { compile, compileCount, compileDateDetection, compileRules, compileDisplayPage, compilePreview, compileProfile, compileTypeSniff, upstreamKey } from './compile';
-import { CompileError } from './errors';
+import { CompileError, UnwiredError } from './errors';
 import { SchemaCache } from './schemaCache';
 import { ident, setExtensionRepository, str } from './sql';
 import { sourceRelation } from './sources';
@@ -147,7 +147,9 @@ describe('step snapshots', () => {
 describe('errors', () => {
   it('names the node that has no input', () => {
     const p = flow({ nodes: [{ id: 't', type: 'transform' }] });
-    expect(() => compile(p, { nodeId: 't' })).toThrow(new CompileError('t has no input. Connect a wire into it.', 't'));
+    // An empty input is its own kind of CompileError, so the canvas can call the node unwired rather than broken.
+    expect(() => compile(p, { nodeId: 't' })).toThrow(new UnwiredError('t has no input. Connect a wire into it.', 't', 0));
+    expect(() => compile(p, { nodeId: 't' })).toThrow(CompileError);
   });
 
   it('rejects unknown step types and bad params with the step named', () => {
