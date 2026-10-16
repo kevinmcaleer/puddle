@@ -120,3 +120,14 @@ export const inRange = defineRule({
   // The bounds are read as the column's type (numbers or dates) by DuckDB.
   predicate: (p) => `${ident(p.column)} IS NULL OR (${[p.min && `${ident(p.column)} >= ${str(p.min)}`, p.max && `${ident(p.column)} <= ${str(p.max)}`].filter(Boolean).join(' AND ')})`,
 });
+
+const READS_AS = { number: 'DOUBLE', date: 'DATE' } as const;
+
+export const readsAs = defineRule({
+  type: 'readsAs',
+  params: z.object({ column: Column, as: z.enum(['number', 'date']).default('number') }),
+  label: (p) => `${p.column} reads as ${p.as === 'number' ? 'a number' : 'a date'}`,
+  columns: (p) => [p.column],
+  // Read the way profiling reads text: trimmed, and empty values pass.
+  predicate: (p) => `${blank(p.column)} OR TRY_CAST(trim(${text(p.column)}) AS ${READS_AS[p.as]}) IS NOT NULL`,
+});

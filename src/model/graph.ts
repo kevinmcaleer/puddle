@@ -11,6 +11,8 @@ export class GraphError extends Error {
 export interface InputPort {
   id: Port;
   label: string;
+  /** The node compiles without a wire here (Append's spare inputs); otherwise every input must be wired. */
+  optional?: boolean;
 }
 
 const NO_PORTS: InputPort[] = [];
@@ -20,17 +22,26 @@ const JOIN_PORTS: InputPort[] = [
   { id: 'right', label: 'Right' },
 ];
 
+/** Smallest number of inputs an Append shows, so a new one offers two. */
+export const APPEND_MIN_PORTS = 2;
+
 /**
  * The inputs a node takes, in the order they sit down its left edge. Each takes at most one wire, and the
- * node compiles once every one is wired. `project` is there for kinds whose inputs depend on their wiring
- * (a variable number of numbered inputs).
+ * node compiles once every input that isn't optional is wired. An Append numbers its inputs from 0 and always
+ * offers one more after the last wired one; one left empty in the middle keeps its place, so the order of the
+ * others never shifts.
  */
-export function inputPorts(_project: Project, node: GraphNode): InputPort[] {
+export function inputPorts(project: Project, node: GraphNode): InputPort[] {
   switch (node.type) {
     case 'source':
       return NO_PORTS;
     case 'join':
       return JOIN_PORTS;
+    case 'append': {
+      const wired = project.edges.filter((e) => e.to.nodeId === node.id && typeof e.to.port === 'number').map((e) => e.to.port as number);
+      const count = Math.max(APPEND_MIN_PORTS, wired.length ? Math.max(...wired) + 2 : 0);
+      return Array.from({ length: count }, (_, i) => ({ id: i, label: `Input ${i + 1}`, optional: true }));
+    }
     default:
       return ONE_PORT;
   }
@@ -148,7 +159,7 @@ export function canConnect(project: Project, fromId: string, toId: string, port?
   if (!spec) return { ok: false, reason: `${to.name} has no input called ${String(target)}.` };
   const taken = inputEdge(project, toId, target);
   if (taken?.from.nodeId === fromId) return { ok: false, reason: 'These nodes are already connected.' };
-  if (taken) return { ok: false, reason: single ? `${to.name} already has an input. Remove that wire first.` : `The ${spec.label.toLowerCase()} input of ${to.name} already has a wire. Remove it first.` };
+  if (taken) return { ok: false, reason: single ? `${to.name} already has an input. Remove that wire first.` : `${/input/i.test(spec.label) ? spec.label : `The ${spec.label.toLowerCase()} input`} of ${to.name} already has a wire. Remove it first.` };
   if (upstreamIds(project, fromId).has(toId)) return { ok: false, reason: `That wire would make a loop: ${to.name} already feeds into ${from.name}.` };
   return { ok: true };
 }

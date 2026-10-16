@@ -1,6 +1,7 @@
 // Join nodes: the SQL for each join type, the columns they produce, and settings mistakes found before anything runs.
 import type { ColumnSchema, JoinKind, JoinSpec } from '../model';
 import { ident } from './sql';
+import { describeType as describe, typeFamily as family } from './types';
 
 export const JOIN_TYPES: Record<JoinKind, { label: string; sql: string; hint: string }> = {
   inner: { label: 'Inner join', sql: 'INNER JOIN', hint: 'Only rows that match on both sides.' },
@@ -13,20 +14,6 @@ export const JOIN_TYPES: Record<JoinKind, { label: string; sql: string; hint: st
 
 /** Whether this join type brings the right side's columns into its result. */
 export const keepsRightColumns = (kind: JoinKind) => kind !== 'anti' && kind !== 'semi';
-
-/** Families of DuckDB types that compare with each other without a cast. */
-function family(type: string): string {
-  const t = type.toUpperCase();
-  if (/^(TINYINT|SMALLINT|INTEGER|BIGINT|HUGEINT|UTINYINT|USMALLINT|UINTEGER|UBIGINT|UHUGEINT|FLOAT|DOUBLE|REAL)$/.test(t) || t.startsWith('DECIMAL')) return 'number';
-  if (t === 'VARCHAR' || t === 'TEXT' || t === 'STRING' || t.startsWith('VARCHAR(')) return 'text';
-  if (t === 'DATE' || t.startsWith('TIMESTAMP')) return 'date';
-  if (t === 'TIME' || t.startsWith('TIME ')) return 'time';
-  if (t === 'BOOLEAN') return 'boolean';
-  return t;
-}
-
-const FAMILY_WORDS: Record<string, string> = { number: 'a number', text: 'text', date: 'a date', time: 'a time', boolean: 'true or false' };
-const describe = (type: string) => FAMILY_WORDS[family(type)] ?? type;
 
 export interface JoinProblem {
   message: string;

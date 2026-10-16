@@ -1,4 +1,5 @@
-import { hashValue, inputEdge, inputEdges, inputPorts, nodeById, topoSort, upstreamIds, type ColumnSchema, type GraphNode, type JoinNode, type Project, type Rule } from '../model';
+import { freePort, hashValue, inputEdge, inputEdges, inputPorts, nodeById, topoSort, upstreamIds, type ColumnSchema, type GraphNode, type Port, type Project, type Rule } from '../model';
+import { appendProblems, compileAppend } from './append';
 import { CompileError, PendingSchemaError, UnwiredError } from './errors';
 import { compileJoin, joinCondition, joinProblems } from './join';
 import { knownSchemas, type SchemaBook } from './schemaBook';
@@ -27,38 +28,46 @@ export interface Compiled {
 }
 
 export interface CompileOptions {
-  /** Where a Join reads its inputs' columns. The app's shared book by default. */
+  /** Where Join and Append nodes read their inputs' columns. The app's shared book by default. */
   schemas?: SchemaBook;
 }
 
-/** The CTE behind each input of a node, by port, in port order. Throws UnwiredError for an empty input. */
-function inputCtes(project: Project, node: GraphNode, out: Map<string, string>): Map<string, string> {
+/** Node kinds that compile from their inputs' columns, so those must be described first (see SchemaCache.prepare). */
+export const needsInputSchemas = (node: GraphNode) => node.type === 'join' || node.type === 'append';
+
+/** One wired input of a node: its port, the node feeding it, and that node's CTE. */
+interface WiredInput {
+  port: Port;
+  label: string;
+  fromId: string;
+  cte: string;
+}
+
+/** The wired inputs of a node, in port order. Throws UnwiredError for an empty input that isn't optional. */
+function wiredInputs(project: Project, node: GraphNode, out: Map<string, string>): WiredInput[] {
   const ports = inputPorts(project, node);
-  const ctes = new Map<string, string>();
+  const wired: WiredInput[] = [];
   for (const port of ports) {
     const edge = inputEdge(project, node.id, port.id);
     if (!edge) {
+      if (port.optional) continue;
       const input = ports.length === 1 ? 'input' : `${port.label.toLowerCase()} input`;
       throw new UnwiredError(`${node.name} has no ${input}. Connect a wire into it.`, node.id, port.id);
     }
     const cte = out.get(edge.from.nodeId);
     if (!cte) throw new CompileError(`${node.name} is connected to a node that no longer exists.`, node.id);
-    ctes.set(String(port.id), cte);
+    wired.push({ port: port.id, label: port.label, fromId: edge.from.nodeId, cte });
   }
-  return ctes;
+  return wired;
 }
 
-const inputCte = (project: Project, node: GraphNode, out: Map<string, string>) => [...inputCtes(project, node, out).values()][0]!;
+const inputCte = (project: Project, node: GraphNode, out: Map<string, string>) => wiredInputs(project, node, out)[0]!.cte;
 
-/** The columns arriving at each input of a Join, from the book; throws while either is still unknown. */
-function joinInputColumns(project: Project, node: JoinNode, book: SchemaBook): { left: ColumnSchema[]; right: ColumnSchema[] } {
-  const read = (port: 'left' | 'right') => {
-    const edge = inputEdge(project, node.id, port)!;
-    const columns = book.get(upstreamKey(project, { nodeId: edge.from.nodeId }));
-    if (!columns) throw new PendingSchemaError(`${node.name} is still reading the columns of its ${port} input.`, node.id);
-    return columns;
-  };
-  return { left: read('left'), right: read('right') };
+/** The columns arriving at one input, from the book; throws while they're still unknown. */
+function inputColumns(project: Project, node: GraphNode, input: WiredInput, book: SchemaBook): ColumnSchema[] {
+  const columns = book.get(upstreamKey(project, { nodeId: input.fromId }));
+  if (!columns) throw new PendingSchemaError(`${node.name} is still reading the columns of its ${input.label.toLowerCase()} input.`, node.id);
+  return columns;
 }
 
 interface Built {
@@ -103,15 +112,26 @@ function build(project: Project, target: Target, book: SchemaBook): Built {
         break;
       }
       case 'join': {
-        const inputs = inputCtes(project, n, out);
+        const [l, r] = wiredInputs(project, n, out);
         const fail = (p: ReturnType<typeof joinProblems>[number] | undefined) => {
           if (p) throw new CompileError(p.message, n.id, undefined, p.side ? [p.side] : undefined);
         };
         fail(joinProblems(n.joinSpec)[0]);
-        const { left, right } = joinInputColumns(project, n, book);
+        const [left, right] = [inputColumns(project, n, l!, book), inputColumns(project, n, r!, book)];
         fail(joinProblems(n.joinSpec, left, right)[0]);
         const name = cteName(n.id);
-        ctes.push(`${name} AS (${compileJoin(n.joinSpec, { left: inputs.get('left')!, right: inputs.get('right')! }, left, right)})`);
+        ctes.push(`${name} AS (${compileJoin(n.joinSpec, { left: l!.cte, right: r!.cte }, left, right)})`);
+        out.set(n.id, name);
+        break;
+      }
+      case 'append': {
+        const wired = wiredInputs(project, n, out);
+        if (wired.length < 2) throw new UnwiredError(`${n.name} needs at least two inputs. Connect another wire into it.`, n.id, freePort(project, n.id));
+        const inputs = wired.map((w) => ({ cte: w.cte, label: nodeById(project, w.fromId)!.name, columns: inputColumns(project, n, w, book) }));
+        const problem = appendProblems(n.appendSpec, inputs)[0];
+        if (problem) throw new CompileError(problem.message, n.id, undefined, problem.input == null ? undefined : [wired[problem.input]!.port]);
+        const name = cteName(n.id);
+        ctes.push(`${name} AS (${compileAppend(n.appendSpec, inputs)})`);
         out.set(n.id, name);
         break;
       }
@@ -202,6 +222,8 @@ export function upstreamKey(project: Project, target: Target): string {
         return { id: n.id, type: n.type, inputs, steps: steps.map((s) => ({ type: s.type, enabled: s.enabled, params: s.params })) };
       }
       if (n.type === 'join') return { id: n.id, type: n.type, inputs, join: n.joinSpec };
+      // The source column holds each input's node name, so names matter only when it's on.
+      if (n.type === 'append') return { id: n.id, type: n.type, inputs, append: n.appendSpec, ...(n.appendSpec.tagRows ? { labels: inputEdges(project, n.id).map((e) => nodeById(project, e.from.nodeId)?.name) } : {}) };
       return { id: n.id, type: n.type, inputs };
     })
     .sort((a, b) => (a.id < b.id ? -1 : 1));
@@ -234,6 +256,37 @@ export function compileRules(project: Project, nodeId: string, rules: Rule[]): s
   const flags = rules.map((r, i) => `(${rulePredicate(r)}) AS ${ident(`r${i}`)}`);
   const counts = rules.map((_, i) => `count(*) FILTER (WHERE NOT coalesce(${ident(`r${i}`)}, false)) AS ${ident(`f${i}`)}`);
   return `SELECT count(*) AS total, ${counts.join(', ')} FROM (SELECT ${flags.join(', ')} FROM (${sql}))`;
+}
+
+/** What a suggested rule needs confirmed about one column before it is offered. */
+export interface SuggestionCheck {
+  column: string;
+  /** Count values that are empty (null or blank text). */
+  blank?: boolean;
+  /** Count values with spaces at either end. */
+  edges?: boolean;
+  /** Count distinct values exactly (profiling's count is approximate). */
+  distinct?: boolean;
+  /** List the distinct values, as text and sorted. */
+  values?: boolean;
+}
+
+/**
+ * One row of exact facts behind suggested rules, at background priority: `rows`, and per check i `nn<i>`
+ * (non-null values) plus `blank<i>`, `edges<i>`, `distinct<i>` and `values<i>` as asked for.
+ */
+export function compileSuggestionChecks(project: Project, target: Target, checks: SuggestionCheck[]): string {
+  const parts = ['count(*) AS "rows"'];
+  checks.forEach((c, i) => {
+    const col = ident(c.column);
+    const text = `CAST(${col} AS VARCHAR)`;
+    parts.push(`count(${col}) AS ${ident(`nn${i}`)}`);
+    if (c.blank) parts.push(`count(*) FILTER (WHERE coalesce(trim(${text}), '') = '') AS ${ident(`blank${i}`)}`);
+    if (c.edges) parts.push(`count(*) FILTER (WHERE ${text} <> trim(${text})) AS ${ident(`edges${i}`)}`);
+    if (c.distinct) parts.push(`count(DISTINCT ${col}) AS ${ident(`distinct${i}`)}`);
+    if (c.values) parts.push(`list_sort(list(DISTINCT ${text}) FILTER (WHERE ${col} IS NOT NULL)) AS ${ident(`values${i}`)}`);
+  });
+  return `SELECT ${parts.join(', ')} FROM (${compile(project, target).sql})`;
 }
 
 /**

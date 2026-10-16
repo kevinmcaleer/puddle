@@ -217,6 +217,7 @@ export function AppShell() {
             items={[
               { label: 'Transform', icon: 'transform', onSelect: () => addNodeAfterSelection('transform') },
               { label: 'Join', icon: 'join', hint: 'Two inputs', onSelect: () => addNodeAfterSelection('join') },
+              { label: 'Append', icon: 'append', hint: 'Stack rows', onSelect: () => addNodeAfterSelection('append') },
               { label: 'Output', icon: 'output', onSelect: () => addNodeAfterSelection('output') },
             ]}
           />

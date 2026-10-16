@@ -84,3 +84,13 @@ defineRuleForm({
   ],
   defaults: (ctx) => ({ column: first(ctx), min: '', max: '' }),
 });
+
+defineRuleForm({
+  type: 'readsAs',
+  title: 'Reads as a number or date',
+  fields: [
+    column,
+    { key: 'as', label: 'Reads as', kind: 'select', options: [{ value: 'number', label: 'A number' }, { value: 'date', label: 'A date' }] },
+  ],
+  defaults: (ctx) => ({ column: first(ctx), as: 'number' }),
+});

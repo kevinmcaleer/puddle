@@ -5,6 +5,7 @@ const PLACEHOLDER: Record<GraphNode['type'], string> = {
   source: 'Where this file comes from, who sends it.',
   transform: 'Why this node exists, what it expects.',
   join: 'What the two tables are and why they match on these keys.',
+  append: 'What the stacked tables have in common.',
   output: 'Who uses this export, and where it goes.',
 };
 

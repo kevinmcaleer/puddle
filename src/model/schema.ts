@@ -99,6 +99,8 @@ const NodeBase = {
   position: PositionZ.default({ x: 0, y: 0 }),
   collapsed: z.boolean().optional(),
   rules: z.array(RuleZ).default([]),
+  /** Suggested rules dismissed for this node, by suggestion key (rule type and column), so they stay dismissed. */
+  dismissedSuggestions: z.array(z.string()).optional(),
   /** Materialise as a table for reuse (Phase 2). */
   pinnedResult: z.boolean().optional(),
 };
@@ -133,9 +135,22 @@ export const DEFAULT_JOIN_SPEC = { kind: 'left', keys: [], suffix: '_right' } as
 
 export const JoinNodeZ = z.object({ ...NodeBase, type: z.literal('join'), joinSpec: JoinSpecZ.default({ ...DEFAULT_JOIN_SPEC, keys: [] }) });
 
-export const NodeZ = z.discriminatedUnion('type', [SourceNodeZ, TransformNodeZ, JoinNodeZ, OutputNodeZ]);
+export const AppendSpecZ = z.object({
+  /** Line columns up by name (missing ones come out empty) or by position (names from the first input). */
+  match: z.enum(['name', 'position']).default('name'),
+  /** Add a column naming the input each row came from. */
+  tagRows: z.boolean().default(false),
+  tagColumn: z.string().default('source'),
+});
 
-/** Named input ports. Join uses left and right; nodes with one input, or numbered inputs, use an index. */
+export const DEFAULT_APPEND_SPEC = { match: 'name', tagRows: false, tagColumn: 'source' } as const satisfies z.input<typeof AppendSpecZ>;
+
+/** Stacks its inputs' rows, in input order. Inputs are numbered ports; a free one is always offered after the last. */
+export const AppendNodeZ = z.object({ ...NodeBase, type: z.literal('append'), appendSpec: AppendSpecZ.default({ ...DEFAULT_APPEND_SPEC }) });
+
+export const NodeZ = z.discriminatedUnion('type', [SourceNodeZ, TransformNodeZ, JoinNodeZ, AppendNodeZ, OutputNodeZ]);
+
+/** Named input ports. Join uses left and right; nodes with one input, and Append's numbered inputs, use an index. */
 export const NAMED_PORTS = ['left', 'right'] as const;
 
 export const PortZ = z.union([z.number().int().nonnegative(), z.enum(NAMED_PORTS)]);
@@ -211,6 +226,8 @@ export type JoinKind = (typeof JOIN_KINDS)[number];
 export type JoinKey = z.infer<typeof JoinKeyZ>;
 export type JoinSpec = z.infer<typeof JoinSpecZ>;
 export type JoinNode = z.infer<typeof JoinNodeZ>;
+export type AppendSpec = z.infer<typeof AppendSpecZ>;
+export type AppendNode = z.infer<typeof AppendNodeZ>;
 export type Port = z.infer<typeof PortZ>;
 export type GraphNode = z.infer<typeof NodeZ>;
 export type NodeType = GraphNode['type'];
