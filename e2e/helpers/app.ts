@@ -3,6 +3,19 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 export const fixture = (name: string) => join(import.meta.dirname, '../../tests/fixtures', name);
+
+/**
+ * Add a step to the selected Transform from the Add step menu, and wait until it is in the step list (and so selected
+ * and shown in the step settings). The menu builds the step before adding it, which can read the data first: until
+ * then the settings still show the step before, and a click meant for the new step would change that one.
+ */
+export async function addStep(page: Page, title: string) {
+  const steps = page.getByRole('listbox', { name: 'Applied steps' }).getByRole('option');
+  const before = await steps.count();
+  await page.getByRole('button', { name: 'Add step' }).click();
+  await page.getByRole('menuitem', { name: new RegExp(`^${title}`) }).click();
+  await expect(steps).toHaveCount(before + 1);
+}
 export const fixtureText = (name: string) => readFileSync(fixture(name), 'utf8');
 
 /**

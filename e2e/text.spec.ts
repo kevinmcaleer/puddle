@@ -1,13 +1,8 @@
 import { expect, test, type Page } from '@playwright/test';
-import { addFiles, cell, fixture, node, openApp } from './helpers/app';
+import { addFiles, addStep, cell, fixture, node, openApp } from './helpers/app';
 
 const steps = (page: Page) => page.getByRole('listbox', { name: 'Applied steps' }).getByRole('option');
 const settings = (page: Page) => page.getByTestId('step-settings');
-
-async function addStep(page: Page, title: string) {
-  await page.getByRole('button', { name: 'Add step' }).click();
-  await page.getByRole('menuitem', { name: new RegExp(`^${title}`) }).click();
-}
 
 async function commit(page: Page, label: string, value: string) {
   await settings(page).getByLabel(label, { exact: true }).fill(value);
