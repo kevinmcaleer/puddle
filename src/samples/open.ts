@@ -1,8 +1,9 @@
 import { useSession } from '../app/session';
 import { addSource, createProject, newId, type Project, type Source } from '../model';
-import { openNewProject } from '../persistence/workspace';
+import { openNewProject, useWorkspace } from '../persistence/workspace';
+import { knownFormat } from '../sources/detect';
 import { useUrlFetches } from '../sources/url';
-import { sampleAddress, sampleById, sampleProjectName, type Sample, type SampleId } from './catalog';
+import { GUIDE_PATH, sampleAddress, sampleById, sampleProjectName, TAXI_TUTORIAL, type Sample, type SampleId } from './catalog';
 
 /** Where the samples are served from in this page. */
 const pageBase = () => (typeof document !== 'undefined' ? document.baseURI : 'http://localhost/');
@@ -18,7 +19,7 @@ export function sampleProject(sample: Sample, base = pageBase(), at = new Date()
       id: newId('s'),
       name: file,
       kind: 'url',
-      format: 'csv',
+      format: knownFormat(file) ?? 'csv',
       url: { href: sampleAddress(file, base).href, sample: file },
       parseOptions: {},
       detectedSchema: [],
@@ -60,3 +61,23 @@ export async function openSample(id: SampleId | string, base = pageBase()): Prom
   await fetched(project.sources.map((s) => s.id));
   return project;
 }
+
+/** Open a sample, and if it can't be opened, say why on the home screen and in a notice rather than throwing. */
+export async function openSampleOrSay(sample: Sample): Promise<void> {
+  try {
+    await openSample(sample.id);
+  } catch (e) {
+    const text = `Puddle couldn’t open the ${sample.title.toLowerCase()} sample: ${e instanceof Error ? e.message : String(e)}`;
+    useWorkspace.setState({ error: text });
+    useSession.getState().notify({ tone: 'fail', text });
+  }
+}
+
+/** Open the user guide's taxi tutorial as a new project, with both of its files added (Help menu). */
+export const startTaxiTutorial = () => openSampleOrSay(TAXI_TUTORIAL);
+
+/** Where the user guide is, beside the app as served now. */
+export const guideAddress = (base = pageBase()) => new URL(GUIDE_PATH, base).href;
+
+/** Open the user guide in a new tab (Help menu). */
+export const openUserGuide = () => void window.open(guideAddress(), '_blank', 'noopener,noreferrer');

@@ -28,7 +28,10 @@ docker compose up -d
 - Serve `.wasm` files as `application/wasm`.
 - Revalidate `index.html`, `sw.js`, `precache.json` and the manifest on every visit, so a deploy shows straight away.
 
-The image does all of this already.
+The image does all of this already. It also serves:
+
+- This user guide at `/docs/`, built from `docs/` when the image is built. **Help**, then **User guide** opens it.
+- The {doc}`taxi tutorial's <tutorial-taxi>` two files at `/tutorial-data/`, passed through from the TLC's site (whose own server doesn't let browsers read them) as the browser reads them. Nothing is kept on the server, but the container needs to reach the internet for **Start the taxi tutorial** to work. Every other path under `/tutorial-data/` answers 404.
 
 ## Scheduled runs
 

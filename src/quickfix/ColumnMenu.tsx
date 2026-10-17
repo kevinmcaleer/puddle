@@ -5,7 +5,7 @@ import { holdsReplacement, replacementProblem } from '../steps';
 import { ContextMenu, Dialog, Field, Select, Switch, TextInput, type MenuItem } from '../ui';
 import { columnActions, type ColumnAction, type ColumnMenuContext } from './columnMenu';
 import { make } from './fixes';
-import { addStepWhereViewed, detectOnViewed } from './place';
+import { addStepWhereViewed, detectOnViewed, readOnViewed } from './place';
 
 /** Where the menu was asked for: the pointer, the columns it acts on and, from a cell, that cell's value. */
 export interface ColumnMenuRequest {
@@ -30,7 +30,7 @@ export function ColumnMenu({ request, available, onClose }: { request: ColumnMen
   }, [menuClosed, replacing, onClose]);
   if (!viewed) return null;
 
-  const ctx: ColumnMenuContext = { columns: request.columns, available, locale: project.settings.locale, detectDates: detectOnViewed(viewed), cell: request.cell };
+  const ctx: ColumnMenuContext = { columns: request.columns, available, locale: project.settings.locale, detectDates: detectOnViewed(viewed), readPivotValues: readOnViewed(viewed), cell: request.cell };
   const asNodes = project.settings.stepsAsNodes;
   const entry = (a: ColumnAction): MenuItem => ({
     label: a.label,

@@ -67,6 +67,23 @@ describe('the column menu', () => {
     expect((await build(ctx(), 'Remove duplicates')).params).toEqual({ columns: ['city'], keep: 'first' });
   });
 
+  it('groups by the selected columns, or pivots one with its values read so it runs at once', async () => {
+    const two = ctx({ columns: ['city', 'joined'] });
+    const grouped = await build(two, 'Group by these columns…');
+    expect(grouped).toMatchObject({ type: 'pivot', params: { rows: ['city', 'joined'], column: '', values: [] }, label: 'Grouped by city, joined' });
+    expect(columnActions(two).some((a) => a.label === 'Pivot into columns…')).toBe(false);
+
+    const read = async (column: string) => ({ values: column === 'city' ? ['Leeds', 'Paris'] : [], more: false });
+    const c = ctx({ readPivotValues: read });
+    const pivoted = await build(c, 'Pivot into columns…');
+    expect(pivoted.params).toMatchObject({ rows: [], column: 'city', pivotValues: ['Leeds', 'Paris'], values: [{ column: 'city', agg: 'count' }] });
+    expect(stepDef('pivot')!.params.safeParse(pivoted.params).success).toBe(true);
+    expect(pivoted.label).toBe('Pivoted city into columns');
+    // Unread, the editor's Refresh columns reads them.
+    const failing = ctx({ readPivotValues: () => Promise.reject(new Error('no engine')) });
+    expect((await build(failing, 'Pivot into columns…')).params).toMatchObject({ pivotValues: [] });
+  });
+
   it('cuts long values short in its labels', () => {
     expect(shown('a'.repeat(40))).toBe(`“${'a'.repeat(23)}…”`);
   });

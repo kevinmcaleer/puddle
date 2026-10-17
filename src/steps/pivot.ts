@@ -55,12 +55,23 @@ export function zoneFields(d: PivotDraft, zone: Zone): string[] {
 }
 
 const NUMBER_KINDS = new Set(['integer', 'decimal']);
+/** The aggregates that need numbers: DuckDB can't sum or average text. */
+const NUMERIC_ONLY = new Set<Aggregate>(['sum', 'average', 'median', 'stddev', 'variance']);
+
+/** The aggregates a column can use, in menu order: every one for a number, the rest for anything else. */
+export function aggregatesFor(column: string, columns: ColumnSchema[]): Aggregate[] {
+  const type = columns.find((c) => c.name === column)?.type;
+  const all = Object.keys(AGGREGATES) as Aggregate[];
+  // A column the input no longer has keeps every choice, so its setting still shows.
+  if (!type || NUMBER_KINDS.has(columnKind(type))) return all;
+  return all.filter((a) => !NUMERIC_ONLY.has(a));
+}
 
 /** Numbers are summed; anything else is counted. A field already in Values with that aggregate gets the next one free. */
 function newValue(d: PivotDraft, column: string, columns: ColumnSchema[]): PivotValue {
-  const type = columns.find((c) => c.name === column)?.type;
-  const first: Aggregate = type && NUMBER_KINDS.has(columnKind(type)) ? 'sum' : 'count';
-  const order = [first, ...(Object.keys(AGGREGATES) as Aggregate[]).filter((a) => a !== first)];
+  const choices = aggregatesFor(column, columns);
+  const first: Aggregate = choices.includes('sum') ? 'sum' : 'count';
+  const order = [first, ...choices.filter((a) => a !== first)];
   const agg = order.find((a) => !d.values.some((v) => v.column === column && v.agg === a)) ?? first;
   return { column, agg };
 }

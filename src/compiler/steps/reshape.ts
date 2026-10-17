@@ -13,6 +13,8 @@ export const AGGREGATES = {
   max: 'max',
   average: 'average',
   median: 'median',
+  stddev: 'standard deviation',
+  variance: 'variance',
   first: 'first',
   last: 'last',
   list: 'list',
@@ -114,6 +116,10 @@ function aggregate(agg: Aggregate, x: string): string {
       return `avg(${x})`;
     case 'median':
       return `median(${x})`;
+    case 'stddev':
+      return `stddev_samp(${x})`;
+    case 'variance':
+      return `var_samp(${x})`;
     case 'first':
       return `arg_min(${x}, ${order})`;
     case 'last':

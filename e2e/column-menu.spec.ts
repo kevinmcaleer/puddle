@@ -63,3 +63,36 @@ test('the column menu keeps only the rows whose value repeats', async ({ page })
   await expect(cell(page, 0, 0)).toHaveText('3');
   await expect(cell(page, 0, 1)).toHaveText('3');
 });
+
+test('the column menu groups by a column, summarising a field two ways, and pivots a column into columns', async ({ page }) => {
+  await openApp(page);
+  await addFiles(page, [fixture('sales.csv')]);
+  await expectRows(page, 8);
+  const editor = page.getByTestId('pivot-editor');
+  const choose = async (trigger: string, item: string) => {
+    await editor.getByRole('button', { name: trigger, exact: true }).click();
+    await editor.getByRole('menuitem', { name: item, exact: true }).click();
+  };
+
+  // Group by region opens the editor on the new step; revenue goes into Values twice, as a sum and an average.
+  await rightClick(page, 0);
+  await menu(page).getByRole('menuitem', { name: 'Group by this column…' }).click();
+  await expect(steps(page)).toHaveText([/Grouped by region/]);
+  await choose('Add revenue', 'Add to values');
+  await choose('Add revenue', 'Add to values');
+  await choose('Summarise revenue: count', 'Average');
+  await expect(editor.getByRole('button', { name: /^Summarise revenue/ })).toHaveText(['sum', 'average']);
+  await expect(cell(page, 0, 1)).toHaveText('North', { timeout: 20_000 });
+  await expect(cell(page, 1, 1)).toHaveText('75.5');
+  await expect(cell(page, 2, 0)).toHaveText('40.0');
+
+  // Pivot into columns reads month's values first, so its counts show at once.
+  await page.getByRole('button', { name: 'Delete step' }).click();
+  await expectRows(page, 8);
+  await rightClick(page, 1);
+  await menu(page).getByRole('menuitem', { name: 'Pivot into columns…' }).click();
+  await expect(steps(page)).toHaveText([/Pivoted month into columns/]);
+  await expect(editor.getByText('Columns for month: 2024-01, 2024-02, 2024-03.')).toBeVisible();
+  await expect(cell(page, 0, 0)).toHaveText('3', { timeout: 20_000 });
+  await expect(cell(page, 2, 0)).toHaveText('1');
+});

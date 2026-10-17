@@ -14,7 +14,7 @@ On your first visit Puddle offers a short tour. It opens the contact list sample
 
 ![The tour's first stop, pointing at a source on the canvas](_static/screenshots/start-tour.png)
 
-You can leave the tour at any point with **Skip**, and pick it up again later from the **Help** menu in the toolbar.
+You can leave the tour at any point with **Skip**, and pick it up again later from the **Help** menu in the toolbar. The same menu opens this guide (**User guide**).
 
 ## Samples
 

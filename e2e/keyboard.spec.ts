@@ -185,7 +185,7 @@ test('dialogs start on their field, keep Tab inside and give focus back to what 
   await expect(projectMenu).toBeFocused();
 
   await page.getByTestId('help-menu').press('Enter');
-  await expect(page.getByRole('menuitem', { name: 'Take the tour' })).toBeFocused();
+  await expect(page.getByRole('menuitem', { name: 'User guide' })).toBeFocused();
   await page.getByRole('menuitem', { name: 'Keyboard shortcuts' }).press('Enter');
   await expect(page.getByRole('dialog', { name: 'Keyboard shortcuts' }).getByRole('button', { name: 'Close' })).toBeFocused();
   await page.keyboard.press('Enter');

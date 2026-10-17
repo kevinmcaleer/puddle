@@ -1,9 +1,9 @@
-import { readdirSync } from 'node:fs';
+import { existsSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { parseProject } from '../model';
 import { addressOf } from '../sources/url';
-import { isSampleFile, sampleAddress, sampleById, sampleProjectName, SAMPLES } from './catalog';
-import { sampleProject } from './open';
+import { isSampleFile, isShippedFile, sampleAddress, sampleById, sampleProjectName, SAMPLES, TAXI_TUTORIAL, TAXI_TUTORIAL_PAGE } from './catalog';
+import { guideAddress, sampleProject } from './open';
 
 const shipped = readdirSync(join(__dirname, '../../public/samples')).sort();
 
@@ -81,5 +81,51 @@ describe('addressOf', () => {
     const href = 'https://data.example/sales.csv';
     expect(addressOf({ id: 's', name: 'x', kind: 'url', format: 'csv', url: { href }, parseOptions: {}, detectedSchema: [] })).toBe(href);
     expect(addressOf({ id: 's', name: 'x', kind: 'url', format: 'csv', url: { href, sample: '../secret.csv' }, parseOptions: {}, detectedSchema: [] })).toBe(href);
+  });
+});
+
+describe('the taxi tutorial', () => {
+  const at = new Date('2026-10-17T12:00:00Z');
+
+  it('opens as a project with the trips and the zone lookup, read through Puddle’s server, not shipped', () => {
+    const p = sampleProject(sampleById('taxi')!, 'https://puddle.example/', at);
+    expect(parseProject(p)).toEqual(p);
+    expect(p.name).toBe('Tutorial: three million taxi trips');
+    expect(p.notes).toBe(TAXI_TUTORIAL.note);
+    expect(p.sources.map((s) => ({ name: s.name, format: s.format, url: s.url }))).toEqual([
+      {
+        name: 'yellow_tripdata_2024-01.parquet',
+        format: 'parquet',
+        url: { href: 'https://puddle.example/tutorial-data/trip-data/yellow_tripdata_2024-01.parquet', sample: 'yellow_tripdata_2024-01.parquet' },
+      },
+      { name: 'taxi_zone_lookup.csv', format: 'csv', url: { href: 'https://puddle.example/tutorial-data/misc/taxi_zone_lookup.csv', sample: 'taxi_zone_lookup.csv' } },
+    ]);
+    expect(isSampleFile('taxi_zone_lookup.csv')).toBe(true);
+    // Read like a typed address (by ranges, not cached), unlike the small files shipped with the app.
+    expect(isShippedFile('taxi_zone_lookup.csv')).toBe(false);
+    expect(isShippedFile('contacts.csv')).toBe(true);
+  });
+
+  it('reads its files from beside the app as served now', () => {
+    const [trips] = sampleProject(TAXI_TUTORIAL, 'https://old.example/puddle/').sources;
+    expect(String(addressOf(trips!))).toBe('https://old.example/puddle/tutorial-data/trip-data/yellow_tripdata_2024-01.parquet');
+    vi.stubGlobal('document', { baseURI: 'http://192.168.1.5:8088/' });
+    try {
+      expect(String(addressOf(trips!))).toBe('http://192.168.1.5:8088/tutorial-data/trip-data/yellow_tripdata_2024-01.parquet');
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it('links its note to the tutorial’s page in the user guide, which exists', () => {
+    expect(TAXI_TUTORIAL.note).toContain(`](${TAXI_TUTORIAL_PAGE})`);
+    expect(TAXI_TUTORIAL_PAGE).toBe('docs/tutorial-taxi.html');
+    expect(existsSync(join(__dirname, '../../docs/tutorial-taxi.md'))).toBe(true);
+    expect(sampleAddress('yellow_tripdata_2024-01.parquet', 'https://puddle.example/').href).toBe('https://puddle.example/tutorial-data/trip-data/yellow_tripdata_2024-01.parquet');
+  });
+
+  it('finds the user guide beside the app', () => {
+    expect(guideAddress('https://puddle.example/')).toBe('https://puddle.example/docs/');
+    expect(guideAddress('http://192.168.1.5:8088/index.html')).toBe('http://192.168.1.5:8088/docs/');
   });
 });
