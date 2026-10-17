@@ -37,6 +37,7 @@ export { renameSqlColumns, sqlColumnRefs } from './columnRefs';
 export { describeType, typeFamily, typesFit } from './types';
 export { SchemaCache } from './schemaCache';
 export { dropTable, sourceFileName, sourceRelation, sourceTableName } from './sources';
+export { dateText, dateType, isNumberDateFormat, NUMBER_DATE_FORMATS, readDateFormat, readDates } from './dateRead';
 export { englishDateNames, isParseLocale, PARSE_LOCALE_IDS, PARSE_LOCALES, parseLocale, type ParseLocale, type ParseLocaleId } from './locales';
 export { bool, cteName, ident, list, num, stepFailure, str, strList } from './sql';
 export * from './steps';

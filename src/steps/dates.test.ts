@@ -4,14 +4,14 @@ import { newStep } from '.';
 const available = [{ name: 'when', type: 'VARCHAR' }];
 
 describe('parse dates defaults', () => {
-  it('uses the detected format', () => {
-    const step = newStep('parseDates', { selected: [], available, dates: { ranked: [], best: '%d %B %Y' } });
-    expect(step.params).toEqual({ columns: ['when'], formats: ['%d %B %Y'], onError: 'empty' });
+  it('uses the detected formats', () => {
+    const step = newStep('parseDates', { selected: [], available, dates: { ranked: [], formats: ['%d %B %Y', '%Y-%m-%d'] } });
+    expect(step.params).toEqual({ columns: ['when'], formats: ['%d %B %Y', '%Y-%m-%d'], onError: 'empty' });
     expect(step.label).toBe('Parsed when as dates');
   });
 
   it('leaves the format to the user when day and month order is ambiguous', () => {
-    const step = newStep('parseDates', { selected: [], available, dates: { ranked: [], ambiguous: { dayFirst: '%d/%m/%Y', monthFirst: '%m/%d/%Y' } } });
+    const step = newStep('parseDates', { selected: [], available, dates: { ranked: [], ambiguous: { dayFirst: '%d/%m/%Y', monthFirst: '%m/%d/%Y', covers: { day: ['%d/%m/%Y'], month: ['%m/%d/%Y'] } } } });
     expect(step.params).toMatchObject({ formats: [] });
     expect(step.label).toBe('Parse dates');
   });
@@ -19,7 +19,7 @@ describe('parse dates defaults', () => {
 
 describe('parse dates locale', () => {
   it('has no locale unless one is picked, so an unclear order is still asked', () => {
-    const step = newStep('parseDates', { selected: [], available, locale: 'en-US', dates: { ranked: [], ambiguous: { dayFirst: '%d/%m/%Y', monthFirst: '%m/%d/%Y' } } });
+    const step = newStep('parseDates', { selected: [], available, locale: 'en-US', dates: { ranked: [], ambiguous: { dayFirst: '%d/%m/%Y', monthFirst: '%m/%d/%Y', covers: { day: ['%d/%m/%Y'], month: ['%m/%d/%Y'] } } } });
     expect(step.params.locale).toBeUndefined();
   });
 });

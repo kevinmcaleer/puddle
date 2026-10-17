@@ -12,7 +12,7 @@ const ctx = (over: Partial<ColumnMenuContext> = {}): ColumnMenuContext => ({
     { name: 'joined', type: 'VARCHAR' },
   ],
   locale: 'en-GB',
-  detectDates: async () => ({ ranked: [], best: '%d/%m/%Y' }),
+  detectDates: async () => ({ ranked: [], formats: ['%d/%m/%Y'] }),
   ...over,
 });
 
