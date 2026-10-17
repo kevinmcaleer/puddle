@@ -16,6 +16,8 @@ npm run typecheck
 npm test           # unit tests, plus engine tests on real DuckDB-WASM (Node build)
 npm run e2e        # Playwright against a production build (run `npx playwright install chromium` once)
 npm run fetch-extensions  # optional: serve DuckDB's json and parquet extensions locally
+npm run docs              # the user guide, with Sphinx (pip install -r docs/requirements.txt first)
+npm run docs:screenshots  # retake the user guide's screenshots
 ```
 
 Google Drive sync needs a Google Cloud OAuth client ID (type "Web application") in `VITE_GOOGLE_CLIENT_ID` at build time, e.g. `VITE_GOOGLE_CLIENT_ID=1234-abc.apps.googleusercontent.com npm run build`, or `--build-arg VITE_GOOGLE_CLIENT_ID=...` for the Docker image. Without it every Google Drive option is hidden. Add the site's origin (and `http://localhost:5173` for development) as an authorised JavaScript origin, and the same origin followed by `/` as an authorised redirect URI, and enable the Google Drive API for the project. Puddle asks only for the `drive.file` scope. The e2e build uses a test-only ID against a mocked Google.
@@ -24,7 +26,7 @@ SheetJS, which reads Excel workbooks, is vendored as `vendor/xlsx-0.20.3.tgz`: i
 
 ## Tests
 
-Every feature ships with its own tests, and every bug fix with a regression test, so later changes can't silently break earlier work. `npm test` runs the pure and engine tests with one shared module registry per worker (`--no-isolate`, about twice as fast), then the component tests and the few files that mock modules in isolation; `vite.config.ts` lists which is which. CI (`.github/workflows/ci.yml`) runs lint, typecheck, the unit and engine tests, and the Playwright suite on every pull request, each browser split into shards that run as parallel jobs. It also builds the Docker image for amd64 and arm64 and runs `npm run e2e:container` against it: isolation headers, JSON and Parquet from the self-hosted extensions, and offline use.
+Every feature ships with its own tests, and every bug fix with a regression test, so later changes can't silently break earlier work. `npm test` runs the pure and engine tests with one shared module registry per worker (`--no-isolate`, about twice as fast), then the component tests and the few files that mock modules in isolation; `vite.config.ts` lists which is which. CI (`.github/workflows/ci.yml`) runs lint, typecheck, the unit and engine tests, and the Playwright suite on every pull request, each browser split into shards that run as parallel jobs. It retakes the user guide's screenshots and builds the guide with Sphinx, warnings as errors. It also builds the Docker image for amd64 and arm64 and runs `npm run e2e:container` against it: isolation headers, JSON and Parquet from the self-hosted extensions, and offline use.
 
 ## Deploying
 
@@ -64,6 +66,7 @@ A Docker image (nginx serving the static build) behind a Cloudflare Tunnel at pu
 | `src/results/` | The results table on Glide Data Grid: paging, headers with type and quality |
 | `tests/` | Engine integration tests, fixtures and helpers (`scripts/make-excel-fixtures.mjs` writes the Excel fixture) |
 | `e2e/` | Playwright tests |
+| `docs/` | The user guide: Markdown pages built with Sphinx, and the Playwright script that takes its screenshots (`docs/screenshots/`) into `docs/_static/screenshots/` |
 
 Adding a step type means one `defineStep` in `src/compiler/steps/` (Zod params, past-tense label, compile function), one `defineStepForm` in `src/steps/` (title, group, fields, defaults) and one test fixture. The form's column fields (`column`, `columns`, `renames`, `conditions`, `sortKeys`, `expression`, `sql`) are also how templates find and rename the columns a step reads.
 
