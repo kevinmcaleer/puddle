@@ -1,0 +1,42 @@
+name: Nightly
+
+# WebKit (Safari's engine) is about three times slower than the other browsers and the only one that flakes, so it
+# runs the whole Playwright suite against main every night at 03:00 UTC, and on demand ("Run workflow" on the Actions
+# page), rather than on every pull request. A red run emails the repository owner.
+on:
+  schedule:
+    - cron: '0 3 * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: nightly
+  cancel-in-progress: true
+
+jobs:
+  e2e-webkit:
+    name: Playwright tests in webkit (${{ matrix.shard }} of 3)
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3]
+    env:
+      E2E_BROWSERS: webkit
+      E2E_BROWSER_LOGS: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps webkit
+      - run: npm run e2e -- --shard=${{ matrix.shard }}/3
+      - if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report-webkit-${{ matrix.shard }}
+          path: |
+            playwright-report
+            test-results
+          retention-days: 7

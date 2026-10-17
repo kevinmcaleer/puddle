@@ -40,7 +40,7 @@ export interface ProjectSummary {
 let opening: Promise<IDBDatabase> | null = null;
 
 function open(): Promise<IDBDatabase> {
-  opening ??= new Promise((resolve, reject) => {
+  opening ??= new Promise<IDBDatabase>((resolve, reject) => {
     const req = indexedDB.open(DB, VERSION);
     req.onupgradeneeded = () => {
       const db = req.result;
@@ -62,6 +62,10 @@ function open(): Promise<IDBDatabase> {
       opening = null;
       reject(req.error ?? new Error('IndexedDB is unavailable.'));
     };
+  }).catch((e: unknown) => {
+    // Also when indexedDB.open itself threw (no IndexedDB at all): the next call tries again rather than failing forever.
+    opening = null;
+    throw e;
   });
   return opening;
 }

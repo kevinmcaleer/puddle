@@ -4,20 +4,14 @@ on:
   push:
     branches: [main]
   pull_request:
-  # The nightly run is WebKit's: it is the slowest browser and the one that flakes, so it is kept off pull requests
-  # and run against main every night (03:00 UTC) instead. "Run workflow" on the Actions page runs it on demand.
-  schedule:
-    - cron: '0 3 * * *'
-  workflow_dispatch:
 
 concurrency:
-  group: ${{ github.event_name == 'schedule' && 'ci-nightly' || format('ci-{0}', github.ref) }}
+  group: ci-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
   check:
     name: Lint, typecheck and unit tests
-    if: github.event_name != 'schedule'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -32,9 +26,8 @@ jobs:
 
   e2e:
     # Each browser's suite is split into shards that run as parallel jobs, each kept under about five minutes.
-    # Chromium and Firefox run on every pull request; WebKit runs nightly in the job below.
+    # Chromium and Firefox run on every pull request; WebKit runs nightly, in nightly.yml.
     name: Playwright tests in ${{ matrix.browser }} (${{ matrix.shard }} of ${{ matrix.shards }})
-    if: github.event_name != 'schedule'
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -65,41 +58,8 @@ jobs:
             test-results
           retention-days: 7
 
-  e2e-webkit:
-    # WebKit (Safari's engine) is about three times slower than the other browsers and the only one that flakes, so
-    # it runs the whole Playwright suite against main every night, and on demand, rather than on every pull request.
-    # A red nightly run emails the repository owner.
-    name: Playwright tests in webkit, nightly (${{ matrix.shard }} of 3)
-    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        shard: [1, 2, 3]
-    env:
-      E2E_BROWSERS: webkit
-      E2E_BROWSER_LOGS: '1'
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
-      - run: npm ci
-      - run: npx playwright install --with-deps webkit
-      - run: npm run e2e -- --shard=${{ matrix.shard }}/3
-      - if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: playwright-report-webkit-${{ matrix.shard }}
-          path: |
-            playwright-report
-            test-results
-          retention-days: 7
-
   container:
     name: Container image and deployment tests
-    if: github.event_name != 'schedule'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
