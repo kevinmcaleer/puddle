@@ -22,6 +22,8 @@ import { ReattachButton } from '../sources/ReattachButton';
 import { UrlPanel } from '../sources/UrlPanel';
 import { isExcelSource } from '../sources/excel';
 import { ExcelPanel } from '../sources/ExcelPanel';
+import { isXmlSource } from '../sources/xml';
+import { XmlPanel } from '../sources/XmlPanel';
 import { DELIMITERS, delimiterValue, ENCODINGS, hasParseOptions, LOCALES, parseNullStrings, withOption } from './options';
 
 function SourceOptions({ source }: { source: Source }) {
@@ -288,6 +290,7 @@ function NodeInspector({ node }: { node: GraphNode }) {
       {source && source.kind === 'file' && <AttachmentBanner source={source} />}
       {source && source.kind === 'url' && <UrlPanel source={source} />}
       {source && isExcelSource(source) && <ExcelPanel source={source} />}
+      {source && isXmlSource(source) && <XmlPanel source={source} />}
       {source && hasParseOptions(source) && <SourceOptions source={source} />}
       {source && source.kind === 'file' && <RunnerPath source={source} />}
       {node.type === 'output' && <OutputPanel node={node} />}

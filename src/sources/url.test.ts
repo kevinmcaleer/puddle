@@ -69,6 +69,8 @@ describe('format', () => {
     expect(formatFromContentType('Application/JSON')).toBe('json');
     expect(formatFromContentType('application/x-ndjson')).toBe('ndjson');
     expect(formatFromContentType('text/tab-separated-values')).toBe('tsv');
+    expect(formatFromContentType('application/atom+xml;type=feed')).toBe('xml');
+    expect(formatFromContentType('text/xml; charset=utf-8')).toBe('xml');
     expect(formatFromContentType('text/html')).toBeUndefined();
     expect(formatFromContentType(null)).toBeUndefined();
   });
