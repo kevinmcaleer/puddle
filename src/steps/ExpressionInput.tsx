@@ -114,7 +114,7 @@ export function ExpressionInput({
                 pick(c.name);
               }}
             >
-              <TypeTag type={columnKind(c.type)} />
+              <TypeTag type={columnKind(c.type)} decorative />
               <span className="ui-col">{c.name}</span>
             </li>
           ))}

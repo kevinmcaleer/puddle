@@ -69,6 +69,7 @@ function setup() {
   let online = true;
   const notices: string[] = [];
   const replaced: Project[] = [];
+  const kept: (string | null)[] = [];
   const sync = createSyncController({
     providers: { gist: remote.provider },
     links: {
@@ -91,6 +92,7 @@ function setup() {
         void sync.shown(saved.get(id)!);
       },
       saveCopy: async (p) => void saved.set(p.id, p),
+      keep: async () => void kept.push(open),
     },
     state: { get: () => state, set: (patch) => void (state = { ...state, ...patch }) },
     notify: (t) => void notices.push(t),
@@ -111,7 +113,7 @@ function setup() {
     await vi.advanceTimersByTimeAsync(20);
     await sync.idle();
   };
-  return { sync, remote, links, saved, notices, replaced, state: () => state, show, edit, setOnline: (v: boolean) => void (online = v) };
+  return { sync, remote, links, saved, notices, replaced, kept, state: () => state, show, edit, setOnline: (v: boolean) => void (online = v) };
 }
 
 const withHeader: Source = { id: 's_url', name: 'orders.csv', kind: 'url', url: { href: 'https://example.com/orders.csv', headers: { Authorization: 'Bearer HEADER-SECRET' } }, format: 'csv', parseOptions: {}, detectedSchema: [] };
@@ -358,5 +360,62 @@ describe('sync controller', () => {
     expect(t.remote.files.get('g1')!.text).toContain('needs a token');
     expect(t.remote.files.size).toBe(1);
     expect(t.state().status).toBe('synced');
+  });
+  it('leaves a project linked to a provider this build doesn’t offer alone', async () => {
+    const t = setup();
+    const project = createProject('From a build with Drive');
+    t.links.set(project.id, { projectId: project.id, provider: 'drive', remoteId: 'd1', revision: '3', syncedHash: 'old' });
+    await t.show(project);
+    await t.edit(later(project, { notes: 'changed' }));
+    await t.sync.drain();
+    await vi.advanceTimersByTimeAsync(20);
+    await t.sync.idle();
+    expect(t.state().status).toBe('off');
+    expect(t.remote.writes).toHaveLength(0);
+    expect(t.links.get(project.id)).toMatchObject({ provider: 'drive', remoteId: 'd1' });
+  });
+
+  it('a refused sign-in reads the accounts again, so a forgotten one shows as signed out', async () => {
+    const t = await synced();
+    await t.sync.refreshAccounts();
+    expect(t.state().accounts.gist).toBe('kev');
+    t.remote.provider.account = async () => null;
+    t.remote.provider.push = async () => {
+      throw new SyncAuthError('Your sign-in has run out.');
+    };
+    await t.edit(later(t.project, { notes: 'after it ran out' }));
+    await vi.advanceTimersByTimeAsync(0);
+    expect(t.state().status).toBe('error');
+    expect(t.state().accounts.gist).toBeUndefined();
+  });
+
+  it('signing in again checks the open project, taking a newer remote version first', async () => {
+    const t = await synced();
+    const head = t.remote.provider.head;
+    t.remote.provider.head = async () => {
+      throw new SyncAuthError('Sign in again.');
+    };
+    await t.show(t.saved.get(t.project.id)!);
+    expect(t.state().status).toBe('error');
+    t.remote.provider.head = head;
+    t.remote.editElsewhere('g1', later(t.project, { notes: 'from the laptop' }));
+    await t.sync.connect('gist', 'again');
+    await t.sync.idle();
+    await t.sync.idle();
+    expect(t.saved.get(t.project.id)!.notes).toBe('from the laptop');
+    expect(t.state().status).toBe('synced');
+  });
+
+  it('signing in on the provider’s page saves the open project first and says what to carry on with', async () => {
+    const t = setup();
+    const signIn = vi.fn(async () => {});
+    const project = createProject('Untouched');
+    await t.show(project);
+    // Gist takes a pasted token instead.
+    await expect(t.sync.signIn('gist', 'link')).rejects.toThrow('pasted token');
+    t.remote.provider.signIn = signIn;
+    await t.sync.signIn('gist', 'link');
+    expect(t.kept).toEqual([project.id]);
+    expect(signIn).toHaveBeenCalledWith({ then: 'link', projectId: project.id });
   });
 });

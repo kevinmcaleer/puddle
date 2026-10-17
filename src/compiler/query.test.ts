@@ -2,7 +2,7 @@ import { flow, src } from '../../tests/helpers/projects';
 import type { ColumnSchema, QueryField, QueryJoin, QuerySpec } from '../model';
 import { compile, upstreamKey } from './compile';
 import { CompileError, PendingSchemaError, UnwiredError } from './errors';
-import { compileQuery, criteriaPlace, crossJoinedTables, defaultNames, joinPlan, queryColumns, queryProblems, type QueryTable } from './query';
+import { compileQuery, criteriaPlace, crossJoinedTables, defaultNames, joinPlan, queryColumns, queryProblems, totalsProblems, type QueryTable } from './query';
 import { SchemaBook } from './schemaBook';
 
 const CUSTOMERS: ColumnSchema[] = [
@@ -20,7 +20,7 @@ const ORDERS: ColumnSchema[] = [
 const tables = (...cols: ColumnSchema[][]): Array<QueryTable & { cte: string }> => cols.map((columns, port) => ({ port, label: ['customers', 'orders', 'items'][port]!, columns, cte: `"in${port + 1}"` }));
 const field = (id: string, port: number, column: string, f: Partial<QueryField> = {}): QueryField => ({ id, port, column, show: true, sort: 'none', ...f });
 const line = (id: string, l: [number, string], r: [number, string], kind: QueryJoin['kind'] = 'inner'): QueryJoin => ({ id, left: { port: l[0], column: l[1] }, right: { port: r[0], column: r[1] }, kind });
-const spec = (s: Partial<QuerySpec>): QuerySpec => ({ tables: [], joins: [], fields: [], distinct: false, totals: false, ...s });
+const spec = (s: Partial<QuerySpec>): QuerySpec => ({ tables: [], joins: [], fields: [], distinct: false, totals: false, orRows: 0, ...s });
 
 const shop = spec({
   joins: [line('j1', [0, 'customer_id'], [1, 'customer_id'])],
@@ -266,6 +266,90 @@ describe('query totals', () => {
   });
 });
 
+describe('query or rows', () => {
+  const or = (fields: QueryField[], s: Partial<QuerySpec> = {}) => spec({ joins: shop.joins, orRows: 1, fields, ...s });
+  const sql = (s: QuerySpec) => compileQuery(s, tables(CUSTOMERS, ORDERS));
+
+  it('ANDs each row’s conditions and ORs the rows, in brackets', () => {
+    const s = or([
+      field('f1', 0, 'name', { criteria: { op: 'starts', value: 'B' } }),
+      field('f2', 0, 'status', { criteria: { op: '=', value: 'lapsed' } }),
+      field('f3', 1, 'total', { or: [{ op: '>', value: '10' }] }),
+    ]);
+    expect(sql(s)).toContain(
+      ` WHERE (starts_with(lower(CAST("t1"."name" AS VARCHAR)), lower('B')) AND "t1"."status" = 'lapsed') OR ("t2"."total" > 10)`,
+    );
+  });
+
+  it('leaves out an empty row, and a lone row needs no brackets', () => {
+    const lone = or([field('f1', 0, 'status', { criteria: { op: '=', value: 'lapsed' } }), field('f2', 1, 'total')], { orRows: 2 });
+    expect(sql(lone)).toMatch(/ WHERE "t1"."status" = 'lapsed'$/);
+    const onlyOr = or([field('f1', 0, 'status'), field('f2', 1, 'total', { or: [null, { op: '>', value: '10' }] })], { orRows: 2 });
+    expect(sql(onlyOr)).toMatch(/ WHERE "t2"."total" > 10$/);
+  });
+
+  it('with no or rows left, compiles as the grid did before', () => {
+    const fields = [field('f1', 0, 'name'), field('f2', 0, 'status', { criteria: { op: '=', value: 'active' } })];
+    expect(sql(or(fields, { orRows: 0 }))).toBe(sql(spec({ joins: shop.joins, fields })));
+  });
+
+  it('ignores cells below the last or row', () => {
+    const s = or([field('f1', 0, 'name'), field('f2', 1, 'total', { or: [{ op: '>', value: '10' }] })], { orRows: 0 });
+    expect(sql(s)).not.toContain('WHERE');
+  });
+
+  describe('with Totals', () => {
+    const totals = (fields: QueryField[]) => or(fields, { totals: true });
+
+    it('ORs rows on summaries in HAVING', () => {
+      const s = totals([field('f1', 0, 'name'), field('f2', 1, 'total', { total: 'sum', criteria: { op: '>', value: '10' }, or: [{ op: '<', value: '2' }] })]);
+      expect(sql(s)).toContain(' GROUP BY "t1"."name" HAVING (sum("t2"."total") > 10) OR (sum("t2"."total") < 2)');
+    });
+
+    it('ORs rows on Where fields in WHERE', () => {
+      const s = totals([field('f1', 0, 'name'), field('f2', 1, 'status', { total: 'where', show: false, criteria: { op: '=', value: 'shipped' }, or: [{ op: 'starts', value: 'p' }] })]);
+      expect(sql(s)).toContain(` WHERE ("t2"."status" = 'shipped') OR (starts_with(lower(CAST("t2"."status" AS VARCHAR)), lower('p'))) GROUP BY "t1"."name"`);
+    });
+
+    it('keeps Where criteria every row shares in WHERE and ORs the rest in HAVING', () => {
+      const where = { op: '=', value: 'shipped' } as const;
+      const s = totals([
+        field('f1', 0, 'name', { or: [{ op: 'starts', value: 'G' }] }),
+        field('f2', 1, 'total', { total: 'sum', criteria: { op: '>', value: '10' } }),
+        field('f3', 1, 'status', { total: 'where', show: false, criteria: where, or: [where] }),
+      ]);
+      expect(sql(s)).toContain(
+        ` WHERE "t2"."status" = 'shipped' GROUP BY "t1"."name" HAVING (sum("t2"."total") > 10) OR (starts_with(lower(CAST("t1"."name" AS VARCHAR)), lower('G')))`,
+      );
+    });
+
+    it('refuses or rows that would need different Where criteria per group condition', () => {
+      const s = totals([
+        field('f1', 0, 'name'),
+        field('f2', 1, 'total', { total: 'sum', criteria: { op: '>', value: '10' } }),
+        field('f3', 1, 'status', { total: 'where', show: false, or: [{ op: '=', value: 'shipped' }] }),
+      ]);
+      expect(queryProblems(s, tables(CUSTOMERS, ORDERS)).map((p) => p.message)).toEqual([
+        'With or rows, give every row the same criteria on Where fields: they filter rows before grouping, and the other criteria filter the groups. Copy them into each row, or keep criteria on Where fields only.',
+      ]);
+      // The designer explains it beside the grid too.
+      expect(totalsProblems(s, tables(CUSTOMERS, ORDERS)).map((p) => p.message)).toEqual(queryProblems(s, tables(CUSTOMERS, ORDERS)).map((p) => p.message));
+    });
+
+    it('a Where field with criteria only in an or row has criteria', () => {
+      const s = totals([field('f1', 0, 'name'), field('f2', 1, 'status', { total: 'where', show: false, or: [{ op: '=', value: 'shipped' }] })]);
+      expect(queryProblems(s, tables(CUSTOMERS, ORDERS))).toEqual([]);
+    });
+  });
+
+  it('checks the values in or rows, and refuses them on *', () => {
+    const problems = (s: QuerySpec) => queryProblems(s, tables(CUSTOMERS, ORDERS)).map((p) => p.message);
+    expect(problems(or([field('f1', 1, 'total', { or: [{ op: '>', value: 'ten' }] })]))).toEqual(['total is a number, so compare it with a number, not “ten” in or row 1.']);
+    expect(problems(or([field('f1', 0, 'name', { or: [{ op: '=', value: '' }] })]))).toEqual(['Give name a value to compare with in or row 1.']);
+    expect(problems(or([field('f1', 0, '*', { or: [{ op: 'empty', value: '' }] })]))).toEqual(['Sort and filter on a single field of customers, not *.']);
+  });
+});
+
 describe('query nodes in a flow', () => {
   const shopFlow = (s: Partial<QuerySpec> = shop, wired: Array<[string, number]> = [['c', 0], ['o', 1]]) =>
     flow({
@@ -305,6 +389,19 @@ describe('query nodes in a flow', () => {
     expect(compile(p, { nodeId: 'out' }, { schemas: book(p) }).sql).toMatchSnapshot();
   });
 
+  it('compiles or rows into one bracketed WHERE in the WITH chain', () => {
+    const p = shopFlow({
+      ...shop,
+      orRows: 2,
+      fields: [
+        field('f1', 0, 'name', { sort: 'asc' }),
+        field('f2', 0, 'status', { criteria: { op: '=', value: 'lapsed' } }),
+        field('f3', 1, 'total', { show: false, or: [{ op: '>', value: '10' }, { op: '<', value: '2' }] }),
+      ],
+    });
+    expect(compile(p, { nodeId: 'out' }, { schemas: book(p) }).sql).toMatchSnapshot();
+  });
+
   it('is unwired with no tables, and pending until its tables’ columns are known', () => {
     expect(() => compile(shopFlow(shop, []), { nodeId: 'q' }, { schemas: new SchemaBook() })).toThrow(UnwiredError);
     expect(() => compile(shopFlow(), { nodeId: 'q' }, { schemas: new SchemaBook() })).toThrow(PendingSchemaError);
@@ -328,6 +425,7 @@ describe('query nodes in a flow', () => {
     expect(upstreamKey(shopFlow({ ...shop, tables: [{ port: 0, x: 400, y: 10 }] }), { nodeId: 'q' })).toBe(key);
     expect(upstreamKey(shopFlow({ ...shop, distinct: true }), { nodeId: 'q' })).not.toBe(key);
     expect(upstreamKey(shopFlow({ ...shop, totals: true }), { nodeId: 'q' })).not.toBe(key);
+    expect(upstreamKey(shopFlow({ ...shop, orRows: 1, fields: [...shop.fields, field('f4', 1, 'status', { show: false, or: [{ op: '=', value: 'x' }] })] }), { nodeId: 'q' })).not.toBe(key);
     expect(upstreamKey(shopFlow({ ...shop, joins: [line('j1', [0, 'customer_id'], [1, 'customer_id'], 'left')] }), { nodeId: 'q' })).not.toBe(key);
   });
 });

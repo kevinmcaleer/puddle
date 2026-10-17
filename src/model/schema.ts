@@ -42,6 +42,11 @@ export const SourceZ = z.object({
       /** Hash of the first 1 MB when last fetched, to notice when the file at the address has changed. */
       headHash: z.string().optional(),
       size: z.number().nonnegative().optional(),
+      /**
+       * A sample dataset shipped with Puddle (src/samples), by file name: read from wherever Puddle is served (and so
+       * offline, from the service worker's cache) rather than from `href`, which only records where it was first read.
+       */
+      sample: z.string().optional(),
     })
     .optional(),
   clipboard: z.object({ text: z.string() }).optional(),
@@ -213,6 +218,8 @@ export const QueryFieldZ = z.object({
   show: z.boolean().default(true),
   sort: z.enum(['none', 'asc', 'desc']).default('none'),
   criteria: QueryCriteriaZ.optional(),
+  /** Its cells in the "or" rows below Criteria, by row; null (or missing) where a row has no condition on it. */
+  or: z.array(QueryCriteriaZ.nullable()).optional(),
   /** Its Total while the Totals row is on; Group by when unset. Kept while Totals is off, so turning it back on restores it. */
   total: z.enum(QUERY_TOTALS).optional(),
   /** A DuckDB expression over the tables' columns, using summaries such as sum(total), for the Expression total. */
@@ -228,15 +235,17 @@ export const QuerySpecZ = z.object({
   distinct: z.boolean().default(false),
   /** The Totals row: group the rows by some fields and summarise the others. */
   totals: z.boolean().default(false),
+  /** How many "or" rows the grid has below Criteria: each row's conditions are ANDed, and the rows ORed. */
+  orRows: z.number().int().nonnegative().default(0),
 });
 
-export const DEFAULT_QUERY_SPEC = { tables: [], joins: [], fields: [], distinct: false, totals: false } as const satisfies z.input<typeof QuerySpecZ>;
+export const DEFAULT_QUERY_SPEC = { tables: [], joins: [], fields: [], distinct: false, totals: false, orRows: 0 } as const satisfies z.input<typeof QuerySpecZ>;
 
 /**
  * A query built in the designer, as in Microsoft Access: each numbered input is a table, join lines run between their
  * columns, and the grid picks the fields, their order, sorting and criteria.
  */
-export const QueryNodeZ = z.object({ ...NodeBase, type: z.literal('query'), querySpec: QuerySpecZ.default({ tables: [], joins: [], fields: [], distinct: false, totals: false }) });
+export const QueryNodeZ = z.object({ ...NodeBase, type: z.literal('query'), querySpec: QuerySpecZ.default({ tables: [], joins: [], fields: [], distinct: false, totals: false, orRows: 0 }) });
 
 export const NodeZ = z.discriminatedUnion('type', [SourceNodeZ, TransformNodeZ, JoinNodeZ, AppendNodeZ, LookupNodeZ, QueryNodeZ, OutputNodeZ]);
 

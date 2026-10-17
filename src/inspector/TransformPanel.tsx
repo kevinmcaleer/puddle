@@ -84,7 +84,7 @@ function StepSettings({ node, index, error }: { node: TransformNode; index: numb
     () => {
       const engine = useEngineStore.getState().engine;
       const p = useProjectStore.getState().history.present;
-      return engine ? (column: string) => detectDateFormats(engine, p, { nodeId: node.id, stepIndex: index - 1 }, column) : undefined;
+      return engine ? (column: string, locale?: string) => detectDateFormats(engine, p, { nodeId: node.id, stepIndex: index - 1 }, column, locale) : undefined;
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [inputKey],

@@ -3,6 +3,7 @@ import type { SuggestionCheck } from '../compiler';
 import type { ColumnSchema, Rule } from '../model';
 import type { ColumnProfile } from '../results/profile';
 import { columnKind } from '../ui/columnKind';
+import { fullCount } from '../ui/format';
 
 /** A rule offered from profiling, with why. `key` (rule type and column) names it for dismissal. */
 export interface Suggestion {
@@ -67,7 +68,7 @@ export function parseSuggestionChecks(row: Record<string, unknown>, checks: Sugg
   return { rows: num('rows') ?? 0, columns };
 }
 
-const s = (n: number, word: string) => `${n.toLocaleString('en-GB')} ${word}${n === 1 ? '' : 's'}`;
+const s = (n: number, word: string) => `${fullCount(n)} ${word}${n === 1 ? '' : 's'}`;
 
 /** The column a rule checks, for matching suggestions against rules already on the node. */
 const ruleColumn = (r: Pick<Rule, 'params'>) => {

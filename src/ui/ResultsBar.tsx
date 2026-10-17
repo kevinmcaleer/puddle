@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import { Button } from './Button';
 import { cx } from './cx';
 import { abbreviate, formatBytes, formatDuration, fullCount } from './format';
+import { useDisplayFormat } from './locale';
 import { Icon, type IconName } from './Icon';
 import { Menu } from './Menu';
 import { NODE_KIND, type NodeKind } from './nodeKinds';
@@ -72,7 +73,7 @@ export function ResultsBar({
     <div className={cx('ui-resultsbar', pinned && 'is-pinned')}>
       <div className="ui-resultsbar__title">
         <Icon name={NODE_KIND[kind].icon} />
-        <span>{title}</span>
+        <h2 className="min-w-0">{title}</h2>
         {pinned && (
           <span className="ui-pinned"><Icon name="pin" size={14} />Pinned</span>
         )}
@@ -114,8 +115,9 @@ const SYNC_BADGE: Record<SyncState, { status: Status; text: string }> = {
 };
 
 export function StatusStrip({ rows, cols, ms, rules, sample, kept, detail, end, sync, syncTitle }: StatusStripProps) {
+  const display = useDisplayFormat();
   const parts: ReactNode[] = [];
-  if (rows != null) parts.push(<span key="rows">{fullCount(rows)} rows</span>);
+  if (rows != null) parts.push(<span key="rows">{fullCount(rows, display)} rows</span>);
   if (cols != null) parts.push(<span key="cols">{cols} cols</span>);
   if (ms != null) parts.push(<span key="ms">{formatDuration(ms)}</span>);
   if (rules)
@@ -133,9 +135,13 @@ export function StatusStrip({ rows, cols, ms, rules, sample, kept, detail, end, 
         {formatBytes(kept)} kept
       </span>,
     );
+  // The counts and rule results are a live region, so a screen reader hears them change; the end of the strip (the
+  // running query's timer and Stop, the engine) isn't, or the timer would be read out four times a second.
   return (
-    <div className="ui-strip" role="status">
-      {parts.flatMap((p, i) => (i ? [<span key={`sep${i}`} className="ui-strip__sep" />, p] : [p]))}
+    <footer className="ui-strip">
+      <span role="status" className="ui-row" style={{ gap: 'var(--space-3)' }}>
+        {parts.flatMap((p, i) => (i ? [<span key={`sep${i}`} className="ui-strip__sep" />, p] : [p]))}
+      </span>
       <span className="ui-strip__end">
         {sync && (
           <span data-testid="sync-state" data-state={sync}>
@@ -145,8 +151,8 @@ export function StatusStrip({ rows, cols, ms, rules, sample, kept, detail, end, 
           </span>
         )}
         {end}
-        {rows != null && (sample ? <StatusBadge status="warn">Sample of {abbreviate(sample)} rows</StatusBadge> : <span>Full data</span>)}
+        {rows != null && (sample ? <StatusBadge status="warn">Sample of {abbreviate(sample, display)} rows</StatusBadge> : <span>Full data</span>)}
       </span>
-    </div>
+    </footer>
   );
 }

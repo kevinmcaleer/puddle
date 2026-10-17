@@ -25,3 +25,15 @@ describe('StatusStrip sync state', () => {
     expect(badge.querySelector('[title="More"]')).not.toBeNull();
   });
 });
+
+describe('StatusStrip for screen readers', () => {
+  it('reads out the counts and rule results as they change, but not the timer and Stop at its end', () => {
+    render(<StatusStrip rows={4} cols={3} rules={{ pass: 1, warn: 0, fail: 1 }} end={<span data-testid="end">Counting rows · 2s</span>} />);
+    const live = screen.getByRole('status');
+    expect(live).toHaveTextContent('4 rows');
+    expect(live).toHaveTextContent('3 cols');
+    expect(live).toHaveTextContent('1 fail');
+    expect(live).not.toContainElement(screen.getByTestId('end'));
+    expect(live.closest('footer')).not.toBeNull();
+  });
+});

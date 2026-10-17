@@ -19,3 +19,14 @@ describe('result cells', () => {
     expect(resultCell('', 'text', subtle)).toMatchObject({ displayData: '' });
   });
 });
+
+describe('result cells in a display locale', () => {
+  const de = { locale: 'de-DE', dates: 'locale' } as const;
+
+  it('shows numbers and dates in the locale, but keeps the data and what copies as DuckDB wrote it', () => {
+    expect(resultCell('1234.5', 'decimal', subtle, de)).toMatchObject({ data: '1234.5', displayData: '1.234,5', copyData: '1234.5' });
+    expect(resultCell('2026-12-31', 'date', subtle, de)).toMatchObject({ data: '2026-12-31', displayData: '31.12.2026', copyData: '2026-12-31' });
+    expect(resultCell('1234', 'text', subtle, de)).toMatchObject({ displayData: '1234' });
+    expect(resultCell(null, 'decimal', subtle, de)).toMatchObject({ displayData: 'null', copyData: '' });
+  });
+});

@@ -14,7 +14,8 @@ export function ShortcutsDialog() {
   return (
     <Dialog title="Keyboard shortcuts" onClose={close} className="w-[560px] max-w-[calc(100vw-32px)]">
       <p className="text-label text-ink-muted">Shortcuts work anywhere outside a text field. {mac ? '⌘ is Command.' : 'On a Mac, use Command in place of Ctrl.'}</p>
-      <div className="flex max-h-[60vh] flex-col gap-4 overflow-auto pr-2 focus-visible:outline-brand" data-testid="shortcuts-list">
+      {/* Focusable so the list scrolls from the keyboard too. */}
+      <div role="group" aria-label="Shortcuts" tabIndex={0} className="flex max-h-[60vh] flex-col gap-4 overflow-auto pr-2 focus-visible:outline-brand" data-testid="shortcuts-list">
         {SHORTCUT_AREAS.map((area) => (
           <section key={area} aria-label={area}>
             <h3 className="ui-eyebrow pb-1">{area}</h3>

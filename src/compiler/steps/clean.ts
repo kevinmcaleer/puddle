@@ -1,5 +1,6 @@
 // More Clean steps, mostly reached from the quick-fix bar: spaces, non-printing characters, empty text, numbers.
 import { z } from 'zod';
+import { PARSE_LOCALE_IDS, parseLocale } from '../locales';
 import { ident, list, str } from '../sql';
 import { defineStep } from './registry';
 
@@ -42,13 +43,19 @@ export const parseNumbers = defineStep({
     columns: Columns,
     /** The decimal mark; the other of . and , is read as a thousands separator. */
     decimal: z.enum(['.', ',']).default('.'),
+    /**
+     * How the numbers are written, which sets the decimal mark in place of `decimal`. Kept with the step so it reads
+     * the same on any machine; steps from before it existed have none and use `decimal`.
+     */
+    locale: z.preprocess((v) => (v === '' ? undefined : v), z.enum(PARSE_LOCALE_IDS, 'pick a locale Puddle knows').optional()),
   }),
-  label: (p) => `Parsed numbers in ${names(p.columns)}`,
+  label: (p) => `Parsed numbers in ${names(p.columns)}${p.locale ? ` (${parseLocale(p.locale)!.label})` : ''}`,
   // Keep digits, the decimal mark and a minus sign; (12.00) is negative, as accountants write it.
   compile: (p, { input }) =>
     replaceEach(input, p.columns, (c) => {
-      const kept = `regexp_replace(${text(c)}, ${str(p.decimal === '.' ? '[^0-9.\\-]' : '[^0-9,\\-]')}, '', 'g')`;
-      const n = `TRY_CAST(${p.decimal === ',' ? `replace(${kept}, ',', '.')` : kept} AS DOUBLE)`;
+      const decimal = parseLocale(p.locale)?.decimal ?? p.decimal;
+      const kept = `regexp_replace(${text(c)}, ${str(decimal === '.' ? '[^0-9.\\-]' : '[^0-9,\\-]')}, '', 'g')`;
+      const n = `TRY_CAST(${decimal === ',' ? `replace(${kept}, ',', '.')` : kept} AS DOUBLE)`;
       return `CASE WHEN regexp_matches(trim(${text(c)}), '^\\(.*\\)$') THEN -${n} ELSE ${n} END`;
     }),
 });

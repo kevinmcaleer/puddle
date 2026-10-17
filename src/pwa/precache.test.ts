@@ -1,7 +1,7 @@
 import { cacheName, precacheList, strategyFor } from './precache';
 
 describe('precacheList', () => {
-  it('keeps the app, the eh engine and its extensions, and leaves out maps, the mvp bundle and the worker itself', () => {
+  it('keeps the app, the eh engine and its extensions and the sample datasets, and leaves out maps, the mvp bundle and the worker itself', () => {
     const files = [
       'index.html',
       'sw.js',
@@ -17,6 +17,7 @@ describe('precacheList', () => {
       'duckdb-extensions/manifest.json',
       'duckdb-extensions/v1.5.4/wasm_eh/json.duckdb_extension.wasm',
       'duckdb-extensions/v1.5.4/wasm_mvp/json.duckdb_extension.wasm',
+      'samples/contacts.csv',
     ];
     expect(precacheList(files)).toEqual([
       './',
@@ -26,6 +27,7 @@ describe('precacheList', () => {
       'duckdb-extensions/v1.5.4/wasm_eh/json.duckdb_extension.wasm',
       'index.html',
       'manifest.webmanifest',
+      'samples/contacts.csv',
     ]);
   });
 });
@@ -35,6 +37,8 @@ describe('strategyFor', () => {
   it('sends pages to the network first, versioned files to the cache, and leaves other sites alone', () => {
     expect(strategyFor(new URL('/', origin), origin, 'navigate')).toBe('page');
     expect(strategyFor(new URL('/assets/main-abc.js', origin), origin, 'cors')).toBe('cache-first');
+    // Samples are read by fetch, so offline they come from the cache too.
+    expect(strategyFor(new URL('/samples/contacts.csv', origin), origin, 'cors')).toBe('cache-first');
     expect(strategyFor(new URL('/duckdb-extensions/manifest.json', origin), origin, 'cors')).toBe('network');
     expect(strategyFor(new URL('https://elsewhere.example/x.js'), origin, 'cors')).toBe('network');
   });

@@ -28,13 +28,14 @@ export { compileJoin, JOIN_TYPES, joinColumns, joinProblems, keepsRightColumns, 
 export { compileLookup, lookupColumns, suggestLookupColumns, lookupProblems, type LookupColumn, type LookupProblem } from './lookup';
 export { KeptBook, keptTable, keptTableName, knownKept, type KeptTable } from './keptBook';
 export { appendColumns, appendProblems, compileAppend, type AppendColumn, type AppendInput, type AppendProblem } from './append';
-export { compileQuery, CRITERIA_OPS, criteriaPlace, crossJoinedTables, defaultNames, fieldTerm, fieldTotal, joinPlan, QUERY_JOIN_TYPES, queryColumns, queryProblems, resultType, tableAlias, TOTALS, totalsProblems, type QueryColumn, type QueryJoinStep, type QueryProblem, type QueryTable } from './query';
+export { compileQuery, CRITERIA_OPS, criteriaClauses, criteriaPlace, criteriaRows, crossJoinedTables, defaultNames, fieldTerm, fieldTotal, joinPlan, QUERY_JOIN_TYPES, queryColumns, queryProblems, resultType, tableAlias, TOTALS, totalsProblems, type QueryColumn, type QueryJoinStep, type QueryProblem, type QueryTable } from './query';
 export { knownSchemas, SchemaBook } from './schemaBook';
 export { cleanCustomSql, customSqlProblem, INPUT_NAME, lexSql, SqlRefusal, type SqlToken, type SqlTokenKind } from './customSql';
 export { renameSqlColumns, sqlColumnRefs } from './columnRefs';
 export { describeType, typeFamily, typesFit } from './types';
 export { SchemaCache } from './schemaCache';
 export { dropTable, sourceFileName, sourceRelation, sourceTableName } from './sources';
+export { englishDateNames, isParseLocale, PARSE_LOCALE_IDS, PARSE_LOCALES, parseLocale, type ParseLocale, type ParseLocaleId } from './locales';
 export { bool, cteName, ident, list, num, stepFailure, str, strList } from './sql';
 export * from './steps';
 export { defineRule, describeRule, PATTERN_PRESETS, READS_AS_TYPES, ruleColumns, ruleDef, ruleParams, rulePredicate, ruleRefs, ruleScope, ruleTypes, type NodeNames, type PatternPreset, type ReadsAs, type RuleContext, type RuleDef } from './rules';

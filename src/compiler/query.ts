@@ -1,7 +1,8 @@
 // Query nodes, built in the query designer: tables joined by the lines drawn between their columns, then the grid's
 // fields, criteria and sorting, as one SELECT. With the Totals row on, the same SELECT groups and summarises: Where
-// fields filter rows before grouping, and criteria on the other fields filter the groups.
-import type { ColumnSchema, QueryCriteria, QueryCriteriaOp, QueryField, QueryJoin, QueryJoinKind, QuerySpec, QueryTotal } from '../model';
+// fields filter rows before grouping, and criteria on the other fields filter the groups. Criteria rows, Criteria and
+// the "or" rows below it, are ORed: each row's conditions are ANDed, in brackets.
+import { criteriaCell, type ColumnSchema, type QueryCriteria, type QueryCriteriaOp, type QueryField, type QueryJoin, type QueryJoinKind, type QuerySpec, type QueryTotal } from '../model';
 import { ident, num, str } from './sql';
 import { expressionProblem } from './steps/columns';
 import { describeType, typeFamily, typesFit } from './types';
@@ -77,6 +78,12 @@ export const criteriaPlace = (spec: Pick<QuerySpec, 'totals'>, f: Pick<QueryFiel
   const total = fieldTotal(spec, f);
   return !total || total === 'where' ? 'where' : 'having';
 };
+
+/** The criteria rows: 0 is the Criteria row, then the "or" rows below it. */
+export const criteriaRows = (spec: Pick<QuerySpec, 'orRows'>) => Array.from({ length: 1 + spec.orRows }, (_, i) => i);
+
+/** Whether a field has a condition in any criteria row. */
+const hasCriteria = (spec: QuerySpec, f: QueryField) => criteriaRows(spec).some((r) => criteriaCell(f, r));
 
 /** Whether the field is in the result: shown, and not a Where field (which only filters). */
 const inResult = (spec: QuerySpec, f: QueryField) => f.show && fieldTotal(spec, f) !== 'where';
@@ -209,7 +216,7 @@ export function queryProblems(spec: QuerySpec, tables: QueryTable[]): QueryProbl
       continue;
     }
     if (f.column === '*') {
-      if (f.sort !== 'none' || f.criteria) problems.push({ field: f.id, port: f.port, message: `Sort and filter on a single field of ${t.label}, not *.` });
+      if (f.sort !== 'none' || hasCriteria(spec, f)) problems.push({ field: f.id, port: f.port, message: `Sort and filter on a single field of ${t.label}, not *.` });
       else if (spec.totals) problems.push({ field: f.id, message: starTotals(t.label) });
       continue;
     }
@@ -223,16 +230,21 @@ export function queryProblems(spec: QuerySpec, tables: QueryTable[]): QueryProbl
       problems.push({ field: f.id, message: totalProblem });
       continue;
     }
-    const c = f.criteria;
-    if (c && CRITERIA_OPS[c.op].needsValue) {
+    for (const row of criteriaRows(spec)) {
+      const c = criteriaCell(f, row);
+      if (!c || !CRITERIA_OPS[c.op].needsValue) continue;
       const type = resultType(spec, f, col.type);
       const what = fieldTotal(spec, f) === 'expression' ? `the expression for ${f.column}` : f.column;
       // A summary is called by its name in the result: SumOftotal, or what it was renamed.
       const called = (spec.totals && f.alias?.trim()) || defaultNames(spec).get(f.id)!;
-      if (!c.value.trim()) problems.push({ field: f.id, message: `Give ${what} a value to compare with.` });
-      else if (COMPARE.has(c.op) && typeFamily(type) === 'number' && !isNumber(c.value)) problems.push({ field: f.id, message: `${called} is a number, so compare it with a number, not “${c.value}”.` });
+      const where = row ? ` in or row ${row}` : '';
+      if (!c.value.trim()) problems.push({ field: f.id, message: `Give ${what} a value to compare with${where}.` });
+      else if (COMPARE.has(c.op) && typeFamily(type) === 'number' && !isNumber(c.value)) problems.push({ field: f.id, message: `${called} is a number, so compare it with a number, not “${c.value}”${where}.` });
     }
   }
+
+  // Or rows that can't be split between WHERE and HAVING, once every field can be read.
+  if (!problems.length && mixedOrRows(spec, tables)) problems.push({ message: MIXED_OR_ROWS });
 
   for (const j of spec.joins) {
     const [l, r] = [table(j.left.port), table(j.right.port)];
@@ -264,6 +276,16 @@ export function queryProblems(spec: QuerySpec, tables: QueryTable[]): QueryProbl
   return problems;
 }
 
+const MIXED_OR_ROWS =
+  'With or rows, give every row the same criteria on Where fields: they filter rows before grouping, and the other criteria filter the groups. Copy them into each row, or keep criteria on Where fields only.';
+
+/** Whether the or rows mix WHERE and HAVING in a way that can't be split (see criteriaClauses); false while a field can't be read. */
+function mixedOrRows(spec: QuerySpec, tables: QueryTable[]): boolean {
+  if (!spec.totals || !spec.orRows) return false;
+  const readable = spec.fields.every((f) => f.column === '*' || tables.find((t) => t.port === f.port)?.columns.some((c) => c.name === f.column));
+  return readable && criteriaClauses(spec, criterionOf(spec, tables)) === 'mixed';
+}
+
 const starTotals = (label: string) => `Totals work on single fields, not ${label}.*. Take it out of the grid, or drag in the fields to group or summarise.`;
 
 /**
@@ -272,14 +294,15 @@ const starTotals = (label: string) => `Totals work on single fields, not ${label
  */
 export function totalsProblems(spec: QuerySpec, tables: QueryTable[]): QueryProblem[] {
   if (!spec.totals) return [];
-  return spec.fields.flatMap((f) => {
+  const fields = spec.fields.flatMap((f) => {
     const t = tables.find((x) => x.port === f.port);
     if (!t) return [];
-    if (f.column === '*') return f.sort === 'none' && !f.criteria ? [{ field: f.id, message: starTotals(t.label) }] : [];
+    if (f.column === '*') return f.sort === 'none' && !hasCriteria(spec, f) ? [{ field: f.id, message: starTotals(t.label) }] : [];
     const col = t.columns.find((c) => c.name === f.column);
     const message = col && totalsProblem(spec, f, col);
     return message ? [{ field: f.id, message }] : [];
   });
+  return mixedOrRows(spec, tables) ? [...fields, { message: MIXED_OR_ROWS }] : fields;
 }
 
 /**
@@ -300,7 +323,7 @@ function totalsProblem(spec: QuerySpec, f: QueryField, col: ColumnSchema): strin
   }
   if (total === 'where') {
     if (f.show) return `${f.column} is a Where field: it filters rows before they’re grouped, so it can’t show. Turn off its Show, or pick another Total.`;
-    if (!f.criteria) return `${f.column} is a Where field, so give it criteria to filter on, or pick another Total.`;
+    if (!hasCriteria(spec, f)) return `${f.column} is a Where field, so give it criteria to filter on, or pick another Total.`;
     if (f.sort !== 'none') return `${f.column} is a Where field, so the grouped result has no ${f.column} to sort on. Turn off its sort.`;
   }
   return undefined;
@@ -348,6 +371,38 @@ export function resultType(spec: Pick<QuerySpec, 'totals'>, f: Pick<QueryField, 
   return (total && TOTALS[total].type) ?? columnType;
 }
 
+/** A field's condition as SQL, given the tables it reads. */
+const criterionOf = (spec: QuerySpec, tables: QueryTable[]) => (f: QueryField, c: QueryCriteria) =>
+  criterionSql(fieldTerm(spec, f), resultType(spec, f, tables.find((t) => t.port === f.port)!.columns.find((col) => col.name === f.column)!.type), c);
+
+/**
+ * The criteria as conditions to AND in WHERE and in HAVING. A criteria row's conditions are ANDed and the rows ORed,
+ * each in brackets: (a AND b) OR (c). A row with no conditions is left out, and a lone row needs no brackets.
+ *
+ * With the Totals row on, a row's conditions on Where fields go in WHERE and the rest in HAVING. Rows split that way
+ * exactly when only one clause has conditions, or when every row has the same WHERE conditions, since
+ * (w AND h1) OR (w AND h2) is w AND (h1 OR h2). Other mixes can't be split: "mixed", which queryProblems explains.
+ */
+export function criteriaClauses(spec: QuerySpec, sqlOf: (f: QueryField, c: QueryCriteria) => string): { where: string[]; having: string[] } | 'mixed' {
+  const rows = criteriaRows(spec)
+    .map((row) => {
+      const parts = { where: [] as string[], having: [] as string[] };
+      for (const f of spec.fields) {
+        const c = criteriaCell(f, row);
+        if (c && f.column !== '*') parts[criteriaPlace(spec, f)].push(sqlOf(f, c));
+      }
+      return parts;
+    })
+    .filter((r) => r.where.length || r.having.length);
+  if (rows.length <= 1) return rows[0] ?? { where: [], having: [] };
+  // A row with no conditions in a clause matches everything there, so that clause has nothing to filter.
+  const or = (parts: string[][]) => (parts.some((p) => !p.length) ? [] : [parts.map((p) => `(${p.join(' AND ')})`).join(' OR ')]);
+  if (rows.every((r) => !r.having.length)) return { where: or(rows.map((r) => r.where)), having: [] };
+  if (rows.every((r) => !r.where.length)) return { where: [], having: or(rows.map((r) => r.having)) };
+  const same = rows.every((r) => r.where.join(' AND ') === rows[0]!.where.join(' AND '));
+  return same ? { where: rows[0]!.where, having: or(rows.map((r) => r.having)) } : 'mixed';
+}
+
 /** The query as one SELECT over its tables' CTEs. Assumes queryProblems found nothing. */
 export function compileQuery(spec: QuerySpec, tables: Array<QueryTable & { cte: string }>): string {
   const plan = joinPlan(spec, tables.map((t) => t.port))!;
@@ -358,10 +413,9 @@ export function compileQuery(spec: QuerySpec, tables: Array<QueryTable & { cte: 
     if (s.kind === 'CROSS') from.push(`CROSS JOIN ${rel}`);
     else from.push(`${s.kind} JOIN ${rel} ON ${s.lines.map((j) => `${fieldSql(j.left)} = ${fieldSql(j.right)}`).join(' AND ')}`);
   }
-  const type = (f: QueryField) => resultType(spec, f, tables.find((t) => t.port === f.port)!.columns.find((c) => c.name === f.column)!.type);
   const single = spec.fields.filter((f) => f.column !== '*');
-  const criteria = (place: 'where' | 'having') => single.filter((f) => f.criteria && criteriaPlace(spec, f) === place).map((f) => criterionSql(fieldTerm(spec, f), type(f), f.criteria!));
-  const [where, having] = [criteria('where'), criteria('having')];
+  const clauses = criteriaClauses(spec, criterionOf(spec, tables));
+  const { where, having } = clauses === 'mixed' ? { where: [], having: [] } : clauses;
   // Every Group by field groups, shown or not, as in Access.
   const group = [...new Set(single.filter((f) => fieldTotal(spec, f) === 'group').map(fieldSql))];
   // The sort applies to the grouped result, so it's on what each field stands for there.

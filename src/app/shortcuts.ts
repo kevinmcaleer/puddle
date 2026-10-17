@@ -46,8 +46,14 @@ export const SHORTCUTS = [
   { id: 'select-downstream', area: 'Canvas', label: 'Select the node this one feeds', keys: [k('ArrowRight')] },
   { id: 'select-above', area: 'Canvas', label: 'Select the connected node above', keys: [k('ArrowUp')] },
   { id: 'select-below', area: 'Canvas', label: 'Select the connected node below', keys: [k('ArrowDown')] },
+  { id: 'open-node', area: 'Canvas', label: 'Open the selected node: a Query in its designer, others in the inspector', keys: [k('Enter')] },
+  { id: 'connect', area: 'Canvas', label: 'Wire the selected node into another, or unwire them: C, then Enter on the other node', keys: [k('c')] },
+  { id: 'cancel', area: 'Canvas', label: 'Stop wiring', keys: [k('Escape')] },
   { id: 'delete-nodes', area: 'Canvas', label: 'Delete the selected nodes or wire', keys: [k('Delete'), k('Backspace')], handledBy: 'canvas' },
   { id: 'delete-query-join', area: 'Canvas', label: 'Delete the selected join line', keys: [k('Delete'), k('Backspace')], handledBy: 'query designer' },
+  { id: 'query-field', area: 'Canvas', label: 'Add the focused field to the grid, or join it to another table', keys: [k('Enter')], handledBy: 'query designer' },
+  { id: 'move-query-table', area: 'Canvas', label: 'Move the focused table', keys: [k('ArrowLeft'), k('ArrowRight'), k('ArrowUp'), k('ArrowDown')], handledBy: 'query designer' },
+  { id: 'move-query-column', area: 'Canvas', label: 'Move the focused grid column left or right', keys: [k('ArrowLeft', { alt: true }), k('ArrowRight', { alt: true })], handledBy: 'query designer' },
 
   { id: 'view', area: 'Results', label: 'View the selected node', keys: [k('v')] },
   { id: 'export', area: 'Results', label: 'Export the viewed Output', keys: [k('e')] },
@@ -63,7 +69,7 @@ export const SHORTCUTS = [
 export type ShortcutId = (typeof SHORTCUTS)[number]['id'];
 
 /** The shortcuts the app-wide key handler runs (the rest are handled where they happen). */
-export type GlobalShortcutId = Exclude<ShortcutId, 'paste' | 'delete-nodes' | 'delete-query-join' | 'move-step' | 'delete-step'>;
+export type GlobalShortcutId = Exclude<ShortcutId, 'paste' | 'delete-nodes' | 'delete-query-join' | 'query-field' | 'move-query-table' | 'move-query-column' | 'move-step' | 'delete-step'>;
 
 export const shortcut = (id: ShortcutId): Shortcut => SHORTCUTS.find((s) => s.id === id)! as Shortcut;
 
@@ -87,7 +93,7 @@ export function shortcutFor(e: KeyLike, mac: boolean): Shortcut | undefined {
   return (SHORTCUTS as readonly Shortcut[]).find((s) => !s.handledBy && s.keys.some((c) => matches(e, c, mac)));
 }
 
-const KEY_NAME: Record<string, string> = { ArrowLeft: '←', ArrowRight: '→', ArrowUp: '↑', ArrowDown: '↓', Delete: 'Delete', Backspace: 'Backspace' };
+const KEY_NAME: Record<string, string> = { ArrowLeft: '←', ArrowRight: '→', ArrowUp: '↑', ArrowDown: '↓', Delete: 'Delete', Backspace: 'Backspace', Enter: 'Enter', Escape: 'Esc' };
 
 /** The keys of one combo, each as it is printed on the keyboard: ["Ctrl", "Shift", "Z"] or ["⌘", "⇧", "Z"]. */
 export function comboKeys(combo: KeyCombo, mac: boolean): string[] {
