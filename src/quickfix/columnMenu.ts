@@ -47,6 +47,7 @@ export function columnActions(ctx: ColumnMenuContext): ColumnAction[] {
     { label: 'Keep matching rows…', group: g, step: (c) => make('filterRows', c, { mode: 'keep', conditions: [{ column: first, op: 'notEmpty', value: '' }] }) },
     { label: 'Remove empty rows', group: g, step: onColumns('removeBlankRows') },
     { label: 'Remove duplicates', group: g, step: fix('duplicateRows') },
+    { label: 'Keep duplicates', group: g, step: onColumns('duplicateRows', { keep: 'duplicates' }) },
     { label: 'Sort ascending', group: g, step: (c) => make('sortRows', c, { keys: c.columns.map((column) => ({ column, descending: false })) }) },
     { label: 'Sort descending', group: g, step: (c) => make('sortRows', c, { keys: c.columns.map((column) => ({ column, descending: true })) }) },
 
