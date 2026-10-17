@@ -1,7 +1,7 @@
 import type { LucideIcon } from 'lucide-react';
 import {
   ArrowLeft, Blend, Calendar, ClipboardPaste, CaseSensitive, Check, ChevronDown, ChevronRight, ChevronUp, CircleHelp, Clock, Code, Columns2, Download, Ellipsis, Eye,
-  File, FileText, GripVertical, Info, Keyboard, Link, ListPlus, Monitor, Moon, PanelBottomClose, PanelBottomOpen, PanelRightClose, PanelRightOpen, Pin, Plus, Redo2, RefreshCw,
+  File, FileText, GripVertical, Info, Keyboard, LayoutTemplate, Link, ListPlus, Monitor, Moon, PanelBottomClose, PanelBottomOpen, PanelRightClose, PanelRightOpen, Pin, Plus, Redo2, RefreshCw,
   Search, ShieldCheck, Sigma, SlidersHorizontal, Sun, TableProperties, TriangleAlert, Type, Undo2, Workflow, X,
 } from 'lucide-react';
 import { cx } from './cx';
@@ -52,6 +52,7 @@ const LUCIDE = {
   'sidebar-close': PanelRightClose,
   'sidebar-open': PanelRightOpen,
   compare: Columns2,
+  template: LayoutTemplate,
   totals: Sigma,
 } satisfies Record<string, LucideIcon>;
 

@@ -14,6 +14,7 @@ export function Dialog({
   title,
   children,
   confirm,
+  confirmDisabled,
   danger,
   onConfirm,
   onClose,
@@ -22,6 +23,8 @@ export function Dialog({
   title: string;
   children?: ReactNode;
   confirm?: string;
+  /** Grey out the confirm button (and ignore Enter) until the form is ready. */
+  confirmDisabled?: boolean;
   danger?: boolean;
   onConfirm?: () => void;
   onClose: () => void;
@@ -55,6 +58,7 @@ export function Dialog({
   };
   const submit = (e: FormEvent) => {
     e.preventDefault();
+    if (confirmDisabled) return;
     if (onConfirm) onConfirm();
     else onClose();
   };
@@ -76,7 +80,7 @@ export function Dialog({
           {confirm ? (
             <>
               <Button variant="ghost" onClick={onClose}>Cancel</Button>
-              <Button type="submit" variant={danger ? 'danger' : 'primary'}>{confirm}</Button>
+              <Button type="submit" variant={danger ? 'danger' : 'primary'} disabled={confirmDisabled}>{confirm}</Button>
             </>
           ) : (
             <Button type="submit" variant="secondary" data-autofocus>Close</Button>

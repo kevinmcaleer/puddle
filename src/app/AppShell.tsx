@@ -34,6 +34,8 @@ import { addFiles, addNodeAfterSelection, cancelWiring, chooseFiles as pickSourc
 import { useEngineStore, type EngineStatus } from './engine';
 import { ResultsPanel } from './ResultsPanel';
 import { ShortcutsDialog } from './ShortcutsDialog';
+import { openTemplates } from '../templates/actions';
+import { TemplateDialogs } from '../templates/TemplateDialogs';
 import { shortcutText, withShortcut, type GlobalShortcutId } from './shortcuts';
 import { useShortcuts } from './useShortcuts';
 import { PROVIDER_IDS, PROVIDERS, useSync } from '../sync';
@@ -274,6 +276,7 @@ export function AppShell() {
             button={{ icon: 'transform', ...{ 'data-tour': 'add-node' } }}
             items={[
               { label: 'Transform', icon: 'transform', shortcut: shortcutText('add-transform'), onSelect: () => addNodeAfterSelection('transform') },
+              { label: 'From template', icon: 'template', hint: 'Saved steps', onSelect: openTemplates },
               { label: 'Join', icon: 'join', hint: 'Two inputs', onSelect: () => addNodeAfterSelection('join') },
               { label: 'Append', icon: 'append', hint: 'Stack rows', onSelect: () => addNodeAfterSelection('append') },
               { label: 'Lookup', icon: 'join', hint: 'Bring columns across', onSelect: () => addNodeAfterSelection('lookup') },
@@ -380,6 +383,7 @@ export function AppShell() {
       <UrlDialog onChooseFile={chooseFiles} />
       <SamplesDialog />
       <ShortcutsDialog />
+      <TemplateDialogs />
       <Tour />
     </ReactFlowProvider>
   );

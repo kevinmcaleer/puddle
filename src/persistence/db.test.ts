@@ -1,5 +1,6 @@
 import 'fake-indexeddb/auto';
 import { createProject } from '../model';
+import { createTemplate } from '../templates/template';
 import {
   closeDb,
   copyHandles,
@@ -7,16 +8,19 @@ import {
   deleteHandles,
   deleteProject,
   deleteSyncLink,
+  deleteTemplate,
   listProjects,
   listSyncLinks,
   loadCredential,
   loadHandles,
   loadProject,
   loadSyncLink,
+  loadTemplates,
   saveCredential,
   saveHandle,
   saveProject,
   saveSyncLink,
+  saveTemplate,
 } from './db';
 
 afterEach(async () => {
@@ -110,6 +114,16 @@ describe('IndexedDB file handles', () => {
     expect((await loadHandles('old')).size).toBe(1);
   });
 
+  it('keeps templates apart from projects: saved, replaced and deleted by id', async () => {
+    const t = createTemplate({ name: 'Tidy names', steps: [{ id: 'st1', type: 'trimWhitespace', label: 'Trimmed name', enabled: true, params: { columns: ['name'] } }], expectedColumns: [{ name: 'name', type: 'VARCHAR' }] });
+    await saveTemplate(t);
+    await saveTemplate({ ...t, name: 'Tidy contact names' });
+    expect(await loadTemplates()).toEqual([{ ...t, name: 'Tidy contact names' }]);
+    expect(await listProjects()).toEqual([]);
+    await deleteTemplate(t.id);
+    expect(await loadTemplates()).toEqual([]);
+  });
+
   it('keeps a sync credential apart from every project, and deletes it', async () => {
     const p = createProject('Synced');
     await saveProject(p);
@@ -130,7 +144,7 @@ describe('IndexedDB file handles', () => {
     expect(await loadSyncLink('p1')).toBeUndefined();
   });
 
-  it('keeps projects and handles from version 2 when it adds the sync stores', async () => {
+  it('keeps projects and handles from version 2 through the sync and templates upgrades', async () => {
     await closeDb();
     await new Promise<void>((resolve, reject) => {
       const req = indexedDB.open('puddle', 2);
@@ -147,5 +161,31 @@ describe('IndexedDB file handles', () => {
     expect((await loadProject('old'))!.name).toBe('From v2');
     await saveSyncLink({ projectId: 'old', provider: 'gist' });
     expect(await loadSyncLink('old')).toEqual({ projectId: 'old', provider: 'gist' });
+    expect(await loadTemplates()).toEqual([]);
+  });
+
+  it('keeps projects, sync links and credentials from version 3 when it adds the templates store', async () => {
+    await closeDb();
+    await new Promise<void>((resolve, reject) => {
+      const req = indexedDB.open('puddle', 3);
+      req.onupgradeneeded = () => {
+        req.result.createObjectStore('projects', { keyPath: 'id' }).put({ ...createProject('From v3'), id: 'old' });
+        req.result.createObjectStore('handles', { keyPath: 'key' }).createIndex('projectId', 'projectId');
+        req.result.createObjectStore('credentials', { keyPath: 'provider' }).put({ provider: 'gist', secret: 's', account: 'kev' });
+        req.result.createObjectStore('syncLinks', { keyPath: 'projectId' }).put({ projectId: 'old', provider: 'gist', remoteId: 'g1' });
+      };
+      req.onsuccess = () => {
+        req.result.close();
+        resolve();
+      };
+      req.onerror = () => reject(req.error);
+    });
+    expect((await loadProject('old'))!.name).toBe('From v3');
+    expect(await loadCredential('gist')).toEqual({ provider: 'gist', secret: 's', account: 'kev' });
+    expect(await loadSyncLink('old')).toEqual({ projectId: 'old', provider: 'gist', remoteId: 'g1' });
+    expect(await loadTemplates()).toEqual([]);
+    const t = createTemplate({ name: 'After upgrade', steps: [{ id: 'st1', type: 'trimWhitespace', label: 'Trimmed name', enabled: true, params: { columns: ['name'] } }], expectedColumns: [] });
+    await saveTemplate(t);
+    expect(await loadTemplates()).toEqual([t]);
   });
 });

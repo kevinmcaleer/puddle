@@ -44,6 +44,7 @@ A Docker image (nginx serving the static build) behind a Cloudflare Tunnel at pu
 | `src/excel/` | SheetJS in a Web Worker: reading `.xlsx` sheets into typed columns and Arrow tables for DuckDB, and writing Excel exports from Arrow batches. Excel's limits and sheet-name rules live in `limits.ts`, which doesn't load SheetJS |
 | `src/persistence/` | IndexedDB autosave, `.puddle.json` export and import, format migrations |
 | `src/sync/` | Optional project sync through one provider-agnostic layer (`SyncProvider`): sync states, the offline queue, conflict choices and "Open from"; GitHub Gist and Google Drive (only with a client ID set at build time) are the providers. Credentials and sync links stay in IndexedDB on this device (Google's hour-long sign-in in this tab's session only); the synced file is the `.puddle.json` less pasted rows |
+| `src/templates/` | Node templates: a Transform node's steps saved outside any project (IndexedDB, upgraded through the project migrations), the library dialog, and the column mapping that renames a template's columns for a new input and turns off steps whose columns are missing |
 | `src/home/` | The projects home screen and the rename and delete dialogs |
 | `src/samples/` | The onboarding samples: the catalogue of messy datasets in `public/samples/` (written by `scripts/make-samples.mjs`), the Try a sample picker, and `openSample`, which opens one as a new project |
 | `src/tour/` | The guided tour: its stops, the popover that points at each part of the screen (following layout changes), the first-launch offer and progress kept in this browser |
@@ -63,7 +64,7 @@ A Docker image (nginx serving the static build) behind a Cloudflare Tunnel at pu
 | `tests/` | Engine integration tests, fixtures and helpers (`scripts/make-excel-fixtures.mjs` writes the Excel fixture) |
 | `e2e/` | Playwright tests |
 
-Adding a step type means one `defineStep` in `src/compiler/steps/` (Zod params, past-tense label, compile function), one `defineStepForm` in `src/steps/` (title, group, fields, defaults) and one test fixture.
+Adding a step type means one `defineStep` in `src/compiler/steps/` (Zod params, past-tense label, compile function), one `defineStepForm` in `src/steps/` (title, group, fields, defaults) and one test fixture. The form's column fields (`column`, `columns`, `renames`, `conditions`, `sortKeys`, `expression`, `sql`) are also how templates find and rename the columns a step reads.
 
 ## Licence
 

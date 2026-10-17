@@ -23,8 +23,16 @@ export const addStep = (project: Project, nodeId: string, step: Step, at?: numbe
     return [...steps.slice(0, i), step, ...steps.slice(i)];
   });
 
+/** Turning a step on drops the reason it was off. */
+const patched = (step: Step, patch: Partial<Omit<Step, 'id'>>): Step => {
+  const next = { ...step, ...patch };
+  if (!patch.enabled || next.disabledReason === undefined) return next;
+  const { disabledReason: _, ...rest } = next;
+  return rest;
+};
+
 export const updateStep = (project: Project, nodeId: string, stepId: string, patch: Partial<Omit<Step, 'id'>>): Project =>
-  withSteps(project, nodeId, (steps) => (steps.some((s) => s.id === stepId) ? steps.map((s) => (s.id === stepId ? { ...s, ...patch } : s)) : steps));
+  withSteps(project, nodeId, (steps) => (steps.some((s) => s.id === stepId) ? steps.map((s) => (s.id === stepId ? patched(s, patch) : s)) : steps));
 
 /**
  * Remove a step. If it began an absorbed node, its origin passes to the next step so ungrouping still works;

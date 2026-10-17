@@ -1,8 +1,9 @@
 import type { Project } from '../model';
+import type { Template } from '../templates/template';
 
 const DB = 'puddle';
-/** 2 added the handles store; 3 the sync credentials and links. */
-const VERSION = 3;
+/** 2 added the handles store; 3 the sync credentials and links; 4 the templates store. */
+const VERSION = 4;
 const PROJECTS = 'projects';
 /**
  * Chromium's file handles, by project and source, so a reopened project's files reconnect with a permission click.
@@ -22,6 +23,8 @@ export interface StoredHandle<H = unknown> {
 const CREDENTIALS = 'credentials';
 /** Which remote copy each synced project keeps, and the revision last pulled or pushed, by project. */
 const SYNC_LINKS = 'syncLinks';
+/** Node templates, outside any project so every project can use them. Kept as saved; read through migrateTemplate. */
+const TEMPLATES = 'templates';
 
 const handleKey = (projectId: string, sourceId: string) => `${projectId}\u0000${sourceId}`;
 
@@ -45,6 +48,7 @@ function open(): Promise<IDBDatabase> {
       if (!db.objectStoreNames.contains(HANDLES)) db.createObjectStore(HANDLES, { keyPath: 'key' }).createIndex('projectId', 'projectId');
       if (!db.objectStoreNames.contains(CREDENTIALS)) db.createObjectStore(CREDENTIALS, { keyPath: 'provider' });
       if (!db.objectStoreNames.contains(SYNC_LINKS)) db.createObjectStore(SYNC_LINKS, { keyPath: 'projectId' });
+      if (!db.objectStoreNames.contains(TEMPLATES)) db.createObjectStore(TEMPLATES, { keyPath: 'id' });
     };
     req.onsuccess = () => {
       // Let a newer Puddle in another tab upgrade the database; this tab reopens it on its next save.
@@ -156,3 +160,10 @@ export const loadSyncLink = (projectId: string) =>
 export const listSyncLinks = () => run<StoredSyncLink[]>('readonly', (s) => s.getAll() as IDBRequest<StoredSyncLink[]>, SYNC_LINKS);
 
 export const deleteSyncLink = (projectId: string) => run('readwrite', (s) => s.delete(projectId), SYNC_LINKS).then(() => undefined);
+
+export const saveTemplate = (template: Template) => run('readwrite', (s) => s.put(template), TEMPLATES).then(() => undefined);
+
+export const deleteTemplate = (id: string) => run('readwrite', (s) => s.delete(id), TEMPLATES).then(() => undefined);
+
+/** Every stored template as it was saved, in any format version: callers upgrade them with migrateTemplate. */
+export const loadTemplates = () => run<unknown[]>('readonly', (s) => s.getAll(), TEMPLATES);

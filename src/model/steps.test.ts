@@ -37,6 +37,14 @@ describe('step edits', () => {
     expect(ids(removeStep(p, 't1', 't1s1'), 't1')).toEqual(['t1s0', 't1s2']);
   });
 
+  it('drops the reason a step was off once it is turned on, and keeps it otherwise', () => {
+    const off = addStep(p, 't1', { ...s('off'), enabled: false, disabledReason: 'Needs name, which the input doesn’t have.' });
+    expect(tf(updateStep(off, 't1', 'off', { label: 'Renamed' }), 't1').steps[3]!.disabledReason).toMatch(/Needs name/);
+    const on = tf(toggleStep(off, 't1', 'off'), 't1').steps[3]!;
+    expect(on.enabled).toBe(true);
+    expect('disabledReason' in on).toBe(false);
+  });
+
   it('moves a step, and ignores moves out of range', () => {
     expect(ids(moveStep(p, 't1', 0, 2), 't1')).toEqual(['t1s1', 't1s2', 't1s0']);
     expect(moveStep(p, 't1', 0, 9)).toBe(p);
