@@ -196,12 +196,12 @@ test('grouping the nodes before a join and ungrouping them keep it working', asy
   await expectOnCanvas(page, 'Trim');
   await node(page, 'Upper').click();
   await node(page, 'Trim').click({ modifiers: ['Shift'] });
-  await page.getByRole('button', { name: 'Group into one node' }).click();
+  await page.getByRole('button', { name: 'Merge into one node' }).click();
   await expect(node(page, 'Trim')).not.toBeAttached();
   await expect(page.getByTestId('wire-Upper->Join 1')).toHaveAttribute('data-port', 'right');
   await expect(node(page, 'Join 1')).toHaveAttribute('data-status', 'ok');
 
-  await page.getByRole('button', { name: 'Ungroup into the original nodes' }).click();
+  await page.getByRole('button', { name: 'Split into the original nodes' }).click();
   await expect(page.getByTestId('wire-Trim->Join 1')).toHaveAttribute('data-port', 'right');
   await page.getByRole('button', { name: 'Undo' }).click();
   await expect(page.getByTestId('wire-Upper->Join 1')).toHaveAttribute('data-port', 'right');

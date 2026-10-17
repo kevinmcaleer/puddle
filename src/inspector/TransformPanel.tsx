@@ -177,7 +177,7 @@ export function TransformPanel({ node }: { node: TransformNode }) {
         </Button>
         {canUngroup(node) && (
           <Button size="sm" variant="ghost" icon="layout" onClick={() => apply((p) => ungroupNode(p, node.id))}>
-            Ungroup into the original nodes
+            Split into the original nodes
           </Button>
         )}
       </div>

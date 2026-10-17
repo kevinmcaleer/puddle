@@ -81,11 +81,11 @@ export type GroupCheck = { ok: true; chain: string[] } | { ok: false; reason: st
  * each inner wire is the only way in and out. Returns them in flow order.
  */
 export function canGroup(project: Project, ids: string[]): GroupCheck {
-  if (ids.length < 2) return { ok: false, reason: 'Select two or more Transform nodes to group.' };
+  if (ids.length < 2) return { ok: false, reason: 'Select two or more Transform nodes in a line to merge them.' };
   const set = new Set(ids);
   const nodes = ids.map((id) => nodeById(project, id));
-  if (nodes.some((n) => n?.type !== 'transform')) return { ok: false, reason: 'Only Transform nodes can be grouped.' };
-  if (nodes.some((n) => (n as TransformNode).steps.length === 0)) return { ok: false, reason: 'A node with no steps can’t be grouped. Add a step or leave it out.' };
+  if (nodes.some((n) => n?.type !== 'transform')) return { ok: false, reason: 'Only Transform nodes can be merged.' };
+  if (nodes.some((n) => (n as TransformNode).steps.length === 0)) return { ok: false, reason: 'A node with no steps can’t be merged. Add a step or leave it out.' };
   const heads = ids.filter((id) => !inputEdges(project, id).some((e) => set.has(e.from.nodeId)));
   if (heads.length !== 1) return { ok: false, reason: 'Grouped nodes must be wired one after another in a single line.' };
   const chain = [heads[0]!];
@@ -121,6 +121,8 @@ export function groupNodes(project: Project, ids: string[]): Project {
   return {
     ...project,
     nodes: project.nodes.filter((n) => !absorbed.has(n.id)).map((n) => (n.id === headId ? { ...head, steps } : n)),
+    // Merged nodes leave any group they were in; the node they merged into stays in its own.
+    groups: project.groups.map((g) => ({ ...g, nodeIds: g.nodeIds.filter((id) => !absorbed.has(id)) })).filter((g) => g.nodeIds.length > 0),
     edges: project.edges.filter((e) => !innerEdges.has(e.id)).map((e) => (e.from.nodeId === last ? { ...e, from: { nodeId: headId! } } : e)),
     view: groupedView(project.view, absorbed, headId!),
   };

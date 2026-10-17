@@ -78,7 +78,7 @@ test('a step renamed by hand keeps its name; nodes take a name and notes', async
   await expect(page.getByLabel('Node notes')).toHaveValue('Contact details are not shared.');
 });
 
-test('nodes in a line group into one and ungroup back; a node splits at a step', async ({ page }) => {
+test('nodes in a line merge into one and split back; a node splits at a step', async ({ page }) => {
   await transform(page);
   await addStep(page, 'Trim whitespace');
   await page.getByRole('button', { name: 'Add', exact: true }).click();
@@ -87,19 +87,19 @@ test('nodes in a line group into one and ungroup back; a node splits at a step',
   await addStep(page, 'Remove columns');
   await page.getByTestId('step-settings').getByRole('button', { name: 'joined', exact: true }).click();
 
-  // A source can't join a group, and says so.
+  // A source can't be merged into a Transform, and says so.
   await node(page, 'customers.csv').click({ modifiers: ['Shift'] });
-  await expect(page.getByTestId('group-bar')).toContainText('Only Transform nodes can be grouped');
-  await expect(page.getByRole('button', { name: 'Group into one node' })).toBeDisabled();
+  await expect(page.getByRole('button', { name: 'Merge into one node' })).toBeDisabled();
+  await expect(page.getByRole('button', { name: 'Merge into one node' })).toHaveAttribute('title', 'Only Transform nodes can be merged.');
 
   await node(page, 'Transform 1').click();
   await node(page, 'Transform 2').click({ modifiers: ['Shift'] });
-  await page.getByRole('button', { name: 'Group into one node' }).click();
+  await page.getByRole('button', { name: 'Merge into one node' }).click();
   await expect(node(page, 'Transform 2')).toHaveCount(0);
   await expect(steps(page)).toHaveText([/Trimmed name/, /Removed joined/]);
   await expect(page.getByTestId('wire-customers.csv->Transform 1')).toBeAttached();
 
-  await page.getByRole('button', { name: 'Ungroup into the original nodes' }).click();
+  await page.getByRole('button', { name: 'Split into the original nodes' }).click();
   await expect(node(page, 'Transform 2')).toBeVisible();
   await expect(page.getByTestId('wire-Transform 1->Transform 2')).toBeAttached();
   await page.getByRole('button', { name: 'Undo' }).click();

@@ -201,7 +201,7 @@ describe('grouping and undo around a join', () => {
   });
 
   it('refuses to group a Join node', () => {
-    expect(canGroup(grouped(), ['b', 'j'])).toEqual({ ok: false, reason: 'Only Transform nodes can be grouped.' });
+    expect(canGroup(grouped(), ['b', 'j'])).toEqual({ ok: false, reason: 'Only Transform nodes can be merged.' });
   });
 
   it('deleting an input and wiring it back gives the same rows', async () => {

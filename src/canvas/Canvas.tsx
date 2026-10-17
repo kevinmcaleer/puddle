@@ -20,9 +20,34 @@ import { FilesNotKeptBanner, ReconnectBanner } from '../sources/ReconnectBanner'
 import { useSession } from '../app/session';
 import { useFlowStore } from '../flow/status';
 import { JOIN_TYPES, ruleRefs } from '../compiler';
-import { canGroup, groupNodes, hasOutput, inputPorts, moveNodes, parsePort, removeNodes, samePort, setCollapsed, upstreamIds, useProject, useProjectStore, type GraphNode } from '../model';
-import { Banner, Button, Icon } from '../ui';
-import { withShortcut } from '../app/shortcuts';
+import {
+  canGroup,
+  canMakeGroup,
+  groupById,
+  groupNodes,
+  groupOf,
+  groupPorts,
+  hasOutput,
+  inputPorts,
+  makeGroup,
+  moveGroup,
+  moveNodes,
+  newId,
+  parsePort,
+  removeNodes,
+  renameGroup,
+  samePort,
+  setCollapsed,
+  setGroupCollapsed,
+  ungroup,
+  upstreamIds,
+  useProject,
+  useProjectStore,
+  type GraphNode,
+  type NodeGroup,
+} from '../model';
+import { Banner, Button, ContextMenu, Dialog, Field, Icon, TextInput, type MenuItem } from '../ui';
+import { shortcutText, withShortcut } from '../app/shortcuts';
 import { anyNodeOffscreen } from './minimap';
 import { viewNode } from '../results/pin';
 import { hostOf } from '../sources/url';
@@ -33,14 +58,36 @@ import { formatLabel } from './formatLabel';
 import { focusNodeWhenDrawn } from './focusNode';
 import { portBroken, portName } from './ports';
 import { PuddleNode, type PuddleFlowNode } from './PuddleNode';
+import { GroupFrame, GroupNode, type GroupFlowNode, type GroupFrameFlowNode } from './GroupNode';
+import { groupCardId, groupFrameId, groupIdOf, inHandle, outHandle } from './groupIds';
 import { RefEdge, type RefFlowEdge } from './RefEdge';
 import { WireEdge, type WireFlowEdge } from './WireEdge';
 import './canvas.css';
 
-const nodeTypes = { puddle: PuddleNode };
+const nodeTypes = { puddle: PuddleNode, group: GroupNode, frame: GroupFrame };
 const edgeTypes = { wire: WireEdge, reference: RefEdge };
 
 type PuddleEdge = WireFlowEdge | RefFlowEdge;
+type FlowNode = PuddleFlowNode | GroupFlowNode | GroupFrameFlowNode;
+
+/** A node's size before React Flow has measured it. */
+const NODE_SIZE = { width: 232, height: 96 };
+/** Room round an open group's nodes, and above them for its name. */
+const FRAME_PAD = 24;
+const FRAME_HEAD = 32;
+
+/** Where an open group's frame goes: round its nodes, as they are drawn now. */
+function frameBox(group: NodeGroup, at: (id: string) => { x: number; y: number } | undefined, size: (id: string) => { width: number; height: number }) {
+  const boxes = group.nodeIds.flatMap((id) => {
+    const p = at(id);
+    return p ? [{ ...p, ...size(id) }] : [];
+  });
+  const x = Math.min(...boxes.map((b) => b.x)) - FRAME_PAD;
+  const y = Math.min(...boxes.map((b) => b.y)) - FRAME_PAD - FRAME_HEAD;
+  const right = Math.max(...boxes.map((b) => b.x + b.width)) + FRAME_PAD;
+  const bottom = Math.max(...boxes.map((b) => b.y + b.height)) + FRAME_PAD;
+  return { x, y, width: right - x, height: bottom - y };
+}
 
 /** One dashed reference per pair of nodes where a rule on one reads the other. */
 function referenceEdges(project: ReturnType<typeof useProject>): RefFlowEdge[] {
@@ -91,25 +138,33 @@ function detailFor(node: GraphNode, sources: ReturnType<typeof useProject>['sour
   return s.kind === 'clipboard' ? `Source · Pasted ${formatLabel(s.format)}` : `Source · ${formatLabel(s.format)}`;
 }
 
-/** Shown when several nodes are selected: group them into one, or say why they can't be; join two, look up from one into the other, append them, or query them. */
-function GroupBar({ ids }: { ids: string[] }) {
+/**
+ * Shown when several nodes are selected: group them (as in Blender, collapsible to one card), merge a line of
+ * Transforms into one node, join two, look up from one into the other, append them, or query them.
+ */
+function GroupBar({ ids, onGrouped }: { ids: string[]; onGrouped: (groupId: string) => void }) {
   const project = useProject();
-  const check = canGroup(project, ids);
+  const group = canMakeGroup(project, ids);
+  const merge = canGroup(project, ids);
   const combinable = ids.every((id) => project.nodes.some((n) => n.id === id && hasOutput(n)));
   return (
     <div className="absolute bottom-4 left-1/2 z-panel -translate-x-1/2" data-testid="group-bar">
       <div className="ui-popover flex w-auto items-center gap-3 px-3 py-2">
-        <span className="text-ink-muted">{check.ok ? `${ids.length} nodes selected` : check.reason}</span>
+        <span className="text-ink-muted">{group.ok ? `${ids.length} nodes selected` : group.reason}</span>
+        <Button size="sm" variant="primary" icon="group" disabled={!group.ok} title={withShortcut('Group these nodes', 'group')} onClick={() => onGrouped(groupSelected(ids))}>
+          Group
+        </Button>
         <Button
           size="sm"
-          variant="primary"
-          disabled={!check.ok}
+          variant="secondary"
+          disabled={!merge.ok}
+          title={merge.ok ? 'Put their steps in one Transform node' : merge.reason}
           onClick={() => {
             useProjectStore.getState().apply((p) => groupNodes(p, ids));
-            if (check.ok) useSession.getState().select(check.chain[0]!);
+            if (merge.ok) useSession.getState().select(merge.chain[0]!);
           }}
         >
-          Group into one node
+          Merge into one node
         </Button>
         {combinable && ids.length === 2 && (
           <Button size="sm" variant="secondary" icon="join" onClick={() => addNodeAfterSelection('join')}>
@@ -134,6 +189,67 @@ function GroupBar({ ids }: { ids: string[] }) {
       </div>
     </div>
   );
+}
+
+/**
+ * The canvas's right-click menu on a node, a group's card or an open group's frame: group the selection, or open,
+ * close, rename or ungroup the group.
+ */
+function NodeMenu({ at, onClose, onRename, onGrouped }: { at: { x: number; y: number; flowId: string }; onClose: () => void; onRename: (groupId: string) => void; onGrouped: (groupId: string) => void }) {
+  const project = useProject();
+  const apply = useProjectStore((s) => s.apply);
+  const selected = useSession((s) => s.selectedNodeIds);
+  const groupId = groupIdOf(at.flowId);
+  const group = groupId ? groupById(project, groupId) : groupOf(project, at.flowId);
+  const items: MenuItem[] = [];
+  if (!groupId) {
+    // Right-clicking a node outside the selection acts on that node alone, as in a file manager.
+    const ids = selected.includes(at.flowId) ? selected : [at.flowId];
+    const check = canMakeGroup(project, ids);
+    // A lone node already in a group has nothing to group with; the group's own items follow.
+    if (check.ok || !group) items.push({ label: ids.length > 1 ? `Group ${ids.length} nodes` : 'Group', icon: 'group', shortcut: shortcutText('group'), disabled: !check.ok, onSelect: () => onGrouped(groupSelected(ids)) });
+  }
+  if (group) {
+    items.push(
+      group.collapsed
+        ? { label: `Open ${group.name}`, group: 'Group', onSelect: () => apply((p) => setGroupCollapsed(p, group.id, false)) }
+        : { label: `Close ${group.name}`, group: 'Group', onSelect: () => apply((p) => setGroupCollapsed(p, group.id, true)) },
+      { label: 'Rename group…', group: 'Group', onSelect: () => onRename(group.id) },
+      { label: 'Ungroup', group: 'Group', icon: 'ungroup', onSelect: () => apply((p) => ungroup(p, group.id)) },
+    );
+  }
+  if (!items.length) return null;
+  return <ContextMenu x={at.x} y={at.y} label={group ? `Actions for ${group.name}` : 'Node actions'} items={items} onClose={onClose} />;
+}
+
+function RenameGroup({ groupId, onClose }: { groupId: string; onClose: () => void }) {
+  const group = groupById(useProject(), groupId);
+  const [name, setName] = useState(group?.name ?? '');
+  if (!group) return null;
+  return (
+    <Dialog
+      title="Rename group"
+      confirm="Rename"
+      confirmDisabled={!name.trim()}
+      onClose={onClose}
+      onConfirm={() => {
+        useProjectStore.getState().apply((p) => renameGroup(p, groupId, name));
+        onClose();
+      }}
+    >
+      <Field label="Name" htmlFor="group-name">
+        <TextInput id="group-name" data-autofocus value={name} onChange={(e) => setName(e.target.value)} />
+      </Field>
+    </Dialog>
+  );
+}
+
+/** Group the nodes (collapsed), clearing the node selection; returns the new group's id. */
+function groupSelected(ids: string[]): string {
+  const id = newId('g');
+  useProjectStore.getState().apply((p) => makeGroup(p, ids, id));
+  useSession.getState().select(null);
+  return id;
 }
 
 /** The node canvas: the primary editing surface (plan D3, D18). */
@@ -165,25 +281,65 @@ export function Canvas({ onAddSource, onLayout }: { onAddSource: () => void; onL
   // Selected wires, so Delete removes a wire on its own. Nodes' selection lives in the session.
   const [selectedEdges, setSelectedEdges] = useState<string[]>([]);
   const [dropping, setDropping] = useState(false);
+  const [menu, setMenu] = useState<{ x: number; y: number; flowId: string } | null>(null);
+  const [renaming, setRenaming] = useState<string | null>(null);
   const rf = useReactFlow();
 
   const viewedId = project.view.viewedNodeId;
   const activeIds = useMemo(() => (viewedId && project.nodes.some((n) => n.id === viewedId) ? upstreamIds(project, viewedId) : new Set<string>()), [project, viewedId]);
 
-  const nodes: PuddleFlowNode[] = useMemo(() => {
+  // Groups: a collapsed one hides its nodes behind one card; an open one draws a frame behind them.
+  const [selectedGroup, setSelectedGroup] = useState<string | null>(null);
+  const collapsedOf = useMemo(() => {
+    const m = new Map<string, NodeGroup>();
+    for (const g of project.groups) if (g.collapsed) for (const id of g.nodeIds) m.set(id, g);
+    return m;
+  }, [project.groups]);
+
+  const nodes: FlowNode[] = useMemo(() => {
     const ends = referenceEnds(project);
-    return project.nodes.map((n) => ({
-      id: n.id,
-      type: 'puddle',
-      position: dragging[n.id] ?? n.position,
-      measured: measured[n.id],
-      selected: selectedNodeIds.includes(n.id),
-      ariaLabel: nodeLabel(n, { detail: detailFor(n, project.sources, project.edges), status: statuses[n.id]?.status, viewed: n.id === viewedId }),
-      className: n.id === connectFrom ? 'is-wiring-from' : undefined,
-      data: { node: n, viewed: n.id === viewedId, detail: detailFor(n, project.sources, project.edges), refIn: ends.to.has(n.id), refOut: ends.from.has(n.id) },
-    }));
+    const names = Object.fromEntries(project.nodes.map((n) => [n.id, n.name]));
+    const at = (id: string) => dragging[id] ?? project.nodes.find((n) => n.id === id)?.position;
+    const size = (id: string) => measured[id] ?? NODE_SIZE;
+    const frames = project.groups
+      .filter((g) => !g.collapsed)
+      .map((g): GroupFrameFlowNode => {
+        const box = frameBox(g, at, size);
+        return { id: groupFrameId(g.id), type: 'frame', position: { x: box.x, y: box.y }, measured: measured[groupFrameId(g.id)], zIndex: -1, selectable: false, draggable: false, deletable: false, focusable: false, data: { group: g, width: box.width, height: box.height } };
+      });
+    const cards = project.groups
+      .filter((g) => g.collapsed)
+      .map((g): GroupFlowNode => {
+        const id = groupCardId(g.id);
+        const broken = g.nodeIds.filter((n) => statuses[n]?.status.state === 'error').length;
+        return {
+          id,
+          type: 'group',
+          position: dragging[id] ?? g.position,
+          measured: measured[id],
+          selected: selectedGroup === g.id,
+          deletable: false,
+          ariaLabel: `${g.name}, group of ${g.nodeIds.length} nodes${broken ? `, ${broken} broken` : ''}`,
+          data: { group: g, ports: groupPorts(project, g), names, viewed: !!viewedId && g.nodeIds.includes(viewedId), broken },
+        };
+      });
+    const visible = project.nodes.filter((n) => !collapsedOf.has(n.id));
+    return [
+      ...frames,
+      ...visible.map((n): PuddleFlowNode => ({
+        id: n.id,
+        type: 'puddle',
+        position: dragging[n.id] ?? n.position,
+        measured: measured[n.id],
+        selected: selectedNodeIds.includes(n.id),
+        ariaLabel: nodeLabel(n, { detail: detailFor(n, project.sources, project.edges), status: statuses[n.id]?.status, viewed: n.id === viewedId }),
+        className: n.id === connectFrom ? 'is-wiring-from' : undefined,
+        data: { node: n, viewed: n.id === viewedId, detail: detailFor(n, project.sources, project.edges), refIn: ends.to.has(n.id), refOut: ends.from.has(n.id) },
+      })),
+      ...cards,
+    ];
     // eslint-disable-next-line react-hooks/exhaustive-deps -- references are read from project.nodes
-  }, [project.nodes, project.sources, project.edges, dragging, measured, selectedNodeIds, viewedId, statuses, connectFrom],
+  }, [project.nodes, project.sources, project.edges, project.groups, collapsedOf, dragging, measured, selectedNodeIds, selectedGroup, viewedId, statuses, connectFrom],
   );
 
   const edges: PuddleEdge[] = useMemo(
@@ -198,46 +354,67 @@ export function Canvas({ onAddSource, onLayout }: { onAddSource: () => void; onL
         const target = project.nodes.find((n) => n.id === e.to.nodeId);
         const ports = target ? inputPorts(project, target) : [];
         const spec = ports.length > 1 ? ports.find((p) => samePort(p.id, e.to.port)) : undefined;
+        // A wire into or out of a collapsed group goes to the group's card, at the socket for it.
+        const fromGroup = collapsedOf.get(e.from.nodeId);
+        const toGroup = collapsedOf.get(e.to.nodeId);
         return {
           id: e.id,
           type: 'wire',
-          source: e.from.nodeId,
-          target: e.to.nodeId,
-          targetHandle: String(e.to.port),
+          source: fromGroup ? groupCardId(fromGroup.id) : e.from.nodeId,
+          sourceHandle: fromGroup ? outHandle(e.from.nodeId) : undefined,
+          target: toGroup ? groupCardId(toGroup.id) : e.to.nodeId,
+          targetHandle: toGroup ? inHandle(e.id) : String(e.to.port),
+          hidden: !!fromGroup && fromGroup === toGroup,
           selected: selectedEdges.includes(e.id),
           ariaLabel: wireLabel(name(e.from.nodeId), name(e.to.nodeId), spec && portName(spec)),
           data: { state: broken ? 'broken' : active ? 'active' : 'idle', fromNodeId: e.from.nodeId, hovered: hoveredEdge === e.id, label: `${name(e.from.nodeId)}->${name(e.to.nodeId)}`, port: spec && String(spec.id), portName: spec && portName(spec) },
         };
       }),
-      ...referenceEdges(project),
+      // A rule's reference to or from a node hidden in a group isn't drawn.
+      ...referenceEdges(project).filter((e) => !collapsedOf.has(e.source) && !collapsedOf.has(e.target)),
     ],
-    [project, statuses, activeIds, hoveredEdge, selectedEdges],
+    [project, statuses, activeIds, hoveredEdge, selectedEdges, collapsedOf],
   );
 
   const onNodesChange = useCallback(
-    (changes: NodeChange<PuddleFlowNode>[]) => {
+    (changes: NodeChange<FlowNode>[]) => {
       const moving: Record<string, { x: number; y: number }> = {};
       const done: Record<string, { x: number; y: number }> = {};
       const sizes: Record<string, { width: number; height: number }> = {};
       for (const c of changes) {
         if (c.type === 'dimensions' && c.dimensions) sizes[c.id] = c.dimensions;
         if (c.type === 'position' && c.position) (c.dragging ? moving : done)[c.id] = c.position;
-        if (c.type === 'position' && !c.position && !c.dragging) done[c.id] = dragging[c.id] ?? project.nodes.find((n) => n.id === c.id)!.position;
+        if (c.type === 'position' && !c.position && !c.dragging) {
+          const g = groupIdOf(c.id);
+          const pos = dragging[c.id] ?? (g ? groupById(project, g)?.position : project.nodes.find((n) => n.id === c.id)?.position);
+          if (pos) done[c.id] = pos;
+        }
       }
       if (Object.keys(sizes).length) setMeasured((m) => ({ ...m, ...sizes }));
       if (Object.keys(moving).length) setDragging((d) => ({ ...d, ...moving }));
       if (Object.keys(done).length) {
-        // One undo step per drag, committed when the drag ends.
-        apply((p) => moveNodes(p, done));
+        // One undo step per drag, committed when the drag ends. A group's card moves the nodes inside with it.
+        apply((p) =>
+          Object.entries(done).reduce(
+            (q, [id, pos]) => {
+              const g = groupIdOf(id);
+              return g ? moveGroup(q, g, pos) : moveNodes(q, { [id]: pos });
+            },
+            p,
+          ),
+        );
         setDragging((d) => Object.fromEntries(Object.entries(d).filter(([id]) => !(id in done))));
       }
     },
-    [apply, dragging, project.nodes],
+    [apply, dragging, project],
   );
 
   // The input the wire was dropped on; the first free one when React Flow doesn't say.
+  // From a collapsed group, the wire starts at the node behind the socket; into one, the group has to be opened first.
   const onConnect = useCallback((c: Connection) => {
-    if (wireNodes(c.source, c.target, parsePort(c.targetHandle))) useSession.getState().notify(null);
+    if (groupIdOf(c.target)) return useSession.getState().notify({ tone: 'info', text: 'Open the group to wire into a node inside it.' });
+    const source = groupIdOf(c.source) && c.sourceHandle?.startsWith('out:') ? c.sourceHandle.slice(4) : c.source;
+    if (wireNodes(source, c.target, parsePort(c.targetHandle))) useSession.getState().notify(null);
   }, []);
 
   // A node reached with Tab is selected, as the arrow keys select, so the inspector follows the keyboard. (A click
@@ -277,7 +454,7 @@ export function Canvas({ onAddSource, onLayout }: { onAddSource: () => void; onL
       onDragLeave={() => setDropping(false)}
       onDrop={onDrop}
     >
-      <ReactFlow<PuddleFlowNode, PuddleEdge>
+      <ReactFlow<FlowNode, PuddleEdge>
         nodes={nodes}
         edges={edges}
         nodeTypes={nodeTypes}
@@ -293,19 +470,36 @@ export function Canvas({ onAddSource, onLayout }: { onAddSource: () => void; onL
         onConnect={onConnect}
         onMoveEnd={onMoveEnd}
         onNodeClick={(e, n) => {
+          if (n.type === 'frame') return;
+          if (n.type === 'group') {
+            useSession.getState().select(null);
+            return setSelectedGroup(n.data.group.id);
+          }
+          setSelectedGroup(null);
           if (e.shiftKey || e.metaKey || e.ctrlKey) return useSession.getState().toggleSelected(n.id);
           useSession.getState().select(n.id);
           viewNode(n.id);
         }}
         onNodeDoubleClick={(_e, n) => {
+          // A group opens, as Tab opens one in Blender.
+          if (n.type === 'group') return apply((p) => setGroupCollapsed(p, n.data.group.id, false));
+          if (n.type !== 'puddle') return;
           if (n.data.node.type === 'transform') apply((p) => setCollapsed(p, n.id, n.data.node.collapsed !== false));
           // A Query opens in its designer, as a query does in Access.
           if (n.data.node.type === 'query') useSession.getState().openDesigner(n.id);
         }}
-        onPaneClick={() => useSession.getState().select(null)}
+        onNodeContextMenu={(e, n) => {
+          e.preventDefault();
+          setMenu({ x: e.clientX, y: e.clientY, flowId: n.id });
+        }}
+        onPaneClick={() => {
+          setSelectedGroup(null);
+          useSession.getState().select(null);
+        }}
         onDelete={({ nodes: delNodes, edges: delEdges }) => {
-          // One undo step for the whole deletion, nodes and wires together.
-          apply((p) => removeNodes({ ...p, edges: p.edges.filter((e) => !delEdges.some((d) => d.id === e.id)) }, delNodes.map((n) => n.id)));
+          // One undo step for the whole deletion, nodes and wires together. A group's card isn't deleted this way.
+          const ids = delNodes.filter((n) => n.type === 'puddle').map((n) => n.id);
+          apply((p) => removeNodes({ ...p, edges: p.edges.filter((e) => !delEdges.some((d) => d.id === e.id)) }, ids));
           setSelectedEdges([]);
         }}
         onEdgeMouseEnter={(_e, edge) => setHoveredEdge(edge.id)}
@@ -341,7 +535,9 @@ export function Canvas({ onAddSource, onLayout }: { onAddSource: () => void; onL
         </div>
       )}
 
-      {selectedNodeIds.length > 1 && <GroupBar ids={selectedNodeIds} />}
+      {selectedNodeIds.length > 1 && <GroupBar ids={selectedNodeIds} onGrouped={setSelectedGroup} />}
+      {menu && <NodeMenu at={menu} onClose={() => setMenu(null)} onRename={setRenaming} onGrouped={setSelectedGroup} />}
+      {renaming && <RenameGroup groupId={renaming} onClose={() => setRenaming(null)} />}
 
       <div className="pointer-events-none absolute left-4 right-4 top-4 z-panel mx-auto flex max-w-[560px] flex-col gap-2 [&>*]:pointer-events-auto">
         <ReconnectBanner />
