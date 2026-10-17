@@ -15,3 +15,4 @@ export { placeStep, type Placed } from './quickfix';
 export { addRule, dismissSuggestion, removeRule, updateRule } from './rules';
 export { logExport, setOutputSpec } from './exports';
 export { carryPin, viewWithout } from './view';
+export { canMakeGroup, groupById, groupOf, groupPorts, makeGroup, moveGroup, nextGroupName, pruneGroups, renameGroup, setGroupCollapsed, ungroup, type GroupPorts } from './groups';

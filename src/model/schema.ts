@@ -303,6 +303,20 @@ export const ExportLogEntryZ = z.object({
   cancelled: z.boolean().optional(),
 });
 
+/**
+ * A group of nodes, as in Blender: collapsed, the canvas draws it as one card with the wires that come into it and
+ * the nodes whose results leave it; opened, as a frame round its nodes. Only the canvas reads it; what runs is the
+ * same either way.
+ */
+export const NodeGroupZ = z.object({
+  id: z.string().min(1),
+  name: z.string(),
+  nodeIds: z.array(z.string().min(1)).min(1),
+  collapsed: z.boolean().default(true),
+  /** Where the collapsed card sits. */
+  position: PositionZ.default({ x: 0, y: 0 }),
+});
+
 export const ProjectZ = z.object({
   id: z.string().min(1),
   name: z.string(),
@@ -314,6 +328,7 @@ export const ProjectZ = z.object({
   sources: z.array(SourceZ).default([]),
   nodes: z.array(NodeZ).default([]),
   edges: z.array(EdgeZ).default([]),
+  groups: z.array(NodeGroupZ).default([]),
   view: ProjectViewZ.default({ pinned: false, canvasViewport: { x: 0, y: 0, zoom: 1 } }),
   /** Newest first, at most EXPORT_LOG_LIMIT entries. Not part of undo: an export happened either way. */
   exportLog: z.array(ExportLogEntryZ).default([]),
@@ -356,6 +371,7 @@ export type GraphNode = z.infer<typeof NodeZ>;
 export type NodeType = GraphNode['type'];
 export type Edge = z.infer<typeof EdgeZ>;
 export type ProjectSettings = z.infer<typeof ProjectSettingsZ>;
+export type NodeGroup = z.infer<typeof NodeGroupZ>;
 export type ProjectView = z.infer<typeof ProjectViewZ>;
 export type Project = z.infer<typeof ProjectZ>;
 export type ExportLogEntry = z.infer<typeof ExportLogEntryZ>;
