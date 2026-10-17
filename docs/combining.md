@@ -1,6 +1,6 @@
 # Combining data
 
-Puddle has three nodes for bringing data together. Each takes its inputs from the nodes wired into it. The quickest way to make one is to select its inputs on the canvas (click the first, Shift+click the next) and choose from the selection bar or the **Add node** menu. The order you select them in is the order they're wired.
+Puddle has three nodes for bringing data together. Each takes its inputs from the nodes wired into it. The quickest way to make one is to select its inputs on the canvas (click the first, Shift+click the next) and choose from the selection bar or the **Add** menu. The order you select them in is the order they're wired.
 
 ![The selection bar for two selected nodes](_static/screenshots/combine-selection-bar.png)
 

@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import { addFiles, addStep, cell, expectRows, fixture, node } from '../../e2e/helpers/app';
-import { annotate, closeNotes, openSample, projectMenu, selectColumnsAt, settings, shot, shotPanel, start, steps } from './helpers';
+import { annotate, openSample, projectMenu, selectColumnsAt, settings, shot, shotPanel, start, steps } from './helpers';
 
 // Each test captures the pictures for one page of the docs. Pictures are named <page>-<what>.png.
 
@@ -21,7 +21,6 @@ test('samples and the screen', async ({ page }) => {
   await expect(node(page, 'contacts.csv')).toHaveAttribute('data-status', 'ok', { timeout: 20_000 });
   await expectRows(page, 53);
   await shot(page, 'start-sample-open');
-  await closeNotes(page);
   await node(page, 'contacts.csv').click();
   await shot(page, 'screen-overview');
   // The toolbar, canvas, inspector, results and status strip, numbered as the page about the screen lists them.
@@ -37,7 +36,7 @@ test('samples and the screen', async ({ page }) => {
 
 test('sources', async ({ page }) => {
   await start(page);
-  await page.getByRole('button', { name: 'Add source' }).first().click();
+  await page.getByRole('button', { name: 'Add', exact: true }).click();
   await shot(page, 'sources-menu', page.getByRole('menu'));
   await page.keyboard.press('Escape');
   await addFiles(page, [fixture('sales.xlsx')]);
@@ -48,7 +47,6 @@ test('sources', async ({ page }) => {
 test('quick fixes and steps', async ({ page }) => {
   await start(page);
   await openSample(page, 'contacts');
-  await closeNotes(page);
   await node(page, 'contacts.csv').click();
   // name and city.
   await selectColumnsAt(page, 90, 450);
@@ -81,7 +79,6 @@ test('quick fixes and steps', async ({ page }) => {
 test('rules, outputs and export', async ({ page }) => {
   await start(page);
   await openSample(page, 'contacts');
-  await closeNotes(page);
   await node(page, 'contacts.csv').click();
   const rulesSection = page.locator('section[aria-label="Rules"]');
   await expect(page.getByTestId('rule-suggestions')).toBeVisible({ timeout: 20_000 });
@@ -109,7 +106,7 @@ test('rules, outputs and export', async ({ page }) => {
   await shot(page, 'rules-status-strip', page.locator('footer.ui-strip'), { pad: 0 });
 
   await node(page, 'contacts.csv').click();
-  await page.getByRole('button', { name: 'Add node' }).click();
+  await page.getByRole('button', { name: 'Add', exact: true }).click();
   await shot(page, 'canvas-add-node-menu', page.getByRole('menu'));
   await page.getByRole('menuitem', { name: 'Output' }).click();
   await node(page, 'Output 1').click();
@@ -126,14 +123,14 @@ test('rules, outputs and export', async ({ page }) => {
   await shot(page, 'export-report-dialog', page.getByRole('dialog'));
 });
 
-/** Two files on the canvas, selected in order (click, then Shift+click), and the Add node menu item applied to them. */
+/** Two files on the canvas, selected in order (click, then Shift+click), and the Add menu item applied to them. */
 async function combine(page: Page, files: string[], item: RegExp, made: string) {
   await addFiles(page, files.map(fixture));
   for (const f of files) await expect(node(page, f)).toHaveAttribute('data-status', 'ok', { timeout: 20_000 });
   await node(page, files[0]!).click();
   for (const f of files.slice(1)) await node(page, f).click({ modifiers: ['Shift'] });
   if (made === 'selection') return;
-  await page.getByRole('button', { name: 'Add node' }).click();
+  await page.getByRole('button', { name: 'Add', exact: true }).click();
   await page.getByRole('menuitem', { name: item }).click();
   if (made !== 'designer') await expect(node(page, made)).toHaveAttribute('data-status', 'ok');
 }
@@ -192,9 +189,8 @@ test('reshaping', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 1100 });
   await start(page);
   await openSample(page, 'monthly');
-  await closeNotes(page);
   await node(page, 'monthly-sales.csv').click();
-  await page.getByRole('button', { name: 'Add node' }).click();
+  await page.getByRole('button', { name: 'Add', exact: true }).click();
   await page.getByRole('menuitem', { name: 'Transform' }).click();
   await node(page, 'Transform 1').click();
   await addStep(page, 'Unpivot columns');
@@ -211,7 +207,7 @@ test('reshaping', async ({ page }) => {
   await addFiles(page, [fixture('sales.csv')]);
   await expect(node(page, 'sales.csv')).toHaveAttribute('data-status', 'ok', { timeout: 20_000 });
   await node(page, 'sales.csv').click();
-  await page.getByRole('button', { name: 'Add node' }).click();
+  await page.getByRole('button', { name: 'Add', exact: true }).click();
   await page.getByRole('menuitem', { name: 'Transform' }).click();
   await node(page, 'Transform 1').click();
   await addStep(page, 'Pivot or group by');
@@ -235,9 +231,8 @@ test('projects, templates and recipes', async ({ page }) => {
   await page.getByRole('tab', { name: 'Write' }).click();
   await shot(page, 'projects-notes');
 
-  await closeNotes(page);
   await node(page, 'contacts.csv').click();
-  await page.getByRole('button', { name: 'Add node' }).click();
+  await page.getByRole('button', { name: 'Add', exact: true }).click();
   await page.getByRole('menuitem', { name: 'Transform' }).click();
   await node(page, 'Transform 1').click();
   await addStep(page, 'Trim whitespace');
@@ -248,7 +243,7 @@ test('projects, templates and recipes', async ({ page }) => {
   await save.getByLabel('Description').fill('Trims and title-cases names.');
   await shot(page, 'templates-save', save);
   await save.getByRole('button', { name: 'Save template' }).click();
-  await page.getByRole('button', { name: 'Add node' }).click();
+  await page.getByRole('button', { name: 'Add', exact: true }).click();
   await page.getByRole('menuitem', { name: /From template/ }).click();
   const library = page.getByRole('dialog', { name: 'Templates' });
   await library.getByRole('listbox', { name: 'Templates library' }).getByRole('option', { name: 'Tidy names' }).click();
@@ -274,15 +269,15 @@ test('sync, settings and help', async ({ page }) => {
   await shot(page, 'sync-gist', page.getByRole('dialog', { name: 'Sync to GitHub Gist' }));
   await page.keyboard.press('Escape');
 
-  await closeNotes(page);
-  // With nothing selected the inspector shows the project's settings.
-  await page.getByTestId('canvas').click({ position: { x: 700, y: 400 } });
+  // The inspector's Project tab holds the project's settings.
+  await page.getByRole('tab', { name: 'Project' }).click();
   await shotPanel(page, 'settings-project', page.getByTestId('inspector'), { height: 1200 });
 
   await page.getByTestId('help-menu').click();
   await shot(page, 'settings-help-menu', page.getByRole('menu'));
   await page.keyboard.press('Escape');
-  await page.getByRole('button', { name: 'Keyboard shortcuts' }).click();
+  await page.getByTestId('help-menu').click();
+  await page.getByRole('menuitem', { name: 'Keyboard shortcuts' }).click();
   await shot(page, 'settings-shortcuts', page.getByRole('dialog'));
   await page.keyboard.press('Escape');
 

@@ -27,7 +27,7 @@ Show dates
 
 ## Theme
 
-The theme button in the toolbar cycles between matching your system, light and dark.
+**Theme**, in the **Help** menu, picks between matching your system, light and dark.
 
 ![Puddle in the dark theme](_static/screenshots/settings-dark.png)
 
