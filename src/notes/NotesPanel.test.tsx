@@ -68,18 +68,13 @@ describe('NotesPanel', () => {
     expect(box().value).toContain('<script>');
   });
 
-  it('closes from its own button', () => {
-    useSession.getState().setNotesOpen(true);
-    render(<NotesPanel />);
-    fireEvent.click(screen.getByRole('button', { name: 'Close notes' }));
-    expect(useSession.getState().notesOpen).toBe(false);
-  });
-
-  it('selecting a node hands the dock back to the inspector', () => {
-    useSession.getState().setNotesOpen(true);
+  it('opening the notes shows the inspector dock, and selecting a node moves to its tab', () => {
+    useSession.setState({ inspectorOpen: false });
+    useSession.getState().setInspectorTab('notes');
+    expect(useSession.getState().inspectorOpen).toBe(true);
     useSession.getState().select(null);
-    expect(useSession.getState().notesOpen).toBe(true);
+    expect(useSession.getState().inspectorTab).toBe('notes');
     useSession.getState().select('n1');
-    expect(useSession.getState().notesOpen).toBe(false);
+    expect(useSession.getState().inspectorTab).toBe('node');
   });
 });

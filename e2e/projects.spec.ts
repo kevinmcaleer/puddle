@@ -165,9 +165,9 @@ test('a Source to Transform to Output flow is saved and reloaded with its layout
   await openApp(page);
   await addFiles(page, [fixture('customers.csv')]);
   await node(page, 'customers.csv').click();
-  await page.getByRole('button', { name: 'Add node' }).click();
+  await page.getByRole('button', { name: 'Add', exact: true }).click();
   await page.getByRole('menuitem', { name: 'Transform' }).click();
-  await page.getByRole('button', { name: 'Add node' }).click();
+  await page.getByRole('button', { name: 'Add', exact: true }).click();
   await page.getByRole('menuitem', { name: 'Output' }).click();
   await page.getByRole('button', { name: 'Auto layout' }).click();
   await expect.poll(async () => (await saved(page))?.nodes.length).toBe(3);

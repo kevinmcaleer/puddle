@@ -6,7 +6,7 @@ const settings = (page: Page) => page.getByTestId('step-settings');
 
 async function transformAfter(page: Page, source: string) {
   await node(page, source).click();
-  await page.getByRole('button', { name: 'Add node' }).click();
+  await page.getByRole('button', { name: 'Add', exact: true }).click();
   await page.getByRole('menuitem', { name: 'Transform' }).click();
   await expect(node(page, 'Transform 1')).toHaveAttribute('data-status', 'ok');
   await node(page, 'Transform 1').click();

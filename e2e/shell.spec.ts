@@ -3,7 +3,10 @@ import { expect, test } from '@playwright/test';
 test('the empty shell renders with every docked region', async ({ page }) => {
   await page.goto('/');
   await expect(page.locator('.ui-wordmark')).toHaveText('Puddle');
-  await expect(page.getByRole('button', { name: 'Add source' }).first()).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Add', exact: true })).toBeVisible();
+  // Seven controls and no more: the wordmark, the project menu, Add, undo, redo, Help and the inspector toggle.
+  await expect(page.locator('.ui-toolbar').getByRole('button')).toHaveCount(6);
+  await expect(page.locator('.ui-toolbar .ui-wordmark')).toHaveCount(1);
   await expect(page.getByTestId('canvas')).toBeVisible();
   await expect(page.getByTestId('inspector')).toBeVisible();
   await expect(page.getByTestId('results-panel')).toBeVisible();
@@ -31,13 +34,19 @@ test.describe('with a dark OS theme', () => {
     await expect(html).not.toHaveAttribute('data-theme');
     const system = await bg();
 
-    const toggle = page.getByTestId('theme-toggle');
-    await toggle.click();
+    // The theme lives in the Help menu, as a choice of three.
+    const pickTheme = async (name: string) => {
+      await page.getByTestId('help-menu').click();
+      const item = page.getByRole('menuitemradio', { name });
+      await expect(page.getByRole('group', { name: 'Theme' })).toBeVisible();
+      await item.click();
+    };
+    await pickTheme('Light');
     await expect(html).toHaveAttribute('data-theme', 'light');
     const light = await bg();
     expect(light === system).toBe(!osDark);
 
-    await toggle.click();
+    await pickTheme('Dark');
     await expect(html).toHaveAttribute('data-theme', 'dark');
     const dark = await bg();
     expect(dark).not.toBe(light);
@@ -45,7 +54,9 @@ test.describe('with a dark OS theme', () => {
 
     await page.reload();
     await expect(html).toHaveAttribute('data-theme', 'dark');
-    await toggle.click();
+    await page.getByTestId('help-menu').click();
+    await expect(page.getByRole('menuitemradio', { name: 'Dark' })).toHaveAttribute('aria-checked', 'true');
+    await page.getByRole('menuitemradio', { name: 'Match the system' }).click();
     await expect(html).not.toHaveAttribute('data-theme');
     expect(await bg()).toBe(system);
   });

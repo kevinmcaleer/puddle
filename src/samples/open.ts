@@ -56,7 +56,7 @@ export async function openSample(id: SampleId | string, base = pageBase()): Prom
   const project = sampleProject(sample, base);
   await openNewProject(project);
   // The note says what's wrong with the data, so it's the first thing to read.
-  useSession.getState().setNotesOpen(true);
+  useSession.getState().setInspectorTab('notes');
   await fetched(project.sources.map((s) => s.id));
   return project;
 }

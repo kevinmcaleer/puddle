@@ -11,7 +11,7 @@ async function joinShop(page: Page) {
   await expect(node(page, 'shop-orders.csv')).toHaveAttribute('data-status', 'ok');
   await node(page, 'shop-orders.csv').click();
   await node(page, 'shop-customers.csv').click({ modifiers: ['Shift'] });
-  await page.getByRole('button', { name: 'Add node' }).click();
+  await page.getByRole('button', { name: 'Add', exact: true }).click();
   await page.getByRole('menuitem', { name: /Join/ }).click();
   await expect(node(page, 'Join 1')).toHaveAttribute('data-status', 'ok');
 }
@@ -76,7 +76,7 @@ test('a pinned table stays put while other nodes are clicked, and follows clicks
   await expectRows(page, 5);
 
   // Typing P into a field doesn't pin or unpin.
-  await page.getByTestId('notes-toggle').click();
+  await page.getByRole('tab', { name: 'Notes' }).click();
   await page.getByLabel('Project notes', { exact: true }).and(page.locator('textarea')).click();
   await page.keyboard.type('p');
   await expect(pin).toHaveAttribute('aria-pressed', 'true');
@@ -163,7 +163,7 @@ async function compareWide(page: Page) {
   await addFiles(page, [wide()]);
   await expect(node(page, 'wide.csv')).toHaveAttribute('data-status', 'ok');
   await node(page, 'wide.csv').click();
-  await page.getByRole('button', { name: 'Add node' }).click();
+  await page.getByRole('button', { name: 'Add', exact: true }).click();
   await page.getByRole('menuitem', { name: 'Transform' }).click();
   await expect(node(page, 'Transform 1')).toHaveAttribute('data-status', 'ok');
   await node(page, 'wide.csv').click();

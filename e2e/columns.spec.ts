@@ -5,7 +5,7 @@ const steps = (page: Page) => page.getByRole('listbox', { name: 'Applied steps' 
 const settings = (page: Page) => page.getByTestId('step-settings');
 
 async function transform(page: Page, name = 'Transform 1') {
-  await page.getByRole('button', { name: 'Add node' }).click();
+  await page.getByRole('button', { name: 'Add', exact: true }).click();
   await page.getByRole('menuitem', { name: 'Transform' }).click();
   await expect(node(page, name)).toHaveAttribute('data-status', 'ok');
   await node(page, name).click();

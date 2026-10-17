@@ -15,12 +15,12 @@ test('nodes are added after the selection, wired, and laid out', async ({ page }
   await openApp(page);
   await addFiles(page, [fixture('customers.csv')]);
   await node(page, 'customers.csv').click();
-  await page.getByRole('button', { name: 'Add node' }).click();
+  await page.getByRole('button', { name: 'Add', exact: true }).click();
   await page.getByRole('menuitem', { name: 'Transform' }).click();
   await expect(node(page, 'Transform 1')).toHaveAttribute('data-status', 'ok');
   await expect(page.getByTestId('wire-customers.csv->Transform 1')).toBeAttached();
 
-  await page.getByRole('button', { name: 'Add node' }).click();
+  await page.getByRole('button', { name: 'Add', exact: true }).click();
   await page.getByRole('menuitem', { name: 'Output' }).click();
   await expect(page.getByTestId('wire-Transform 1->Output 1')).toBeAttached();
   await node(page, 'Output 1').click();
@@ -35,6 +35,37 @@ test('nodes are added after the selection, wired, and laid out', async ({ page }
   await expect.poll(async () => (await node(page, 'Output 1').boundingBox())?.x).toBe(before?.x);
 });
 
+test('the minimap appears only once a node runs off the visible canvas, and the inspector keeps its Project tab beside a node', async ({ page }) => {
+  await openApp(page);
+  const minimap = page.locator('.react-flow__minimap');
+  await expect(minimap).toHaveCount(0);
+  await addFiles(page, [fixture('customers.csv')]);
+  await node(page, 'customers.csv').click();
+  await page.getByRole('button', { name: 'Add', exact: true }).click();
+  await page.getByRole('menuitem', { name: 'Transform' }).click();
+  await expect(node(page, 'Transform 1')).toHaveAttribute('data-status', 'ok');
+  await expect(minimap).toHaveCount(0);
+
+  // Panned until a node leaves the view, the map appears; fit view brings every node back and it goes.
+  const pane = page.locator('.react-flow__pane');
+  const box = (await pane.boundingBox())!;
+  await page.mouse.move(box.x + box.width - 20, box.y + box.height - 20);
+  await page.mouse.down();
+  await page.mouse.move(box.x + 20, box.y + box.height - 20, { steps: 10 });
+  await page.mouse.up();
+  await expect(minimap).toBeVisible();
+  await page.getByRole('button', { name: /fit view/i }).click();
+  await expect(minimap).toHaveCount(0);
+
+  // With a node selected the inspector shows it; the Project tab is a click away and back.
+  await expect(page.getByTestId('inspector-transform')).toBeVisible();
+  await page.getByRole('tab', { name: 'Project' }).click();
+  await expect(page.getByTestId('project-settings')).toBeVisible();
+  await expect(page.getByTestId('display-settings')).toBeVisible();
+  await page.getByRole('tab', { name: 'Node' }).click();
+  await expect(page.getByTestId('inspector-transform')).toBeVisible();
+});
+
 test('dragging a wire connects nodes, and a wire that would make a loop is refused with a reason', async ({ page }) => {
   await openApp(page);
   await addFiles(page, [fixture('customers.csv')]);
@@ -44,7 +75,7 @@ test('dragging a wire connects nodes, and a wire that would make a loop is refus
   await expect(page.getByTestId('inspector-source')).toBeVisible();
   await page.getByTestId('canvas').click({ position: { x: 20, y: 20 } });
   await expect(page.getByTestId('inspector-source')).toHaveCount(0);
-  await page.getByRole('button', { name: 'Add node' }).click();
+  await page.getByRole('button', { name: 'Add', exact: true }).click();
   await page.getByRole('menuitem', { name: 'Transform' }).click();
   await expect(node(page, 'Transform 1')).toHaveAttribute('data-status', 'unwired');
 
@@ -53,7 +84,7 @@ test('dragging a wire connects nodes, and a wire that would make a loop is refus
   await expect(node(page, 'Transform 1')).toHaveAttribute('data-status', 'ok');
 
   await page.getByTestId('canvas').click({ position: { x: 20, y: 20 } });
-  await page.getByRole('button', { name: 'Add node' }).click();
+  await page.getByRole('button', { name: 'Add', exact: true }).click();
   await page.getByRole('menuitem', { name: 'Transform' }).click();
   await dragWire(page, 'Transform 1', 'Transform 2');
   await expect(page.getByTestId('wire-Transform 1->Transform 2')).toBeAttached();
@@ -67,7 +98,7 @@ test('hovering a wire shows the columns it carries', async ({ page }) => {
   await openApp(page);
   await addFiles(page, [fixture('customers.csv')]);
   await node(page, 'customers.csv').click();
-  await page.getByRole('button', { name: 'Add node' }).click();
+  await page.getByRole('button', { name: 'Add', exact: true }).click();
   await page.getByRole('menuitem', { name: 'Output' }).click();
   await expect(node(page, 'Output 1')).toHaveAttribute('data-status', 'ok');
   const wire = page.getByTestId('wire-customers.csv->Output 1');
@@ -82,9 +113,9 @@ test('a broken source breaks its node and dims everything downstream', async ({ 
   await openApp(page);
   await addFiles(page, [fixture('customers.csv')]);
   await node(page, 'customers.csv').click();
-  await page.getByRole('button', { name: 'Add node' }).click();
+  await page.getByRole('button', { name: 'Add', exact: true }).click();
   await page.getByRole('menuitem', { name: 'Transform' }).click();
-  await page.getByRole('button', { name: 'Add node' }).click();
+  await page.getByRole('button', { name: 'Add', exact: true }).click();
   await page.getByRole('menuitem', { name: 'Output' }).click();
   await expect(node(page, 'Output 1')).toHaveAttribute('data-status', 'ok');
 
@@ -112,7 +143,7 @@ test('a wire can be selected and deleted on its own, and undo brings it back', a
   await openApp(page);
   await addFiles(page, [fixture('customers.csv')]);
   await node(page, 'customers.csv').click();
-  await page.getByRole('button', { name: 'Add node' }).click();
+  await page.getByRole('button', { name: 'Add', exact: true }).click();
   await page.getByRole('menuitem', { name: 'Output' }).click();
   await expect(node(page, 'Output 1')).toHaveAttribute('data-status', 'ok');
   await page.getByTestId('wire-customers.csv->Output 1').click({ force: true });
@@ -128,7 +159,7 @@ test('deleting a node removes it and its wires, and undo brings them back', asyn
   await openApp(page);
   await addFiles(page, [fixture('customers.csv')]);
   await node(page, 'customers.csv').click();
-  await page.getByRole('button', { name: 'Add node' }).click();
+  await page.getByRole('button', { name: 'Add', exact: true }).click();
   await page.getByRole('menuitem', { name: 'Output' }).click();
   await node(page, 'Output 1').click();
   await page.keyboard.press('Delete');
@@ -158,10 +189,10 @@ test('nodes stay visible while the flow updates around them', async ({ page }) =
     new MutationObserver(check).observe(document.body, { subtree: true, attributes: true, attributeFilter: ['style'] });
   });
   await node(page, 'customers.csv').click();
-  await page.getByRole('button', { name: 'Add node' }).click();
+  await page.getByRole('button', { name: 'Add', exact: true }).click();
   await page.getByRole('menuitem', { name: 'Transform' }).click();
   await expect(node(page, 'Transform 1')).toHaveAttribute('data-status', 'ok');
-  await page.getByRole('button', { name: 'Add node' }).click();
+  await page.getByRole('button', { name: 'Add', exact: true }).click();
   await page.getByRole('menuitem', { name: 'Output' }).click();
   await expect(node(page, 'Output 1')).toHaveAttribute('data-status', 'ok');
   await expect(page.getByTestId('wire-Transform 1->Output 1')).toBeAttached();

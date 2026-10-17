@@ -3,7 +3,6 @@ import { useRef, useState } from 'react';
 import { Canvas } from '../canvas/Canvas';
 import { useFlowEvaluation } from '../flow/useFlowEvaluation';
 import { Inspector } from '../inspector/Inspector';
-import { NotesPanel } from '../notes/NotesPanel';
 import { nodeById, useProject, useProjectStore } from '../model';
 import { openProjectDialog } from '../home/dialogs';
 import { exportProject, goHome, importProject } from '../persistence/workspace';
@@ -44,7 +43,7 @@ import { PROVIDER_IDS, PROVIDERS, useSync } from '../sync';
 import { openSyncDialog } from '../sync/dialogs';
 import { SyncConflictBanner } from '../sync/SyncDialogs';
 import { useSession } from './session';
-import { THEME_ICON, THEME_LABEL, useTheme } from './theme';
+import { THEME_ICON, useTheme } from './theme';
 
 function EngineBadge({ status }: { status: EngineStatus }) {
   if (status.state === 'loading') return <StatusBadge status="pending">Starting DuckDB</StatusBadge>;
@@ -127,12 +126,13 @@ function ResultsTitle() {
   );
 }
 
-/** Help: the guided tour (from the start, or from where it was left) and the keyboard shortcuts. */
+/** Help: the guided tour (from the start, or from where it was left), the keyboard shortcuts and the theme. */
 function HelpMenu() {
   // Read when the menu opens, so it knows how far the tour got.
   const [progress, setProgress] = useState(readProgress);
   const running = useTour((s) => s.projectId != null);
   const resume = !running && canResume(progress) ? progress.stop : undefined;
+  const theme = useTheme();
   return (
     <Menu
       label={<span className="sr-only">Help</span>}
@@ -142,10 +142,14 @@ function HelpMenu() {
         ...(resume != null ? [{ label: 'Resume the tour', icon: 'info' as const, hint: `Stop ${resume + 1} of ${TOUR_STOPS.length}`, onSelect: () => startTourSafely(resume) }] : []),
         { label: 'Take the tour', icon: 'info', onSelect: () => startTourSafely() },
         { label: 'Keyboard shortcuts', icon: 'keyboard', shortcut: shortcutText('help'), onSelect: () => useSession.getState().setShortcutsOpen(true) },
+        ...THEMES.map((t) => ({ label: THEME_NAME[t], icon: THEME_ICON[t], group: 'Theme', checked: theme.preference === t, onSelect: () => theme.setPreference(t) })),
       ]}
     />
   );
 }
+
+const THEMES = ['system', 'light', 'dark'] as const;
+const THEME_NAME = { system: 'Match the system', light: 'Light', dark: 'Dark' } as const;
 
 /** The strip's sync badge: nothing for a project that doesn't sync. */
 function useSyncBadge() {
@@ -198,7 +202,8 @@ function Strip() {
 
 /**
  * The fixed layout every feature lives in: toolbar on top, canvas in the centre, inspector docked right,
- * results docked below the canvas, status strip underneath.
+ * results docked below the canvas, status strip underneath. The toolbar keeps to seven controls: the wordmark,
+ * the project menu, Add, undo, redo, Help and the inspector toggle; the rest lives in menus or on the canvas.
  */
 export function AppShell() {
   const project = useProject();
@@ -206,8 +211,6 @@ export function AppShell() {
   const { undo, redo } = useProjectStore();
   const canUndo = useProjectStore((s) => s.history.past.length > 0);
   const canRedo = useProjectStore((s) => s.history.future.length > 0);
-  const theme = useTheme();
-  const notesOpen = useSession((s) => s.notesOpen);
   const inspectorOpen = useSession((s) => s.inspectorOpen);
   const designerId = useSession((s) => s.designerNodeId);
   const designing = designerId ? nodeById(project, designerId) : undefined;
@@ -216,6 +219,7 @@ export function AppShell() {
   const inspector = useRef<HTMLElement>(null);
   // The inspector may only be drawn on the next render (it was hidden, or the notes were showing).
   const focusInspector = () => requestAnimationFrame(() => inspector.current?.focus());
+  const hasOutput = project.nodes.some((n) => n.type === 'output');
   useExcelSources();
   useFlowEvaluation();
 
@@ -264,55 +268,29 @@ export function AppShell() {
             { label: 'Export recipe', icon: 'template', hint: 'Steps, no data', onSelect: () => openExportRecipe() },
             { label: 'Open recipe', icon: 'template', hint: '.puddle-recipe.json', onSelect: () => recipeInput.current?.click() },
             ...PROVIDER_IDS.map((id) => ({ label: `Sync to ${PROVIDERS[id]!.label}`, icon: 'refresh' as const, onSelect: () => openSyncDialog({ kind: 'project', provider: id }) })),
+            { label: 'Export all', icon: 'export', hint: hasOutput ? 'Every Output node' : 'No Output node yet', shortcut: shortcutText('export-all'), disabled: !hasOutput, onSelect: () => void exportAll() },
             { label: 'All projects', icon: 'layout', onSelect: () => void goHome() },
           ]}
         >
           <Menu
-            label="Add source"
-            button={{ variant: 'primary', icon: 'plus' }}
+            label="Add"
+            button={{ variant: 'primary', icon: 'plus', ...{ 'data-tour': 'add-node' } }}
             items={[
-              { label: 'Choose files', icon: 'source', hint: 'CSV, TSV, JSON, Parquet', shortcut: shortcutText('add-source'), onSelect: chooseFiles },
-              { label: 'From URL', icon: 'link', hint: 'https address', onSelect: () => openUrlDialog() },
-              { label: 'Paste from clipboard', icon: 'paste', onSelect: () => void pasteFromClipboard() },
+              { label: 'Choose files', icon: 'source', hint: 'CSV, TSV, JSON, Parquet', shortcut: shortcutText('add-source'), group: 'Sources', onSelect: chooseFiles },
+              { label: 'From URL', icon: 'link', hint: 'https address', group: 'Sources', onSelect: () => openUrlDialog() },
+              { label: 'Paste from clipboard', icon: 'paste', group: 'Sources', onSelect: () => void pasteFromClipboard() },
+              { label: 'Transform', icon: 'transform', shortcut: shortcutText('add-transform'), group: 'Nodes', onSelect: () => addNodeAfterSelection('transform') },
+              { label: 'From template', icon: 'template', hint: 'Saved steps', group: 'Nodes', onSelect: openTemplates },
+              { label: 'Join', icon: 'join', hint: 'Two inputs', group: 'Nodes', onSelect: () => addNodeAfterSelection('join') },
+              { label: 'Append', icon: 'append', hint: 'Stack rows', group: 'Nodes', onSelect: () => addNodeAfterSelection('append') },
+              { label: 'Lookup', icon: 'join', hint: 'Bring columns across', group: 'Nodes', onSelect: () => addNodeAfterSelection('lookup') },
+              { label: 'Query', icon: 'query', hint: 'Design with tables', group: 'Nodes', onSelect: () => addNodeAfterSelection('query') },
+              { label: 'Output', icon: 'output', shortcut: shortcutText('add-output'), group: 'Nodes', onSelect: () => addNodeAfterSelection('output') },
             ]}
           />
-          <Menu
-            label="Add node"
-            button={{ icon: 'transform', ...{ 'data-tour': 'add-node' } }}
-            items={[
-              { label: 'Transform', icon: 'transform', shortcut: shortcutText('add-transform'), onSelect: () => addNodeAfterSelection('transform') },
-              { label: 'From template', icon: 'template', hint: 'Saved steps', onSelect: openTemplates },
-              { label: 'Join', icon: 'join', hint: 'Two inputs', onSelect: () => addNodeAfterSelection('join') },
-              { label: 'Append', icon: 'append', hint: 'Stack rows', onSelect: () => addNodeAfterSelection('append') },
-              { label: 'Lookup', icon: 'join', hint: 'Bring columns across', onSelect: () => addNodeAfterSelection('lookup') },
-              { label: 'Query', icon: 'query', hint: 'Design with tables', onSelect: () => addNodeAfterSelection('query') },
-              { label: 'Output', icon: 'output', shortcut: shortcutText('add-output'), onSelect: () => addNodeAfterSelection('output') },
-            ]}
-          />
-          <Button variant="ghost" icon="layout" title={withShortcut('Auto layout', 'layout')} onClick={layoutFlow} disabled={!project.nodes.length}>Auto layout</Button>
-          <Button variant="ghost" icon="export" title={withShortcut('Export all', 'export-all')} disabled={!project.nodes.some((n) => n.type === 'output')} onClick={() => void exportAll()}>Export all</Button>
           <Button variant="ghost" icon="undo" iconOnly aria-label="Undo" title={withShortcut('Undo', 'undo')} disabled={!canUndo} onClick={undo} />
           <Button variant="ghost" icon="redo" iconOnly aria-label="Redo" title={withShortcut('Redo', 'redo')} disabled={!canRedo} onClick={redo} />
-          <Button
-            variant="ghost"
-            icon="notes"
-            iconOnly
-            aria-label="Notes"
-            title="Project notes"
-            aria-pressed={notesOpen}
-            className={notesOpen ? 'bg-surface-hover text-ink' : undefined}
-            data-testid="notes-toggle"
-            onClick={() => useSession.getState().setNotesOpen(!notesOpen)}
-          />
-          <Button
-            variant="ghost"
-            icon={THEME_ICON[theme.preference]}
-            iconOnly
-            aria-label={THEME_LABEL[theme.preference]}
-            title={THEME_LABEL[theme.preference]}
-            data-testid="theme-toggle"
-            onClick={theme.cycle}
-          />
+          <HelpMenu />
           <Button
             variant="ghost"
             icon={inspectorOpen ? 'sidebar-close' : 'sidebar-open'}
@@ -322,16 +300,6 @@ export function AppShell() {
             aria-expanded={inspectorOpen}
             data-testid="inspector-toggle"
             onClick={() => session().setInspectorOpen(!inspectorOpen)}
-          />
-          <HelpMenu />
-          <Button
-            variant="ghost"
-            icon="keyboard"
-            iconOnly
-            aria-label="Keyboard shortcuts"
-            title={withShortcut('Keyboard shortcuts', 'help')}
-            data-testid="shortcuts-toggle"
-            onClick={() => session().setShortcutsOpen(true)}
           />
         </Toolbar>
         <div>
@@ -378,15 +346,11 @@ export function AppShell() {
 
         <div className={inspectorOpen ? 'grid min-h-0 grid-cols-[minmax(0,1fr)_var(--size-inspector)]' : 'grid min-h-0 grid-cols-[minmax(0,1fr)]'}>
           <main ref={canvas} tabIndex={-1} className="min-h-0 focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-brand" aria-label="Canvas">
-            {designing?.type === 'query' ? <QueryDesigner node={designing} /> : <Canvas onAddSource={chooseFiles} />}
+            {designing?.type === 'query' ? <QueryDesigner node={designing} /> : <Canvas onAddSource={chooseFiles} onLayout={layoutFlow} />}
           </main>
 
-          {!inspectorOpen ? null : notesOpen ? (
-            <aside className="min-h-0 overflow-hidden border-l border-line bg-surface-panel" aria-label="Project notes">
-              <NotesPanel />
-            </aside>
-          ) : (
-            <aside ref={inspector} tabIndex={-1} className="min-h-0 overflow-auto border-l border-line bg-surface-panel focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-brand" aria-label="Inspector" data-testid="inspector">
+          {inspectorOpen && (
+            <aside ref={inspector} tabIndex={-1} className="min-h-0 overflow-hidden border-l border-line bg-surface-panel focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-brand" aria-label="Inspector" data-testid="inspector">
               <Inspector />
             </aside>
           )}

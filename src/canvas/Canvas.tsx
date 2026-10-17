@@ -1,10 +1,12 @@
 import {
   Background,
   BackgroundVariant,
+  ControlButton,
   Controls,
   MiniMap,
   ReactFlow,
   useReactFlow,
+  useStore,
   type Connection,
   type EdgeChange,
   type NodeChange,
@@ -19,7 +21,9 @@ import { useSession } from '../app/session';
 import { useFlowStore } from '../flow/status';
 import { JOIN_TYPES, ruleRefs } from '../compiler';
 import { canGroup, groupNodes, hasOutput, inputPorts, moveNodes, parsePort, removeNodes, samePort, setCollapsed, upstreamIds, useProject, useProjectStore, type GraphNode } from '../model';
-import { Banner, Button } from '../ui';
+import { Banner, Button, Icon } from '../ui';
+import { withShortcut } from '../app/shortcuts';
+import { anyNodeOffscreen } from './minimap';
 import { viewNode } from '../results/pin';
 import { hostOf } from '../sources/url';
 import { openSamplesDialog } from '../samples/samplesDialog';
@@ -133,7 +137,19 @@ function GroupBar({ ids }: { ids: string[] }) {
 }
 
 /** The node canvas: the primary editing surface (plan D3, D18). */
-export function Canvas({ onAddSource }: { onAddSource: () => void }) {
+/** Whether a node is partly off the visible canvas right now, read from React Flow's own store. */
+function useMinimapNeeded() {
+  return useStore((s) =>
+    anyNodeOffscreen(
+      [...s.nodeLookup.values()].map((n) => ({ x: n.internals.positionAbsolute.x, y: n.internals.positionAbsolute.y, width: n.measured.width ?? 0, height: n.measured.height ?? 0 })),
+      { x: s.transform[0], y: s.transform[1], zoom: s.transform[2] },
+      { width: s.width, height: s.height },
+    ),
+  );
+}
+
+export function Canvas({ onAddSource, onLayout }: { onAddSource: () => void; onLayout: () => void }) {
+  const minimapNeeded = useMinimapNeeded();
   const project = useProject();
   const { apply, setView } = useProjectStore.getState();
   const selectedNodeIds = useSession((s) => s.selectedNodeIds);
@@ -301,8 +317,12 @@ export function Canvas({ onAddSource }: { onAddSource: () => void }) {
         proOptions={{ hideAttribution: true }}
       >
         <Background variant={BackgroundVariant.Dots} gap={16} size={1} color="var(--canvas-dot)" bgColor="var(--surface-canvas)" />
-        <MiniMap pannable zoomable ariaLabel="Minimap" />
-        <Controls showInteractive={false} />
+        {minimapNeeded && <MiniMap pannable zoomable ariaLabel="Minimap" />}
+        <Controls showInteractive={false}>
+          <ControlButton onClick={onLayout} disabled={!project.nodes.length} aria-label="Auto layout" title={withShortcut('Auto layout', 'layout')}>
+            <Icon name="layout" size={12} />
+          </ControlButton>
+        </Controls>
       </ReactFlow>
 
       {project.nodes.length === 0 && (
