@@ -6,6 +6,7 @@ import { compileLookup, firstMatches, lookupCondition, lookupProblems } from './
 import { keptTable, knownKept, type KeptBook } from './keptBook';
 import { englishDateNames } from './locales';
 import { compileQuery, queryProblems } from './query';
+import { compileSqlNode, sqlNodeProblem } from './sqlNode';
 import { knownSchemas, type SchemaBook } from './schemaBook';
 import { sourceRelation } from './sources';
 import { cteName, ident, num, str } from './sql';
@@ -193,6 +194,17 @@ function build(project: Project, target: Target, book: SchemaBook, options: Comp
         out.set(n.id, name);
         break;
       }
+      case 'sql': {
+        const wired = wiredInputs(project, n, out);
+        if (!wired.length) throw new UnwiredError(`${n.name} has no inputs. Connect a wire into it.`, n.id, 0);
+        const inputs = wired.map((w) => ({ port: w.port as number, cte: w.cte, label: nodeById(project, w.fromId)!.name }));
+        const problem = sqlNodeProblem(n.sqlSpec, inputs);
+        if (problem) throw new CompileError(`This query can’t run: ${problem}.`, n.id);
+        const name = cteName(n.id);
+        ctes.push(`${name} AS (${compileSqlNode(n.sqlSpec, inputs)})`);
+        out.set(n.id, name);
+        break;
+      }
       case 'output':
         out.set(n.id, inputCte(project, n, out));
         break;
@@ -286,6 +298,8 @@ export function upstreamKey(project: Project, target: Target): string {
       if (n.type === 'append') return { id: n.id, type: n.type, inputs, append: n.appendSpec, ...(n.appendSpec.tagRows ? { labels: inputEdges(project, n.id).map((e) => nodeById(project, e.from.nodeId)?.name) } : {}) };
       // Where tables sit in the designer doesn't change the rows.
       if (n.type === 'query') return { id: n.id, type: n.type, inputs, query: { ...n.querySpec, tables: undefined } };
+      // The query reads its inputs by their node names, so those matter here.
+      if (n.type === 'sql') return { id: n.id, type: n.type, inputs, sql: n.sqlSpec, labels: inputEdges(project, n.id).map((e) => nodeById(project, e.from.nodeId)?.name) };
       return { id: n.id, type: n.type, inputs };
     })
     .sort((a, b) => (a.id < b.id ? -1 : 1));

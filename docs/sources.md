@@ -34,6 +34,8 @@ Select a source to see how it is read in the inspector. For a CSV file that is t
 
 An Excel source shows the workbook's sheets with their sizes, the header row it detected (often below a title or a few blank rows), and the cell range being read.
 
+A file source also has **Path to this file** under *On the runner*: where `puddle-run` finds the file when it runs the project outside the browser (see {doc}`self-hosting`). Left empty, the runner looks for the file by name beside the project file or in a `sources/` folder there.
+
 ![An Excel workbook read as a source, with its sheet, header row and cell range](_static/screenshots/sources-excel.png)
 
 ## Large files

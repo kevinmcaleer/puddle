@@ -102,7 +102,7 @@ export function addNodeAfterSelection(type: AddableNodeType) {
   const { apply, history } = useProjectStore.getState();
   const { selectedNodeId: selected, selectedNodeIds } = useSession.getState();
   const after = selected ? nodeById(history.present, selected) : undefined;
-  const several = selectedNodeIds.length > 1 && (type === 'join' || type === 'append' || type === 'lookup' || type === 'query');
+  const several = selectedNodeIds.length > 1 && (type === 'join' || type === 'append' || type === 'lookup' || type === 'query' || type === 'sql');
   const feeds = several ? (type === 'join' || type === 'lookup' ? selectedNodeIds.slice(0, 2) : selectedNodeIds) : after?.id;
   const position = positionAfter(history.present, Array.isArray(feeds) ? feeds : after ? [after.id] : []);
   let added: string | undefined;

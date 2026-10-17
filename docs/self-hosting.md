@@ -30,6 +30,10 @@ docker compose up -d
 
 The image does all of this already.
 
+## Scheduled runs
+
+`puddle-run` is a second, small container that runs exported project files (`.puddle.json`) on a schedule, outside the browser, with the same compiler on DuckDB's native build. It watches a folder of project files, runs each one when its **Run on a schedule** setting says, and writes every Output node's file, a run log and a quality report into an `out/` folder beside them. `docker compose --profile runner up -d` starts it with `PUDDLE_PROJECTS` pointing at the folder; the [deployment README](https://github.com/kevinmcaleer/puddle/blob/main/deploy/README.md#scheduled-runs-puddle-run) has the details, and `puddle-run check <file>` says where a project's sources were found and when it would next run.
+
 ## Google Drive sync
 
 Google Drive sync needs a Google Cloud OAuth client ID at build time: `--build-arg VITE_GOOGLE_CLIENT_ID=...` for the image. Without one every Google Drive option is hidden. See the [README](https://github.com/kevinmcaleer/puddle#development) for setting up the client.

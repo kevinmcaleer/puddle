@@ -33,8 +33,8 @@ export const APPEND_MIN_PORTS = 2;
 /** A Query works on one table, so a new one offers one input (and a spare once it's wired). */
 export const QUERY_MIN_PORTS = 1;
 
-/** Nodes whose inputs are numbered from 0 and grow as they're wired: Append and Query. */
-export const hasNumberedInputs = (node: GraphNode) => node.type === 'append' || node.type === 'query';
+/** Nodes whose inputs are numbered from 0 and grow as they're wired: Append, Query and SQL. */
+export const hasNumberedInputs = (node: GraphNode) => node.type === 'append' || node.type === 'query' || node.type === 'sql';
 
 /**
  * The inputs a node takes, in the order they sit down its left edge. Each takes at most one wire, and the
@@ -51,7 +51,8 @@ export function inputPorts(project: Project, node: GraphNode): InputPort[] {
     case 'lookup':
       return LOOKUP_PORTS;
     case 'append':
-    case 'query': {
+    case 'query':
+    case 'sql': {
       const wired = project.edges.filter((e) => e.to.nodeId === node.id && typeof e.to.port === 'number').map((e) => e.to.port as number);
       const min = node.type === 'append' ? APPEND_MIN_PORTS : QUERY_MIN_PORTS;
       const count = Math.max(min, wired.length ? Math.max(...wired) + 2 : 0);

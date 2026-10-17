@@ -41,6 +41,31 @@ These settings can go in the environment or in a `.env` file next to `compose.ya
 | `FETCH_EXTENSIONS` | `1` | Set `0` to build where extensions.duckdb.org can't be reached (see below) |
 | `CLOUDFLARE_TUNNEL_TOKEN` | none | The tunnel's token, for the `tunnel` profile |
 
+## Scheduled runs (puddle-run)
+
+The editor is browser-only, so nothing runs while the browser is closed. `puddle-run` is a second, small container that runs the same project files on the Pi, with the same compiler, on DuckDB's native build (fast on arm64, and it can load DuckDB's database and S3 extensions later).
+
+1. Put each project file where the runner can see it: export it from the editor's project menu (`.puddle.json`) into a folder, say `/srv/puddle/projects`, and put its source files beside it or in a `sources/` folder there. A source read from somewhere else gets its path in the editor: select the source node and fill in **Path to this file** under *On the runner* (absolute, or relative to the project file).
+2. Set when it runs in the editor's **Project** tab, **Run on a schedule**, in cron syntax: `0 3 * * *` is 03:00 every day, `*/15 * * * 1-5` every quarter hour on weekdays. A project with no schedule is never run from the folder.
+3. Start the runner next to Puddle:
+
+   ```sh
+   PUDDLE_PROJECTS=/srv/puddle/projects docker compose --profile runner up -d
+   ```
+
+   It reads the folder every 30 seconds (`PUDDLE_RUNNER_POLL`), so a project saved or changed there is picked up without a restart. Times follow `TZ` (default `Europe/London`).
+
+Each run writes every Output node's file (CSV, TSV, JSON, NDJSON or Parquet; Excel and clipboard outputs are skipped for now) into `out/` next to the project files, with `<project>.run.json` (what ran, rows per output, every rule's result) and `<project>.quality.md` (the quality report). A failing `fail` rule holds that export back, as it does in the browser; the run log says which rule.
+
+One-off runs and checks:
+
+```sh
+docker run --rm -v /srv/puddle/projects:/projects puddle-run:latest check /projects/orders.puddle.json
+docker run --rm -v /srv/puddle/projects:/projects puddle-run:latest run /projects/orders.puddle.json
+```
+
+Without Docker, `npm run build:runner` builds `dist-runner/puddle-run.mjs`, and `node dist-runner/puddle-run.mjs watch /srv/puddle/projects` runs it on any machine with Node 20 or later (the native DuckDB binding is downloaded by `npm ci` for the machine's own platform).
+
 ## The tunnel
 
 1. In Cloudflare Zero Trust, go to Networks, then Tunnels, and create a tunnel. Copy its token.

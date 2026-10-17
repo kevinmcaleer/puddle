@@ -33,6 +33,8 @@ export const SourceZ = z.object({
       /** Hash of the first 1 MB, used to warn when a re-selected file looks different. */
       headHash: z.string(),
       fsHandleRef: z.string().optional(),
+      /** Where the runner (puddle-run) finds this file: absolute, or relative to the project file's folder. */
+      path: z.string().optional(),
     })
     .optional(),
   url: z
@@ -247,7 +249,14 @@ export const DEFAULT_QUERY_SPEC = { tables: [], joins: [], fields: [], distinct:
  */
 export const QueryNodeZ = z.object({ ...NodeBase, type: z.literal('query'), querySpec: QuerySpecZ.default({ tables: [], joins: [], fields: [], distinct: false, totals: false, orRows: 0 }) });
 
-export const NodeZ = z.discriminatedUnion('type', [SourceNodeZ, TransformNodeZ, JoinNodeZ, AppendNodeZ, LookupNodeZ, QueryNodeZ, OutputNodeZ]);
+/** A hand-written DuckDB query over the node's inputs, each readable as input1, input2... and by its node's name. */
+export const SqlSpecZ = z.object({ query: z.string().default('') });
+
+export const DEFAULT_SQL_SPEC = { query: 'SELECT *\nFROM input1' } as const satisfies z.input<typeof SqlSpecZ>;
+
+export const SqlNodeZ = z.object({ ...NodeBase, type: z.literal('sql'), sqlSpec: SqlSpecZ.default(DEFAULT_SQL_SPEC) });
+
+export const NodeZ = z.discriminatedUnion('type', [SourceNodeZ, TransformNodeZ, JoinNodeZ, AppendNodeZ, LookupNodeZ, QueryNodeZ, SqlNodeZ, OutputNodeZ]);
 
 /** Named input ports: Join's left and right, Lookup's main and lookup. Nodes with one input, and the numbered inputs of Append and Query, use an index. */
 export const NAMED_PORTS = ['left', 'right', 'main', 'lookup'] as const;
@@ -265,6 +274,8 @@ export const ProjectSettingsZ = z.object({
   sampleThresholdRows: z.number().int().positive().default(5_000_000),
   locale: z.string().default('en-GB'),
   defaultDateFormats: z.array(z.string()).default([]),
+  /** When the runner (puddle-run) runs this project's outputs, in cron syntax. Nothing runs until one is set. */
+  schedule: z.string().optional(),
 });
 
 export const ProjectViewZ = z.object({
@@ -340,6 +351,8 @@ export type QueryCriteria = z.infer<typeof QueryCriteriaZ>;
 export type QueryField = z.infer<typeof QueryFieldZ>;
 export type QuerySpec = z.infer<typeof QuerySpecZ>;
 export type QueryNode = z.infer<typeof QueryNodeZ>;
+export type SqlSpec = z.infer<typeof SqlSpecZ>;
+export type SqlNode = z.infer<typeof SqlNodeZ>;
 export type Port = z.infer<typeof PortZ>;
 export type GraphNode = z.infer<typeof NodeZ>;
 export type NodeType = GraphNode['type'];

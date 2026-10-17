@@ -2,11 +2,11 @@
 import { freePort, hasOutput, nodeById, removeNode } from './graph';
 import { newId } from './ids';
 import { viewWithout } from './view';
-import { DEFAULT_APPEND_SPEC, DEFAULT_JOIN_SPEC, DEFAULT_LOOKUP_SPEC, DEFAULT_QUERY_SPEC, type GraphNode, type NodeType, type ParseOptions, type Project, type Source } from './schema';
+import { DEFAULT_APPEND_SPEC, DEFAULT_JOIN_SPEC, DEFAULT_LOOKUP_SPEC, DEFAULT_QUERY_SPEC, DEFAULT_SQL_SPEC, type GraphNode, type NodeType, type ParseOptions, type Project, type Source } from './schema';
 
 type Position = { x: number; y: number };
 
-const KIND_NAME: Record<NodeType, string> = { source: 'Source', transform: 'Transform', join: 'Join', append: 'Append', lookup: 'Lookup', query: 'Query', output: 'Output' };
+const KIND_NAME: Record<NodeType, string> = { source: 'Source', transform: 'Transform', join: 'Join', append: 'Append', lookup: 'Lookup', query: 'Query', sql: 'SQL', output: 'Output' };
 
 /** "Transform 3": the next free number for a node type. */
 export function nextNodeName(project: Project, type: NodeType): string {
@@ -36,13 +36,25 @@ function newNode(type: AddableNodeType, base: { id: string; name: string; positi
       return { ...base, type, lookupSpec: { ...DEFAULT_LOOKUP_SPEC, keys: [], columns: [] } };
     case 'query':
       return { ...base, type, querySpec: { ...DEFAULT_QUERY_SPEC, tables: [], joins: [], fields: [] } };
+    case 'sql':
+      return { ...base, type, sqlSpec: { ...DEFAULT_SQL_SPEC } };
     case 'output':
       return { ...base, type, outputSpec: { format: 'csv', options: {} } };
   }
 }
 
+/** Change what a SQL node runs. */
+/** Where the runner finds a file source, or nothing to go back to looking it up by name. */
+export function setRunnerPath(project: Project, sourceId: string, path: string): Project {
+  return { ...project, sources: project.sources.map((s) => (s.id === sourceId && s.file ? { ...s, file: { ...s.file, path: path || undefined } } : s)) };
+}
+
+export function setSqlQuery(project: Project, nodeId: string, query: string): Project {
+  return { ...project, nodes: project.nodes.map((n) => (n.id === nodeId && n.type === 'sql' ? { ...n, sqlSpec: { ...n.sqlSpec, query } } : n)) };
+}
+
 /**
- * Add a Transform, Join, Append, Lookup or Output node. `after` names the nodes that feed it, wired into its free
+ * Add a Transform, Join, Append, Lookup, Query, SQL or Output node. `after` names the nodes that feed it, wired into its free
  * inputs in order (a Join's left, then its right; an Append's 1, 2, 3...; a Lookup's main, then its lookup); nodes with no output, and any
  * beyond its inputs, are left unwired.
  */

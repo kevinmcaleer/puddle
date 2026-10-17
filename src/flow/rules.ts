@@ -1,11 +1,15 @@
 // Rule results per node: evaluated after the preview, at background priority, one query per node.
 import { create } from 'zustand';
 import { CompileError, compileRules, fullData, refKeys, ruleRefs, upstreamKey } from '../compiler';
-import { tableRows, toEngineError, type EngineClient } from '../engine';
+// From the engine's own files, not its index: the index also exports the browser engine, which puddle-run never loads.
+import { tableRows, type EngineClient } from '../engine/client';
+import { toEngineError } from '../engine/errors';
 import { hashValue, nodeById, type Project, type Rule } from '../model';
+import { exportGate, type Gate } from './gate';
 import { schemaCacheFor, useFlowStore, type NodeStatus } from './status';
 
-export type RuleResult = { state: 'pending' } | { state: 'ok'; failures: number; total: number } | { state: 'error'; message: string };
+export type { RuleResult } from './ruleResult';
+import type { RuleResult } from './ruleResult';
 
 interface Entry {
   key: string;
@@ -15,6 +19,9 @@ interface Entry {
 export const useRuleStore = create<{ nodes: Record<string, Entry> }>(() => ({ nodes: {} }));
 
 const PENDING: RuleResult = { state: 'pending' };
+
+/** The export gate for a node, from the rule results on screen. */
+export const useExportGate = (project: Project, nodeId: string): Gate => exportGate(project, nodeId, useRuleStore((s) => s.nodes));
 export const useRuleResult = (nodeId: string, ruleId: string): RuleResult => useRuleStore((s) => s.nodes[nodeId]?.results[ruleId] ?? PENDING);
 
 /** What a node's rules come to: the worst result, as the node's badge shows it. */
