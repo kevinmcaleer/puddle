@@ -53,6 +53,9 @@ test('profiling suggests rules with reasons; one adds a passing rule, a dismisse
   const chooser = page.waitForEvent('filechooser');
   await page.getByTestId('results-detached').getByRole('button', { name: 'Choose file' }).click();
   await (await chooser).setFiles(fixture('customers.csv'));
+  // The click waits for the file to be read: on a node still settling (its counts arriving, the card growing) a
+  // slower browser can take the press as the start of a drag, and the node is never selected.
+  await expect(node(page, 'customers.csv')).toHaveAttribute('data-status', 'ok', { timeout: 20_000 });
   await node(page, 'customers.csv').click();
   await expect(suggestion(page, 'notEmpty:joined')).toBeVisible({ timeout: 20_000 });
   expect(await keys(page)).toEqual(['notEmpty:id', 'inRange:id', 'unique:name', 'notEmpty:joined', 'noEdgeSpaces:joined']);
