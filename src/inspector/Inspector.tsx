@@ -118,6 +118,9 @@ function ProjectSettings() {
             onCommit={(v) => set({ defaultDateFormats: parseNullStrings(v) })}
           />
         </Field>
+        <Field hint="Steps added from the results table (quick fixes and the column menu) each go in a new Transform node, so every step shows on the canvas.">
+          <Switch label="Add each step as a new node" checked={settings.stepsAsNodes} onChange={(on) => set({ stepsAsNodes: on })} />
+        </Field>
       </div>
     </Section>
   );

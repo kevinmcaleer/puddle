@@ -272,6 +272,8 @@ export const ProjectSettingsZ = z.object({
   sampleThresholdRows: z.number().int().positive().default(5_000_000),
   locale: z.string().default('en-GB'),
   defaultDateFormats: z.array(z.string()).default([]),
+  /** Steps added from the results table (quick fixes, the column menu) go in a new Transform node each, as in Power Query's applied steps shown on the canvas. */
+  stepsAsNodes: z.boolean().default(false),
 });
 
 export const ProjectViewZ = z.object({
@@ -308,7 +310,7 @@ export const ProjectZ = z.object({
   createdAt: z.string(),
   updatedAt: z.string(),
   notes: z.string().default(''),
-  settings: ProjectSettingsZ.default({ sampleThresholdRows: 5_000_000, locale: 'en-GB', defaultDateFormats: [] }),
+  settings: ProjectSettingsZ.default({ sampleThresholdRows: 5_000_000, locale: 'en-GB', defaultDateFormats: [], stepsAsNodes: false }),
   sources: z.array(SourceZ).default([]),
   nodes: z.array(NodeZ).default([]),
   edges: z.array(EdgeZ).default([]),

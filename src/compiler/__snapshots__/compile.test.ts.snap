@@ -439,6 +439,30 @@ exports[`step snapshots > reorderColumns {"columns":["email","id"]} 1`] = `
 SELECT * FROM "n_clean_s0""
 `;
 
+exports[`step snapshots > replaceValues {"columns":["id"],"match":"blank","replace":"n/a","toText":true} 1`] = `
+"WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv', null_padding = true)),
+  "n_clean_s0" AS (SELECT * REPLACE (CASE WHEN "id" IS NULL OR trim(CAST("id" AS VARCHAR)) = '' THEN 'n/a' ELSE CAST("id" AS VARCHAR) END AS "id") FROM "n_src")
+SELECT * FROM "n_clean_s0""
+`;
+
+exports[`step snapshots > replaceValues {"columns":["id"],"match":"value","find":"0","replaceWithNull":true} 1`] = `
+"WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv', null_padding = true)),
+  "n_clean_s0" AS (SELECT * REPLACE (CASE WHEN CAST("id" AS VARCHAR) = '0' THEN NULL ELSE "id" END AS "id") FROM "n_src")
+SELECT * FROM "n_clean_s0""
+`;
+
+exports[`step snapshots > replaceValues {"columns":["name","email"],"match":"null","replace":"empty"} 1`] = `
+"WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv', null_padding = true)),
+  "n_clean_s0" AS (SELECT * REPLACE (CASE WHEN "name" IS NULL THEN 'empty' ELSE "name" END AS "name", CASE WHEN "email" IS NULL THEN 'empty' ELSE "email" END AS "email") FROM "n_src")
+SELECT * FROM "n_clean_s0""
+`;
+
+exports[`step snapshots > replaceValues {"columns":["name"],"match":"value","find":"O'Brien","replace":"OBrien","matchCase":false} 1`] = `
+"WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv', null_padding = true)),
+  "n_clean_s0" AS (SELECT * REPLACE (CASE WHEN lower(CAST("name" AS VARCHAR)) = 'o''brien' THEN 'OBrien' ELSE "name" END AS "name") FROM "n_src")
+SELECT * FROM "n_clean_s0""
+`;
+
 exports[`step snapshots > roundNumbers {"columns":["id"],"mode":"down","places":0} 1`] = `
 "WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv', null_padding = true)),
   "n_clean_s0" AS (SELECT * REPLACE (floor(round("id", 9)) AS "id") FROM "n_src")
