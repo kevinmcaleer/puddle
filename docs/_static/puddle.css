@@ -1,0 +1,5 @@
+/* Screenshots get a hairline border so their light edges don't melt into the page. */
+article img {
+  border: 1px solid var(--color-background-border);
+  border-radius: 6px;
+}

@@ -48,7 +48,7 @@ test('a fix on a viewed source adds one step for every selected column, in a new
   await expect(cell(page, 1, 0)).toHaveText('Ada Lovelace');
 });
 
-test('parse numbers, parse dates and remove duplicates', async ({ page }) => {
+test('parse numbers, parse dates, strip non-printing characters, empty to null and remove duplicates', async ({ page }) => {
   await selectColumns(page, 3);
   await fixes(page).getByRole('button', { name: 'Parse numbers' }).click();
   await expect(steps(page)).toHaveText([/Parsed numbers in price/]);
@@ -60,8 +60,19 @@ test('parse numbers, parse dates and remove duplicates', async ({ page }) => {
   await expect(steps(page).nth(1)).toHaveText(/Parsed joined as dates/);
   await expect(cell(page, 4, 0)).toHaveText('2024-01-31');
 
+  // Row 3's name hides a zero-width space; row 4's is only spaces.
+  await selectColumns(page, 1);
+  await fixes(page).getByRole('button', { name: 'Non-printing' }).click();
+  await expect(steps(page).nth(2)).toHaveText(/Removed non-printing characters from name/);
+  await expect(cell(page, 1, 2)).toHaveText('edsgerdijkstra');
+
+  await selectColumns(page, 1);
+  await fixes(page).getByRole('button', { name: 'Empty to null' }).click();
+  await expect(steps(page).nth(3)).toHaveText(/Made empty text in name empty values/);
+  await expect(cell(page, 1, 3)).toHaveText('null');
+
   await selectColumns(page, 0, 1);
   await fixes(page).getByRole('button', { name: 'Remove duplicates' }).click();
-  await expect(steps(page).nth(2)).toHaveText(/Removed duplicate rows by id, name/);
+  await expect(steps(page).nth(4)).toHaveText(/Removed duplicate rows by id, name/);
   await expectRows(page, 4);
 });

@@ -1,0 +1,44 @@
+# Settings and shortcuts
+
+## Project settings
+
+With no node selected (click an empty part of the canvas), the inspector shows the project's settings. They're saved with the project.
+
+![The project settings and display settings in the inspector](_static/screenshots/settings-project.png)
+
+Sample above
+: The row count above which Puddle previews on a sample of each large source (see {doc}`sources`). Exports always use everything.
+
+Locale
+: How this project's data writes numbers, such as whether the decimal mark is a point (`1,234.50`) or a comma (`1.234,50`). New **Parse numbers** steps start with it.
+
+Date formats
+: The formats tried, in order, when text is read as a date, such as `%d/%m/%Y, %Y-%m-%d`.
+
+## Display
+
+Below the project settings, **Display** sets how numbers and dates are shown on this device only. It changes nothing in your data, steps or exports.
+
+Show numbers and dates as
+: The browser's language, or a locale you choose.
+
+Show dates
+: In the locale's short form, or as ISO 8601 (2026-12-31).
+
+## Theme
+
+The theme button in the toolbar cycles between matching your system, light and dark.
+
+![Puddle in the dark theme](_static/screenshots/settings-dark.png)
+
+## Help and keyboard shortcuts
+
+The **Help** menu starts the guided tour again (or picks it up where you left it) and lists the keyboard shortcuts. Press **?** anywhere outside a text field to see them. On a Mac, use Command in place of Ctrl.
+
+![The Help menu](_static/screenshots/settings-help-menu.png)
+
+![The keyboard shortcuts](_static/screenshots/settings-shortcuts.png)
+
+## Working offline
+
+After your first visit Puddle keeps itself, its engine and its extensions in the browser, so it opens and runs with no network. Your data files are never cached: they're read from your disk each time.
