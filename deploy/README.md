@@ -71,7 +71,7 @@ After the first visit, a service worker keeps the app, the engine and the extens
 
 ## Browser support and memory
 
-- Puddle runs in Chrome, Edge, Firefox and Safari. CI runs the whole Playwright suite in Chromium, Firefox and WebKit (Safari's engine), and the container tests, including offline use, in Chromium and Firefox. Locally `npm run e2e` uses Chromium; set `E2E_BROWSERS=firefox` (or `chromium,firefox,webkit`) after `npx playwright install firefox webkit` to run the others.
+- Puddle runs in Chrome, Edge, Firefox and Safari. CI runs the whole Playwright suite in Chromium and Firefox on every pull request and in WebKit (Safari's engine) nightly, and the container tests, including offline use, in Chromium and Firefox. Locally `npm run e2e` uses Chromium; set `E2E_BROWSERS=firefox` (or `chromium,firefox,webkit`) after `npx playwright install firefox webkit` to run the others.
 - Only Chrome and Edge keep access to files between visits (the File System Access API), so a reopened project reconnects with one click. Firefox and Safari can't: Puddle says so in a note on the canvas, and each file is chosen again from its node.
 - Copying an export to the clipboard asks for the clipboard during the click and fills it once the export has run, which is what Safari and Firefox require. A browser that refuses gets a message to export a file instead.
 - Where the origin private file system isn't available, DuckDB keeps everything in memory instead of spilling large intermediate results to it.
@@ -87,7 +87,7 @@ The large-file check (`a file big enough to be scanned in parallel is read in fu
 | --- | --- | --- |
 | Chromium | Passes | WebAssembly memory tops out at 4 GB |
 | Firefox | Runs in CI | Not yet measured |
-| WebKit (Safari) | Runs in CI | Not yet measured. Safari is known to reclaim memory from busy tabs sooner, so expect a lower ceiling |
+| WebKit (Safari) | Runs in CI nightly | Not yet measured. Safari is known to reclaim memory from busy tabs sooner, so expect a lower ceiling |
 
 To measure a ceiling, raise `rows` in that test until it fails and record the largest size that passed here.
 
