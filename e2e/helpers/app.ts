@@ -44,8 +44,22 @@ function logBrowserTrouble(page: Page) {
 export async function openApp(page: Page, { fileSystemAccess = false }: { fileSystemAccess?: boolean } = {}) {
   if (process.env.E2E_BROWSER_LOGS) logBrowserTrouble(page);
   if (!fileSystemAccess) await page.addInitScript(() => Object.defineProperty(window, 'showOpenFilePicker', { value: undefined, configurable: true }));
-  await page.goto('/');
+  await open(page);
   await expect(page.getByTestId('engine-ready')).toBeVisible({ timeout: 45_000 });
+}
+
+/**
+ * Go to the app. Only the document is waited for, not `load`: the engine wait that follows is what matters, and in
+ * WebKit the load event now and then never fires on a fresh page (about one start in a hundred in CI), which used
+ * to time the whole test out. A start that still hangs is tried once more.
+ */
+async function open(page: Page) {
+  try {
+    await page.goto('/', { waitUntil: 'domcontentloaded', timeout: 20_000 });
+  } catch (e) {
+    console.log(`[open] the first navigation didn't finish (${(e as Error).message.split('\n')[0]}); trying once more`);
+    await page.goto('/', { waitUntil: 'domcontentloaded', timeout: 20_000 });
+  }
 }
 
 /** Add files through the toolbar's Add source menu and the system file chooser. */
