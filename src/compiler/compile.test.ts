@@ -162,6 +162,8 @@ describe('step snapshots', () => {
     ['emptyToNull', { columns: ['name', 'id'] }],
     ['parseNumbers', { columns: ['id'], decimal: '.' }],
     ['parseNumbers', { columns: ['id'], decimal: ',' }],
+    ['parseNumbers', { columns: ['id'], decimal: '.', locale: 'de-DE' }],
+    ['parseDates', { columns: ['joined'], formats: ['%d. %B %Y'], onError: 'empty', locale: 'de-DE' }],
     ['parseDates', { columns: ['joined'], formats: ['%Y-%m-%d %H:%M:%S', "%d %b '%y"], onError: 'fail' }],
     ['extractDatePart', { columns: ['joined'], part: 'year', replace: false }],
     ['extractDatePart', { columns: ['joined', 'id'], part: 'weekdayName', replace: true }],
@@ -214,7 +216,7 @@ describe('sample mode', () => {
     const p = cleanFlow();
     const sampled = { ...p, sources: p.sources.map((s) => ({ ...s, sampleRows: 1000 })) };
     const sql = compile(sampled, { nodeId: 'clean' }).sql;
-    expect(sql).toContain(`"n_src" AS (SELECT * FROM read_csv('src_cust.csv') LIMIT 1000)`);
+    expect(sql).toContain(`"n_src" AS (SELECT * FROM read_csv('src_cust.csv', null_padding = true) LIMIT 1000)`);
     expect(sql.replace(' LIMIT 1000', '')).toBe(compile(p, { nodeId: 'clean' }).sql);
     expect(sql).toMatchSnapshot();
   });

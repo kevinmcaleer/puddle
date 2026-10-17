@@ -1,5 +1,5 @@
 import { ReactFlowProvider } from '@xyflow/react';
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
 import { Canvas } from '../canvas/Canvas';
 import { useFlowEvaluation } from '../flow/useFlowEvaluation';
 import { Inspector } from '../inspector/Inspector';
@@ -21,17 +21,28 @@ import { ResultsTable } from '../results/ResultsTable';
 import { useResultsStore } from '../results/state';
 import { ACCEPT } from '../sources/detect';
 import { useExcelSources } from '../sources/excel';
+import { SamplesDialog } from '../samples/SamplePicker';
+import { Tour } from '../tour/Tour';
+import { TOUR_STOPS } from '../tour/stops';
+import { canResume, readProgress, startTourSafely, useTour } from '../tour/tour';
 import { UrlDialog } from '../sources/UrlDialog';
 import { openUrlDialog } from '../sources/urlDialog';
 import { cardKind } from '../canvas/kind';
-import { Button, Menu, ResultsBar, StatusBadge, StatusStrip, Toolbar, type NodeKind } from '../ui';
+import { Button, Menu, ResultsBar, StatusBadge, StatusStrip, Toolbar, useDisplayFormat, type NodeKind } from '../ui';
 import { ActivityControl } from './ActivityControl';
-import { addFiles, addNodeAfterSelection, chooseFiles as pickSourceFiles, addPastedText, groupSelection, layoutFlow, pasteFromClipboard, searchAddStep, selectNeighbour, viewSelected } from './actions';
+import { addFiles, addNodeAfterSelection, cancelWiring, chooseFiles as pickSourceFiles, addPastedText, groupSelection, layoutFlow, openSelected, pasteFromClipboard, searchAddStep, selectNeighbour, startWiring, viewSelected } from './actions';
 import { useEngineStore, type EngineStatus } from './engine';
 import { ResultsPanel } from './ResultsPanel';
 import { ShortcutsDialog } from './ShortcutsDialog';
+import { openTemplates } from '../templates/actions';
+import { TemplateDialogs } from '../templates/TemplateDialogs';
+import { openExportRecipe, openRecipeFile } from '../recipes/actions';
+import { RecipeAttachBanner, RecipeDialogs } from '../recipes/RecipeDialogs';
 import { shortcutText, withShortcut, type GlobalShortcutId } from './shortcuts';
 import { useShortcuts } from './useShortcuts';
+import { PROVIDER_IDS, PROVIDERS, useSync } from '../sync';
+import { openSyncDialog } from '../sync/dialogs';
+import { SyncConflictBanner } from '../sync/SyncDialogs';
 import { useSession } from './session';
 import { THEME_ICON, THEME_LABEL, useTheme } from './theme';
 
@@ -116,8 +127,46 @@ function ResultsTitle() {
   );
 }
 
+/** Help: the guided tour (from the start, or from where it was left) and the keyboard shortcuts. */
+function HelpMenu() {
+  // Read when the menu opens, so it knows how far the tour got.
+  const [progress, setProgress] = useState(readProgress);
+  const running = useTour((s) => s.projectId != null);
+  const resume = !running && canResume(progress) ? progress.stop : undefined;
+  return (
+    <Menu
+      label={<span className="sr-only">Help</span>}
+      button={{ variant: 'ghost', icon: 'help', iconOnly: true, 'aria-label': 'Help', title: 'Help', ...{ 'data-testid': 'help-menu' } }}
+      onOpenChange={(open) => open && setProgress(readProgress())}
+      items={[
+        ...(resume != null ? [{ label: 'Resume the tour', icon: 'info' as const, hint: `Stop ${resume + 1} of ${TOUR_STOPS.length}`, onSelect: () => startTourSafely(resume) }] : []),
+        { label: 'Take the tour', icon: 'info', onSelect: () => startTourSafely() },
+        { label: 'Keyboard shortcuts', icon: 'keyboard', shortcut: shortcutText('help'), onSelect: () => useSession.getState().setShortcutsOpen(true) },
+      ]}
+    />
+  );
+}
+
+/** The strip's sync badge: nothing for a project that doesn't sync. */
+function useSyncBadge() {
+  const status = useSync((s) => s.status);
+  const provider = useSync((s) => s.provider);
+  const error = useSync((s) => s.error);
+  const label = provider && PROVIDERS[provider]?.label;
+  if (status === 'off' || !label) return {};
+  const title = {
+    synced: `Saved to ${label}`,
+    pending: `Changes are on their way to ${label}`,
+    offline: `Offline: changes sync to ${label} when you’re back online`,
+    conflict: `The ${label} copy changed too: choose which version to keep`,
+    error: error ?? `Couldn’t sync to ${label}`,
+  }[status];
+  return { sync: status, syncTitle: title };
+}
+
 function Strip() {
   const engine = useEngineStore((s) => s.status);
+  const syncBadge = useSyncBadge();
   const project = useProject();
   const viewed = project.view.viewedNodeId;
   const { rows, cols, ms, profile } = useResultsStore();
@@ -126,13 +175,14 @@ function Strip() {
   const node = viewed ? nodeById(project, viewed) : undefined;
   const results = useRuleStore((s) => (viewed ? s.nodes[viewed]?.results : undefined));
   const sample = useSample(project);
+  const display = useDisplayFormat();
   const end = (
     <>
       <ActivityControl />
       <EngineBadge status={engine} />
     </>
   );
-  if (!node) return <StatusStrip kept={kept} end={end} />;
+  if (!node) return <StatusStrip kept={kept} end={end} {...syncBadge} />;
   const one = selected.length === 1 ? selected[0]! : undefined;
   const p = one ? profile?.[one] : undefined;
   const sampled = sampledUpstream(project, node.id, sample).length > 0;
@@ -140,10 +190,10 @@ function Strip() {
   const detail = (
     <>
       {rules && sampled && <span data-testid="rules-on-sample">Rules checked on the sample</span>}
-      {one && p && <span data-testid="column-profile">{one} · {describeProfile(p)}</span>}
+      {one && p && <span data-testid="column-profile">{one} · {describeProfile(p, display)}</span>}
     </>
   );
-  return <StatusStrip rows={rows} cols={cols} ms={ms} rules={rules} kept={kept} sample={sampled && sample ? sample.rows : undefined} detail={(rules && sampled) || (one && p) ? detail : undefined} end={end} />;
+  return <StatusStrip rows={rows} cols={cols} ms={ms} rules={rules} kept={kept} sample={sampled && sample ? sample.rows : undefined} detail={(rules && sampled) || (one && p) ? detail : undefined} end={end} {...syncBadge} />;
 }
 
 /**
@@ -163,14 +213,18 @@ export function AppShell() {
   const designing = designerId ? nodeById(project, designerId) : undefined;
   const fileInput = useRef<HTMLInputElement>(null);
   const canvas = useRef<HTMLElement>(null);
+  const inspector = useRef<HTMLElement>(null);
+  // The inspector may only be drawn on the next render (it was hidden, or the notes were showing).
+  const focusInspector = () => requestAnimationFrame(() => inspector.current?.focus());
   useExcelSources();
   useFlowEvaluation();
 
   const importInput = useRef<HTMLInputElement>(null);
+  const recipeInput = useRef<HTMLInputElement>(null);
   const chooseFiles = () => void pickSourceFiles(() => fileInput.current?.click());
 
   const session = useSession.getState;
-  const actions: Record<GlobalShortcutId, () => void> = {
+  const actions: Record<GlobalShortcutId, () => void | boolean> = {
     help: () => session().setShortcutsOpen(true),
     undo,
     redo,
@@ -191,18 +245,25 @@ export function AppShell() {
     'toggle-results': () => session().setResultsOpen(!session().resultsOpen),
     pin: togglePin,
     'add-step': searchAddStep,
+    'open-node': () => openSelected(focusInspector),
+    connect: startWiring,
+    cancel: cancelWiring,
   };
   useShortcuts(actions, (text) => void addPastedText(text));
 
   return (
     <ReactFlowProvider>
-      <div className="grid h-full min-w-[960px] grid-rows-[auto_minmax(0,1fr)_auto_auto] bg-surface-panel text-body text-ink">
+      <div className="grid h-full min-w-[960px] grid-rows-[auto_auto_minmax(0,1fr)_auto_auto] bg-surface-panel text-body text-ink">
+        <h1 className="sr-only">{project.name}</h1>
         <Toolbar
           project={project.name}
           projectMenu={[
             { label: 'Rename', icon: 'text', onSelect: () => openProjectDialog({ kind: 'rename', id: project.id, name: project.name }) },
             { label: 'Export project', icon: 'export', hint: '.puddle.json', onSelect: exportProject },
             { label: 'Import project', icon: 'source', onSelect: () => importInput.current?.click() },
+            { label: 'Export recipe', icon: 'template', hint: 'Steps, no data', onSelect: () => openExportRecipe() },
+            { label: 'Open recipe', icon: 'template', hint: '.puddle-recipe.json', onSelect: () => recipeInput.current?.click() },
+            ...PROVIDER_IDS.map((id) => ({ label: `Sync to ${PROVIDERS[id]!.label}`, icon: 'refresh' as const, onSelect: () => openSyncDialog({ kind: 'project', provider: id }) })),
             { label: 'All projects', icon: 'layout', onSelect: () => void goHome() },
           ]}
         >
@@ -217,9 +278,10 @@ export function AppShell() {
           />
           <Menu
             label="Add node"
-            button={{ icon: 'transform' }}
+            button={{ icon: 'transform', ...{ 'data-tour': 'add-node' } }}
             items={[
               { label: 'Transform', icon: 'transform', shortcut: shortcutText('add-transform'), onSelect: () => addNodeAfterSelection('transform') },
+              { label: 'From template', icon: 'template', hint: 'Saved steps', onSelect: openTemplates },
               { label: 'Join', icon: 'join', hint: 'Two inputs', onSelect: () => addNodeAfterSelection('join') },
               { label: 'Append', icon: 'append', hint: 'Stack rows', onSelect: () => addNodeAfterSelection('append') },
               { label: 'Lookup', icon: 'join', hint: 'Bring columns across', onSelect: () => addNodeAfterSelection('lookup') },
@@ -261,6 +323,7 @@ export function AppShell() {
             data-testid="inspector-toggle"
             onClick={() => session().setInspectorOpen(!inspectorOpen)}
           />
+          <HelpMenu />
           <Button
             variant="ghost"
             icon="keyboard"
@@ -271,6 +334,10 @@ export function AppShell() {
             onClick={() => session().setShortcutsOpen(true)}
           />
         </Toolbar>
+        <div>
+          <SyncConflictBanner />
+          <RecipeAttachBanner />
+        </div>
         <input
           ref={importInput}
           type="file"
@@ -281,6 +348,18 @@ export function AppShell() {
             const file = e.target.files?.[0];
             e.target.value = '';
             if (file) void importProject(file);
+          }}
+        />
+        <input
+          ref={recipeInput}
+          type="file"
+          accept=".json,application/json"
+          hidden
+          data-testid="recipe-input"
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            e.target.value = '';
+            if (file) void openRecipeFile(file);
           }}
         />
         <input
@@ -298,7 +377,7 @@ export function AppShell() {
         />
 
         <div className={inspectorOpen ? 'grid min-h-0 grid-cols-[minmax(0,1fr)_var(--size-inspector)]' : 'grid min-h-0 grid-cols-[minmax(0,1fr)]'}>
-          <main ref={canvas} tabIndex={-1} className="min-h-0 focus-visible:outline-none" aria-label="Canvas">
+          <main ref={canvas} tabIndex={-1} className="min-h-0 focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-brand" aria-label="Canvas">
             {designing?.type === 'query' ? <QueryDesigner node={designing} /> : <Canvas onAddSource={chooseFiles} />}
           </main>
 
@@ -307,7 +386,7 @@ export function AppShell() {
               <NotesPanel />
             </aside>
           ) : (
-            <aside className="min-h-0 overflow-auto border-l border-line bg-surface-panel" aria-label="Inspector" data-testid="inspector">
+            <aside ref={inspector} tabIndex={-1} className="min-h-0 overflow-auto border-l border-line bg-surface-panel focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-brand" aria-label="Inspector" data-testid="inspector">
               <Inspector />
             </aside>
           )}
@@ -320,7 +399,11 @@ export function AppShell() {
         <Strip />
       </div>
       <UrlDialog onChooseFile={chooseFiles} />
+      <SamplesDialog />
       <ShortcutsDialog />
+      <TemplateDialogs />
+      <RecipeDialogs />
+      <Tour />
     </ReactFlowProvider>
   );
 }

@@ -52,13 +52,21 @@ export const PLAN_COPY_OPTIMIZERS = ['cte_inlining', 'common_subplan'];
 export const isPlanCopyFailure = (e: unknown) => /\w+Serialize not implemented/.test(e instanceof Error ? e.message : String(e));
 
 /**
+ * DuckDB stopped inside a call: a WebAssembly trap ("Unreachable code should not be executed", "access to a null
+ * reference"), which the worker passes on as a RuntimeError. It is no fault of the query. Safari (WebKit) does it now
+ * and then in the middle of an ordinary query, the way it now and then fails DuckDB's start (src/engine/browser.ts).
+ */
+export const isEngineTrap = (e: unknown) =>
+  e instanceof Error && (e.name === 'RuntimeError' || /^(Unreachable code should not be executed|access to a null reference)\b/i.test(e.message));
+
+/**
  * The main-thread face of the engine. Every call goes through the scheduler, so previews beat background
  * work, superseded previews are cancelled, and errors come back as EngineError.
  */
 export class EngineClient {
   private readonly scheduler = new Scheduler();
   private readonly stopListeners = new Set<() => void>();
-  /** True once the plan-copying optimizers are off for this connection (see PLAN_COPY_OPTIMIZERS). */
+  /** True once the plan-copying optimizers are off (see PLAN_COPY_OPTIMIZERS): a database setting, so a new connection keeps it. */
   private planCopiesOff = false;
 
   constructor(private readonly backend: DuckBackend) {}
@@ -161,10 +169,29 @@ export class EngineClient {
   }
 
   /**
-   * Run a query. If DuckDB fails because it couldn't copy part of the plan (see PLAN_COPY_OPTIMIZERS), turn those
-   * optimizers off for the connection and run it once more; every later query runs without them too.
+   * Run a query. If DuckDB stopped inside it (see isEngineTrap), go on with a new connection and run it once more, so
+   * a source doesn't break or a result go missing over it; a second stop is shown as the query's error.
    */
   private async run(sql: string, signal: AbortSignal): Promise<Table> {
+    try {
+      return await this.runOnce(sql, signal);
+    } catch (e) {
+      if (!isEngineTrap(e) || signal.aborted) throw e;
+      console.warn(`DuckDB stopped inside a query (${(e as Error).message.split('\n')[0]}), so it is running it once more on a new connection.`);
+      try {
+        await this.backend.reconnect();
+      } catch {
+        throw e;
+      }
+      return this.runOnce(sql, signal);
+    }
+  }
+
+  /**
+   * Run a query once. If DuckDB fails because it couldn't copy part of the plan (see PLAN_COPY_OPTIMIZERS), turn those
+   * optimizers off and run it once more; every later query runs without them too.
+   */
+  private async runOnce(sql: string, signal: AbortSignal): Promise<Table> {
     try {
       return await this.backend.query(sql, signal);
     } catch (e) {

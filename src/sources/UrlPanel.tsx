@@ -2,14 +2,14 @@ import type { Source } from '../model';
 import { Banner, Button, Section } from '../ui';
 import { useAttachments } from './attachments';
 import { CorsHint } from './UrlDialog';
-import { loadUrlSource, openAddress, urlProblem, useUrlFetches } from './url';
+import { addressOf, loadUrlSource, openAddress, urlProblem, useUrlFetches } from './url';
 
 const time = (at: number) => new Date(at).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', second: '2-digit' });
 
 /** What went wrong reading a URL source, with Download and Try again; shared by the inspector and the results. */
 export function UrlProblemBanner({ source }: { source: Source }) {
   const fetch = useUrlFetches((s) => s.fetches[source.id]);
-  const href = source.url?.href ?? '';
+  const href = String(addressOf(source));
   const problem = urlProblem(fetch, href);
   if (fetch?.state !== 'failed') return <Banner tone="info" title={problem.title}>{problem.message}</Banner>;
   return (
@@ -35,11 +35,11 @@ export function UrlProblemBanner({ source }: { source: Source }) {
 export function UrlPanel({ source }: { source: Source }) {
   const fetch = useUrlFetches((s) => s.fetches[source.id]);
   const state = useAttachments((s) => s.sources[source.id] ?? 'detached');
-  const href = source.url?.href ?? '';
+  const href = String(addressOf(source));
   const busy = fetch?.state === 'fetching';
   return (
     <Section
-      title="Web address"
+      title={source.url?.sample ? 'Sample data' : 'Web address'}
       action={
         <Button size="sm" variant="ghost" icon="refresh" disabled={busy} onClick={() => void loadUrlSource(source, { refresh: true })}>
           {busy ? 'Refreshing…' : 'Refresh'}

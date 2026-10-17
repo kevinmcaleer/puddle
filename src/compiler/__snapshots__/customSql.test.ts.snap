@@ -1,7 +1,7 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
 exports[`custom SQL step > binds input to the previous step and runs the query as a subquery 1`] = `
-"WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv')),
+"WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv', null_padding = true)),
   "n_t_s0" AS (SELECT * REPLACE (trim("name") AS "name") FROM "n_src"),
   "n_t_s1" AS (WITH "input" AS (SELECT * FROM "n_t_s0")
 SELECT * FROM (

@@ -4,6 +4,7 @@ import { CompileError, PendingSchemaError, UnwiredError } from './errors';
 import { compileJoin, joinCondition, joinProblems } from './join';
 import { compileLookup, firstMatches, lookupCondition, lookupProblems } from './lookup';
 import { keptTable, knownKept, type KeptBook } from './keptBook';
+import { englishDateNames } from './locales';
 import { compileQuery, queryProblems } from './query';
 import { knownSchemas, type SchemaBook } from './schemaBook';
 import { sourceRelation } from './sources';
@@ -325,13 +326,16 @@ export function ruleContext(project: Project, options: CompileOptions = {}): Rul
  * How many of a sample of a column's non-empty values each strptime format reads: one row per format with
  * `format`, `matched` and `total`, plus one `example` value it reads. For ranking date formats.
  */
-export function compileDateDetection(project: Project, target: Target, column: string, formats: string[], sample = 1000): string {
+export function compileDateDetection(project: Project, target: Target, column: string, formats: string[], sample = 1000, locale?: string): string {
   if (!formats.length) throw new RangeError('No formats to try.');
-  const values = `SELECT trim(CAST(${ident(column)} AS VARCHAR)) AS v FROM (${compile(project, target).sql}) WHERE coalesce(trim(CAST(${ident(column)} AS VARCHAR)), '') <> '' LIMIT ${num(sample)}`;
+  const text = `trim(CAST(${ident(column)} AS VARCHAR))`;
+  // Month and day names in the locale's language are read as parse dates reads them; the example stays as written.
+  const read = englishDateNames(text, locale);
+  const values = `SELECT ${read === text ? `${text} AS v` : `${text} AS raw, ${read} AS v`} FROM (${compile(project, target).sql}) WHERE coalesce(trim(CAST(${ident(column)} AS VARCHAR)), '') <> '' LIMIT ${num(sample)}`;
   // strptime needs a constant format, so each format gets its own SELECT.
   const tried = formats.map((f, i) => {
     const reads = `try_strptime(v, ${str(f)}) IS NOT NULL`;
-    return `SELECT ${num(i)} AS i, ${str(f)} AS format, count(*) FILTER (WHERE ${reads}) AS matched, count(*) AS total, any_value(v) FILTER (WHERE ${reads}) AS example FROM s`;
+    return `SELECT ${num(i)} AS i, ${str(f)} AS format, count(*) FILTER (WHERE ${reads}) AS matched, count(*) AS total, any_value(${read === text ? 'v' : 'raw'}) FILTER (WHERE ${reads}) AS example FROM s`;
   });
   return `WITH s AS (${values})\nSELECT format, matched, total, example FROM (\n  ${tried.join('\n  UNION ALL ')}\n) ORDER BY i`;
 }

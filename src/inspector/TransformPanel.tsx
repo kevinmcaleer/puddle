@@ -24,6 +24,7 @@ import {
 import { fieldErrors, labelFor, stepForms, type StepGroup } from '../steps';
 import { CommitInput, StepForm } from '../steps/StepForm';
 import { Banner, Button, Field, Menu, Section, StepList, Switch, type MenuItem } from '../ui';
+import { openTemplateDialog } from '../templates/actions';
 import { buildStep } from './addStep';
 import { useStepColumns, useStepErrors } from './useStepColumns';
 
@@ -83,7 +84,7 @@ function StepSettings({ node, index, error }: { node: TransformNode; index: numb
     () => {
       const engine = useEngineStore.getState().engine;
       const p = useProjectStore.getState().history.present;
-      return engine ? (column: string) => detectDateFormats(engine, p, { nodeId: node.id, stepIndex: index - 1 }, column) : undefined;
+      return engine ? (column: string, locale?: string) => detectDateFormats(engine, p, { nodeId: node.id, stepIndex: index - 1 }, column, locale) : undefined;
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [inputKey],
@@ -121,6 +122,11 @@ function StepSettings({ node, index, error }: { node: TransformNode; index: numb
           />
         </Field>
         <Switch id="step-enabled" label="Enabled" checked={step.enabled} onChange={(enabled) => update({ enabled })} />
+        {!step.enabled && step.disabledReason && (
+          <Banner tone="warn" title="Turned off">
+            {step.disabledReason}
+          </Banner>
+        )}
         {/* Settings mistakes show on their fields; this is for what only running the step finds. */}
         {error && !Object.keys(fieldErrors(step)).length && (
           <Banner tone="fail" title="This step can’t run">
@@ -166,6 +172,9 @@ export function TransformPanel({ node }: { node: TransformNode }) {
         <Field label="Node name" htmlFor="node-name">
           <CommitInput key={node.name} id="node-name" value={node.name} onCommit={(v) => apply((p) => renameNode(p, node.id, v))} />
         </Field>
+        <Button size="sm" variant="ghost" icon="template" disabled={!node.steps.length} title={node.steps.length ? 'Keep these steps to reuse in any project' : 'Add a step first'} onClick={() => openTemplateDialog({ kind: 'save', nodeId: node.id })}>
+          Save as template
+        </Button>
         {canUngroup(node) && (
           <Button size="sm" variant="ghost" icon="layout" onClick={() => apply((p) => ungroupNode(p, node.id))}>
             Ungroup into the original nodes
@@ -175,7 +184,7 @@ export function TransformPanel({ node }: { node: TransformNode }) {
       <Section title="Applied steps" count={node.steps.length} action={<AddStepMenu node={node} after={selected >= 0 ? selected : node.steps.length - 1} />}>
         {node.steps.length ? (
           <StepList
-            steps={node.steps.map((s, i) => ({ label: s.label, disabled: !s.enabled, error: errors[i] }))}
+            steps={node.steps.map((s, i) => ({ label: s.label, disabled: !s.enabled, error: errors[i], note: s.enabled ? undefined : s.disabledReason }))}
             selected={selected >= 0 ? selected : undefined}
             viewed={viewed}
             onSelect={(i) => viewStep(node.id, i, node.steps[i])}

@@ -21,6 +21,22 @@ interface WorkspaceState {
 
 export const useWorkspace = create<WorkspaceState>(() => ({ screen: 'loading', projects: [], error: null }));
 
+type Listener<T> = (value: T) => void;
+
+/**
+ * What other layers (sync) follow: a project shown in the editor, saved by autosave, or deleted. Listeners run
+ * after the fact and aren't awaited.
+ */
+export const workspaceEvents = {
+  shown: new Set<Listener<Project>>(),
+  saved: new Set<Listener<Project>>(),
+  removed: new Set<Listener<string>>(),
+};
+
+const emit = <T>(listeners: Set<Listener<T>>, value: T) => {
+  for (const l of listeners) l(value);
+};
+
 /** Projects already in IndexedDB. A brand-new, untouched project isn't saved until it has something in it. */
 const stored = new Set<string>();
 
@@ -58,6 +74,7 @@ function show(project: Project) {
   useProjectStore.getState().load(project);
   remember(project.id);
   useWorkspace.setState({ screen: 'editor', error: null });
+  emit(workspaceEvents.shown, project);
   return attachProject(project);
 }
 
@@ -77,7 +94,10 @@ export function flush(): Promise<void> {
   if (!worthSaving(project, history.past.length > 0 || history.future.length > 0)) return saving;
   saving = saving
     .then(() => saveProject(project))
-    .then(() => void stored.add(project.id))
+    .then(() => {
+      stored.add(project.id);
+      emit(workspaceEvents.saved, project);
+    })
     .catch((e: unknown) => useSession.getState().notify({ tone: 'fail', text: `Puddle couldn’t save this project in the browser: ${e instanceof Error ? e.message : String(e)}` }));
   return saving;
 }
@@ -135,6 +155,21 @@ export function newProject(name?: string) {
   return show(createProject(name));
 }
 
+/**
+ * Open a project built here rather than loaded (a sample), saved straight away so it is on the home screen even if
+ * the tab closes before anything changes. Saving can fail (storage blocked): it still opens, as an unsaved project.
+ */
+export async function openNewProject(project: Project) {
+  await flush();
+  try {
+    await saveProject(project);
+    stored.add(project.id);
+  } catch {
+    // Autosave says so on the next change.
+  }
+  await show(project);
+}
+
 export async function goHome() {
   // Forget the open project first, so a reload straight after this lands on the home screen too.
   remember(null);
@@ -177,7 +212,37 @@ export async function removeProject(id: string) {
   await deleteProject(id);
   await deleteHandles(id).catch(() => {});
   stored.delete(id);
+  emit(workspaceEvents.removed, id);
   if (lastOpened() === id) remember(null);
+  await refreshProjects();
+}
+
+/** Save a project in place of any of the same id (such as a newer version from sync) and show it in the editor. */
+export async function replaceProject(project: Project) {
+  // Anything still unsaved goes first, so it can't land on top of the new version afterwards.
+  await flush();
+  await saveProject(project);
+  stored.add(project.id);
+  await show(project);
+}
+
+/**
+ * Save the open project now, even if it is untouched, so the page can leave (to sign in to Google Drive) and reopen
+ * it on coming back.
+ */
+export async function keepOpenProject() {
+  await flush();
+  if (useWorkspace.getState().screen !== 'editor') return;
+  const project = useProjectStore.getState().history.present;
+  if (stored.has(project.id)) return;
+  await saveProject(project);
+  stored.add(project.id);
+}
+
+/** Save a project beside the others without opening it. */
+export async function saveProjectCopy(project: Project) {
+  await saveProject(project);
+  stored.add(project.id);
   await refreshProjects();
 }
 

@@ -1,0 +1,6 @@
+[
+  "tidy-contact-list.puddle-recipe.json",
+  "standardise-dates-and-currencies.puddle-recipe.json",
+  "deduplicate-customers.puddle-recipe.json",
+  "monthly-sales-summary.puddle-recipe.json"
+]

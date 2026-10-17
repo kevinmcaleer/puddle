@@ -5,7 +5,7 @@ export function Section({ title, count, action, children }: { title: string; cou
     <section className="ui-section" aria-label={title}>
       <div className="ui-section__head">
         <div className="ui-section__title">
-          <span className="ui-eyebrow">{title}</span>
+          <h2 className="ui-eyebrow">{title}</h2>
           {count != null && <span className="ui-metric">{count}</span>}
         </div>
         {action}

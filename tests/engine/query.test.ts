@@ -1,13 +1,14 @@
 // Query nodes on real DuckDB-WASM (Node build): shop customers and orders joined by the lines the designer draws,
-// with the grid's fields, aliases, criteria, sorting and unique values.
+// with the grid's fields, aliases, criteria (and or rows), sorting and unique values, and the Totals row grouping and
+// summarising.
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { compileDisplayPage, sourceFileName } from '../../src/compiler';
 import { EngineClient, tableRows } from '../../src/engine/client';
 import { evaluateFlow, invalidateCaches, schemaCacheFor, useFlowStore } from '../../src/flow/status';
-import { addQueryField, addQueryJoin, addQueryTable, removeQueryTable, setQueryJoinKind, updateQueryField, type Project, type QueryField, type QueryJoinKind } from '../../src/model';
+import { addQueryField, addQueryJoin, addQueryOrRow, addQueryTable, removeQueryOrRow, removeQueryTable, setQueryCriteria, setQueryJoinKind, setQuerySpec, updateQueryField, type Project, type QueryField, type QueryJoinKind } from '../../src/model';
 import { createNodeBackend } from '../helpers/nodeBackend';
-import { flow, src } from '../helpers/projects';
+import { flow, src, step } from '../helpers/projects';
 
 const customers = src({ id: 'customers', format: 'csv', name: 'shop-customers.csv' });
 const orders = src({ id: 'orders', format: 'csv', name: 'shop-orders.csv' });
@@ -127,6 +128,146 @@ describe('query grid', () => {
     const p = { ...shop('inner', [[0, 'name', { alias: 'Customer', sort: 'desc' }]]) };
     const distinct = { ...p, nodes: p.nodes.map((n) => (n.type === 'query' ? { ...n, querySpec: { ...n.querySpec, distinct: true } } : n)) };
     expect((await run(distinct)).rows).toEqual([['Grace'], ['Barbara L'], ['Barbara'], ['Ada']]);
+  });
+});
+
+/** The shop query with its Totals row on. */
+const withTotals = (p: Project, totals = true) => setQuerySpec(p, 'q', { totals });
+
+describe('query totals', () => {
+  it('grouping orders by customer with Sum of total and Count of orders matches the Group by node', async () => {
+    // Orders alone, in a Query and in a Group by (a pivot with no Columns field), side by side.
+    let p = flow({
+      sources: [orders],
+      nodes: [
+        { id: 'o', type: 'source', sourceId: 'orders' },
+        { id: 'q', type: 'query' },
+        { id: 'g', type: 'transform', steps: [step('s', 'pivot', { rows: ['customer_id'], values: [{ column: 'total', agg: 'sum' }, { column: 'order_id', agg: 'count' }] })] },
+      ],
+      wires: [['o', 'g']],
+    });
+    p = addQueryTable(p, 'q', 'o');
+    p = addQueryField(p, 'q', { port: 0, column: 'customer_id' }, undefined, 'f1');
+    p = addQueryField(p, 'q', { port: 0, column: 'total' }, undefined, 'f2');
+    p = addQueryField(p, 'q', { port: 0, column: 'order_id' }, undefined, 'f3');
+    p = updateQueryField(p, 'q', 'f1', { sort: 'asc' });
+    p = updateQueryField(p, 'q', 'f2', { total: 'sum' });
+    p = updateQueryField(p, 'q', 'f3', { total: 'count' });
+    p = withTotals(p);
+    const [query, group] = [await run(p, 'q'), await run(p, 'g')];
+    expect(query.columns).toEqual(['customer_id', 'SumOftotal', 'CountOforder_id']);
+    expect(group.columns).toEqual(['customer_id', 'sum of total', 'count of order_id']);
+    expect(query.rows).toEqual(group.rows);
+    expect(query.types).toEqual(group.types);
+    expect(query.rows).toEqual([
+      ['1', '15.75', '2'],
+      ['2', '8.0', '1'],
+      ['4', '9.99', '1'],
+      ['5', '1.0', '1'],
+    ]);
+  });
+
+  it('criteria on a summary filter the groups, not the rows', async () => {
+    // Ada's orders are 12.50 and 3.25: as rows only one is over 10, as a group her total is.
+    const fields: Array<[number, string, Partial<QueryField>?]> = [[0, 'name', { sort: 'asc' }], [1, 'total', { total: 'sum', criteria: { op: '>', value: '10' } }]];
+    expect((await run(withTotals(shop('inner', fields)))).rows).toEqual([['Ada', '15.75']]);
+    // Grace's 8.00 alone isn't, so a row filter keeps a different answer: Ada's one big order.
+    expect((await run(shop('inner', fields))).rows).toEqual([['Ada', '12.5']]);
+  });
+
+  it('Where fields filter rows before grouping and don’t show', async () => {
+    const p = withTotals(
+      shop('inner', [
+        [0, 'name', { sort: 'asc' }],
+        [1, 'order_id', { total: 'count' }],
+        [1, 'status', { total: 'where', show: false, criteria: { op: '=', value: 'shipped' } }],
+      ]),
+    );
+    const { columns, rows } = await run(p);
+    expect(columns).toEqual(['name', 'CountOforder_id']);
+    expect(rows).toEqual([['Ada', '2']]);
+  });
+
+  it('every summary, an expression and a rename, sorted on a summary', async () => {
+    const p = withTotals(
+      shop('inner', [
+        [1, 'status'],
+        [1, 'total', { total: 'avg', alias: 'Average total' }],
+        [1, 'total', { total: 'min' }],
+        [1, 'total', { total: 'max', sort: 'desc' }],
+        [0, 'name', { total: 'countDistinct' }],
+        [1, 'total', { total: 'expression', expression: 'round(sum(total) / count(*), 3)' }],
+        [1, 'total', { total: 'stdev' }],
+        [1, 'total', { total: 'var' }],
+      ]),
+    );
+    const { columns, rows } = await run(p);
+    expect(columns).toEqual(['status', 'Average total', 'MinOftotal', 'MaxOftotal', 'CountDistinctOfname', 'Expr1', 'StDevOftotal', 'VarOftotal']);
+    expect(rows.map((r) => r.slice(0, 6))).toEqual([
+      ['shipped', '7.875', '3.25', '12.5', '1', '7.875'],
+      ['pending', '3.3333333333333335', '1.0', '8.0', '3', '3.333'],
+    ]);
+    expect(Number(rows[1]![7])).toBeCloseTo(16.333, 3);
+  });
+
+  it('turning Totals off brings back the rows as they were', async () => {
+    const fields: Array<[number, string, Partial<QueryField>?]> = [[1, 'order_id', { sort: 'asc' }], [1, 'total', { total: 'sum' }]];
+    const before = await run(shop('inner', fields));
+    expect(before.rows).toHaveLength(5);
+    expect(await run(withTotals(withTotals(shop('inner', fields)), false))).toEqual(before);
+  });
+
+  it('an expression on a column that isn’t grouped is explained in plain words', async () => {
+    const p = withTotals(shop('inner', [[1, 'customer_id'], [1, 'total', { total: 'expression', expression: 'order_id' }]]));
+    await expect(run(p)).rejects.toThrow('order_id is used but neither grouped nor summarised. Set its Total to Group by');
+  });
+
+  it('a sum of text is explained before anything runs', async () => {
+    await evaluateFlow(engine, withTotals(shop('inner', [[0, 'name', { total: 'sum' }]])));
+    expect(useFlowStore.getState().nodes.q!.status).toMatchObject({ state: 'error', message: 'Sum needs numbers, and name is text. Pick Count, Min or Max for it, or change its type with Change type.' });
+  });
+});
+
+describe('query or rows', () => {
+  // Every customer, with their orders where they have them, named once each.
+  const customers = (fields: Array<[number, string, Partial<QueryField>?]>) => setQuerySpec(shop('left', [[0, 'name', { sort: 'asc' }], ...fields]), 'q', { distinct: true });
+  const names = async (p: Project) => (await run(p)).rows.map((r) => r[0]);
+
+  it('lapsed customers or customers with an order over 10 give the union of both', async () => {
+    const lapsed = customers([[0, 'status', { show: false, criteria: { op: '=', value: 'lapsed' } }]]);
+    const big = customers([[1, 'total', { show: false, criteria: { op: '>', value: '10' } }]]);
+    expect(await names(lapsed)).toEqual(['Barbara L', 'Edsger']);
+    expect(await names(big)).toEqual(['Ada']);
+    // The same two conditions on two rows of one grid.
+    let either = addQueryOrRow(customers([[0, 'status', { show: false }], [1, 'total', { show: false }]]), 'q');
+    either = setQueryCriteria(either, 'q', 'f1', 0, { op: '=', value: 'lapsed' });
+    either = setQueryCriteria(either, 'q', 'f2', 1, { op: '>', value: '10' });
+    expect(await names(either)).toEqual(['Ada', 'Barbara L', 'Edsger']);
+    // On one row they're ANDed: no lapsed customer has an order over 10.
+    const both = setQueryCriteria(customers([[0, 'status', { show: false, criteria: { op: '=', value: 'lapsed' } }], [1, 'total', { show: false }]]), 'q', 'f2', 0, { op: '>', value: '10' });
+    expect(await names(both)).toEqual([]);
+    // Removing the or row leaves the first condition alone.
+    expect(await names(removeQueryOrRow(either, 'q', 1))).toEqual(['Barbara L', 'Edsger']);
+  });
+
+  it('with Totals, or rows on a summary filter the groups', async () => {
+    let p = withTotals(shop('inner', [[0, 'name', { sort: 'asc' }], [1, 'total', { total: 'sum', criteria: { op: '>', value: '10' } }]]));
+    p = setQueryCriteria(addQueryOrRow(p, 'q'), 'q', 'f1', 1, { op: '<', value: '2' });
+    expect((await run(p)).rows).toEqual([
+      ['Ada', '15.75'],
+      ['Barbara', '1.0'],
+      ['Barbara L', '1.0'],
+    ]);
+  });
+
+  it('with Totals, or rows on a Where field filter the rows before grouping', async () => {
+    let p = withTotals(shop('inner', [[0, 'name', { sort: 'asc' }], [1, 'order_id', { total: 'count' }], [1, 'total', { total: 'where', show: false, criteria: { op: '>', value: '10' } }]]));
+    p = setQueryCriteria(addQueryOrRow(p, 'q'), 'q', 'f2', 1, { op: '<', value: '2' });
+    expect((await run(p)).rows).toEqual([
+      ['Ada', '1'],
+      ['Barbara', '1'],
+      ['Barbara L', '1'],
+    ]);
   });
 });
 

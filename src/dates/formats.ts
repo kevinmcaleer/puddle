@@ -1,4 +1,6 @@
-// Date format detection: which strptime formats read a column, ranked, with day and month order never guessed.
+// Date format detection: which strptime formats read a column, ranked, with day and month order never guessed:
+// it is asked, or follows the locale the parse dates step was given.
+import { parseLocale } from '../compiler/locales';
 
 /** Formats tried on every column, most common first. Ties in match rate keep this order. */
 export const CANDIDATE_FORMATS = [
@@ -36,8 +38,11 @@ export interface Detection {
   ranked: FormatMatch[];
   /** The format to use without asking, or undefined when nothing matched or the order is ambiguous. */
   best?: string;
-  /** Set when the top format reads exactly the same values with day and month swapped: the user must choose. */
-  ambiguous?: { dayFirst: string; monthFirst: string; example?: string | null };
+  /**
+   * Set when the top format reads exactly the same values with day and month swapped: the user must choose, unless
+   * a locale was given, which settles it (`byLocale`) and makes its order `best`.
+   */
+  ambiguous?: { dayFirst: string; monthFirst: string; example?: string | null; byLocale?: string };
 }
 
 /** The same format with day and month swapped, or undefined if it doesn't have both. */
@@ -49,12 +54,15 @@ export function swapDayMonth(format: string): string | undefined {
 /** Whether the format puts the day before the month. */
 export const dayFirst = (format: string) => format.indexOf('%d') < format.indexOf('%m');
 
-/** The formats to try: the project's own first, then the candidates, without repeats. */
-export const formatsToTry = (projectFormats: string[]) => [...new Set([...projectFormats, ...CANDIDATE_FORMATS])];
+/** The formats to try: the project's own first, then the candidates, then the locale's own, without repeats. */
+export const formatsToTry = (projectFormats: string[], locale?: string) => [...new Set([...projectFormats, ...CANDIDATE_FORMATS, ...(parseLocale(locale)?.formats ?? [])])];
 
-/** Rank matches by share of values read; ties go to the project's formats, then the candidate order. */
-export function rankFormats(matches: FormatMatch[], projectFormats: string[] = []): Detection {
-  const order = formatsToTry(projectFormats);
+/**
+ * Rank matches by share of values read; ties go to the project's formats, then the candidate order. With a locale,
+ * a day and month order the values leave open is the locale's.
+ */
+export function rankFormats(matches: FormatMatch[], projectFormats: string[] = [], locale?: string): Detection {
+  const order = formatsToTry(projectFormats, locale);
   const pos = (f: string) => {
     const i = order.indexOf(f);
     return i < 0 ? order.length : i;
@@ -67,6 +75,8 @@ export function rankFormats(matches: FormatMatch[], projectFormats: string[] = [
   // A project format settles the order: that's what the setting is for.
   if (twin && !projectFormats.includes(top.format)) {
     const [d, m] = dayFirst(top.format) ? [top, twin] : [twin, top];
+    const settled = parseLocale(locale);
+    if (settled) return { ranked, best: settled.dayFirst ? d.format : m.format, ambiguous: { dayFirst: d.format, monthFirst: m.format, example: top.example, byLocale: locale } };
     return { ranked, ambiguous: { dayFirst: d.format, monthFirst: m.format, example: top.example } };
   }
   return { ranked, best: top.format };

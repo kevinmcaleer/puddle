@@ -1,0 +1,166 @@
+{
+  "puddleRecipe": 1,
+  "kind": "pipeline",
+  "formatVersion": 1,
+  "name": "Monthly sales summary",
+  "description": "Turns a wide table with one column per month into one row per store and month, reads the takings as numbers and totals each month.",
+  "notes": "## Monthly sales summary\n\nFor takings laid out like a spreadsheet report: a **store** and **region** column, then one column per month.\n\n- Every column but store and region is **unpivoted** into `month` and `sales`; empty months are left out.\n- **sales** is read as a number (thousands separators, “n/a” and “-” are handled).\n- The total of each month is summed across stores.\n",
+  "settings": {
+    "sampleThresholdRows": 5000000,
+    "locale": "en-GB",
+    "defaultDateFormats": []
+  },
+  "sources": [
+    {
+      "id": "monthly",
+      "name": "Monthly sales",
+      "kind": "file",
+      "format": "csv",
+      "parseOptions": {},
+      "detectedSchema": [
+        {
+          "name": "store",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "region",
+          "type": "VARCHAR"
+        }
+      ]
+    }
+  ],
+  "nodes": [
+    {
+      "id": "n_monthly",
+      "type": "source",
+      "name": "Monthly sales",
+      "sourceId": "monthly",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "rules": []
+    },
+    {
+      "id": "n_long",
+      "type": "transform",
+      "name": "One row per month",
+      "position": {
+        "x": 260,
+        "y": 0
+      },
+      "rules": [],
+      "steps": [
+        {
+          "id": "st_unpivot",
+          "type": "unpivot",
+          "label": "Unpivoted every column except store, region",
+          "enabled": true,
+          "params": {
+            "columns": [
+              "store",
+              "region"
+            ],
+            "except": true,
+            "attribute": "month",
+            "value": "sales",
+            "keepEmpty": false,
+            "asText": true
+          }
+        },
+        {
+          "id": "st_numbers",
+          "type": "parseNumbers",
+          "label": "Parsed numbers in sales",
+          "enabled": true,
+          "params": {
+            "columns": [
+              "sales"
+            ],
+            "decimal": "."
+          }
+        }
+      ]
+    },
+    {
+      "id": "n_total",
+      "type": "transform",
+      "name": "Monthly totals",
+      "position": {
+        "x": 520,
+        "y": 0
+      },
+      "rules": [],
+      "steps": [
+        {
+          "id": "st_group",
+          "type": "pivot",
+          "label": "Grouped by month",
+          "enabled": true,
+          "params": {
+            "rows": [
+              "month"
+            ],
+            "column": "",
+            "pivotValues": [],
+            "moreValues": false,
+            "values": [
+              {
+                "column": "sales",
+                "agg": "sum"
+              }
+            ],
+            "filters": [],
+            "names": {}
+          }
+        }
+      ]
+    },
+    {
+      "id": "n_out",
+      "type": "output",
+      "name": "Monthly report",
+      "position": {
+        "x": 780,
+        "y": 0
+      },
+      "rules": [],
+      "outputSpec": {
+        "format": "csv",
+        "options": {}
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "e1",
+      "from": {
+        "nodeId": "n_monthly"
+      },
+      "to": {
+        "nodeId": "n_long",
+        "port": 0
+      }
+    },
+    {
+      "id": "e2",
+      "from": {
+        "nodeId": "n_long"
+      },
+      "to": {
+        "nodeId": "n_total",
+        "port": 0
+      }
+    },
+    {
+      "id": "e3",
+      "from": {
+        "nodeId": "n_total"
+      },
+      "to": {
+        "nodeId": "n_out",
+        "port": 0
+      }
+    }
+  ]
+}

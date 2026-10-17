@@ -1,0 +1,61 @@
+order_id,customer_id,product,quantity
+O-2001,C004 ,Coffee grinder,2
+O-2002,C019 ,Kettle,3
+O-2003,C015,Mug,3
+O-2004,C002,Toaster,1
+O-2005,C009,Teapot,4
+O-2006,C006,Toaster,4
+O-2007,c017,Toaster,4
+O-2008, C002,Kettle,4
+O-2009,C011,Teapot,1
+O-2010,C007,Toaster,1
+O-2011,C004,Cafetiere,2
+O-2012,C004,Toaster,1
+O-2013,C016 ,Cafetiere,3
+O-2014, C014,Mug,2
+O-2015, C008,Cafetiere,2
+O-2016,c002,Coffee grinder,1
+O-2017,c011,Mug,1
+O-2018,C099,Toaster,2
+O-2019, C013,Cafetiere,3
+O-2020,C008,Teapot,2
+O-2021,C007,Mug,4
+O-2022,C007,Toaster,1
+O-2023,c010,Mug,1
+O-2024, C010,Mug,4
+O-2025,C008 ,Teapot,3
+O-2026,c016,Kettle,1
+O-2027,C001,Coffee grinder,2
+O-2028,C010 ,Teapot,1
+O-2029,C011,Cafetiere,4
+O-2030,c003,Toaster,3
+O-2031,C010,Toaster,1
+O-2032, C011,Coffee grinder,3
+O-2033,C012,Kettle,1
+O-2034,c015,Toaster,1
+O-2035,C006,Mug,4
+O-2036,C020,Mug,1
+O-2037,C007,Cafetiere,3
+O-2038,C008,Kettle,4
+O-2039,c006,Cafetiere,3
+O-2040,C008,Toaster,3
+O-2041,C001,Mug,1
+O-2042,C007 ,Teapot,3
+O-2043,C120,Coffee grinder,4
+O-2044,C004 ,Coffee grinder,1
+O-2045, C002,Teapot,2
+O-2046, C012,Cafetiere,1
+O-2047,C012 ,Mug,4
+O-2048,C015,Kettle,2
+O-2049,C009,Coffee grinder,2
+O-2050,C017,Coffee grinder,1
+O-2051,C012,Mug,1
+O-2052,c014,Teapot,3
+O-2053, C017,Teapot,2
+O-2054,C003 ,Teapot,1
+O-2055,C007,Mug,4
+O-2056,c017,Cafetiere,1
+O-2057,C006,Kettle,1
+O-2058,C010,Mug,1
+O-2059, C002,Teapot,2
+O-2060,C009 ,Kettle,1

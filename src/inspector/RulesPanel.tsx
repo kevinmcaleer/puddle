@@ -7,9 +7,10 @@ import { runAgain } from '../flow/rerun';
 import { sampledUpstream, useSample } from '../flow/sample';
 import { useFlowStore, useNodeStatus } from '../flow/status';
 import { addRule, dismissSuggestion, newId, nodeById, removeRule, updateRule, useProject, useProjectStore, type GraphNode, type Project, type Rule } from '../model';
+import { QualityReportButton } from '../report';
 import { newRule, ruleErrors, ruleForm, ruleForms, ruleLabel, showFailing, useSuggestions, type Suggestion } from '../rules';
 import { FormFields, type OtherNode } from '../steps/StepForm';
-import { Button, Field, fullCount, Menu, RuleRow, Section, Select, Switch } from '../ui';
+import { Button, Field, fullCount, Menu, RuleRow, Section, Select, Switch, useDisplayFormat } from '../ui';
 
 const apply = (edit: Parameters<ReturnType<typeof useProjectStore.getState>['apply']>[0]) => useProjectStore.getState().apply(edit);
 const NONE: Record<string, RuleResult> = {};
@@ -98,6 +99,7 @@ function Suggestions({ node }: { node: GraphNode }) {
 export function RulesPanel({ node }: { node: GraphNode }) {
   const results = useRuleStore((s) => s.nodes[node.id]?.results ?? NONE);
   const status = useNodeStatus(node.id);
+  const display = useDisplayFormat();
   const project = useProject();
   const sample = useSample(project);
   const onSample = node.rules.some((r) => r.enabled) && sampledUpstream(project, node.id, sample).length > 0;
@@ -138,7 +140,7 @@ export function RulesPanel({ node }: { node: GraphNode }) {
                   // A rule naming another node shows that node's name as it is now.
                   name={custom ? 'Custom expression' : ruleRefs(r).length ? ruleLabel(r, names) : r.label}
                   expr={custom || undefined}
-                  metric={table && res?.state === 'ok' ? `${fullCount(res.total)} ${res.total === 1 ? 'row' : 'rows'}` : undefined}
+                  metric={table && res?.state === 'ok' ? `${fullCount(res.total, display)} ${res.total === 1 ? 'row' : 'rows'}` : undefined}
                   noFailingRows={table ? 'This rule is about the whole table, so there are no failing rows to show.' : undefined}
                   severity={r.severity}
                   disabled={!r.enabled}
@@ -157,6 +159,12 @@ export function RulesPanel({ node }: { node: GraphNode }) {
         </div>
       ) : (
         <p className="text-ink-muted">No rules yet. Add one to say what this data should look like.</p>
+      )}
+      {/* An Output node offers the report next to its export instead. */}
+      {node.rules.length > 0 && node.type !== 'output' && (
+        <div className="pt-2">
+          <QualityReportButton node={node} />
+        </div>
       )}
       <Suggestions node={node} />
     </Section>

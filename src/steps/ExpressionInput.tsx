@@ -14,6 +14,7 @@ export function ExpressionInput({
   error,
   rows = 2,
   placeholder,
+  'aria-label': ariaLabel,
   onCommit,
 }: {
   id: string;
@@ -23,6 +24,8 @@ export function ExpressionInput({
   /** Lines shown before it scrolls; a whole query wants more than an expression. */
   rows?: number;
   placeholder?: string;
+  /** For an editor with no visible label of its own. */
+  'aria-label'?: string;
   onCommit: (v: string) => void;
 }) {
   const [draft, setDraft] = useState(value);
@@ -54,6 +57,7 @@ export function ExpressionInput({
         id={id}
         rows={rows}
         placeholder={placeholder}
+        aria-label={ariaLabel}
         spellCheck={false}
         role="combobox"
         aria-expanded={matches.length > 0}
@@ -110,7 +114,7 @@ export function ExpressionInput({
                 pick(c.name);
               }}
             >
-              <TypeTag type={columnKind(c.type)} />
+              <TypeTag type={columnKind(c.type)} decorative />
               <span className="ui-col">{c.name}</span>
             </li>
           ))}

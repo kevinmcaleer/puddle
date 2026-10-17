@@ -43,7 +43,7 @@ export async function createNodeBackend(opts: { beforeQuery?: (sql: string) => P
   );
   await db.instantiate();
   db.open({ path: ':memory:', query: { castBigIntToDouble: false } });
-  const conn = db.connect();
+  let conn = db.connect();
   // Extensions (json, parquet) download from extensions.duckdb.org on first use, which blocks this
   // synchronous build when offline. Tests stay hermetic: anything needing an extension fails fast instead.
   conn.query('SET autoinstall_known_extensions = false');
@@ -73,6 +73,9 @@ export async function createNodeBackend(opts: { beforeQuery?: (sql: string) => P
     },
     async insertArrow(name, ipc) {
       conn.insertArrowFromIPCStream(ipc, { name, create: true });
+    },
+    async reconnect() {
+      conn = db.connect();
     },
     // The Node build's COPY writes to the real disk, so exports go to a temp folder and are read back from it.
     async openOutput(name) {

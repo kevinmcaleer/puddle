@@ -1,6 +1,7 @@
 import type { CSSProperties, MouseEventHandler, ReactNode } from 'react';
 import { cx } from './cx';
 import { abbreviate } from './format';
+import { useDisplayFormat } from './locale';
 import { Icon } from './Icon';
 import { NODE_KIND, type NodeKind } from './nodeKinds';
 import { StatusBadge, type Status } from './StatusBadge';
@@ -43,6 +44,7 @@ export function NodeCard({
   kind = 'transform', name, detail, rows, cols, steps, rule, selected, viewed, pinned, comparing, error, dimmed, expanded, brokenInput, note, kept,
   style, className, onClick, renderPorts,
 }: NodeCardProps) {
+  const display = useDisplayFormat();
   const k = NODE_KIND[kind];
   const stepCount = Array.isArray(steps) ? steps.length : steps;
   const sub = detail ?? [k.label, stepCount != null && kind !== 'source' && `${stepCount} ${stepCount === 1 ? 'step' : 'steps'}`].filter(Boolean).join(' · ');
@@ -86,7 +88,7 @@ export function NodeCard({
       {(rows != null || rule || kept) && (
         <div className="ui-node__meta">
           <span className="ui-metric">
-            {rows != null && `${abbreviate(rows)} rows`}
+            {rows != null && `${abbreviate(rows, display)} rows`}
             {cols != null && ` · ${cols} cols`}
             {kept && (
               <span data-testid="node-kept" data-stale={kept.stale ? 'true' : undefined}>

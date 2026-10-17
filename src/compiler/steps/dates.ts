@@ -1,6 +1,7 @@
 // The Dates step group. Parse dates turns text into DATE or TIMESTAMP; the rest work on those types:
 // extract a part, add or subtract an interval, difference, truncate, format to text.
 import { z } from 'zod';
+import { englishDateNames, PARSE_LOCALE_IDS } from '../locales';
 import { ident, list, num, str, strList } from '../sql';
 import { defineStep } from './registry';
 
@@ -23,13 +24,21 @@ export const parseDates = defineStep({
     formats: z.array(z.string().trim().min(1)).min(1, 'choose a date format'),
     /** Values no format reads become empty, or stop the flow with an error. */
     onError: z.enum(['empty', 'fail']).default('empty'),
+    /**
+     * The locale the dates are written in: its month and day names are read (31. Dezember 2026), and detection
+     * follows its day and month order when values could be read either way. Kept with the step so it reads the same
+     * on any machine; without one (as in steps from before it existed) names are read in English and an unclear
+     * order is asked.
+     */
+    locale: z.preprocess((v) => (v === '' ? undefined : v), z.enum(PARSE_LOCALE_IDS, 'pick a locale Puddle knows').optional()),
   }),
   label: (p) => `Parsed ${p.columns.join(', ')} as ${p.formats.some(hasTime) ? 'date and time' : 'dates'}`,
   compile: (p, { input }) => {
     const formats = p.formats.length === 1 ? str(p.formats[0]!) : strList(p.formats);
     const fn = p.onError === 'fail' ? 'strptime' : 'try_strptime';
     const as = p.formats.some(hasTime) ? 'TIMESTAMP' : 'DATE';
-    return `SELECT * REPLACE (${list(p.columns.map((c) => `CAST(${fn}(trim(CAST(${ident(c)} AS VARCHAR)), ${formats}) AS ${as}) AS ${ident(c)}`))}) FROM ${input}`;
+    const text = (c: string) => englishDateNames(`trim(CAST(${ident(c)} AS VARCHAR))`, p.locale);
+    return `SELECT * REPLACE (${list(p.columns.map((c) => `CAST(${fn}(${text(c)}, ${formats}) AS ${as}) AS ${ident(c)}`))}) FROM ${input}`;
   },
 });
 

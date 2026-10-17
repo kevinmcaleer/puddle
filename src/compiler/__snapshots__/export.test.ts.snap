@@ -1,36 +1,36 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
 exports[`Excel exports > read the full data, quoting column names 1`] = `
-"SELECT "id", CAST("a ""b""" AS DOUBLE) AS "a ""b""" FROM (WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv'))
+"SELECT "id", CAST("a ""b""" AS DOUBLE) AS "a ""b""" FROM (WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv', null_padding = true))
 SELECT * FROM "n_src")"
 `;
 
 exports[`compileExport > {"format":"clipboard","options":{}} 1`] = `
-"COPY (WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv'))
+"COPY (WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv', null_padding = true))
 SELECT * FROM "n_src") TO 'o''ut.file' (FORMAT csv, HEADER true, DELIMITER '	')"
 `;
 
 exports[`compileExport > {"format":"csv","options":{"delimiter":"\\t","header":false}} 1`] = `
-"COPY (WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv'))
+"COPY (WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv', null_padding = true))
 SELECT * FROM "n_src") TO 'o''ut.file' (FORMAT csv, HEADER false, DELIMITER '	')"
 `;
 
 exports[`compileExport > {"format":"csv","options":{}} 1`] = `
-"COPY (WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv'))
+"COPY (WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv', null_padding = true))
 SELECT * FROM "n_src") TO 'o''ut.file' (FORMAT csv, HEADER true, DELIMITER ',')"
 `;
 
 exports[`compileExport > {"format":"json","options":{}} 1`] = `
-"COPY (WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv'))
+"COPY (WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv', null_padding = true))
 SELECT * FROM "n_src") TO 'o''ut.file' (FORMAT json, ARRAY true)"
 `;
 
 exports[`compileExport > {"format":"ndjson","options":{}} 1`] = `
-"COPY (WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv'))
+"COPY (WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv', null_padding = true))
 SELECT * FROM "n_src") TO 'o''ut.file' (FORMAT json)"
 `;
 
 exports[`compileExport > {"format":"parquet","options":{"compression":"snappy"}} 1`] = `
-"COPY (WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv'))
+"COPY (WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv', null_padding = true))
 SELECT * FROM "n_src") TO 'o''ut.file' (FORMAT parquet, COMPRESSION snappy)"
 `;

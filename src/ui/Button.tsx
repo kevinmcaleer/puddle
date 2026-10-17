@@ -2,12 +2,14 @@ import type { ButtonHTMLAttributes } from 'react';
 import { cx } from './cx';
 import { Icon, type IconName } from './Icon';
 
-export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
+interface BaseButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: 'primary' | 'secondary' | 'ghost' | 'danger' | 'viewer';
   size?: 'md' | 'sm';
   icon?: IconName;
-  iconOnly?: boolean;
 }
+
+/** An icon-only button has no words to read out, so it must be given a name. */
+export type ButtonProps = BaseButtonProps & ({ iconOnly?: false } | { iconOnly: true; 'aria-label': string });
 
 export function Button({ variant = 'secondary', size = 'md', icon, iconOnly, className, children, type = 'button', ...rest }: ButtonProps) {
   return (

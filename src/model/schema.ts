@@ -42,12 +42,22 @@ export const SourceZ = z.object({
       /** Hash of the first 1 MB when last fetched, to notice when the file at the address has changed. */
       headHash: z.string().optional(),
       size: z.number().nonnegative().optional(),
+      /**
+       * A sample dataset shipped with Puddle (src/samples), by file name: read from wherever Puddle is served (and so
+       * offline, from the service worker's cache) rather than from `href`, which only records where it was first read.
+       */
+      sample: z.string().optional(),
     })
     .optional(),
   clipboard: z.object({ text: z.string() }).optional(),
   format: SourceFormatZ,
   parseOptions: ParseOptionsZ.default({}),
   detectedSchema: z.array(ColumnSchemaZ).default([]),
+  /**
+   * The columns a recipe expects this source to have (src/recipes), kept until its first file is read: a file whose
+   * columns differ is offered the column mapping, and then this goes.
+   */
+  expected: z.array(ColumnSchemaZ).optional(),
   /**
    * Sample mode: read only the first this-many rows. Set only on the in-memory copy that previews, profiles and
    * rules compile from (flow/sample.ts); the project itself never has it, so exports always read everything.
@@ -78,6 +88,8 @@ export const StepZ = z.object({
   /** True once someone renamed the step; its label then stops following its settings. */
   customLabel: z.boolean().optional(),
   enabled: z.boolean().default(true),
+  /** Why the step arrived turned off, e.g. a template step whose column the input lacks. Cleared when it's turned on. */
+  disabledReason: z.string().optional(),
   params: z.record(z.string(), z.unknown()).default({}),
   notes: z.string().optional(),
   origin: StepOriginZ.optional(),
@@ -189,6 +201,12 @@ export const QUERY_CRITERIA_OPS = ['=', '<>', '<', '<=', '>', '>=', 'contains', 
 
 export const QueryCriteriaZ = z.object({ op: z.enum(QUERY_CRITERIA_OPS), value: z.string().default('') });
 
+/**
+ * A field's Total, when the grid has its Totals row: group by it, summarise it, an expression of summaries, or Where
+ * (filter rows on it before grouping, without showing it).
+ */
+export const QUERY_TOTALS = ['group', 'sum', 'avg', 'min', 'max', 'count', 'countDistinct', 'first', 'last', 'stdev', 'var', 'expression', 'where'] as const;
+
 /** One column of the query grid: a field of one table ("*" for all of them), and what to do with it. */
 export const QueryFieldZ = z.object({
   id: z.string().min(1),
@@ -200,6 +218,12 @@ export const QueryFieldZ = z.object({
   show: z.boolean().default(true),
   sort: z.enum(['none', 'asc', 'desc']).default('none'),
   criteria: QueryCriteriaZ.optional(),
+  /** Its cells in the "or" rows below Criteria, by row; null (or missing) where a row has no condition on it. */
+  or: z.array(QueryCriteriaZ.nullable()).optional(),
+  /** Its Total while the Totals row is on; Group by when unset. Kept while Totals is off, so turning it back on restores it. */
+  total: z.enum(QUERY_TOTALS).optional(),
+  /** A DuckDB expression over the tables' columns, using summaries such as sum(total), for the Expression total. */
+  expression: z.string().optional(),
 });
 
 export const QuerySpecZ = z.object({
@@ -209,15 +233,19 @@ export const QuerySpecZ = z.object({
   fields: z.array(QueryFieldZ).default([]),
   /** Leave out rows that repeat another row exactly. */
   distinct: z.boolean().default(false),
+  /** The Totals row: group the rows by some fields and summarise the others. */
+  totals: z.boolean().default(false),
+  /** How many "or" rows the grid has below Criteria: each row's conditions are ANDed, and the rows ORed. */
+  orRows: z.number().int().nonnegative().default(0),
 });
 
-export const DEFAULT_QUERY_SPEC = { tables: [], joins: [], fields: [], distinct: false } as const satisfies z.input<typeof QuerySpecZ>;
+export const DEFAULT_QUERY_SPEC = { tables: [], joins: [], fields: [], distinct: false, totals: false, orRows: 0 } as const satisfies z.input<typeof QuerySpecZ>;
 
 /**
  * A query built in the designer, as in Microsoft Access: each numbered input is a table, join lines run between their
  * columns, and the grid picks the fields, their order, sorting and criteria.
  */
-export const QueryNodeZ = z.object({ ...NodeBase, type: z.literal('query'), querySpec: QuerySpecZ.default({ tables: [], joins: [], fields: [], distinct: false }) });
+export const QueryNodeZ = z.object({ ...NodeBase, type: z.literal('query'), querySpec: QuerySpecZ.default({ tables: [], joins: [], fields: [], distinct: false, totals: false, orRows: 0 }) });
 
 export const NodeZ = z.discriminatedUnion('type', [SourceNodeZ, TransformNodeZ, JoinNodeZ, AppendNodeZ, LookupNodeZ, QueryNodeZ, OutputNodeZ]);
 
@@ -260,7 +288,8 @@ export const ExportLogEntryZ = z.object({
   format: OutputSpecZ.shape.format,
   fileName: z.string(),
   rows: z.number().int().nonnegative(),
-  overridden: z.array(z.object({ nodeName: z.string(), rule: z.string() })).optional(),
+  /** The failing rules exported past; the ids (absent on older entries) let a quality report match them to the rule. */
+  overridden: z.array(z.object({ nodeName: z.string(), rule: z.string(), nodeId: z.string().optional(), ruleId: z.string().optional() })).optional(),
   /** Stop was pressed: nothing was saved. */
   cancelled: z.boolean().optional(),
 });
@@ -306,6 +335,7 @@ export type QueryJoinKind = (typeof QUERY_JOIN_KINDS)[number];
 export type QueryFieldRef = z.infer<typeof QueryFieldRefZ>;
 export type QueryJoin = z.infer<typeof QueryJoinZ>;
 export type QueryCriteriaOp = (typeof QUERY_CRITERIA_OPS)[number];
+export type QueryTotal = (typeof QUERY_TOTALS)[number];
 export type QueryCriteria = z.infer<typeof QueryCriteriaZ>;
 export type QueryField = z.infer<typeof QueryFieldZ>;
 export type QuerySpec = z.infer<typeof QuerySpecZ>;

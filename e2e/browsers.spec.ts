@@ -83,3 +83,33 @@ test('DuckDB that fails to start is started once more', async ({ page }) => {
   await node(page, 'customers.csv').click();
   await expectRows(page, 4);
 });
+
+test('a query DuckDB stops inside runs once more, and the source still loads', async ({ page }) => {
+  // Regression (WebKit): now and then DuckDB stopped inside an ordinary query with a WebAssembly trap ("access to a
+  // null reference", "Unreachable code should not be executed"), and the source broke or its rows never showed. Here
+  // DuckDB's worker answers the first query reading the new source's columns with that trap.
+  await page.addInitScript(() => {
+    const Real = window.Worker;
+    let trapped = false;
+    window.Worker = class extends Real {
+      postMessage(message: unknown, transfer?: Transferable[] | StructuredSerializeOptions) {
+        const m = message as { messageId?: number; type?: string; data?: unknown[] };
+        if (!trapped && m?.type === 'START_PENDING_QUERY' && /^DESCRIBE .*read_csv/s.test(String(m.data?.[1]))) {
+          trapped = true;
+          const data = { messageId: -1, requestId: m.messageId, type: 'ERROR', data: { name: 'RuntimeError', message: "access to a null reference (evaluating 'u(..._)')" } };
+          setTimeout(() => this.dispatchEvent(new MessageEvent('message', { data })));
+          return;
+        }
+        super.postMessage(message, transfer as Transferable[]);
+      }
+    };
+  });
+  const warnings: string[] = [];
+  page.on('console', (m) => void (m.type() === 'warning' && warnings.push(m.text())));
+  await openApp(page);
+  await addFiles(page, [fixture('customers.csv')]);
+  await expect(node(page, 'customers.csv')).toHaveAttribute('data-status', 'ok', { timeout: 20_000 });
+  await node(page, 'customers.csv').click();
+  await expectRows(page, 4);
+  expect(warnings.some((w) => w.startsWith('DuckDB stopped inside a query (access to a null reference'))).toBe(true);
+});
