@@ -196,5 +196,7 @@ export function removeNode(project: Project, nodeId: string): Project {
     ...project,
     nodes: project.nodes.filter((n) => n.id !== nodeId),
     edges: project.edges.filter((e) => e.from.nodeId !== nodeId && e.to.nodeId !== nodeId),
+    // A node removed leaves its group too; a group left with no nodes goes.
+    groups: project.groups.map((g) => ({ ...g, nodeIds: g.nodeIds.filter((id) => id !== nodeId) })).filter((g) => g.nodeIds.length > 0),
   };
 }

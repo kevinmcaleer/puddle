@@ -29,3 +29,18 @@
 /* A wire with the keyboard on it is drawn as a selected one (an outline doesn't follow a curve). */
 .puddle-canvas .react-flow__edge:focus-visible { outline: none; }
 .puddle-canvas .react-flow__edge:focus-visible .ui-wire { stroke: var(--brand); stroke-width: 2.75; }
+
+/* Node groups (see GroupNode.tsx): a collapsed group's card, and an open group's frame behind its nodes. */
+.puddle-canvas .ui-node[data-kind="group"] .ui-node__chip { background: var(--surface-sunken); color: var(--ink); }
+.puddle-canvas .ui-node.puddle-group { border-style: double; border-width: 3px; }
+.puddle-group__ports { display: flex; flex-direction: column; padding: var(--space-1) 0 var(--space-2); }
+.puddle-group__row { position: relative; display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); min-height: var(--size-control-sm); font-size: 12px; color: var(--ink-muted); }
+.puddle-group__in, .puddle-group__out { display: flex; align-items: center; min-width: 0; max-width: 50%; }
+.puddle-group__in { padding-left: var(--space-3); }
+.puddle-group__out { padding-right: var(--space-3); justify-content: flex-end; }
+.puddle-group__result { border: 0; background: none; padding: 0; color: var(--ink); font: inherit; cursor: pointer; }
+.puddle-group__result:hover { text-decoration: underline; }
+/* React Flow sets pointer events on every node; the frame passes clicks through to the canvas, except on its head. */
+.puddle-canvas .react-flow__node-frame { pointer-events: none !important; }
+.puddle-group-frame { border: 1px dashed var(--line-strong); border-radius: var(--radius-lg); background: var(--surface-sunken); }
+.puddle-group-frame__head { pointer-events: auto; display: inline-flex; align-items: center; gap: var(--space-2); max-width: 100%; padding: var(--space-1) var(--space-2) var(--space-1) var(--space-3); font-size: 12px; font-weight: 600; color: var(--ink-muted); }
