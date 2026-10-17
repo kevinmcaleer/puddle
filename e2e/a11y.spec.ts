@@ -51,6 +51,11 @@ for (const theme of ['light', 'dark'] as const) {
       await expectAccessible(page, 'the sync dialog');
       await page.keyboard.press('Escape');
 
+      await projectMenu(page, 'Sync to Google Drive');
+      await expect(page.getByRole('dialog', { name: 'Sync to Google Drive' })).toBeVisible();
+      await expectAccessible(page, 'the Google Drive dialog');
+      await page.keyboard.press('Escape');
+
       await projectMenu(page, 'Rename');
       await expect(page.getByRole('dialog')).toBeVisible();
       await expectAccessible(page, 'the rename dialog');
