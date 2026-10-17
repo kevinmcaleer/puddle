@@ -46,12 +46,12 @@ export async function addFileSource(file: File, position = { x: 80, y: 80 }, han
 }
 
 /** Add pasted text as a source. Clipboard text is small, so it is stored in the project itself. */
-export async function addClipboardSource(text: string, position = { x: 80, y: 80 }): Promise<Source> {
+export async function addClipboardSource(text: string, position = { x: 80, y: 80 }, name = 'Pasted data'): Promise<Source> {
   if (!text.trim()) throw new SourceError('The clipboard is empty. Copy some rows from a spreadsheet or a file, then paste again.');
   const engine = engineOrThrow();
   const source: Source = {
     id: newId('s'),
-    name: 'Pasted data',
+    name,
     kind: 'clipboard',
     format: formatFromText(text),
     clipboard: { text },

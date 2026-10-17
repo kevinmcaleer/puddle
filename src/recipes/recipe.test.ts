@@ -134,6 +134,12 @@ describe('exporting a recipe', () => {
     expect(recipeFromProject(broken, { name: '', description: '' }).sources[1]).toMatchObject({ kind: 'file' });
   });
 
+  it('keeps which table a web page source reads, so the recipe reads the same one', () => {
+    const p = sensitive();
+    const web = { ...p, sources: p.sources.map((s) => (s.url ? { ...s, url: { href: 'https://en.wikipedia.org/wiki/List_of_James_Bond_films', headHash: 'x', table: { index: 1, label: 'Eon Productions films' } } } : s)) };
+    expect(recipeFromProject(web, { name: '', description: '' }).sources[1]!.url).toEqual({ href: 'https://en.wikipedia.org/wiki/List_of_James_Bond_films', table: { index: 1, label: 'Eon Productions films' } });
+  });
+
   it('names the file after the recipe', () => {
     expect(recipeFileName('Tidy a contact list!')).toBe('tidy-a-contact-list.puddle-recipe.json');
     expect(recipeFileName('  ')).toBe('recipe.puddle-recipe.json');

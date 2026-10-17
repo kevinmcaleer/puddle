@@ -2,7 +2,7 @@ import { useSession } from '../app/session';
 import { NotesPanel } from '../notes/NotesPanel';
 import { inspectorTabs, shownTab } from './tabs';
 import { useNodeStatus } from '../flow/status';
-import { formatLabel } from '../canvas/formatLabel';
+import { sourceFormatLabel } from '../canvas/formatLabel';
 import { nodeById, setParseOptions, setRunnerPath, useProject, useProjectStore, type GraphNode, type ParseOptions, type ProjectSettings as ProjectSettingsT, type Source } from '../model';
 import { Banner, browserLocale, columnKind, DISPLAY_LOCALES, Field, formatDateText, formatNumberText, Icon, NODE_KIND, Section, Select, Switch, Tabs, TypeTag, useDisplay, useDisplayFormat, type DateDisplay } from '../ui';
 import { CommitInput } from '../steps/StepForm';
@@ -282,7 +282,7 @@ function NodeInspector({ node }: { node: GraphNode }) {
         <Icon name={kind.icon} />
         <div className="min-w-0">
           <div className="truncate text-body-strong text-ink" data-testid="inspector-name">{node.name}</div>
-          <div className="text-label text-ink-muted">{source ? `${kind.label} · ${formatLabel(source.format)}` : kind.label}</div>
+          <div className="text-label text-ink-muted">{source ? `${kind.label} · ${sourceFormatLabel(source)}` : kind.label}</div>
         </div>
       </div>
       {source && source.kind === 'file' && <AttachmentBanner source={source} />}

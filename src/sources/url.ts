@@ -7,6 +7,8 @@ import { markAttached } from './attachments';
 import { formatFromName, knownFormat, SourceError } from './detect';
 import { headHash } from './hash';
 import { isSampleFile, sampleAddress } from '../samples/catalog';
+import type { HtmlTable } from './html';
+import { fetchTable, tableFetched } from './webpage';
 
 /**
  * Sources read from a web address (plan D8). The browser fetches the file itself, so the server must allow
@@ -246,6 +248,27 @@ export async function addUrlSource(address: string, opts: FetchOptions & { posit
   return source;
 }
 
+/** Add a source from a table on a web page, already fetched and read by the From web page dialog. */
+export async function addWebTableSource(address: string | URL, table: HtmlTable, opts: { position?: { x: number; y: number } } = {}): Promise<Source> {
+  const url = typeof address === 'string' ? parseAddress(address) : address;
+  const fetched = await tableFetched(table);
+  const page = nameFromAddress(url).replace(/_/g, ' ');
+  const source: Source = {
+    id: newId('s'),
+    name: /^Table \d+$/.test(table.label) ? `${page} ${table.label.toLowerCase()}` : table.label,
+    kind: 'url',
+    format: 'csv',
+    url: { href: url.href, headHash: fetched.headHash, size: fetched.size, table: { index: table.index, label: table.label } },
+    parseOptions: {},
+    detectedSchema: [],
+  };
+  await register(source, fetched);
+  setFetch(source.id, { state: 'ok', at: Date.now(), ranged: false });
+  markAttached(source.id);
+  useProjectStore.getState().apply((p) => addSource(p, source, opts.position ?? { x: 80, y: 80 }));
+  return source;
+}
+
 const inFlight = new Map<string, Promise<void>>();
 
 /**
@@ -261,7 +284,9 @@ export function loadUrlSource(source: Source, opts: FetchOptions & { refresh?: b
     if (!opts.refresh) markAttached(source.id, 'detached');
     setFetch(source.id, { state: 'fetching' });
     try {
-      const fetched = await fetchAddress(addressOf(source), { ...opts, format: source.format, shipped: isSampleFile(source.url.sample) });
+      const fetched = source.url.table
+        ? await fetchTable(addressOf(source), source.url.table, opts)
+        : await fetchAddress(addressOf(source), { ...opts, format: source.format, shipped: isSampleFile(source.url.sample) });
       await register(source, fetched);
       const current = useProjectStore.getState().history.present.sources.find((s) => s.id === source.id);
       const before = current?.url?.headHash ?? source.url.headHash;
