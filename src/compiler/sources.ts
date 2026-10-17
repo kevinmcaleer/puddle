@@ -35,6 +35,10 @@ export function sourceRelation(source: Source): string {
       if (o.quote != null) args.push(`quote = ${str(o.quote)}`);
       if (o.encoding != null) args.push(`encoding = ${str(o.encoding)}`);
       if (o.nullStrings?.length) args.push(`nullstr = ${strList(o.nullStrings)}`);
+      // Ragged rows (a header with a trailing comma, an unquoted comma in one value) otherwise make the sniffer give
+      // up on the delimiter and read each line as one column, or fail outright when the delimiter is set.
+      // Short rows are padded with empty values instead, as Power Query does.
+      args.push('null_padding = true');
       return `read_csv(${args.join(', ')})`;
     }
     case 'json':

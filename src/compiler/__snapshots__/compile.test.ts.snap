@@ -1,7 +1,7 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
 exports[`column step settings > detects date formats on a sample of non-empty values, one constant format per SELECT 1`] = `
-"WITH s AS (SELECT trim(CAST("joined" AS VARCHAR)) AS v FROM (WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv')),
+"WITH s AS (SELECT trim(CAST("joined" AS VARCHAR)) AS v FROM (WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv', null_padding = true)),
   "n_clean_s0" AS (SELECT * REPLACE (trim("name") AS "name") FROM "n_src"),
   "n_clean_s1" AS (SELECT * REPLACE (list_aggr(list_transform(string_split("name", ' '), w -> upper(left(w, 1)) || lower(substr(w, 2))), 'string_agg', ' ') AS "name") FROM "n_clean_s0")
 SELECT * FROM "n_clean_s1") WHERE coalesce(trim(CAST("joined" AS VARCHAR)), '') <> '' LIMIT 1000)
@@ -12,36 +12,36 @@ SELECT format, matched, total, example FROM (
 `;
 
 exports[`compile > compiles a source node 1`] = `
-"WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv'))
+"WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv', null_padding = true))
 SELECT * FROM "n_src""
 `;
 
 exports[`compile > compiles a transform node as one CTE per step 1`] = `
-"WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv')),
+"WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv', null_padding = true)),
   "n_clean_s0" AS (SELECT * REPLACE (trim("name") AS "name") FROM "n_src"),
   "n_clean_s1" AS (SELECT * REPLACE (list_aggr(list_transform(string_split("name", ' '), w -> upper(left(w, 1)) || lower(substr(w, 2))), 'string_agg', ' ') AS "name") FROM "n_clean_s0")
 SELECT * FROM "n_clean_s1""
 `;
 
 exports[`compile > compiles a transform with no steps (a Check node) as a pass-through 1`] = `
-"WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv'))
+"WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv', null_padding = true))
 SELECT * FROM "n_src""
 `;
 
 exports[`compile > leaves disabled steps out of the SQL 1`] = `
-"WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv')),
+"WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv', null_padding = true)),
   "n_clean_s1" AS (SELECT * EXCLUDE ("email") FROM "n_src")
 SELECT * FROM "n_clean_s1""
 `;
 
 exports[`compile > quotes awkward column and node names 1`] = `
-"WITH "n_n""1" AS (SELECT * FROM read_csv('src_a"b.csv')),
+"WITH "n_n""1" AS (SELECT * FROM read_csv('src_a"b.csv', null_padding = true)),
   "n_t_s0" AS (SELECT * RENAME ("first ""name""" AS "it's") FROM "n_n""1")
 SELECT * FROM "n_t_s0""
 `;
 
 exports[`quality rules > counts every rule’s failures over the node’s output in one query 1`] = `
-"SELECT count(*) AS total, count(*) FILTER (WHERE NOT coalesce("r0", false)) AS "f0", count(*) FILTER (WHERE NOT coalesce("r1", false)) AS "f1" FROM (SELECT (NOT (coalesce(trim(CAST("email" AS VARCHAR)), '') = '')) AS "r0", (("id" IS NULL) OR count(*) OVER (PARTITION BY "id") = 1) AS "r1" FROM (WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv')),
+"SELECT count(*) AS total, count(*) FILTER (WHERE NOT coalesce("r0", false)) AS "f0", count(*) FILTER (WHERE NOT coalesce("r1", false)) AS "f1" FROM (SELECT (NOT (coalesce(trim(CAST("email" AS VARCHAR)), '') = '')) AS "r0", (("id" IS NULL) OR count(*) OVER (PARTITION BY "id") = 1) AS "r1" FROM (WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv', null_padding = true)),
   "n_clean_s0" AS (SELECT * REPLACE (trim("name") AS "name") FROM "n_src"),
   "n_clean_s1" AS (SELECT * REPLACE (list_aggr(list_transform(string_split("name", ' '), w -> upper(left(w, 1)) || lower(substr(w, 2))), 'string_agg', ' ') AS "name") FROM "n_clean_s0")
 SELECT * FROM "n_clean_s1"))"
@@ -68,7 +68,7 @@ exports[`quality rules > readsAs {"column":"joined","as":"date"} 1`] = `"coalesc
 exports[`quality rules > readsAs {"column":"na\\"me","as":"number"} 1`] = `"coalesce(trim(CAST("na""me" AS VARCHAR)), '') = '' OR (TRY_CAST(trim(CAST("na""me" AS VARCHAR)) AS DOUBLE) IS NOT NULL)"`;
 
 exports[`quality rules > shows only the rows a rule fails, keyed apart from the full preview 1`] = `
-"WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv')),
+"WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv', null_padding = true)),
   "n_clean_s0" AS (SELECT * REPLACE (trim("name") AS "name") FROM "n_src"),
   "n_clean_s1" AS (SELECT * REPLACE (list_aggr(list_transform(string_split("name", ' '), w -> upper(left(w, 1)) || lower(substr(w, 2))), 'string_agg', ' ') AS "name") FROM "n_clean_s0"),
   "n_clean_failing" AS (SELECT * EXCLUDE ("__puddle_pass") FROM (SELECT *, (NOT (coalesce(trim(CAST("email" AS VARCHAR)), '') = '')) AS "__puddle_pass" FROM "n_clean_s1") WHERE NOT coalesce("__puddle_pass", false))
@@ -80,36 +80,36 @@ exports[`quality rules > unique {"columns":["id"]} 1`] = `"("id" IS NULL) OR cou
 exports[`quality rules > unique {"columns":["name","email"]} 1`] = `"("name" IS NULL OR "email" IS NULL) OR count(*) OVER (PARTITION BY "name", "email") = 1"`;
 
 exports[`results table queries > checks what text columns look like, one set of counts per column 1`] = `
-"SELECT count(nullif(trim(CAST("joined" AS VARCHAR)), '')) AS "n0", count(TRY_CAST(nullif(trim(CAST("joined" AS VARCHAR)), '') AS DOUBLE)) AS "num0", count(TRY_CAST(nullif(trim(CAST("joined" AS VARCHAR)), '') AS DATE)) AS "date0", count(nullif(trim(CAST("na""me" AS VARCHAR)), '')) AS "n1", count(TRY_CAST(nullif(trim(CAST("na""me" AS VARCHAR)), '') AS DOUBLE)) AS "num1", count(TRY_CAST(nullif(trim(CAST("na""me" AS VARCHAR)), '') AS DATE)) AS "date1" FROM (WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv')),
+"SELECT count(nullif(trim(CAST("joined" AS VARCHAR)), '')) AS "n0", count(TRY_CAST(nullif(trim(CAST("joined" AS VARCHAR)), '') AS DOUBLE)) AS "num0", count(TRY_CAST(nullif(trim(CAST("joined" AS VARCHAR)), '') AS DATE)) AS "date0", count(nullif(trim(CAST("na""me" AS VARCHAR)), '')) AS "n1", count(TRY_CAST(nullif(trim(CAST("na""me" AS VARCHAR)), '') AS DOUBLE)) AS "num1", count(TRY_CAST(nullif(trim(CAST("na""me" AS VARCHAR)), '') AS DATE)) AS "date1" FROM (WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv', null_padding = true)),
   "n_clean_s0" AS (SELECT * REPLACE (trim("name") AS "name") FROM "n_src"),
   "n_clean_s1" AS (SELECT * REPLACE (list_aggr(list_transform(string_split("name", ' '), w -> upper(left(w, 1)) || lower(substr(w, 2))), 'string_agg', ' ') AS "name") FROM "n_clean_s0")
 SELECT * FROM "n_clean_s1")"
 `;
 
 exports[`results table queries > confirms suggested rules with exact counts, only those asked for per column 1`] = `
-"SELECT count(*) AS "rows", count("id") AS "nn0", count(*) FILTER (WHERE coalesce(trim(CAST("id" AS VARCHAR)), '') = '') AS "blank0", count(DISTINCT "id") AS "distinct0", count("na""me") AS "nn1", count(*) FILTER (WHERE CAST("na""me" AS VARCHAR) <> trim(CAST("na""me" AS VARCHAR))) AS "edges1", list_sort(list(DISTINCT CAST("na""me" AS VARCHAR)) FILTER (WHERE "na""me" IS NOT NULL)) AS "values1" FROM (WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv')),
+"SELECT count(*) AS "rows", count("id") AS "nn0", count(*) FILTER (WHERE coalesce(trim(CAST("id" AS VARCHAR)), '') = '') AS "blank0", count(DISTINCT "id") AS "distinct0", count("na""me") AS "nn1", count(*) FILTER (WHERE CAST("na""me" AS VARCHAR) <> trim(CAST("na""me" AS VARCHAR))) AS "edges1", list_sort(list(DISTINCT CAST("na""me" AS VARCHAR)) FILTER (WHERE "na""me" IS NOT NULL)) AS "values1" FROM (WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv', null_padding = true)),
   "n_clean_s0" AS (SELECT * REPLACE (trim("name") AS "name") FROM "n_src"),
   "n_clean_s1" AS (SELECT * REPLACE (list_aggr(list_transform(string_split("name", ' '), w -> upper(left(w, 1)) || lower(substr(w, 2))), 'string_agg', ' ') AS "name") FROM "n_clean_s0")
 SELECT * FROM "n_clean_s1")"
 `;
 
 exports[`results table queries > profiles through SUMMARIZE 1`] = `
-"SELECT column_name, CAST(null_percentage AS DOUBLE) AS null_pct, approx_unique, CAST(min AS VARCHAR) AS min, CAST(max AS VARCHAR) AS max FROM (SUMMARIZE SELECT * FROM (WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv')),
+"SELECT column_name, CAST(null_percentage AS DOUBLE) AS null_pct, approx_unique, CAST(min AS VARCHAR) AS min, CAST(max AS VARCHAR) AS max FROM (SUMMARIZE SELECT * FROM (WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv', null_padding = true)),
   "n_clean_s0" AS (SELECT * REPLACE (trim("name") AS "name") FROM "n_src"),
   "n_clean_s1" AS (SELECT * REPLACE (list_aggr(list_transform(string_split("name", ' '), w -> upper(left(w, 1)) || lower(substr(w, 2))), 'string_agg', ' ') AS "name") FROM "n_clean_s0")
 SELECT * FROM "n_clean_s1"))"
 `;
 
 exports[`sample mode > reads only the first rows of a sampled source, and nothing else changes 1`] = `
-"WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv') LIMIT 1000),
+"WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv', null_padding = true) LIMIT 1000),
   "n_clean_s0" AS (SELECT * REPLACE (trim("name") AS "name") FROM "n_src"),
   "n_clean_s1" AS (SELECT * REPLACE (list_aggr(list_transform(string_split("name", ' '), w -> upper(left(w, 1)) || lower(substr(w, 2))), 'string_agg', ' ') AS "name") FROM "n_clean_s0")
 SELECT * FROM "n_clean_s1""
 `;
 
-exports[`sources > csv with {"delimiter":";","header":true,"quote":"\\"","encoding":"latin-1","nullStrings":["N/A",""]} 1`] = `"read_csv('src_x.csv', delim = ';', header = true, quote = '"', encoding = 'latin-1', nullstr = ['N/A', ''])"`;
+exports[`sources > csv with {"delimiter":";","header":true,"quote":"\\"","encoding":"latin-1","nullStrings":["N/A",""]} 1`] = `"read_csv('src_x.csv', delim = ';', header = true, quote = '"', encoding = 'latin-1', nullstr = ['N/A', ''], null_padding = true)"`;
 
-exports[`sources > csv with {} 1`] = `"read_csv('src_x.csv')"`;
+exports[`sources > csv with {} 1`] = `"read_csv('src_x.csv', null_padding = true)"`;
 
 exports[`sources > json with {} 1`] = `"read_json_auto('src_x.json')"`;
 
@@ -117,240 +117,240 @@ exports[`sources > ndjson with {} 1`] = `"read_json_auto('src_x.ndjson', format 
 
 exports[`sources > parquet with {} 1`] = `"read_parquet('src_x.parquet')"`;
 
-exports[`sources > tsv with {} 1`] = `"read_csv('src_x.tsv', delim = '	')"`;
+exports[`sources > tsv with {} 1`] = `"read_csv('src_x.tsv', delim = '	', null_padding = true)"`;
 
 exports[`sources > xlsx with {} 1`] = `""src_x_87c4bb5369a4""`;
 
 exports[`step snapshots > absoluteValue {"columns":["id"]} 1`] = `
-"WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv')),
+"WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv', null_padding = true)),
   "n_clean_s0" AS (SELECT * REPLACE (abs("id") AS "id") FROM "n_src")
 SELECT * FROM "n_clean_s0""
 `;
 
 exports[`step snapshots > addColumn {"name":"domain","expression":"split_part(email, '@', 2)"} 1`] = `
-"WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv')),
+"WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv', null_padding = true)),
   "n_clean_s0" AS (SELECT *, (split_part(email, '@', 2)) AS "domain" FROM "n_src")
 SELECT * FROM "n_clean_s0""
 `;
 
 exports[`step snapshots > addIndex {"name":"row","start":0} 1`] = `
-"WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv')),
+"WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv', null_padding = true)),
   "n_clean_s0" AS (SELECT row_number() OVER () - 1 AS "row", * FROM "n_src")
 SELECT * FROM "n_clean_s0""
 `;
 
 exports[`step snapshots > addIndex {"name":"row","start":1} 1`] = `
-"WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv')),
+"WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv', null_padding = true)),
   "n_clean_s0" AS (SELECT row_number() OVER () AS "row", * FROM "n_src")
 SELECT * FROM "n_clean_s0""
 `;
 
 exports[`step snapshots > bucketNumbers {"column":"id","mode":"edges","edges":[18,65],"into":"o'clock"} 1`] = `
-"WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv')),
+"WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv', null_padding = true)),
   "n_clean_s0" AS (SELECT *, CASE WHEN "id" IS NULL THEN NULL WHEN "id" < 18 THEN 'under 18' WHEN "id" < 65 THEN '18 to under 65' ELSE '65 and over' END AS "o'clock" FROM "n_src")
 SELECT * FROM "n_clean_s0""
 `;
 
 exports[`step snapshots > bucketNumbers {"column":"id","mode":"width","width":0.5,"start":-1,"edges":[],"into":"band"} 1`] = `
-"WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv')),
+"WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv', null_padding = true)),
   "n_clean_s0" AS (SELECT *, CAST(CAST(round(-1 + (floor(round(("id" - -1) / 0.5, 9))) * 0.5, 1) AS DECIMAL(38, 1)) AS VARCHAR) || ' to under ' || CAST(CAST(round(-1 + (floor(round(("id" - -1) / 0.5, 9)) + 1) * 0.5, 1) AS DECIMAL(38, 1)) AS VARCHAR) AS "band" FROM "n_src")
 SELECT * FROM "n_clean_s0""
 `;
 
 exports[`step snapshots > bucketNumbers {"column":"id","mode":"width","width":10,"start":0,"edges":[],"into":"band"} 1`] = `
-"WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv')),
+"WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv', null_padding = true)),
   "n_clean_s0" AS (SELECT *, CAST(CAST(0 + (floor(round(("id" - 0) / 10, 9))) * 10 AS BIGINT) AS VARCHAR) || ' to under ' || CAST(CAST(0 + (floor(round(("id" - 0) / 10, 9)) + 1) * 10 AS BIGINT) AS VARCHAR) AS "band" FROM "n_src")
 SELECT * FROM "n_clean_s0""
 `;
 
 exports[`step snapshots > changeCase {"columns":["name"],"mode":"lower"} 1`] = `
-"WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv')),
+"WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv', null_padding = true)),
   "n_clean_s0" AS (SELECT * REPLACE (lower("name") AS "name") FROM "n_src")
 SELECT * FROM "n_clean_s0""
 `;
 
 exports[`step snapshots > changeCase {"columns":["name"],"mode":"sentence"} 1`] = `
-"WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv')),
+"WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv', null_padding = true)),
   "n_clean_s0" AS (SELECT * REPLACE (upper(left("name", 1)) || lower(substr("name", 2)) AS "name") FROM "n_src")
 SELECT * FROM "n_clean_s0""
 `;
 
 exports[`step snapshots > changeCase {"columns":["name"],"mode":"title"} 1`] = `
-"WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv')),
+"WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv', null_padding = true)),
   "n_clean_s0" AS (SELECT * REPLACE (list_aggr(list_transform(string_split("name", ' '), w -> upper(left(w, 1)) || lower(substr(w, 2))), 'string_agg', ' ') AS "name") FROM "n_src")
 SELECT * FROM "n_clean_s0""
 `;
 
 exports[`step snapshots > changeCase {"columns":["name"],"mode":"upper"} 1`] = `
-"WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv')),
+"WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv', null_padding = true)),
   "n_clean_s0" AS (SELECT * REPLACE (upper("name") AS "name") FROM "n_src")
 SELECT * FROM "n_clean_s0""
 `;
 
 exports[`step snapshots > changeType {"columns":["id"],"to":"text","onError":"empty"} 1`] = `
-"WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv')),
+"WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv', null_padding = true)),
   "n_clean_s0" AS (SELECT * REPLACE (TRY_CAST("id" AS VARCHAR) AS "id") FROM "n_src")
 SELECT * FROM "n_clean_s0""
 `;
 
 exports[`step snapshots > changeType {"columns":["joined","id"],"to":"date","onError":"fail"} 1`] = `
-"WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv')),
+"WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv', null_padding = true)),
   "n_clean_s0" AS (SELECT * REPLACE (CAST("joined" AS DATE) AS "joined", CAST("id" AS DATE) AS "id") FROM "n_src")
 SELECT * FROM "n_clean_s0""
 `;
 
 exports[`step snapshots > collapseSpaces {"columns":["name","email"]} 1`] = `
-"WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv')),
+"WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv', null_padding = true)),
   "n_clean_s0" AS (SELECT * REPLACE (regexp_replace(CAST("name" AS VARCHAR), '\\s{2,}', ' ', 'g') AS "name", regexp_replace(CAST("email" AS VARCHAR), '\\s{2,}', ' ', 'g') AS "email") FROM "n_src")
 SELECT * FROM "n_clean_s0""
 `;
 
 exports[`step snapshots > convertUnits {"columns":["id"],"from":"f","to":"c"} 1`] = `
-"WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv')),
+"WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv', null_padding = true)),
   "n_clean_s0" AS (SELECT * REPLACE (round(((CAST("id" AS DOUBLE) - 32) * 5 / 9), 12) AS "id") FROM "n_src")
 SELECT * FROM "n_clean_s0""
 `;
 
 exports[`step snapshots > convertUnits {"columns":["id"],"from":"mi","to":"km"} 1`] = `
-"WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv')),
+"WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv', null_padding = true)),
   "n_clean_s0" AS (SELECT * REPLACE (round(CAST("id" AS DOUBLE) * 1609.344 / 1000, 12) AS "id") FROM "n_src")
 SELECT * FROM "n_clean_s0""
 `;
 
 exports[`step snapshots > dateDifference {"start":"joined","end":"left on","unit":"weeks","into":"tenure"} 1`] = `
-"WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv')),
+"WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv', null_padding = true)),
   "n_clean_s0" AS (SELECT *, date_sub('week', "joined", "left on") AS "tenure" FROM "n_src")
 SELECT * FROM "n_clean_s0""
 `;
 
 exports[`step snapshots > duplicateColumn {"column":"email","into":"email copy"} 1`] = `
-"WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv')),
+"WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv', null_padding = true)),
   "n_clean_s0" AS (SELECT *, "email" AS "email copy" FROM "n_src")
 SELECT * FROM "n_clean_s0""
 `;
 
 exports[`step snapshots > duplicateRows {"columns":["email"],"keep":"duplicates"} 1`] = `
-"WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv')),
+"WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv', null_padding = true)),
   "n_clean_s0" AS (SELECT * EXCLUDE ("__puddle_row", "__puddle_key") FROM (SELECT row_number() OVER () AS "__puddle_row", row("email") AS "__puddle_key", * FROM "n_src") QUALIFY count(*) OVER (PARTITION BY "__puddle_key") > 1 ORDER BY "__puddle_row")
 SELECT * FROM "n_clean_s0""
 `;
 
 exports[`step snapshots > duplicateRows {"columns":[],"keep":"first"} 1`] = `
-"WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv')),
+"WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv', null_padding = true)),
   "n_clean_s0" AS (SELECT * EXCLUDE ("__puddle_row", "__puddle_key") FROM (SELECT row_number() OVER () AS "__puddle_row", row(*COLUMNS(*)) AS "__puddle_key", * FROM "n_src") QUALIFY row_number() OVER (PARTITION BY "__puddle_key" ORDER BY "__puddle_row") = 1 ORDER BY "__puddle_row")
 SELECT * FROM "n_clean_s0""
 `;
 
 exports[`step snapshots > emptyToNull {"columns":["name","id"]} 1`] = `
-"WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv')),
+"WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv', null_padding = true)),
   "n_clean_s0" AS (SELECT * REPLACE (CASE WHEN trim(CAST("name" AS VARCHAR)) = '' THEN NULL ELSE "name" END AS "name", CASE WHEN trim(CAST("id" AS VARCHAR)) = '' THEN NULL ELSE "id" END AS "id") FROM "n_src")
 SELECT * FROM "n_clean_s0""
 `;
 
 exports[`step snapshots > extractDatePart {"columns":["joined","id"],"part":"weekdayName","replace":true} 1`] = `
-"WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv')),
+"WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv', null_padding = true)),
   "n_clean_s0" AS (SELECT * REPLACE (dayname("joined") AS "joined", dayname("id") AS "id") FROM "n_src")
 SELECT * FROM "n_clean_s0""
 `;
 
 exports[`step snapshots > extractDatePart {"columns":["joined"],"part":"year","replace":false} 1`] = `
-"WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv')),
+"WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv', null_padding = true)),
   "n_clean_s0" AS (SELECT *, year("joined") AS "joined_year" FROM "n_src")
 SELECT * FROM "n_clean_s0""
 `;
 
 exports[`step snapshots > extractText {"column":"email","mode":"between","start":"@","end":".","into":"host"} 1`] = `
-"WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv')),
+"WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv', null_padding = true)),
   "n_clean_s0" AS (SELECT *, nullif(regexp_extract(CAST("email" AS VARCHAR), '@(.*?)\\.', 1), '') AS "host" FROM "n_src")
 SELECT * FROM "n_clean_s0""
 `;
 
 exports[`step snapshots > extractText {"column":"email","mode":"prefix","length":3,"into":"start"} 1`] = `
-"WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv')),
+"WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv', null_padding = true)),
   "n_clean_s0" AS (SELECT *, left(CAST("email" AS VARCHAR), 3) AS "start" FROM "n_src")
 SELECT * FROM "n_clean_s0""
 `;
 
 exports[`step snapshots > extractText {"column":"email","mode":"suffix","length":4,"into":"tld"} 1`] = `
-"WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv')),
+"WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv', null_padding = true)),
   "n_clean_s0" AS (SELECT *, right(CAST("email" AS VARCHAR), 4) AS "tld" FROM "n_src")
 SELECT * FROM "n_clean_s0""
 `;
 
 exports[`step snapshots > extractText {"column":"joined","mode":"regex","pattern":"^([0-9]{4})","group":1,"into":"year"} 1`] = `
-"WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv')),
+"WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv', null_padding = true)),
   "n_clean_s0" AS (SELECT *, nullif(regexp_extract(CAST("joined" AS VARCHAR), '^([0-9]{4})', 1), '') AS "year" FROM "n_src")
 SELECT * FROM "n_clean_s0""
 `;
 
 exports[`step snapshots > fillRows {"columns":["name","email"],"direction":"up"} 1`] = `
-"WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv')),
+"WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv', null_padding = true)),
   "n_clean_s0" AS (SELECT * EXCLUDE ("__puddle_row") REPLACE (first_value("name" IGNORE NULLS) OVER (ORDER BY "__puddle_row" ROWS BETWEEN CURRENT ROW AND UNBOUNDED FOLLOWING) AS "name", first_value("email" IGNORE NULLS) OVER (ORDER BY "__puddle_row" ROWS BETWEEN CURRENT ROW AND UNBOUNDED FOLLOWING) AS "email") FROM (SELECT row_number() OVER () AS "__puddle_row", * FROM "n_src") ORDER BY "__puddle_row")
 SELECT * FROM "n_clean_s0""
 `;
 
 exports[`step snapshots > fillRows {"columns":["name"],"direction":"down"} 1`] = `
-"WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv')),
+"WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv', null_padding = true)),
   "n_clean_s0" AS (SELECT * EXCLUDE ("__puddle_row") REPLACE (last_value("name" IGNORE NULLS) OVER (ORDER BY "__puddle_row" ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS "name") FROM (SELECT row_number() OVER () AS "__puddle_row", * FROM "n_src") ORDER BY "__puddle_row")
 SELECT * FROM "n_clean_s0""
 `;
 
 exports[`step snapshots > filterRows {"mode":"keep","match":"all","conditions":[{"column":"email","op":"contains","value":"O'Brien"}],"matchCase":false} 1`] = `
-"WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv')),
+"WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv', null_padding = true)),
   "n_clean_s0" AS (SELECT * FROM "n_src" WHERE coalesce((contains(lower(CAST("email" AS VARCHAR)), 'o''brien')), false))
 SELECT * FROM "n_clean_s0""
 `;
 
 exports[`step snapshots > filterRows {"mode":"remove","match":"any","conditions":[{"column":"id","op":"greater","value":"2"},{"column":"name","op":"empty","value":""}],"matchCase":true} 1`] = `
-"WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv')),
+"WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv', null_padding = true)),
   "n_clean_s0" AS (SELECT * FROM "n_src" WHERE NOT coalesce(("id" > '2') OR (coalesce(trim(CAST("name" AS VARCHAR)), '') = ''), false))
 SELECT * FROM "n_clean_s0""
 `;
 
 exports[`step snapshots > findReplace {"columns":["email"],"find":"A.B","replace":"x\\\\1","regex":false,"matchCase":false} 1`] = `
-"WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv')),
+"WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv', null_padding = true)),
   "n_clean_s0" AS (SELECT * REPLACE (regexp_replace(CAST("email" AS VARCHAR), 'A\\.B', 'x\\\\1', 'gi') AS "email") FROM "n_src")
 SELECT * FROM "n_clean_s0""
 `;
 
 exports[`step snapshots > findReplace {"columns":["email"],"find":"example.com","replace":"o'brien.org","regex":false,"matchCase":true} 1`] = `
-"WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv')),
+"WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv', null_padding = true)),
   "n_clean_s0" AS (SELECT * REPLACE (replace(CAST("email" AS VARCHAR), 'example.com', 'o''brien.org') AS "email") FROM "n_src")
 SELECT * FROM "n_clean_s0""
 `;
 
 exports[`step snapshots > findReplace {"columns":["name","email"],"find":"\\\\s+","replace":" ","regex":true,"matchCase":true} 1`] = `
-"WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv')),
+"WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv', null_padding = true)),
   "n_clean_s0" AS (SELECT * REPLACE (regexp_replace(CAST("name" AS VARCHAR), '\\s+', ' ', 'g') AS "name", regexp_replace(CAST("email" AS VARCHAR), '\\s+', ' ', 'g') AS "email") FROM "n_src")
 SELECT * FROM "n_clean_s0""
 `;
 
 exports[`step snapshots > formatDates {"columns":["joined"],"format":"%d %b '%y"} 1`] = `
-"WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv')),
+"WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv', null_padding = true)),
   "n_clean_s0" AS (SELECT * REPLACE (strftime("joined", '%d %b ''%y') AS "joined") FROM "n_src")
 SELECT * FROM "n_clean_s0""
 `;
 
 exports[`step snapshots > mergeColumns {"columns":["name","email"],"separator":" <","into":"contact","keepOriginals":false} 1`] = `
-"WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv')),
+"WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv', null_padding = true)),
   "n_clean_s0" AS (SELECT * EXCLUDE ("name", "email"), concat_ws(' <', CAST("name" AS VARCHAR), CAST("email" AS VARCHAR)) AS "contact" FROM "n_src")
 SELECT * FROM "n_clean_s0""
 `;
 
 exports[`step snapshots > padText {"columns":["id"],"length":5,"character":"0","side":"start"} 1`] = `
-"WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv')),
+"WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv', null_padding = true)),
   "n_clean_s0" AS (SELECT * REPLACE (CASE WHEN length(CAST("id" AS VARCHAR)) >= 5 THEN CAST("id" AS VARCHAR) ELSE lpad(CAST("id" AS VARCHAR), 5, '0') END AS "id") FROM "n_src")
 SELECT * FROM "n_clean_s0""
 `;
 
 exports[`step snapshots > padText {"columns":["name"],"length":20,"character":".","side":"end"} 1`] = `
-"WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv')),
+"WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv', null_padding = true)),
   "n_clean_s0" AS (SELECT * REPLACE (CASE WHEN length(CAST("name" AS VARCHAR)) >= 20 THEN CAST("name" AS VARCHAR) ELSE rpad(CAST("name" AS VARCHAR), 20, '.') END AS "name") FROM "n_src")
 SELECT * FROM "n_clean_s0""
 `;
 
 exports[`step snapshots > parseDates {"columns":["joined"],"formats":["%Y-%m-%d %H:%M:%S","%d %b '%y"],"onError":"fail"} 1`] = `
-"WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv')),
+"WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv', null_padding = true)),
   "n_clean_s0" AS (SELECT * REPLACE (CAST(strptime(trim(CAST("joined" AS VARCHAR)), ['%Y-%m-%d %H:%M:%S', '%d %b ''%y']) AS TIMESTAMP) AS "joined") FROM "n_src")
 SELECT * FROM "n_clean_s0""
 `;
@@ -362,13 +362,13 @@ SELECT * FROM "n_clean_s0""
 `;
 
 exports[`step snapshots > parseDates {"columns":["joined"],"formats":["%d/%m/%Y"],"onError":"empty"} 1`] = `
-"WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv')),
+"WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv', null_padding = true)),
   "n_clean_s0" AS (SELECT * REPLACE (CAST(try_strptime(trim(CAST("joined" AS VARCHAR)), '%d/%m/%Y') AS DATE) AS "joined") FROM "n_src")
 SELECT * FROM "n_clean_s0""
 `;
 
 exports[`step snapshots > parseNumbers {"columns":["id"],"decimal":","} 1`] = `
-"WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv')),
+"WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv', null_padding = true)),
   "n_clean_s0" AS (SELECT * REPLACE (CASE WHEN regexp_matches(trim(CAST("id" AS VARCHAR)), '^\\(.*\\)$') THEN -TRY_CAST(replace(regexp_replace(CAST("id" AS VARCHAR), '[^0-9,\\-]', '', 'g'), ',', '.') AS DOUBLE) ELSE TRY_CAST(replace(regexp_replace(CAST("id" AS VARCHAR), '[^0-9,\\-]', '', 'g'), ',', '.') AS DOUBLE) END AS "id") FROM "n_src")
 SELECT * FROM "n_clean_s0""
 `;
@@ -380,157 +380,157 @@ SELECT * FROM "n_clean_s0""
 `;
 
 exports[`step snapshots > parseNumbers {"columns":["id"],"decimal":"."} 1`] = `
-"WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv')),
+"WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv', null_padding = true)),
   "n_clean_s0" AS (SELECT * REPLACE (CASE WHEN regexp_matches(trim(CAST("id" AS VARCHAR)), '^\\(.*\\)$') THEN -TRY_CAST(regexp_replace(CAST("id" AS VARCHAR), '[^0-9.\\-]', '', 'g') AS DOUBLE) ELSE TRY_CAST(regexp_replace(CAST("id" AS VARCHAR), '[^0-9.\\-]', '', 'g') AS DOUBLE) END AS "id") FROM "n_src")
 SELECT * FROM "n_clean_s0""
 `;
 
 exports[`step snapshots > promoteHeaders {"renames":[{"from":"id","to":"ID"},{"from":"name","to":"name"}]} 1`] = `
-"WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv')),
+"WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv', null_padding = true)),
   "n_clean_s0" AS (SELECT * RENAME ("id" AS "ID") FROM "n_src" OFFSET 1)
 SELECT * FROM "n_clean_s0""
 `;
 
 exports[`step snapshots > removeBlankRows {"columns":["name","email"]} 1`] = `
-"WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv')),
+"WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv', null_padding = true)),
   "n_clean_s0" AS (SELECT * FROM "n_src" WHERE coalesce(trim(concat_ws('', CAST("name" AS VARCHAR), CAST("email" AS VARCHAR))), '') <> '')
 SELECT * FROM "n_clean_s0""
 `;
 
 exports[`step snapshots > removeBlankRows {"columns":[]} 1`] = `
-"WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv')),
+"WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv', null_padding = true)),
   "n_clean_s0" AS (SELECT * FROM "n_src" WHERE coalesce(trim(concat_ws('', *COLUMNS(*))), '') <> '')
 SELECT * FROM "n_clean_s0""
 `;
 
 exports[`step snapshots > removeColumns {"columns":["email"]} 1`] = `
-"WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv')),
+"WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv', null_padding = true)),
   "n_clean_s0" AS (SELECT * EXCLUDE ("email") FROM "n_src")
 SELECT * FROM "n_clean_s0""
 `;
 
 exports[`step snapshots > removeNonPrinting {"columns":["name"]} 1`] = `
-"WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv')),
+"WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv', null_padding = true)),
   "n_clean_s0" AS (SELECT * REPLACE (regexp_replace(CAST("name" AS VARCHAR), '[\\x00-\\x1F\\x7F\\x{200B}-\\x{200D}\\x{2060}\\x{FEFF}]', '', 'g') AS "name") FROM "n_src")
 SELECT * FROM "n_clean_s0""
 `;
 
 exports[`step snapshots > removeRows {"from":"bottom","count":1} 1`] = `
-"WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv')),
+"WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv', null_padding = true)),
   "n_clean_s0" AS (SELECT * FROM "n_src" LIMIT greatest((SELECT count(*) FROM "n_src") - 1, 0))
 SELECT * FROM "n_clean_s0""
 `;
 
 exports[`step snapshots > removeRows {"from":"top","count":2} 1`] = `
-"WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv')),
+"WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv', null_padding = true)),
   "n_clean_s0" AS (SELECT * FROM "n_src" OFFSET 2)
 SELECT * FROM "n_clean_s0""
 `;
 
 exports[`step snapshots > renameColumns {"renames":[{"from":"name","to":"full_name"},{"from":"joined","to":"joined_on"}]} 1`] = `
-"WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv')),
+"WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv', null_padding = true)),
   "n_clean_s0" AS (SELECT * RENAME ("name" AS "full_name", "joined" AS "joined_on") FROM "n_src")
 SELECT * FROM "n_clean_s0""
 `;
 
 exports[`step snapshots > reorderColumns {"columns":["email","id"]} 1`] = `
-"WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv')),
+"WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv', null_padding = true)),
   "n_clean_s0" AS (SELECT "email", "id", * EXCLUDE ("email", "id") FROM "n_src")
 SELECT * FROM "n_clean_s0""
 `;
 
 exports[`step snapshots > roundNumbers {"columns":["id"],"mode":"down","places":0} 1`] = `
-"WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv')),
+"WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv', null_padding = true)),
   "n_clean_s0" AS (SELECT * REPLACE (floor(round("id", 9)) AS "id") FROM "n_src")
 SELECT * FROM "n_clean_s0""
 `;
 
 exports[`step snapshots > roundNumbers {"columns":["id"],"mode":"nearest","places":0,"nearest":0.05} 1`] = `
-"WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv')),
+"WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv', null_padding = true)),
   "n_clean_s0" AS (SELECT * REPLACE (round(round(round("id" / 0.05, 9)) * 0.05, 2) AS "id") FROM "n_src")
 SELECT * FROM "n_clean_s0""
 `;
 
 exports[`step snapshots > roundNumbers {"columns":["id"],"mode":"places","places":0} 1`] = `
-"WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv')),
+"WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv', null_padding = true)),
   "n_clean_s0" AS (SELECT * REPLACE (round(round("id", 9)) AS "id") FROM "n_src")
 SELECT * FROM "n_clean_s0""
 `;
 
 exports[`step snapshots > roundNumbers {"columns":["id"],"mode":"places","places":2} 1`] = `
-"WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv')),
+"WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv', null_padding = true)),
   "n_clean_s0" AS (SELECT * REPLACE (round(round("id" * 100, 9)) / 100 AS "id") FROM "n_src")
 SELECT * FROM "n_clean_s0""
 `;
 
 exports[`step snapshots > roundNumbers {"columns":["id"],"mode":"up","places":1} 1`] = `
-"WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv')),
+"WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv', null_padding = true)),
   "n_clean_s0" AS (SELECT * REPLACE (ceil(round("id" * 10, 9)) / 10 AS "id") FROM "n_src")
 SELECT * FROM "n_clean_s0""
 `;
 
 exports[`step snapshots > shiftDates {"columns":["joined"],"direction":"add","by":"fixed","amount":2,"unit":"quarters","keepTime":false} 1`] = `
-"WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv')),
+"WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv', null_padding = true)),
   "n_clean_s0" AS (SELECT * REPLACE (CAST("joined" + to_months(6) AS DATE) AS "joined") FROM "n_src")
 SELECT * FROM "n_clean_s0""
 `;
 
 exports[`step snapshots > shiftDates {"columns":["joined"],"direction":"subtract","by":"column","amountColumn":"id","unit":"seconds","keepTime":true} 1`] = `
-"WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv')),
+"WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv', null_padding = true)),
   "n_clean_s0" AS (SELECT * REPLACE (("joined" - to_seconds(CAST("id" AS DOUBLE))) AS "joined") FROM "n_src")
 SELECT * FROM "n_clean_s0""
 `;
 
 exports[`step snapshots > sortRows {"keys":[{"column":"joined","descending":true},{"column":"id","descending":false}]} 1`] = `
-"WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv')),
+"WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv', null_padding = true)),
   "n_clean_s0" AS (SELECT * EXCLUDE ("__puddle_row") FROM (SELECT row_number() OVER () AS "__puddle_row", * FROM "n_src") ORDER BY "joined" DESC NULLS LAST, "id" ASC NULLS LAST, "__puddle_row")
 SELECT * FROM "n_clean_s0""
 `;
 
 exports[`step snapshots > splitByDelimiter {"column":"email","delimiter":"@","into":["user","domain"],"keepOriginal":false} 1`] = `
-"WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv')),
+"WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv', null_padding = true)),
   "n_clean_s0" AS (SELECT * EXCLUDE ("email"), string_split(CAST("email" AS VARCHAR), '@')[1] AS "user", string_split(CAST("email" AS VARCHAR), '@')[2] AS "domain" FROM "n_src")
 SELECT * FROM "n_clean_s0""
 `;
 
 exports[`step snapshots > splitByDelimiter {"column":"name","delimiter":"'","into":["a"],"keepOriginal":true} 1`] = `
-"WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv')),
+"WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv', null_padding = true)),
   "n_clean_s0" AS (SELECT *, string_split(CAST("name" AS VARCHAR), '''')[1] AS "a" FROM "n_src")
 SELECT * FROM "n_clean_s0""
 `;
 
 exports[`step snapshots > splitByPosition {"column":"joined","positions":[4,7],"into":["year","dash_month","dash_day"],"keepOriginal":true} 1`] = `
-"WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv')),
+"WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv', null_padding = true)),
   "n_clean_s0" AS (SELECT *, substr(CAST("joined" AS VARCHAR), 1, 4) AS "year", substr(CAST("joined" AS VARCHAR), 5, 3) AS "dash_month", substr(CAST("joined" AS VARCHAR), 8) AS "dash_day" FROM "n_src")
 SELECT * FROM "n_clean_s0""
 `;
 
 exports[`step snapshots > standardise {"columns":["id"],"method":"minmax"} 1`] = `
-"WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv')),
+"WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv', null_padding = true)),
   "n_clean_s0" AS (SELECT * REPLACE (CASE WHEN "id" IS NULL THEN NULL WHEN (max("id") OVER () - min("id") OVER ()) = 0 THEN 0.0 ELSE ("id" - min("id") OVER ()) / (max("id") OVER () - min("id") OVER ()) END AS "id") FROM "n_src")
 SELECT * FROM "n_clean_s0""
 `;
 
 exports[`step snapshots > standardise {"columns":["id"],"method":"zscore"} 1`] = `
-"WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv')),
+"WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv', null_padding = true)),
   "n_clean_s0" AS (SELECT * REPLACE (CASE WHEN "id" IS NULL THEN NULL WHEN stddev_pop("id") OVER () = 0 THEN 0.0 ELSE ("id" - avg("id") OVER ()) / stddev_pop("id") OVER () END AS "id") FROM "n_src")
 SELECT * FROM "n_clean_s0""
 `;
 
 exports[`step snapshots > textLength {"column":"name","into":"name_length"} 1`] = `
-"WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv')),
+"WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv', null_padding = true)),
   "n_clean_s0" AS (SELECT *, length(CAST("name" AS VARCHAR)) AS "name_length" FROM "n_src")
 SELECT * FROM "n_clean_s0""
 `;
 
 exports[`step snapshots > trimWhitespace {"columns":["name","email"]} 1`] = `
-"WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv')),
+"WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv', null_padding = true)),
   "n_clean_s0" AS (SELECT * REPLACE (trim("name") AS "name", trim("email") AS "email") FROM "n_src")
 SELECT * FROM "n_clean_s0""
 `;
 
 exports[`step snapshots > truncateDates {"columns":["joined"],"to":"quarter"} 1`] = `
-"WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv')),
+"WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv', null_padding = true)),
   "n_clean_s0" AS (SELECT * REPLACE (time_bucket(INTERVAL '3 months', "joined") AS "joined") FROM "n_src")
 SELECT * FROM "n_clean_s0""
 `;

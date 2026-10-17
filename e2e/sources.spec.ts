@@ -20,6 +20,20 @@ test('TSV files are read with a tab delimiter', async ({ page }) => {
   expect((await columnsOf(page, 'orders.tsv')).length).toBeGreaterThan(1);
 });
 
+// Regression: this bank statement (header ending in a comma, an unquoted comma in one description) was read as one column.
+test('a CSV with ragged rows is still split into its columns', async ({ page }) => {
+  await openApp(page);
+  await addFiles(page, [fixture('bank-statement.csv')]);
+  await expect(node(page, 'bank-statement.csv')).toHaveAttribute('data-status', 'ok');
+  await expectRows(page, 25);
+  const columns = await columnsOf(page, 'bank-statement.csv');
+  expect(columns.slice(0, 8)).toEqual(['Transaction Date', 'Transaction Type', 'Sort Code', 'Account Number', 'Transaction Description', 'Debit Amount', 'Credit Amount', 'Balance']);
+
+  await page.getByLabel('Delimiter').selectOption({ label: 'Comma' });
+  await expect(page.getByTestId('inspector-columns').locator('.ui-col').first()).toHaveText('Transaction Date');
+  await expect(node(page, 'bank-statement.csv')).toHaveAttribute('data-status', 'ok');
+});
+
 test('a file dropped on the canvas is added where it lands', async ({ page }) => {
   await openApp(page);
   const text = fixtureText('customers.csv');
