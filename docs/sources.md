@@ -4,9 +4,9 @@ A source is data read into Puddle: a file on your computer, a file at a web addr
 
 ## Adding a source
 
-**Add source** in the toolbar offers three ways in.
+**Add** in the toolbar offers three ways in under **Sources**; an empty project also has an **Add source** button on the canvas.
 
-![The Add source menu: Choose files, From URL and Paste from clipboard](_static/screenshots/sources-menu.png)
+![The Add menu's Sources group: Choose files, From URL and Paste from clipboard](_static/screenshots/sources-menu.png)
 
 Choose files
 : Pick one or more files from your computer (shortcut: A). You can also drop files straight onto the canvas.
