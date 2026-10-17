@@ -1,11 +1,12 @@
 // Query nodes on real DuckDB-WASM (Node build): shop customers and orders joined by the lines the designer draws,
-// with the grid's fields, aliases, criteria, sorting and unique values, and the Totals row grouping and summarising.
+// with the grid's fields, aliases, criteria (and or rows), sorting and unique values, and the Totals row grouping and
+// summarising.
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { compileDisplayPage, sourceFileName } from '../../src/compiler';
 import { EngineClient, tableRows } from '../../src/engine/client';
 import { evaluateFlow, invalidateCaches, schemaCacheFor, useFlowStore } from '../../src/flow/status';
-import { addQueryField, addQueryJoin, addQueryTable, removeQueryTable, setQueryJoinKind, setQuerySpec, updateQueryField, type Project, type QueryField, type QueryJoinKind } from '../../src/model';
+import { addQueryField, addQueryJoin, addQueryOrRow, addQueryTable, removeQueryOrRow, removeQueryTable, setQueryCriteria, setQueryJoinKind, setQuerySpec, updateQueryField, type Project, type QueryField, type QueryJoinKind } from '../../src/model';
 import { createNodeBackend } from '../helpers/nodeBackend';
 import { flow, src, step } from '../helpers/projects';
 
@@ -224,6 +225,49 @@ describe('query totals', () => {
   it('a sum of text is explained before anything runs', async () => {
     await evaluateFlow(engine, withTotals(shop('inner', [[0, 'name', { total: 'sum' }]])));
     expect(useFlowStore.getState().nodes.q!.status).toMatchObject({ state: 'error', message: 'Sum needs numbers, and name is text. Pick Count, Min or Max for it, or change its type with Change type.' });
+  });
+});
+
+describe('query or rows', () => {
+  // Every customer, with their orders where they have them, named once each.
+  const customers = (fields: Array<[number, string, Partial<QueryField>?]>) => setQuerySpec(shop('left', [[0, 'name', { sort: 'asc' }], ...fields]), 'q', { distinct: true });
+  const names = async (p: Project) => (await run(p)).rows.map((r) => r[0]);
+
+  it('lapsed customers or customers with an order over 10 give the union of both', async () => {
+    const lapsed = customers([[0, 'status', { show: false, criteria: { op: '=', value: 'lapsed' } }]]);
+    const big = customers([[1, 'total', { show: false, criteria: { op: '>', value: '10' } }]]);
+    expect(await names(lapsed)).toEqual(['Barbara L', 'Edsger']);
+    expect(await names(big)).toEqual(['Ada']);
+    // The same two conditions on two rows of one grid.
+    let either = addQueryOrRow(customers([[0, 'status', { show: false }], [1, 'total', { show: false }]]), 'q');
+    either = setQueryCriteria(either, 'q', 'f1', 0, { op: '=', value: 'lapsed' });
+    either = setQueryCriteria(either, 'q', 'f2', 1, { op: '>', value: '10' });
+    expect(await names(either)).toEqual(['Ada', 'Barbara L', 'Edsger']);
+    // On one row they're ANDed: no lapsed customer has an order over 10.
+    const both = setQueryCriteria(customers([[0, 'status', { show: false, criteria: { op: '=', value: 'lapsed' } }], [1, 'total', { show: false }]]), 'q', 'f2', 0, { op: '>', value: '10' });
+    expect(await names(both)).toEqual([]);
+    // Removing the or row leaves the first condition alone.
+    expect(await names(removeQueryOrRow(either, 'q', 1))).toEqual(['Barbara L', 'Edsger']);
+  });
+
+  it('with Totals, or rows on a summary filter the groups', async () => {
+    let p = withTotals(shop('inner', [[0, 'name', { sort: 'asc' }], [1, 'total', { total: 'sum', criteria: { op: '>', value: '10' } }]]));
+    p = setQueryCriteria(addQueryOrRow(p, 'q'), 'q', 'f1', 1, { op: '<', value: '2' });
+    expect((await run(p)).rows).toEqual([
+      ['Ada', '15.75'],
+      ['Barbara', '1.0'],
+      ['Barbara L', '1.0'],
+    ]);
+  });
+
+  it('with Totals, or rows on a Where field filter the rows before grouping', async () => {
+    let p = withTotals(shop('inner', [[0, 'name', { sort: 'asc' }], [1, 'order_id', { total: 'count' }], [1, 'total', { total: 'where', show: false, criteria: { op: '>', value: '10' } }]]));
+    p = setQueryCriteria(addQueryOrRow(p, 'q'), 'q', 'f2', 1, { op: '<', value: '2' });
+    expect((await run(p)).rows).toEqual([
+      ['Ada', '1'],
+      ['Barbara', '1'],
+      ['Barbara L', '1'],
+    ]);
   });
 });
 
