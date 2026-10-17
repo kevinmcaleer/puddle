@@ -19,7 +19,7 @@ Nothing is uploaded at any point. Puddle reads both files from your disk, and ev
 
 ## 1. Add the files
 
-Open a new project and choose **Add source**, then **Choose files**, and pick both files (or drop them on the canvas). Each becomes a source node. The trips file says how many rows it has once DuckDB has counted them; Parquet files carry their column types, so the timestamps and numbers arrive ready to use.
+Open a new project and choose **Add**, then **Choose files**, and pick both files (or drop them on the canvas). Each becomes a source node. The trips file says how many rows it has once DuckDB has counted them; Parquet files carry their column types, so the timestamps and numbers arrive ready to use.
 
 ![The trips and the zone lookup as two sources, with the first trips in the results](_static/screenshots/tutorial-sources.png)
 
@@ -53,7 +53,7 @@ Set each one's **Severity** to *warning*. These rules describe the raw file, whi
 
 ## 4. Clean the trips
 
-With the trips source selected, choose **Add node**, then **Transform**. A Transform node holds a list of steps, applied in order. Add three from **Add step**:
+With the trips source selected, choose **Add**, then **Transform**. A Transform node holds a list of steps, applied in order. Add three from **Add step**:
 
 1. **Time between dates** (in Dates). From `tpep_pickup_datetime` to `tpep_dropoff_datetime`, in minutes, into a new column called `trip_minutes`.
 2. **Extract date part** (in Dates). The **Hour** of `tpep_pickup_datetime`, into a new column `tpep_pickup_datetime_hour`, for the summary later.
@@ -78,7 +78,7 @@ The Transform node now shows how many trips survived: 2,715,718 of 2,964,624, ab
 
 ## 5. Look up the zones
 
-`PULocationID` is a zone number. The zone lookup turns it into a borough and a zone name. Select the Transform node, then Shift+click `taxi_zone_lookup.csv`, and choose **Lookup** from **Add node** (see {doc}`combining`). In the inspector:
+`PULocationID` is a zone number. The zone lookup turns it into a borough and a zone name. Select the Transform node, then Shift+click `taxi_zone_lookup.csv`, and choose **Lookup** from **Add** (see {doc}`combining`). In the inspector:
 
 - Under **Match on**, pair `PULocationID` with `LocationID`.
 - Under **Bring across**, add `Borough` and `Zone`.
@@ -99,7 +99,7 @@ The result is 24 rows, one per hour of the day, with the average fare for trips 
 
 ## 7. Export the clean trips
 
-Select the Lookup node and choose **Output** from **Add node**. In the Output node's settings, choose **Parquet** as the format and name the file `taxi-trips-2024-01-clean`. **Export Parquet** writes every clean trip, with its borough and zone, straight from DuckDB in your browser to your downloads (see {doc}`exporting`).
+Select the Lookup node and choose **Output** from **Add**. In the Output node's settings, choose **Parquet** as the format and name the file `taxi-trips-2024-01-clean`. **Export Parquet** writes every clean trip, with its borough and zone, straight from DuckDB in your browser to your downloads (see {doc}`exporting`).
 
 ![The finished flow on the canvas, with the Output node's Parquet settings](_static/screenshots/tutorial-export.png)
 
