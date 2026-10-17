@@ -8,7 +8,7 @@ export function Banner({ tone = 'info', title, children, action }: { tone?: 'inf
   return (
     <div className={cx('ui-banner', 'ui-banner--' + tone)} role={tone === 'fail' ? 'alert' : 'status'}>
       <Icon name={BANNER_ICON[tone]} />
-      <div className="ui-banner__body">
+      <div className="ui-banner__body ui-selectable">
         {title && <div className="ui-banner__title">{title}</div>}
         {children}
       </div>

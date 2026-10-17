@@ -90,7 +90,7 @@ export function Console({ project }: { project: Project }) {
 function ConsoleAnswer({ columns, rows, ms }: { columns: ColumnSchema[]; rows: Record<string, unknown>[]; ms: number }) {
   const summary = rows.length >= CONSOLE_ROW_LIMIT ? `First ${CONSOLE_ROW_LIMIT} rows` : `${rows.length} ${rows.length === 1 ? 'row' : 'rows'}`;
   return (
-    <div className="min-h-0 overflow-auto" data-testid="console-answer">
+    <div className="ui-selectable min-h-0 overflow-auto" data-testid="console-answer">
       <p className="mb-1 text-label text-ink-muted" role="status" data-testid="console-summary">
         {summary} · {columns.length} {columns.length === 1 ? 'column' : 'columns'} · {Math.round(ms)} ms
       </p>

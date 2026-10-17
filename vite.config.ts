@@ -68,6 +68,7 @@ function isolation(): Plugin {
  */
 const ISOLATED = [
   'src/canvas/focusNode.test.ts',
+  'src/app/selectAll.test.ts',
   'src/compiler/compile.test.ts',
   'src/flow/status.test.ts',
   'src/notes/markdown.test.ts',
