@@ -9,9 +9,10 @@ export function keyboardOnCanvas(active: Element | null = document.activeElement
 /**
  * Focus node `id` on the canvas. A node just added can take focus only once React Flow has measured and drawn it, a
  * few frames later, so this tries again on each frame for up to a second. It gives up as soon as the keyboard has
- * gone somewhere else meanwhile: a shortcut pressed straight after T (such as / for the step search) must keep its
- * focus. (In WebKit the node can take a dozen frames to draw, and taking the focus back then sent the Enter meant for
- * the step search to the node.) Returns a function that stops trying.
+ * gone somewhere else meanwhile, on the canvas or off it: a shortcut pressed straight after T or O (such as / for the
+ * step search, or F for the canvas) must keep its focus. (In WebKit the node can take a dozen frames to draw, and
+ * taking the focus back then sent the Enter meant for the step search to the node.) Returns a function that stops
+ * trying.
  */
 export function focusNodeWhenDrawn(
   id: string,
@@ -19,7 +20,11 @@ export function focusNodeWhenDrawn(
 ): () => void {
   let frame = 0;
   let tries = 0;
+  const start = document.activeElement;
   const focus = () => {
+    // Moved on, even on the canvas (F focuses the canvas itself): that focus stays. Dropping to the body doesn't count.
+    const active = document.activeElement;
+    if (active !== start && active !== document.body) return;
     if (!keyboardOnCanvas()) return;
     const el = document.querySelector<HTMLElement>(`.puddle-canvas .react-flow__node[data-id="${CSS.escape(id)}"]`);
     el?.focus();

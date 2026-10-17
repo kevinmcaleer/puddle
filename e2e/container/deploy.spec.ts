@@ -33,7 +33,7 @@ function offSite(page: Page, base: string) {
   return urls;
 }
 
-test('JSON and Parquet load and export with no request leaving the site', async ({ page, request, baseURL }) => {
+test('JSON, NDJSON and Parquet load and export with no request leaving the site', async ({ page, request, baseURL }) => {
   const manifest = await request.get('/duckdb-extensions/manifest.json');
   // Images built with FETCH_EXTENSIONS=0 (where extensions.duckdb.org can't be reached) have none; CI always does.
   test.skip(!manifest.ok() && !process.env.CI, 'This image was built without the DuckDB extensions.');
@@ -68,6 +68,14 @@ test('JSON and Parquet load and export with no request leaving the site', async 
     await expectRows(page, 4);
     await node(page, 'Output 1').click();
   }
+
+  // NDJSON last: a third source added before the Output would put that node under the minimap.
+  await addFiles(page, [fixture('events.ndjson')]);
+  await expect(node(page, 'events.ndjson')).toHaveAttribute('data-status', 'ok', { timeout: 30_000 });
+  await bringIntoView(page, 'events.ndjson');
+  await node(page, 'events.ndjson').click();
+  await expectRows(page, 3);
+  await expect(page.getByTestId('inspector-columns').locator('.ui-col')).toHaveText(['event', 'at']);
   expect(away).toEqual([]);
 });
 
