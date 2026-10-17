@@ -98,6 +98,9 @@ test('dates that read either way follow the parse dates step’s locale', async 
   await transformOf(page, 'dates.csv');
   await addStep(page, 'Parse dates');
   await onlyColumns(page, ['ambiguous'], ['uk', 'us', 'ambiguous', 'mixed', 'textual']);
+  // Wait for the column's detection: its banner pushes the formats down, and a click as it lands (Firefox in CI) can
+  // hit the banner's swap button instead of Remove.
+  await expect(formats(page).getByText('Reading the day first')).toBeVisible();
   await formats(page).getByRole('button', { name: 'Remove %d/%m/%Y' }).click();
   // Without a locale the order is asked, as ever.
   await expect(formats(page).getByText('Day and month order is unclear')).toBeVisible();
