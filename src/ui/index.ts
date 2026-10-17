@@ -24,5 +24,6 @@ export { StatusBadge, type Status } from './StatusBadge';
 export { StepList, type StepListItem } from './StepList';
 export { Toolbar } from './Toolbar';
 export { TypeTag } from './TypeTag';
+export { appUndo, UNDO_ATTRIBUTE } from './undo';
 export { columnKind, type ColumnKind } from './columnKind';
 export { wireClass, wirePath, type WireState } from './wire';

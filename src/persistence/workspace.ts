@@ -7,8 +7,9 @@ import { invalidateCaches } from '../flow/status';
 import { createProject, newId, useProjectStore, type Project } from '../model';
 import { useResultsStore } from '../results/state';
 import { attachProject } from '../sources/attach';
-import { copyHandles, deleteHandles, deleteProject, listProjects, loadProject, saveProject, type ProjectSummary } from './db';
+import { copyHandles, deleteHandles, deleteProject, listProjects, loadHandles, loadProject, loadSyncLink, saveHandle, saveProject, saveSyncLink, type ProjectSummary, type StoredSyncLink } from './db';
 import { migrate, projectFileName, readProjectFile, writeProjectFile } from './migrate';
+import { createOperations } from './operations';
 
 const LAST = 'puddle.lastProject';
 
@@ -21,6 +22,9 @@ interface WorkspaceState {
 
 export const useWorkspace = create<WorkspaceState>(() => ({ screen: 'loading', projects: [], error: null }));
 
+/** Undo and redo on the home screen: renaming, duplicating and deleting projects. */
+export const projectOperations = createOperations();
+
 type Listener<T> = (value: T) => void;
 
 /**
@@ -31,6 +35,8 @@ export const workspaceEvents = {
   shown: new Set<Listener<Project>>(),
   saved: new Set<Listener<Project>>(),
   removed: new Set<Listener<string>>(),
+  /** A deleted project put back by undo, with the sync link it had (sync keeps links in its own order). */
+  restored: new Set<Listener<StoredSyncLink>>(),
 };
 
 const emit = <T>(listeners: Set<Listener<T>>, value: T) => {
@@ -184,11 +190,21 @@ export async function renameProject(id: string, name: string) {
   if (!trimmed) return;
   const open = useProjectStore.getState().history.present;
   if (useWorkspace.getState().screen === 'editor' && open.id === id) {
+    // The open project's name is an edit like any other, undone in the editor.
     useProjectStore.getState().apply((p) => ({ ...p, name: trimmed }));
     await flush();
   } else {
     const p = await loadProject(id);
-    if (p) await saveProject({ ...p, name: trimmed, updatedAt: new Date().toISOString() });
+    if (!p || p.name === trimmed) return;
+    const rename = async (to: string) => {
+      const now = await loadProject(id);
+      if (!now) throw new Error('That project no longer exists.');
+      await saveProject({ ...now, name: to, updatedAt: new Date().toISOString() });
+      await refreshProjects();
+    };
+    await rename(trimmed);
+    projectOperations.record({ label: `Rename ${p.name}`, undo: () => rename(p.name), redo: () => rename(trimmed) });
+    return;
   }
   await refreshProjects();
 }
@@ -200,14 +216,20 @@ export async function duplicateProject(id: string): Promise<string> {
   if (!p) throw new Error('That project no longer exists.');
   const now = new Date().toISOString();
   const copy = { ...migrate(p), id: newId('p'), name: `${p.name} copy`, createdAt: now, updatedAt: now };
-  await saveProject(copy);
-  // The copy's sources keep their ids, so on Chromium its files reconnect the same way as the original's.
-  await copyHandles(id, copy.id).catch(() => {});
-  await refreshProjects();
+  const make = async () => {
+    await saveProject(copy);
+    stored.add(copy.id);
+    // The copy's sources keep their ids, so on Chromium its files reconnect the same way as the original's.
+    await copyHandles(id, copy.id).catch(() => {});
+    await refreshProjects();
+  };
+  await make();
+  projectOperations.record({ label: `Duplicate ${p.name}`, undo: () => forgetProject(copy.id), redo: make });
   return copy.id;
 }
 
-export async function removeProject(id: string) {
+/** Delete a project and what this browser keeps beside it (file handles, its sync link). */
+async function forgetProject(id: string) {
   if (pending) clearTimeout(pending);
   await deleteProject(id);
   await deleteHandles(id).catch(() => {});
@@ -217,12 +239,38 @@ export async function removeProject(id: string) {
   await refreshProjects();
 }
 
-/** Save a project in place of any of the same id (such as a newer version from sync) and show it in the editor. */
+/** Delete a project as one undo step: undo puts it back with its file handles and sync link. */
+export async function removeProject(id: string) {
+  const project = await loadProject(id);
+  const handles = await loadHandles(id).catch(() => new Map<string, unknown>());
+  const link = await loadSyncLink(id).catch(() => undefined);
+  await forgetProject(id);
+  if (!project) return;
+  const restore = async () => {
+    await saveProject(project);
+    for (const [sourceId, handle] of handles) await saveHandle(id, sourceId, handle).catch(() => {});
+    // Sync forgets a deleted project's link in its own queue, so it puts the link back the same way.
+    if (link && workspaceEvents.restored.size) emit(workspaceEvents.restored, link);
+    else if (link) await saveSyncLink(link).catch(() => {});
+    stored.add(id);
+    await refreshProjects();
+  };
+  projectOperations.record({ label: `Delete ${project.name}`, undo: restore, redo: () => forgetProject(id) });
+}
+
+/**
+ * Save a project in place of any of the same id (such as a newer version from sync) and show it in the editor. When
+ * that project is already open, the new version is an undo step: undo brings back the one it replaced.
+ */
 export async function replaceProject(project: Project) {
   // Anything still unsaved goes first, so it can't land on top of the new version afterwards.
   await flush();
   await saveProject(project);
   stored.add(project.id);
+  if (useWorkspace.getState().screen === 'editor' && useProjectStore.getState().history.present.id === project.id) {
+    useProjectStore.getState().replace(project);
+    return attachProject(project);
+  }
   await show(project);
 }
 

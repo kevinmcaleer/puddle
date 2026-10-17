@@ -2,7 +2,7 @@ import 'fake-indexeddb/auto';
 import { step } from '../../tests/helpers/projects';
 import { FORMAT_VERSION } from '../model';
 import { closeDb, saveTemplate } from '../persistence/db';
-import { addTemplate, editTemplate, refreshTemplates, removeTemplate, useTemplates } from './library';
+import { addTemplate, editTemplate, refreshTemplates, removeTemplate, templateOperations, useTemplates } from './library';
 import { createTemplate } from './template';
 
 afterEach(async () => {
@@ -12,6 +12,7 @@ afterEach(async () => {
     req.onsuccess = req.onerror = () => resolve();
   });
   useTemplates.setState({ templates: [], unreadable: 0 });
+  templateOperations.clear();
 });
 
 const make = (name: string) => createTemplate({ name, steps: [step('a', 'trimWhitespace', { columns: ['name'] })], expectedColumns: [{ name: 'name', type: 'VARCHAR' }] });
@@ -44,5 +45,27 @@ describe('templates library', () => {
     await refreshTemplates();
     expect(useTemplates.getState().templates.map((t) => [t.name, t.formatVersion])).toEqual([['Old', FORMAT_VERSION]]);
     expect(useTemplates.getState().unreadable).toBe(1);
+  });
+
+  it('undoes and redoes adding, renaming and deleting a template', async () => {
+    const t = make('Tidy names');
+    const names = () => useTemplates.getState().templates.map((x) => x.name);
+    await addTemplate(t);
+    await editTemplate(t.id, { name: 'Tidy contact names' });
+    await removeTemplate(t.id);
+    expect(templateOperations.use.getState().past.map((o) => o.label)).toEqual(['Add Tidy names', 'Rename Tidy names', 'Delete Tidy contact names']);
+    await templateOperations.undo();
+    expect(names()).toEqual(['Tidy contact names']);
+    await templateOperations.undo();
+    expect(names()).toEqual(['Tidy names']);
+    await templateOperations.undo();
+    expect(names()).toEqual([]);
+    await templateOperations.redo();
+    await templateOperations.redo();
+    expect(names()).toEqual(['Tidy contact names']);
+    // Undone records come back whole, steps and all, even after a reload.
+    await closeDb();
+    await refreshTemplates();
+    expect(useTemplates.getState().templates[0]!.steps).toEqual(t.steps);
   });
 });

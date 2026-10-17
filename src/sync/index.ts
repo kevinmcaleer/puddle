@@ -72,9 +72,11 @@ export function startSync() {
   const shown = (p: Parameters<typeof sync.shown>[0]) => void sync.shown(p);
   const saved = (p: Parameters<typeof sync.saved>[0]) => void sync.saved(p);
   const removed = (id: string) => void sync.forget(id);
+  const restored = (link: Parameters<typeof sync.restore>[0]) => void sync.restore(link);
   workspaceEvents.shown.add(shown);
   workspaceEvents.saved.add(saved);
   workspaceEvents.removed.add(removed);
+  workspaceEvents.restored.add(restored);
   // A project already open before this started (the workspace can open the last one first).
   const open = useWorkspace.getState().screen === 'editor' ? useProjectStore.getState().history.present : null;
   if (open) shown(open);
@@ -94,6 +96,7 @@ export function startSync() {
     workspaceEvents.shown.delete(shown);
     workspaceEvents.saved.delete(saved);
     workspaceEvents.removed.delete(removed);
+    workspaceEvents.restored.delete(restored);
     window.removeEventListener('online', online);
     window.removeEventListener('offline', offline);
   };

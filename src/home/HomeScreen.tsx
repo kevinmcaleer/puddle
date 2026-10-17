@@ -1,5 +1,6 @@
 import { useRef } from 'react';
-import { duplicateProject, importProject, newProject, openProject, useWorkspace } from '../persistence/workspace';
+import { duplicateProject, importProject, newProject, openProject, projectOperations, useWorkspace } from '../persistence/workspace';
+import { OperationButtons } from '../app/OperationButtons';
 import { THEME_ICON, THEME_LABEL, useTheme } from '../app/theme';
 import { Banner, Button, formatInstant, Menu, Toolbar, useDisplayFormat } from '../ui';
 import { SamplePicker } from '../samples/SamplePicker';
@@ -31,6 +32,7 @@ export function HomeScreen() {
           </Button>
         ))}
         <Button variant="primary" icon="plus" onClick={() => void newProject()}>New project</Button>
+        <OperationButtons ops={projectOperations} onError={(error) => useWorkspace.setState({ error })} />
         <Button
           variant="ghost"
           icon={THEME_ICON[theme.preference]}
@@ -89,7 +91,7 @@ export function HomeScreen() {
                     items={[
                       { label: 'Open', icon: 'eye', onSelect: () => void openProject(p.id) },
                       { label: 'Rename', icon: 'text', onSelect: () => openProjectDialog({ kind: 'rename', id: p.id, name: p.name }) },
-                      { label: 'Duplicate', icon: 'append', onSelect: () => void duplicateProject(p.id) },
+                      { label: 'Duplicate', icon: 'append', onSelect: () => void duplicateProject(p.id).catch((e: unknown) => useWorkspace.setState({ error: e instanceof Error ? e.message : String(e) })) },
                       { label: 'Delete', icon: 'cross', onSelect: () => openProjectDialog({ kind: 'delete', id: p.id, name: p.name }) },
                     ]}
                   />

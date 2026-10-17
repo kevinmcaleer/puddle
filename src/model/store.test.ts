@@ -87,3 +87,78 @@ describe('view and derived facts', () => {
     expect(useProjectStore.getState().history.present.exportLog.map((e) => e.id)).toEqual(['x1']);
   });
 });
+
+describe('one operation, one undo step', () => {
+  it('batches several edits into one step', () => {
+    const before = useProjectStore.getState().history.present;
+    const past = useProjectStore.getState().history.past.length;
+    const result = useProjectStore.getState().batch(() => {
+      useProjectStore.getState().apply((p) => ({ ...p, name: 'One' }));
+      useProjectStore.getState().apply((p) => ({ ...p, notes: 'Two' }));
+      return 'done';
+    });
+    expect(result).toBe('done');
+    expect(useProjectStore.getState().history.past.length).toBe(past + 1);
+    useProjectStore.getState().undo();
+    expect(useProjectStore.getState().history.present).toBe(before);
+    useProjectStore.getState().redo();
+    expect(useProjectStore.getState().history.present).toMatchObject({ name: 'One', notes: 'Two' });
+  });
+
+  it('batches the edits of an async operation until it settles, and nested batches into the outermost', async () => {
+    const before = useProjectStore.getState().history.present;
+    const past = useProjectStore.getState().history.past.length;
+    await useProjectStore.getState().batch(async () => {
+      useProjectStore.getState().apply((p) => ({ ...p, name: 'First file' }));
+      await Promise.resolve();
+      useProjectStore.getState().batch(() => useProjectStore.getState().apply((p) => ({ ...p, notes: 'Second file' })));
+      expect(useProjectStore.getState().history.past.length).toBe(past);
+    });
+    expect(useProjectStore.getState().history.past.length).toBe(past + 1);
+    useProjectStore.getState().undo();
+    expect(useProjectStore.getState().history.present).toBe(before);
+  });
+
+  it('records what was applied before an operation failed, and stops batching', () => {
+    const past = useProjectStore.getState().history.past.length;
+    expect(() =>
+      useProjectStore.getState().batch(() => {
+        useProjectStore.getState().apply((p) => ({ ...p, name: 'Half done' }));
+        throw new Error('boom');
+      }),
+    ).toThrow('boom');
+    expect(useProjectStore.getState().history.past.length).toBe(past + 1);
+    useProjectStore.getState().apply((p) => ({ ...p, name: 'After' }));
+    expect(useProjectStore.getState().history.past.length).toBe(past + 2);
+  });
+
+  it('records nothing for a batch that changes nothing', () => {
+    const history = useProjectStore.getState().history;
+    useProjectStore.getState().batch(() => undefined);
+    expect(useProjectStore.getState().history).toBe(history);
+  });
+
+  it('puts a newer version of the open project in place as an undo step, keeping its updatedAt', () => {
+    const before = useProjectStore.getState().history.present;
+    const newer = { ...before, name: 'From another browser', updatedAt: '2030-01-01T00:00:00.000Z' };
+    useProjectStore.getState().replace(newer);
+    expect(useProjectStore.getState().history.present).toBe(newer);
+    useProjectStore.getState().undo();
+    expect(useProjectStore.getState().history.present).toBe(before);
+    useProjectStore.getState().replace({ ...before, id: 'elsewhere' });
+    expect(useProjectStore.getState().history.past).toEqual([]);
+  });
+
+  it('keeps the file a source reads now when undo goes back past a re-attach', () => {
+    const source = { id: 's1', name: 'Sales', kind: 'file' as const, format: 'csv' as const, parseOptions: {}, detectedSchema: [], file: { originalName: 'old.csv', size: 1, lastModified: 0, headHash: 'old' } };
+    useProjectStore.getState().load({ ...useProjectStore.getState().history.present, sources: [source] });
+    useProjectStore.getState().apply((p) => ({ ...p, name: 'Renamed' }));
+    // The file is chosen again: a fact, recorded without an undo step.
+    useProjectStore.getState().amend((p) => ({ ...p, sources: p.sources.map((s) => ({ ...s, file: { ...s.file!, originalName: 'new.csv', headHash: 'new' } })) }));
+    useProjectStore.getState().undo();
+    expect(useProjectStore.getState().history.present.name).not.toBe('Renamed');
+    expect(useProjectStore.getState().history.present.sources[0]!.file).toMatchObject({ originalName: 'new.csv', headHash: 'new' });
+    useProjectStore.getState().redo();
+    expect(useProjectStore.getState().history.present.sources[0]!.file?.headHash).toBe('new');
+  });
+});

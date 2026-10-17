@@ -271,6 +271,11 @@ export function createSyncController(deps: SyncDeps) {
       return queue(() => links.delete(projectId));
     },
 
+    /** A deleted project put back (undo): it syncs where it did before. */
+    restore(link: StoredSyncLink) {
+      return queue(() => links.save(link));
+    },
+
     /**
      * Settle the open project's conflict. `mine` writes this browser's version over the remote one; `remote` takes
      * the remote one; `copy` keeps this browser's version as a separate project, then takes the remote one.

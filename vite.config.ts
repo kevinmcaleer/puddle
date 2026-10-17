@@ -67,8 +67,10 @@ const ISOLATED = [
   'src/compiler/compile.test.ts',
   'src/flow/status.test.ts',
   'src/notes/markdown.test.ts',
+  'src/persistence/workspace.test.ts',
   'src/samples/samples.test.ts',
   'src/sync/controller.test.ts',
+  'src/templates/library.test.ts',
   'src/ui/locale.test.ts',
   'tests/engine/handles.test.ts',
 ];
