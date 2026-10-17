@@ -12,7 +12,7 @@ Name the attribute and value columns in the step's settings. **Unpivot every col
 
 ## Pivot or group by
 
-**Pivot or group by** summarises a table. Drag columns from the field list into four zones:
+**Pivot or group by** summarises a table. Add it from **Add step**, or right-click a column in the results and choose **Group by this column** or **Pivot into columns** from the column menu: the step starts with that column in Rows or Columns, and a pivot starts by counting the rows under each value. Then drag columns from the field list into four zones:
 
 Rows
 : The columns to group by. Each distinct combination becomes a row.
@@ -21,7 +21,7 @@ Columns
 : A column whose values become new columns (for a pivot). Leave it empty for a plain group by.
 
 Values
-: What to summarise, and how, from the field's menu: sum, count, count distinct, min, max, average, median, first, last or list.
+: What to summarise, and how, from the field's menu: sum, count, count distinct, min, max, average, median, standard deviation, variance, first, last or list. A number starts as a sum and anything else as a count; click the aggregate on the field to change it. The same field can go into Values more than once, to show its sum and its average side by side.
 
 Filters
 : Columns to filter on before summarising.

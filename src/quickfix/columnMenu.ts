@@ -1,10 +1,19 @@
 // The column menu: what a right click on a column header or a cell in the results table offers, as in Power Query.
+import type { PivotValuesRead } from '../flow/pivot';
 import type { Step } from '../model';
 import { make, QUICK_FIXES, type FixContext } from './fixes';
 
 export interface ColumnMenuContext extends FixContext {
   /** The right-clicked cell, when a cell (not a header) was clicked; null is an empty value. */
   cell?: { column: string; value: string | null };
+  /** Read the values a column would turn into columns, from the viewed data, so a pivot arrives ready to run. */
+  readPivotValues?: (column: string) => Promise<PivotValuesRead | undefined>;
+}
+
+/** A pivot of one column into columns, counting its rows under each value until the editor says what to summarise. */
+async function pivotOn(c: ColumnMenuContext, column: string): Promise<Step> {
+  const read = await c.readPivotValues?.(column).catch(() => undefined);
+  return make('pivot', c, { rows: [], column, pivotValues: read?.values ?? [], moreValues: read?.more ?? false, values: [{ column, agg: 'count' }] });
 }
 
 /** One entry of the column menu, in a group or a group's submenu: it adds a step, or opens the Replace values dialog. */
@@ -75,6 +84,10 @@ export function columnActions(ctx: ColumnMenuContext): ColumnAction[] {
     { label: 'Move to the front', group: g, submenu: 'Columns', step: onColumns('reorderColumns') },
     { label: one ? 'Remove column' : 'Remove columns', group: g, submenu: 'Columns', step: onColumns('removeColumns') },
     { label: 'Remove other columns', group: g, submenu: 'Columns', step: (c) => make('removeColumns', c, { columns: c.available.map((a) => a.name).filter((n) => !c.columns.includes(n)) }) },
+
+    // Fields go in Values from the editor, which opens on the new step, each with its own aggregate.
+    { label: one ? 'Group by this column…' : 'Group by these columns…', group: 'Summarise', step: (c) => make('pivot', c, { rows: c.columns, column: '', values: [] }) },
+    ...(one ? [{ label: 'Pivot into columns…', group: 'Summarise', step: (c: ColumnMenuContext) => pivotOn(c, first) }] : []),
   ];
 }
 

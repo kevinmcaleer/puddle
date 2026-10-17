@@ -1,11 +1,11 @@
 import { useEffect, useRef, useState, type DragEvent } from 'react';
-import { AGGREGATES, FILTER_OPS, pivotOutputs, type Aggregate, type Condition } from '../compiler';
+import { AGGREGATES, FILTER_OPS, pivotOutputs, type Condition } from '../compiler';
 import type { PivotValuesRead } from '../flow/pivot';
 import type { ColumnSchema } from '../model';
 import { Banner, Button, columnKind, Field, FieldChip, Menu, PivotZone, TypeTag, type MenuItem } from '../ui';
 import { CommitInput } from './CommitInput';
 import { Conditions } from './Conditions';
-import { addToZone, moveField, pivotDraft, pivotValuesChange, removeFromZone, renameOutput, setAggregate, valuesStale, ZONES, zoneFields, type PivotDraft, type Zone } from './pivot';
+import { addToZone, aggregatesFor, moveField, pivotDraft, pivotValuesChange, removeFromZone, renameOutput, setAggregate, valuesStale, ZONES, zoneFields, type PivotDraft, type Zone } from './pivot';
 
 /** Reads the values a Columns field turns into columns, from the step's input after the filters. */
 export type ReadPivotValues = (pivot: { column: string; filters: Condition[] }) => Promise<PivotValuesRead>;
@@ -68,7 +68,7 @@ function ZoneBox({ zone, label, draft: d, columns, commit }: { zone: Zone; label
         <Menu
           align="end"
           label={AGGREGATES[v.agg]}
-          items={(Object.keys(AGGREGATES) as Aggregate[]).map((a) => ({ label: AGGREGATES[a].charAt(0).toUpperCase() + AGGREGATES[a].slice(1), onSelect: () => commit(setAggregate(d, i, a)) }))}
+          items={aggregatesFor(v.column, columns).map((a) => ({ label: AGGREGATES[a].charAt(0).toUpperCase() + AGGREGATES[a].slice(1), onSelect: () => commit(setAggregate(d, i, a)) }))}
           renderTrigger={(t) => (
             <button type="button" className="ui-fchip__agg" aria-label={`Summarise ${v.column}: ${AGGREGATES[v.agg]}`} {...t}>
               {AGGREGATES[v.agg] ?? v.agg}
