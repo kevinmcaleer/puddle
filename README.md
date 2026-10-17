@@ -47,6 +47,7 @@ A Docker image (nginx serving the static build) behind a Cloudflare Tunnel at pu
 | `src/templates/` | Node templates: a Transform node's steps saved outside any project (IndexedDB, upgraded through the project migrations), the library dialog, and the column mapping that renames a template's columns for a new input and turns off steps whose columns are missing |
 | `src/home/` | The projects home screen and the rename and delete dialogs |
 | `src/samples/` | The onboarding samples: the catalogue of messy datasets in `public/samples/` (written by `scripts/make-samples.mjs`), the Try a sample picker, and `openSample`, which opens one as a new project |
+| `src/tour/` | The guided tour: its stops, the popover that points at each part of the screen (following layout changes), the first-launch offer and progress kept in this browser |
 | `src/canvas/` | The node canvas on React Flow: nodes, wires, auto layout |
 | `src/flow/` | Each node's live status (columns, row count, broken, dimmed), kept in step with the project; sample mode above the row threshold |
 | `src/steps/` | Each step type's editor form (`defineStepForm`): its Add step menu entry, fields and defaults; the expression editor |
