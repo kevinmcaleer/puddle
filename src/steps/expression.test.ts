@@ -38,6 +38,11 @@ describe('columns step defaults', () => {
     expect(freeName('row', ctx)).toBe('row');
     expect(newStep('addIndex', ctx).params).toEqual({ name: 'index_2', start: 1 });
     expect(newStep('splitByDelimiter', ctx).params).toMatchObject({ column: 'name', into: ['name_1', 'name_2'] });
+    expect(newStep('splitByDelimiter', ctx).params).toMatchObject({ delimiterKind: 'comma', at: 'each', to: 'columns', quote: '"' });
+    // As many new columns as the first row's value has parts.
+    expect(newStep('splitByDelimiter', { ...ctx, firstRow: { name: 'a,b,c', id: '1', index: '0' } }).params).toMatchObject({ into: ['name_1', 'name_2', 'name_3'] });
+    expect(newStep('splitByCharacters', ctx).params).toMatchObject({ column: 'name', count: 1, at: 'repeat', into: ['name_1', 'name_2'] });
+    expect(newStep('splitByTransition', ctx).params).toMatchObject({ column: 'name', transition: 'lowerUpper', into: ['name_1', 'name_2'] });
     expect(newStep('duplicateColumn', { ...ctx, selected: ['id'] }).params).toEqual({ column: 'id', into: 'id_copy' });
   });
 });

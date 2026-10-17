@@ -119,6 +119,16 @@ describe('step snapshots', () => {
     ['splitByDelimiter', { column: 'email', delimiter: '@', into: ['user', 'domain'], keepOriginal: false }],
     ['splitByDelimiter', { column: 'name', delimiter: "'", into: ['a'], keepOriginal: true }],
     ['splitByPosition', { column: 'joined', positions: [4, 7], into: ['year', 'dash_month', 'dash_day'], keepOriginal: true }],
+    ['splitByDelimiter', { column: 'email', delimiterKind: 'comma', quote: '"', into: ['a', 'b'] }],
+    ['splitByDelimiter', { column: 'email', delimiterKind: 'tab', at: 'left', into: ['a', 'b'] }],
+    ['splitByDelimiter', { column: 'email', delimiter: '::', at: 'right', quote: '"', into: ['a', 'b'] }],
+    ['splitByDelimiter', { column: 'email', delimiterKind: 'semicolon', to: 'rows' }],
+    ['splitByPosition', { column: 'joined', positions: [4], to: 'rows' }],
+    ['splitByCharacters', { column: 'id', count: 2, into: ['a', 'b'] }],
+    ['splitByCharacters', { column: 'id', count: 2, at: 'left', into: ['a', 'b'], keepOriginal: true }],
+    ['splitByCharacters', { column: 'id', count: 2, at: 'right', to: 'rows' }],
+    ['splitByTransition', { column: 'name', transition: 'lowerUpper', into: ['a', 'b'] }],
+    ['splitByTransition', { column: 'name', transition: 'nonDigitDigit', to: 'rows' }],
     ['mergeColumns', { columns: ['name', 'email'], separator: ' <', into: 'contact', keepOriginals: false }],
     ['addIndex', { name: 'row', start: 1 }],
     ['addIndex', { name: 'row', start: 0 }],
@@ -315,6 +325,9 @@ describe('column step settings', () => {
     expect(invalid('splitByPosition', { column: 'id', positions: [2], into: ['a'] })).toThrow(/one more column/);
     expect(invalid('mergeColumns', { columns: ['name'], into: 'x' })).toThrow(/at least two/);
     expect(invalid('splitByDelimiter', { column: 'id', delimiter: '', into: ['a'] })).toThrow(/delimiter/);
+    expect(invalid('splitByDelimiter', { column: 'id', delimiterKind: 'comma', into: [] })).toThrow(/name at least one/);
+    expect(invalid('splitByCharacters', { column: 'id', count: 0, into: ['a'] })).toThrow(/1 or more/);
+    expect(invalid('splitByTransition', { column: 'id', transition: 'lowerUpper', into: [] })).toThrow(/name at least one/);
   });
 
   it('says how to fix a pattern DuckDB would refuse, before anything runs', () => {

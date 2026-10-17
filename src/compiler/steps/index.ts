@@ -11,7 +11,13 @@ export {
   reorderColumns,
   splitByDelimiter,
   splitByPosition,
+  splitByCharacters,
+  splitByTransition,
+  SPLIT_DELIMITERS,
+  SPLIT_TRANSITIONS,
   type ColumnTypeName,
+  type DelimiterKind,
+  type Transition,
 } from './columns';
 export { Condition, duplicateRows, FILTER_OPS, fillRows, filterRows, headerNames, promoteHeaders, removeBlankRows, removeRows, sortRows, type FilterOp } from './rows';
 export { escapeRegex, extractText, findReplace, padText, regexProblem, textLength } from './text';

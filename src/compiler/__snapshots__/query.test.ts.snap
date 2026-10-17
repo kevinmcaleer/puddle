@@ -1,15 +1,15 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
 exports[`query nodes in a flow > compiles Totals into GROUP BY and HAVING on the same SELECT in the WITH chain 1`] = `
-"WITH "n_c" AS (SELECT * FROM read_csv('src_cust.csv')),
-  "n_o" AS (SELECT * FROM read_csv('src_ord.csv')),
+"WITH "n_c" AS (SELECT * FROM read_csv('src_cust.csv', null_padding = true)),
+  "n_o" AS (SELECT * FROM read_csv('src_ord.csv', null_padding = true)),
   "n_q" AS (SELECT "t1"."name", sum("t2"."total") AS "SumOftotal", count("t2"."order_id") AS "Orders" FROM "n_c" AS "t1" INNER JOIN "n_o" AS "t2" ON "t1"."customer_id" = "t2"."customer_id" WHERE "t2"."status" = 'shipped' GROUP BY "t1"."name" HAVING sum("t2"."total") > 10 ORDER BY "t1"."name" ASC)
 SELECT * FROM "n_q""
 `;
 
 exports[`query nodes in a flow > compiles or rows into one bracketed WHERE in the WITH chain 1`] = `
-"WITH "n_c" AS (SELECT * FROM read_csv('src_cust.csv')),
-  "n_o" AS (SELECT * FROM read_csv('src_ord.csv')),
+"WITH "n_c" AS (SELECT * FROM read_csv('src_cust.csv', null_padding = true)),
+  "n_o" AS (SELECT * FROM read_csv('src_ord.csv', null_padding = true)),
   "n_q" AS (SELECT "t1"."name", "t1"."status" FROM "n_c" AS "t1" INNER JOIN "n_o" AS "t2" ON "t1"."customer_id" = "t2"."customer_id" WHERE ("t1"."status" = 'lapsed') OR ("t2"."total" > 10) OR ("t2"."total" < 2) ORDER BY "t1"."name" ASC)
 SELECT * FROM "n_q""
 `;
