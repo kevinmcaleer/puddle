@@ -10,6 +10,7 @@ Every step a Transform node can hold, as the **Add step** menu groups them. Each
 | Collapse spaces | Turns runs of spaces inside a value into one space. |
 | Remove non-printing characters | Removes invisible characters, such as the zero-width spaces and control characters left by copying from a web page. |
 | Empty text to empty value | Treats empty text (and text that is only spaces) as a missing value. |
+| Replace values | Replaces whole values that match: a value you type, empty values, or blank text, with another value or with an empty value. A number or date column can be changed to text so a word such as `empty` fits. For text inside a value, use Find and replace. |
 | Parse numbers | Reads text such as `£1,234.50`, `$99`, `(12.00)` or `€ 7,5` as numbers, with the decimal mark of the project's locale or one you choose. |
 
 ## Columns
