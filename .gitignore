@@ -10,4 +10,5 @@ playwright-report
 public/duckdb-extensions
 .env
 docs/_build
+docs/_data
 .venv

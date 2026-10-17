@@ -5,5 +5,6 @@ The user guide, built with Sphinx from the Markdown pages here. See [about-these
 ```sh
 python3 -m venv .venv && source .venv/bin/activate && pip install -r docs/requirements.txt
 npm run docs                        # docs/_build/html/index.html
+npm run docs:tutorial-data          # downloads the taxi tutorial's files into docs/_data/
 npm run docs:screenshots            # retakes docs/_static/screenshots/
 ```
