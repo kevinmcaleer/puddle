@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { stepForm } from './forms';
-import { addToZone, moveField, pivotDraft, pivotValuesChange, removeFromZone, renameOutput, setAggregate, valuesStale, zoneFields } from './pivot';
+import { addToZone, aggregatesFor, moveField, pivotDraft, pivotValuesChange, removeFromZone, renameOutput, setAggregate, valuesStale, zoneFields } from './pivot';
 import './index';
 
 const columns = [
@@ -38,6 +38,17 @@ describe('pivot editor edits', () => {
     const swapped = addToZone(d, 'region', 'column', columns);
     expect(swapped).toMatchObject({ rows: [], column: 'region', pivotValues: [], moreValues: false });
     expect(addToZone(swapped, 'region', 'rows', columns)).toMatchObject({ rows: ['region'], column: '', pivotValues: [] });
+  });
+
+  it('offers text only the aggregates that work on text, so a repeated text field never gets a sum', () => {
+    expect(aggregatesFor('total', columns)).toEqual(['sum', 'count', 'countDistinct', 'min', 'max', 'average', 'median', 'stddev', 'variance', 'first', 'last', 'list']);
+    expect(aggregatesFor('region', columns)).toEqual(['count', 'countDistinct', 'min', 'max', 'first', 'last', 'list']);
+    expect(aggregatesFor('gone', columns)).toContain('sum');
+    const d = addToZone(addToZone(empty, 'region', 'values', columns), 'region', 'values', columns);
+    expect(d.values).toEqual([
+      { column: 'region', agg: 'count' },
+      { column: 'region', agg: 'countDistinct' },
+    ]);
   });
 
   it('reorders within a zone and moves between zones, by drag position or up and down', () => {

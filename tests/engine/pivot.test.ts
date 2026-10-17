@@ -151,6 +151,18 @@ describe('group by', () => {
     expect(r.rows).toEqual([['267.5', '33.4375', '2.0', 'East']]);
   });
 
+  it('spreads each region’s units as standard deviation and variance, empty for a region with one row', async () => {
+    const r = await run(project({ rows: ['region'], values: [{ column: 'units', agg: 'stddev' }, { column: 'units', agg: 'variance' }] }));
+    expect(r.names).toEqual(['region', 'standard deviation of units', 'variance of units']);
+    // Sample statistics, as a spreadsheet's STDEV and VAR give: North's 3, 1, 2 vary by 1.
+    expect(r.rows).toEqual([
+      ['East', null, null],
+      ['North', '1.0', '1.0'],
+      ['South', '2.0816659994661326', '4.333333333333333'],
+      ['West', null, null],
+    ]);
+  });
+
   it('with no Values, lists each combination once; empty groups sort last', async () => {
     const r = await run(project({ rows: ['month', 'product'], filters: [{ column: 'product', op: 'startsWith', value: 'G' }] }));
     expect(r.rows).toEqual([
