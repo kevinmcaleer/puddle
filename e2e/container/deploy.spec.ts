@@ -33,7 +33,7 @@ function offSite(page: Page, base: string) {
   return urls;
 }
 
-test('JSON and Parquet load and export with no request leaving the site', async ({ page, request, baseURL }) => {
+test('JSON, NDJSON and Parquet load and export with no request leaving the site', async ({ page, request, baseURL }) => {
   const manifest = await request.get('/duckdb-extensions/manifest.json');
   // Images built with FETCH_EXTENSIONS=0 (where extensions.duckdb.org can't be reached) have none; CI always does.
   test.skip(!manifest.ok() && !process.env.CI, 'This image was built without the DuckDB extensions.');
@@ -42,11 +42,16 @@ test('JSON and Parquet load and export with no request leaving the site', async 
   await openApp(page);
   expect(await page.evaluate(() => (globalThis as unknown as { __puddle: { engine: { info: { extensions: string } } } }).__puddle.engine.info.extensions)).toBe(new URL('/duckdb-extensions', baseURL).href);
 
-  await addFiles(page, [fixture('items.json'), fixture('customers.parquet')]);
+  await addFiles(page, [fixture('items.json'), fixture('events.ndjson'), fixture('customers.parquet')]);
   await expect(node(page, 'items.json')).toHaveAttribute('data-status', 'ok', { timeout: 30_000 });
+  await expect(node(page, 'events.ndjson')).toHaveAttribute('data-status', 'ok', { timeout: 30_000 });
   await expect(node(page, 'customers.parquet')).toHaveAttribute('data-status', 'ok', { timeout: 30_000 });
   await node(page, 'items.json').click();
   await expectRows(page, 2);
+  await bringIntoView(page, 'events.ndjson');
+  await node(page, 'events.ndjson').click();
+  await expectRows(page, 3);
+  await expect(page.getByTestId('inspector-columns').locator('.ui-col')).toHaveText(['event', 'at']);
 
   // Export the Parquet source as Parquet and JSON, then read each file back in.
   await node(page, 'customers.parquet').click();
