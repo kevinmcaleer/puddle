@@ -26,6 +26,7 @@ import { openSamplesDialog } from '../samples/samplesDialog';
 import { TourOffer } from '../tour/TourOffer';
 import { CANVAS_ARIA, nodeLabel, wireLabel } from './a11y';
 import { formatLabel } from './formatLabel';
+import { focusNodeWhenDrawn } from './focusNode';
 import { portBroken, portName } from './ports';
 import { PuddleNode, type PuddleFlowNode } from './PuddleNode';
 import { RefEdge, type RefFlowEdge } from './RefEdge';
@@ -233,19 +234,7 @@ export function Canvas({ onAddSource }: { onAddSource: () => void }) {
   // And a node selected from the keyboard (an arrow key, T or O) takes the focus, while the keyboard is on the canvas.
   const selectedId = useSession((s) => s.selectedNodeId);
   useEffect(() => {
-    const active = document.activeElement;
-    const onCanvas = active === document.body || !!active?.closest('main[aria-label="Canvas"]');
-    if (!selectedId || !onCanvas || active?.closest('.puddle-canvas button, .puddle-canvas [role="menu"]')) return;
-    // A node just added is drawn, and can take focus once React Flow has measured it, a few frames later.
-    let frame = 0;
-    let tries = 0;
-    const focus = () => {
-      const el = document.querySelector<HTMLElement>(`.puddle-canvas .react-flow__node[data-id="${CSS.escape(selectedId)}"]`);
-      el?.focus();
-      if (document.activeElement !== el && tries++ < 60) frame = requestAnimationFrame(focus);
-    };
-    focus();
-    return () => cancelAnimationFrame(frame);
+    if (selectedId) return focusNodeWhenDrawn(selectedId);
   }, [selectedId]);
 
   const onMoveEnd: OnMove = useCallback((_e, viewport) => setView({ canvasViewport: viewport }), [setView]);

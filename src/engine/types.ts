@@ -67,6 +67,11 @@ export interface DuckBackend {
   insertArrow(name: string, ipc: Uint8Array): Promise<void>;
   /** A file for COPY ... TO to write into, handed back as a Blob once written. */
   openOutput(name: string): Promise<OutputFile>;
+  /**
+   * Go on with a new connection to the same database, for after DuckDB stopped inside a query on this one (see
+   * isEngineTrap). Tables, registered files and settings belong to the database, so they carry over.
+   */
+  reconnect(): Promise<void>;
   close(): Promise<void>;
 }
 

@@ -78,7 +78,7 @@ async function openBackend(bundle: duckdb.DuckDBBundle, worker: Worker, step: { 
     filesystem: { forceFullHTTPReads: false, allowFullHTTPReads: true, reliableHeadRequests: true },
   });
   step.name = 'connect';
-  const conn = await db.connect();
+  let conn = await db.connect();
 
   let spill = false;
   try {
@@ -131,6 +131,11 @@ async function openBackend(bundle: duckdb.DuckDBBundle, worker: Worker, step: { 
     },
     insertArrow: (name, ipc) => conn.insertArrowFromIPCStream(ipc, { name, create: true }),
     openOutput: async (name) => memoryOutput(db, name),
+    async reconnect() {
+      // The old connection is left as it is: it stopped in the middle of a query, and closing it could wait forever
+      // on what that query held.
+      conn = await db.connect();
+    },
     async close() {
       await conn.close();
       await db.terminate();
