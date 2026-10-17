@@ -1,4 +1,5 @@
 // Editor forms for the Clean steps the quick-fix bar adds.
+import { isParseLocale, PARSE_LOCALES } from '../compiler';
 import { pickColumns } from './basic';
 import { defineStepForm } from './forms';
 
@@ -16,12 +17,22 @@ defineStepForm({
   defaults: (ctx) => ({ columns: pickColumns(ctx) }),
 });
 
+/** A locale with how it writes a number: German (1.234,56). */
+const numberLocales = Object.entries(PARSE_LOCALES).map(([value, l]) => ({ value, label: `${l.label} (${l.decimal === ',' ? '1.234,56' : '1,234.56'})` }));
+
 defineStepForm({
   type: 'parseNumbers',
   title: 'Parse numbers',
   group: 'Clean',
   fields: [
     { ...columnsOnly, hint: 'Currency symbols, spaces and thousands separators are dropped.' },
+    {
+      key: 'locale',
+      label: 'Locale',
+      kind: 'select',
+      options: [{ value: '', label: 'Choose the decimal mark' }, ...numberLocales],
+      hint: 'How the numbers are written. Kept with the step, so it reads the same on any computer.',
+    },
     {
       key: 'decimal',
       label: 'Decimal mark',
@@ -30,7 +41,12 @@ defineStepForm({
         { value: '.', label: 'Point (1,234.50)' },
         { value: ',', label: 'Comma (1.234,50)' },
       ],
+      when: (p) => !p.locale,
     },
   ],
-  defaults: (ctx) => ({ columns: pickColumns(ctx), decimal: ctx.decimal ?? '.' }),
+  // Starts with the project's locale, when the step knows it; otherwise with no locale (''), and the decimal mark.
+  defaults: (ctx) => {
+    const locale = isParseLocale(ctx.locale) ? ctx.locale : '';
+    return { columns: pickColumns(ctx), decimal: ctx.decimal ?? (locale ? PARSE_LOCALES[locale].decimal : '.'), locale };
+  },
 });

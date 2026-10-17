@@ -5,7 +5,7 @@ import { checkJoin, multiplied, type Multiplied } from '../flow/join';
 import { useNodeStatus } from '../flow/status';
 import { inputEdge, JOIN_KINDS, nodeById, renameNode, setJoinSpec, swapJoinInputs, useProject, useProjectStore, type ColumnSchema, type JoinKey, type JoinKind, type JoinNode, type JoinSpec } from '../model';
 import { CommitInput } from '../steps/CommitInput';
-import { Banner, Button, Field, Section, Select } from '../ui';
+import { Banner, Button, Field, fullCount, Section, Select } from '../ui';
 
 const apply = (edit: Parameters<ReturnType<typeof useProjectStore.getState>['apply']>[0]) => useProjectStore.getState().apply(edit);
 const NONE: ColumnSchema[] = [];
@@ -42,7 +42,7 @@ function useMultiplied(node: JoinNode): Multiplied | undefined {
   return found?.key === key ? found.value : undefined;
 }
 
-const plural = (n: number, what: string) => `${n.toLocaleString()} ${what}${n === 1 ? '' : 's'}`;
+const plural = (n: number, what: string) => `${fullCount(n)} ${what}${n === 1 ? '' : 's'}`;
 
 function MultipliedBanner({ spec, m }: { spec: JoinSpec; m: Multiplied }) {
   const other = m.side === 'left' ? 'right' : 'left';

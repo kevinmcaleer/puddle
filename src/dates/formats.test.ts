@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { describeFormat, rankFormats, swapDayMonth } from './formats';
+import { describeFormat, formatsToTry, rankFormats, swapDayMonth } from './formats';
 
 const m = (format: string, matched: number, total = 10) => ({ format, matched, total });
 
@@ -37,5 +37,21 @@ describe('date format ranking', () => {
   it('describes formats the way people write them', () => {
     expect(describeFormat('%d/%m/%Y')).toBe('DD/MM/YYYY');
     expect(describeFormat('%b %d, %Y %H:%M')).toBe('Mon DD, YYYY hh:mm');
+  });
+});
+
+describe('date format ranking with a locale', () => {
+  it('settles an unclear day and month order by the locale, still saying it was unclear', () => {
+    const matches = [m('%d/%m/%Y', 10), m('%m/%d/%Y', 10)];
+    expect(rankFormats(matches, [], 'en-GB')).toMatchObject({ best: '%d/%m/%Y', ambiguous: { dayFirst: '%d/%m/%Y', monthFirst: '%m/%d/%Y', byLocale: 'en-GB' } });
+    expect(rankFormats(matches, [], 'en-US').best).toBe('%m/%d/%Y');
+    // An unknown locale settles nothing, and a project format still wins.
+    expect(rankFormats(matches, [], 'xx-XX').best).toBeUndefined();
+    expect(rankFormats(matches, ['%m/%d/%Y'], 'en-GB')).toEqual({ ranked: expect.any(Array), best: '%m/%d/%Y' });
+  });
+
+  it('tries the locale’s own formats after the usual ones', () => {
+    expect(formatsToTry([], 'de-DE')).toEqual(expect.arrayContaining(['%d. %B %Y', '%Y-%m-%d']));
+    expect(formatsToTry([]).includes('%d. %B %Y')).toBe(false);
   });
 });

@@ -355,6 +355,12 @@ exports[`step snapshots > parseDates {"columns":["joined"],"formats":["%Y-%m-%d 
 SELECT * FROM "n_clean_s0""
 `;
 
+exports[`step snapshots > parseDates {"columns":["joined"],"formats":["%d. %B %Y"],"onError":"empty","locale":"de-DE"} 1`] = `
+"WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv')),
+  "n_clean_s0" AS (SELECT * REPLACE (CAST(try_strptime(regexp_replace(regexp_replace(regexp_replace(regexp_replace(regexp_replace(regexp_replace(regexp_replace(regexp_replace(regexp_replace(regexp_replace(regexp_replace(regexp_replace(regexp_replace(regexp_replace(regexp_replace(regexp_replace(regexp_replace(regexp_replace(regexp_replace(trim(CAST("joined" AS VARCHAR)), '(^|[^\\pL])(?:januar|jänner)([^\\pL]|$)', '\\1January\\2', 'gi'), '(^|[^\\pL])(?:februar|feber)([^\\pL]|$)', '\\1February\\2', 'gi'), '(^|[^\\pL])(?:märz|maerz)([^\\pL]|$)', '\\1March\\2', 'gi'), '(^|[^\\pL])(?:mai)([^\\pL]|$)', '\\1May\\2', 'gi'), '(^|[^\\pL])(?:juni)([^\\pL]|$)', '\\1June\\2', 'gi'), '(^|[^\\pL])(?:juli)([^\\pL]|$)', '\\1July\\2', 'gi'), '(^|[^\\pL])(?:oktober)([^\\pL]|$)', '\\1October\\2', 'gi'), '(^|[^\\pL])(?:dezember)([^\\pL]|$)', '\\1December\\2', 'gi'), '(^|[^\\pL])(?:(?:jän)\\.?)([^\\pL]|$)', '\\1Jan\\2', 'gi'), '(^|[^\\pL])(?:(?:mär|mrz)\\.?)([^\\pL]|$)', '\\1Mar\\2', 'gi'), '(^|[^\\pL])(?:(?:okt)\\.?)([^\\pL]|$)', '\\1Oct\\2', 'gi'), '(^|[^\\pL])(?:(?:dez)\\.?)([^\\pL]|$)', '\\1Dec\\2', 'gi'), '(^|[^\\pL])(?:montag)([^\\pL]|$)', '\\1Monday\\2', 'gi'), '(^|[^\\pL])(?:dienstag)([^\\pL]|$)', '\\1Tuesday\\2', 'gi'), '(^|[^\\pL])(?:mittwoch)([^\\pL]|$)', '\\1Wednesday\\2', 'gi'), '(^|[^\\pL])(?:donnerstag)([^\\pL]|$)', '\\1Thursday\\2', 'gi'), '(^|[^\\pL])(?:freitag)([^\\pL]|$)', '\\1Friday\\2', 'gi'), '(^|[^\\pL])(?:samstag|sonnabend)([^\\pL]|$)', '\\1Saturday\\2', 'gi'), '(^|[^\\pL])(?:sonntag)([^\\pL]|$)', '\\1Sunday\\2', 'gi'), '%d. %B %Y') AS DATE) AS "joined") FROM "n_src")
+SELECT * FROM "n_clean_s0""
+`;
+
 exports[`step snapshots > parseDates {"columns":["joined"],"formats":["%d/%m/%Y"],"onError":"empty"} 1`] = `
 "WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv')),
   "n_clean_s0" AS (SELECT * REPLACE (CAST(try_strptime(trim(CAST("joined" AS VARCHAR)), '%d/%m/%Y') AS DATE) AS "joined") FROM "n_src")
@@ -362,6 +368,12 @@ SELECT * FROM "n_clean_s0""
 `;
 
 exports[`step snapshots > parseNumbers {"columns":["id"],"decimal":","} 1`] = `
+"WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv')),
+  "n_clean_s0" AS (SELECT * REPLACE (CASE WHEN regexp_matches(trim(CAST("id" AS VARCHAR)), '^\\(.*\\)$') THEN -TRY_CAST(replace(regexp_replace(CAST("id" AS VARCHAR), '[^0-9,\\-]', '', 'g'), ',', '.') AS DOUBLE) ELSE TRY_CAST(replace(regexp_replace(CAST("id" AS VARCHAR), '[^0-9,\\-]', '', 'g'), ',', '.') AS DOUBLE) END AS "id") FROM "n_src")
+SELECT * FROM "n_clean_s0""
+`;
+
+exports[`step snapshots > parseNumbers {"columns":["id"],"decimal":".","locale":"de-DE"} 1`] = `
 "WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv')),
   "n_clean_s0" AS (SELECT * REPLACE (CASE WHEN regexp_matches(trim(CAST("id" AS VARCHAR)), '^\\(.*\\)$') THEN -TRY_CAST(replace(regexp_replace(CAST("id" AS VARCHAR), '[^0-9,\\-]', '', 'g'), ',', '.') AS DOUBLE) ELSE TRY_CAST(replace(regexp_replace(CAST("id" AS VARCHAR), '[^0-9,\\-]', '', 'g'), ',', '.') AS DOUBLE) END AS "id") FROM "n_src")
 SELECT * FROM "n_clean_s0""

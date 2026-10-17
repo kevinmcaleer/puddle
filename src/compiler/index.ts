@@ -34,6 +34,7 @@ export { cleanCustomSql, customSqlProblem, INPUT_NAME, lexSql, SqlRefusal, type 
 export { describeType, typeFamily, typesFit } from './types';
 export { SchemaCache } from './schemaCache';
 export { dropTable, sourceFileName, sourceRelation, sourceTableName } from './sources';
+export { englishDateNames, isParseLocale, PARSE_LOCALE_IDS, PARSE_LOCALES, parseLocale, type ParseLocale, type ParseLocaleId } from './locales';
 export { bool, cteName, ident, list, num, stepFailure, str, strList } from './sql';
 export * from './steps';
 export { defineRule, describeRule, PATTERN_PRESETS, READS_AS_TYPES, ruleColumns, ruleDef, ruleParams, rulePredicate, ruleRefs, ruleScope, ruleTypes, type NodeNames, type PatternPreset, type ReadsAs, type RuleContext, type RuleDef } from './rules';

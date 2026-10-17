@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import { Button } from './Button';
 import { cx } from './cx';
 import { abbreviate, formatBytes, formatDuration, fullCount } from './format';
+import { useDisplayFormat } from './locale';
 import { Icon, type IconName } from './Icon';
 import { Menu } from './Menu';
 import { NODE_KIND, type NodeKind } from './nodeKinds';
@@ -114,8 +115,9 @@ const SYNC_BADGE: Record<SyncState, { status: Status; text: string }> = {
 };
 
 export function StatusStrip({ rows, cols, ms, rules, sample, kept, detail, end, sync, syncTitle }: StatusStripProps) {
+  const display = useDisplayFormat();
   const parts: ReactNode[] = [];
-  if (rows != null) parts.push(<span key="rows">{fullCount(rows)} rows</span>);
+  if (rows != null) parts.push(<span key="rows">{fullCount(rows, display)} rows</span>);
   if (cols != null) parts.push(<span key="cols">{cols} cols</span>);
   if (ms != null) parts.push(<span key="ms">{formatDuration(ms)}</span>);
   if (rules)
@@ -145,7 +147,7 @@ export function StatusStrip({ rows, cols, ms, rules, sample, kept, detail, end, 
           </span>
         )}
         {end}
-        {rows != null && (sample ? <StatusBadge status="warn">Sample of {abbreviate(sample)} rows</StatusBadge> : <span>Full data</span>)}
+        {rows != null && (sample ? <StatusBadge status="warn">Sample of {abbreviate(sample, display)} rows</StatusBadge> : <span>Full data</span>)}
       </span>
     </div>
   );

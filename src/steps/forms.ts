@@ -61,6 +61,8 @@ export interface DefaultsContext {
   dates?: Detection;
   /** The project locale's decimal mark. */
   decimal?: '.' | ',';
+  /** The project's locale: how its data writes numbers and dates. */
+  locale?: string;
   /** The step input's rows as Transpose reads them, for forms that ask for it with `readsRows`. */
   rows?: TransposeRowsRead;
 }

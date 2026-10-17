@@ -9,7 +9,7 @@ import { isCancelled, isStopped, tableRows, toEngineError, type EngineClient } f
 import { runAgain } from '../flow/rerun';
 import { countRows, schemaCacheFor, useNodeStatus } from '../flow/status';
 import { nodeById, type ColumnSchema, type Project } from '../model';
-import { Banner, Button, columnKind, glideTheme, Icon, NODE_KIND, StatusStrip, type NodeKind } from '../ui';
+import { Banner, Button, columnKind, glideTheme, Icon, NODE_KIND, StatusStrip, useDisplayFormat, type NodeKind } from '../ui';
 import { failingCells, nullTheme, resultCell } from './cells';
 import { follow, onlyHere, ScrollSync, supersedeKey, type Pane } from './compare';
 import { HEADER_HEIGHT, headerColors, makeDrawHeader } from './header';
@@ -56,7 +56,7 @@ function createLoader(engine: EngineClient, project: Project, target: Target, co
 async function loadProfile(engine: EngineClient, project: Project, target: Target, columns: ColumnSchema[], pane: Pane, onUpdate: (p: Record<string, ColumnProfile>) => void) {
   const supersede = supersedeKey(pane, 'profile');
   const r = await engine.query(compileProfile(project, target), { priority: 'background', supersede, label: 'Profiling columns' });
-  const profile = parseProfile(tableRows(r.table));
+  const profile = parseProfile(tableRows(r.table), Object.fromEntries(columns.map((c) => [c.name, columnKind(c.type)])));
   onUpdate(profile);
   const text = columns.filter((c) => columnKind(c.type) === 'text').map((c) => c.name);
   if (!text.length) return;
@@ -131,6 +131,7 @@ function Grid({ engine, project, target, columns, pane = 'main', sync, other, on
   const leading = useRef(false);
 
   const kinds = useMemo(() => columns.map((c) => columnKind(c.type)), [columns]);
+  const display = useDisplayFormat();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const theme = useMemo(() => glideTheme(), [themeTick]);
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -196,11 +197,11 @@ function Grid({ engine, project, target, columns, pane = 'main', sync, other, on
   const getCellContent = useCallback(
     ([col, row]: Item): GridCell => {
       const r = loader.row(row);
-      return resultCell(r ? (r[col] ?? null) : undefined, kinds[col] ?? 'text', subtle);
+      return resultCell(r ? (r[col] ?? null) : undefined, kinds[col] ?? 'text', subtle, display);
     },
     // `loaded` changes as pages arrive, so the grid redraws them.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [loader, kinds, subtle, loaded],
+    [loader, kinds, subtle, loaded, display],
   );
 
   const drawHeader = useMemo(
