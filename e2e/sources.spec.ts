@@ -36,7 +36,8 @@ test('a file dropped on the canvas is added where it lands', async ({ page }) =>
 
 test('pasting rows onto the canvas adds a clipboard source', async ({ page }) => {
   await openApp(page);
-  await page.getByTestId('canvas').click();
+  // An empty corner: the canvas centre holds the empty-state buttons and the tour offer.
+  await page.getByTestId('canvas').click({ position: { x: 24, y: 24 } });
   await pasteText(page, 'sku\tqty\nA1\t3\nB2\t5\n');
   await expect(node(page, 'Pasted data')).toHaveAttribute('data-status', 'ok');
   await expectRows(page, 2);

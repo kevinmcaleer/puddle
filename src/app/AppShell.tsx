@@ -1,5 +1,5 @@
 import { ReactFlowProvider } from '@xyflow/react';
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
 import { Canvas } from '../canvas/Canvas';
 import { useFlowEvaluation } from '../flow/useFlowEvaluation';
 import { Inspector } from '../inspector/Inspector';
@@ -22,6 +22,9 @@ import { useResultsStore } from '../results/state';
 import { ACCEPT } from '../sources/detect';
 import { useExcelSources } from '../sources/excel';
 import { SamplesDialog } from '../samples/SamplePicker';
+import { Tour } from '../tour/Tour';
+import { TOUR_STOPS } from '../tour/stops';
+import { canResume, readProgress, startTourSafely, useTour } from '../tour/tour';
 import { UrlDialog } from '../sources/UrlDialog';
 import { openUrlDialog } from '../sources/urlDialog';
 import { cardKind } from '../canvas/kind';
@@ -121,6 +124,26 @@ function ResultsTitle() {
         <QuickFixes />
       )}
     </ResultsBar>
+  );
+}
+
+/** Help: the guided tour (from the start, or from where it was left) and the keyboard shortcuts. */
+function HelpMenu() {
+  // Read when the menu opens, so it knows how far the tour got.
+  const [progress, setProgress] = useState(readProgress);
+  const running = useTour((s) => s.projectId != null);
+  const resume = !running && canResume(progress) ? progress.stop : undefined;
+  return (
+    <Menu
+      label={<span className="sr-only">Help</span>}
+      button={{ variant: 'ghost', icon: 'help', iconOnly: true, 'aria-label': 'Help', title: 'Help', ...{ 'data-testid': 'help-menu' } }}
+      onOpenChange={(open) => open && setProgress(readProgress())}
+      items={[
+        ...(resume != null ? [{ label: 'Resume the tour', icon: 'info' as const, hint: `Stop ${resume + 1} of ${TOUR_STOPS.length}`, onSelect: () => startTourSafely(resume) }] : []),
+        { label: 'Take the tour', icon: 'info', onSelect: () => startTourSafely() },
+        { label: 'Keyboard shortcuts', icon: 'keyboard', shortcut: shortcutText('help'), onSelect: () => useSession.getState().setShortcutsOpen(true) },
+      ]}
+    />
   );
 }
 
@@ -255,7 +278,7 @@ export function AppShell() {
           />
           <Menu
             label="Add node"
-            button={{ icon: 'transform' }}
+            button={{ icon: 'transform', ...{ 'data-tour': 'add-node' } }}
             items={[
               { label: 'Transform', icon: 'transform', shortcut: shortcutText('add-transform'), onSelect: () => addNodeAfterSelection('transform') },
               { label: 'From template', icon: 'template', hint: 'Saved steps', onSelect: openTemplates },
@@ -300,6 +323,7 @@ export function AppShell() {
             data-testid="inspector-toggle"
             onClick={() => session().setInspectorOpen(!inspectorOpen)}
           />
+          <HelpMenu />
           <Button
             variant="ghost"
             icon="keyboard"
@@ -379,6 +403,7 @@ export function AppShell() {
       <ShortcutsDialog />
       <TemplateDialogs />
       <RecipeDialogs />
+      <Tour />
     </ReactFlowProvider>
   );
 }
