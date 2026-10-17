@@ -57,7 +57,7 @@ Right-click a column header in the results table, or click the arrow at the righ
 
 ![The column menu for the city column](_static/screenshots/column-menu.png)
 
-The top of the menu has the steps you reach for most: **Replace values**, **Remove matching rows**, **Keep matching rows**, **Remove empty rows**, **Remove duplicates** and the two sorts. The rest sit in submenus:
+The top of the menu has the steps you reach for most: **Replace values**, **Remove matching rows**, **Keep matching rows**, **Remove empty rows**, **Remove duplicates**, **Keep duplicates** and the two sorts. **Keep duplicates** shows only the rows whose value in the selected columns appears more than once, every copy of them, so you can look at the repeats before deciding what to do. The rest sit in submenus:
 
 | Submenu | What's in it |
 | --- | --- |

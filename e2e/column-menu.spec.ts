@@ -49,3 +49,17 @@ test('the column menu replaces values, removes matching rows and can add each st
   await expect(steps(page)).toHaveText([/Changed name to upper case/]);
   await expect(page.getByTestId('results-title')).toHaveText('Transform 2 · step 1');
 });
+
+test('the column menu keeps only the rows whose value repeats', async ({ page }) => {
+  await openApp(page);
+  await addFiles(page, [fixture('messy.csv')]);
+  await expectRows(page, 5);
+
+  // messy.csv repeats id 3; both copies stay and the rest go.
+  await rightClick(page, 0);
+  await menu(page).getByRole('menuitem', { name: 'Keep duplicates' }).click();
+  await expect(steps(page)).toHaveText([/Kept only duplicate rows by id/]);
+  await expectRows(page, 2);
+  await expect(cell(page, 0, 0)).toHaveText('3');
+  await expect(cell(page, 0, 1)).toHaveText('3');
+});
