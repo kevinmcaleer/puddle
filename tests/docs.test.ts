@@ -16,8 +16,10 @@ const page = (name: string) => pages.find((p) => p.name === name)!.text;
 /** Each picture a page shows, by file name. */
 const pictures = pages.flatMap((p) => [...p.text.matchAll(/\]\(_static\/screenshots\/([^)]+)\)/g)].map((m) => m[1]!));
 
-/** The screenshot names the capture script saves, from its shot() and shotPanel() calls. */
-const captured = [...readFileSync(join(DOCS, 'screenshots/capture.spec.ts'), 'utf8').matchAll(/shot(?:Panel)?\(page, '([^']+)'/g)].map((m) => `${m[1]}.png`);
+/** The screenshot names the capture scripts save, from their shot() and shotPanel() calls. */
+const captured = readdirSync(join(DOCS, 'screenshots'))
+  .filter((f) => f.endsWith('.spec.ts'))
+  .flatMap((f) => [...readFileSync(join(DOCS, 'screenshots', f), 'utf8').matchAll(/shot(?:Panel)?\(page, '([^']+)'/g)].map((m) => `${m[1]}.png`));
 
 describe('the user guide', () => {
   it('shows only pictures the capture script takes, and every picture it takes', () => {

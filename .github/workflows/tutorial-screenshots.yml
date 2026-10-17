@@ -1,0 +1,57 @@
+name: Tutorial screenshots
+
+# The New York taxi tutorial's pictures need the TLC's files, which are too big for the repository and can't be
+# downloaded everywhere the other pictures are taken. Add the "tutorial screenshots" label to a pull request (or run
+# this by hand on a branch) and this retakes them on the real files and commits any that changed to the branch.
+# The label is taken off again, so adding it once more retakes them once more.
+
+on:
+  pull_request:
+    types: [labeled]
+  workflow_dispatch:
+
+jobs:
+  retake:
+    name: Retake the tutorial's screenshots
+    if: github.event_name == 'workflow_dispatch' || (github.event.label.name == 'tutorial screenshots' && github.event.pull_request.head.repo.full_name == github.repository)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref || github.ref_name }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - uses: actions/cache@v4
+        with:
+          path: docs/_data
+          key: tutorial-data-${{ hashFiles('scripts/fetch-tutorial-data.mjs') }}
+      - run: npm run docs:tutorial-data
+      - run: npm run docs:screenshots -- tutorial.spec.ts
+      - name: Commit the pictures that changed
+        run: |
+          git add docs/_static/screenshots/tutorial-*.png
+          if git diff --cached --quiet; then
+            echo "The tutorial's pictures haven't changed."
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m "Retake the taxi tutorial's screenshots on the TLC files"
+          git push
+      - if: always() && github.event_name == 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh pr edit ${{ github.event.pull_request.number }} --repo ${{ github.repository }} --remove-label 'tutorial screenshots'
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: tutorial-screenshots
+          path: test-results/docs
+          retention-days: 7
