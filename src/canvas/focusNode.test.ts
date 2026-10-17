@@ -92,6 +92,21 @@ describe('focusNodeWhenDrawn', () => {
     expect(f.pending).toBe(0);
   });
 
+  // Regression (WebKit): O then F straight away. F put the keyboard on the canvas itself, which still counts as on the
+  // canvas, so the Output node drawn a few frames later took the focus from it and the arrow keys stopped working.
+  it('gives up once the keyboard has moved on the canvas too, such as F focusing the canvas itself', () => {
+    const p = page();
+    p.drawNode('n1').focus();
+    const f = frames();
+    focusNodeWhenDrawn('n2', f);
+    f.run(3);
+    p.main.focus();
+    p.drawNode('n2');
+    f.run(5);
+    expect(document.activeElement).toBe(p.main);
+    expect(f.pending).toBe(0);
+  });
+
   it('leaves the focus alone when the keyboard is not on the canvas', () => {
     const p = page();
     p.drawNode('n1');

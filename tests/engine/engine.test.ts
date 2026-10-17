@@ -53,8 +53,8 @@ describe('engine', () => {
 
   // JSON and Parquet aren't built into the WASM bundles: DuckDB downloads those extensions from
   // extensions.duckdb.org on first use. The Node test backend turns that off to stay hermetic, so these
-  // formats are tested in the browser once the extensions are self-hosted (PWA and deployment issue).
-  // The fixtures (items.json, events.ndjson, customers.parquet) are ready for it.
+  // formats are read from their fixtures (items.json, events.ndjson, customers.parquet) in the container e2e
+  // tests (e2e/container/deploy.spec.ts), where Puddle serves the extensions itself.
   it('says plainly when a format needs an extension that can\'t load', async () => {
     const s = src({ id: 'items', format: 'json' });
     await load(s, 'items.json');
