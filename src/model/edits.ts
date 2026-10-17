@@ -44,6 +44,11 @@ function newNode(type: AddableNodeType, base: { id: string; name: string; positi
 }
 
 /** Change what a SQL node runs. */
+/** Where the runner finds a file source, or nothing to go back to looking it up by name. */
+export function setRunnerPath(project: Project, sourceId: string, path: string): Project {
+  return { ...project, sources: project.sources.map((s) => (s.id === sourceId && s.file ? { ...s, file: { ...s.file, path: path || undefined } } : s)) };
+}
+
 export function setSqlQuery(project: Project, nodeId: string, query: string): Project {
   return { ...project, nodes: project.nodes.map((n) => (n.id === nodeId && n.type === 'sql' ? { ...n, sqlSpec: { ...n.sqlSpec, query } } : n)) };
 }

@@ -33,6 +33,8 @@ export const SourceZ = z.object({
       /** Hash of the first 1 MB, used to warn when a re-selected file looks different. */
       headHash: z.string(),
       fsHandleRef: z.string().optional(),
+      /** Where the runner (puddle-run) finds this file: absolute, or relative to the project file's folder. */
+      path: z.string().optional(),
     })
     .optional(),
   url: z
@@ -274,6 +276,8 @@ export const ProjectSettingsZ = z.object({
   defaultDateFormats: z.array(z.string()).default([]),
   /** Steps added from the results table (quick fixes, the column menu) go in a new Transform node each, as in Power Query's applied steps shown on the canvas. */
   stepsAsNodes: z.boolean().default(false),
+  /** When the runner (puddle-run) runs this project's outputs, in cron syntax. Nothing runs until one is set. */
+  schedule: z.string().optional(),
 });
 
 export const ProjectViewZ = z.object({
