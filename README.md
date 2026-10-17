@@ -62,6 +62,7 @@ A Docker image (nginx serving the static build) behind a Cloudflare Tunnel at pu
 | `src/inspector/` | The right-hand panel, in Node, Project and Notes tabs: source read options, applied steps, step settings, rules and node notes; project and display settings |
 | `src/notes/` | The project notes (the inspector's Notes tab): Markdown written and previewed, rendered with raw HTML off and links in a new tab |
 | `src/results/` | The results table on Glide Data Grid: paging, headers with type and quality |
+| `src/runner/` | `puddle-run`: the same compiler on DuckDB’s native Node build, run from the command line or a container on your own machine: `run` a project file once, `watch` a folder and run each project on the cron schedule in its Project tab, `check` where its sources are. Writes the outputs, a run log and a quality report; a failing `fail` rule holds an export back as the browser does. Built with `npm run build:runner`; see deploy/README.md |
 | `src/console/` | The scratch SQL console under the results table: one query against the viewed node’s rows (read as `input`), answered in place without adding a node, and turned into a SQL node in one click |
 | `tests/` | Engine integration tests, fixtures and helpers (`scripts/make-excel-fixtures.mjs` writes the Excel fixture) |
 | `e2e/` | Playwright tests |

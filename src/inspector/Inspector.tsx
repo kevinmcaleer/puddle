@@ -3,7 +3,7 @@ import { NotesPanel } from '../notes/NotesPanel';
 import { inspectorTabs, shownTab } from './tabs';
 import { useNodeStatus } from '../flow/status';
 import { formatLabel } from '../canvas/formatLabel';
-import { nodeById, setParseOptions, useProject, useProjectStore, type GraphNode, type ParseOptions, type ProjectSettings as ProjectSettingsT, type Source } from '../model';
+import { nodeById, setParseOptions, setRunnerPath, useProject, useProjectStore, type GraphNode, type ParseOptions, type ProjectSettings as ProjectSettingsT, type Source } from '../model';
 import { Banner, browserLocale, columnKind, DISPLAY_LOCALES, Field, formatDateText, formatNumberText, Icon, NODE_KIND, Section, Select, Switch, Tabs, TypeTag, useDisplay, useDisplayFormat, type DateDisplay } from '../ui';
 import { CommitInput } from '../steps/StepForm';
 import { AppendPanel } from './AppendPanel';
@@ -118,7 +118,23 @@ function ProjectSettings() {
             onCommit={(v) => set({ defaultDateFormats: parseNullStrings(v) })}
           />
         </Field>
+        <Field label="Run on a schedule" htmlFor="set-schedule" hint="Cron syntax for puddle-run on your own machine, e.g. 0 3 * * * for 03:00 every day. Empty: never.">
+          <CommitInput key={settings.schedule ?? ''} id="set-schedule" value={settings.schedule ?? ''} placeholder="0 3 * * *" onCommit={(v) => set({ schedule: v.trim() || undefined })} />
+        </Field>
       </div>
+    </Section>
+  );
+}
+
+/** Where puddle-run finds this file on the machine it runs on; the browser never reads it. */
+function RunnerPath({ source }: { source: Source }) {
+  const apply = useProjectStore((s) => s.apply);
+  const path = source.file?.path ?? '';
+  return (
+    <Section title="On the runner">
+      <Field label="Path to this file" htmlFor="opt-runner-path" hint="For puddle-run: absolute, or relative to the project file. Empty: a file with the same name beside the project file or in its sources folder.">
+        <CommitInput key={path} id="opt-runner-path" value={path} placeholder={`sources/${source.file?.originalName ?? ''}`} onCommit={(v) => apply((p) => setRunnerPath(p, source.id, v.trim()))} />
+      </Field>
     </Section>
   );
 }
@@ -270,6 +286,7 @@ function NodeInspector({ node }: { node: GraphNode }) {
       {source && source.kind === 'url' && <UrlPanel source={source} />}
       {source && isExcelSource(source) && <ExcelPanel source={source} />}
       {source && hasParseOptions(source) && <SourceOptions source={source} />}
+      {source && source.kind === 'file' && <RunnerPath source={source} />}
       {node.type === 'output' && <OutputPanel node={node} />}
       {node.type === 'source' && <KeepPanel key={node.id} node={node} />}
       <Columns nodeId={node.id} />
