@@ -25,7 +25,7 @@ The canvas is where your flow lives. Data runs left to right along wires: source
 ## Selecting, viewing and moving
 
 - Click a node to select it. Its settings show in the inspector and its data in the results; a **Viewing** tag marks the node whose data is shown.
-- Shift+click adds nodes to the selection. With two or more selected, a bar offers to join, look up, append or query them, or to group Transform nodes into one.
+- Shift+click adds nodes to the selection. With two or more selected, a bar offers to join, look up, append or query them, to group them (G), or to merge Transform nodes into one.
 - Drag a node to move it. **Auto layout** (L), in the canvas controls at the bottom left, arranges the whole flow neatly.
 - Drag from a node's right-hand handle to another node's input to wire them. Select a wire and press Delete to remove it.
 - The zoom buttons sit at the bottom left. An overview map appears at the bottom right when part of the flow is off screen.
@@ -34,4 +34,18 @@ The canvas is where your flow lives. Data runs left to right along wires: source
 
 ## Using the keyboard
 
-Arrow keys move between connected nodes, Enter opens the selected node, T adds a Transform after it and O an Output. C starts wiring the selected node: move to another node and press Enter to wire or unwire them. **?** lists every shortcut (see {doc}`settings`).
+Arrow keys move between connected nodes, Enter opens the selected node, T adds a Transform after it, O an Output, and G groups the selected nodes. C starts wiring the selected node: move to another node and press Enter to wire or unwire them. **?** lists every shortcut (see {doc}`settings`).
+
+## Groups
+
+A group gathers nodes together and can hide them behind a single card, as node groups do in Blender. Select two or more nodes (Shift+click adds to the selection), then press G or choose **Group** on the selection bar. You can also right-click a selected node and choose **Group**.
+
+A closed group is one card. It has a socket on the left for each wire coming in from outside the group, and one on the right for each result going out, named after the node it comes from. Click a result's name to see its data in the results. Drag from a result's socket to wire it into another node.
+
+![The contact list and its Transform grouped into one card, wired into an Output](_static/screenshots/groups-card.png)
+
+Double-click the card, or click its arrow, to open the group. It opens as a frame round its nodes, so you can work on them as usual, and the frame's arrow closes it again. If other nodes sit where the group's nodes are, opening it moves them along to the right to make room.
+
+![The group open as a frame round contacts.csv and Transform 1](_static/screenshots/groups-open.png)
+
+Right-click a group to open or close it, rename it, or **Ungroup** it. Ungrouping leaves the nodes where they are, wired as they were. Groups only change how the canvas looks: every node runs the same whether its group is open or closed. **Auto layout** treats a closed group as one node.

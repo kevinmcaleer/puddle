@@ -15,6 +15,9 @@ Locale
 Date formats
 : The formats tried, in order, when text is read as a date, such as `%d/%m/%Y, %Y-%m-%d`.
 
+Add each step as a new node
+: Steps added from the results table, by the column menu or a quick fix, each go in a Transform node of their own, so every step shows on the canvas. See {doc}`cleaning`.
+
 Run on a schedule
 : When `puddle-run` should run this project, in cron syntax (`0 3 * * *` is 03:00 every day). Only used by a runner that has the project file; the browser never runs anything on its own. See {doc}`self-hosting`.
 
