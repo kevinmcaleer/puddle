@@ -1,0 +1,32 @@
+{
+  "d": {
+    "results": [
+      {
+        "__metadata": {
+          "uri": "https://services.odata.org/V2/Northwind/Northwind.svc/Orders(10248)",
+          "type": "NorthwindModel.Order"
+        },
+        "OrderID": 10248,
+        "CustomerID": "VINET",
+        "OrderDate": "/Date(836438400000)/",
+        "ShippedAt": "/Date(837475200000+0060)/",
+        "CutOff": "PT13H20M",
+        "Freight": "32.3800",
+        "ShipName": "Vins et alcools Chevalier"
+      },
+      {
+        "__metadata": {
+          "uri": "https://services.odata.org/V2/Northwind/Northwind.svc/Orders(10249)",
+          "type": "NorthwindModel.Order"
+        },
+        "OrderID": 10249,
+        "CustomerID": "TOMSP",
+        "OrderDate": "/Date(836524800000)/",
+        "ShippedAt": null,
+        "CutOff": null,
+        "Freight": "11.6100",
+        "ShipName": "Toms Spezialitäten"
+      }
+    ]
+  }
+}

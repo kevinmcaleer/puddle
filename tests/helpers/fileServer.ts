@@ -13,13 +13,18 @@ export interface FileServerOptions {
   cors?: boolean;
   /** Answer Range requests with 206 Partial Content. Off, the whole file comes back with 200. */
   ranges?: boolean;
+  /** Answer 401 unless the request's Authorization header is this. */
+  authorization?: string;
 }
 
 export interface FileServer {
   url: (path: string) => string;
-  /** Files by path, e.g. "/customers.csv". Change them between requests to simulate a file changing. */
+  /**
+   * Files by path, e.g. "/customers.csv", or by path and query ("/People?%24skiptoken=4"), which wins over the path
+   * alone. Change them between requests to simulate a file changing.
+   */
   files: Map<string, ServedFile>;
-  requests: { method: string; path: string; range?: string }[];
+  requests: { method: string; path: string; search?: string; range?: string; authorization?: string }[];
   close: () => Promise<void>;
 }
 
@@ -29,19 +34,24 @@ export async function startFileServer(opts: FileServerOptions = {}): Promise<Fil
   const files = new Map<string, ServedFile>();
   const requests: FileServer['requests'] = [];
   const server: Server = createServer((req: IncomingMessage, res) => {
-    const path = new URL(req.url ?? '/', 'http://x').pathname;
+    const { pathname: path, search } = new URL(req.url ?? '/', 'http://x');
     const range = req.headers.range;
-    requests.push({ method: req.method ?? 'GET', path, ...(range ? { range } : {}) });
+    const authorization = req.headers.authorization;
+    requests.push({ method: req.method ?? 'GET', path, ...(search ? { search } : {}), ...(range ? { range } : {}), ...(authorization ? { authorization } : {}) });
     if (opts.cors) {
       res.setHeader('Access-Control-Allow-Origin', '*');
-      res.setHeader('Access-Control-Allow-Headers', 'Range');
+      res.setHeader('Access-Control-Allow-Headers', 'Range, Authorization');
       res.setHeader('Access-Control-Expose-Headers', 'Content-Range, Content-Length, Accept-Ranges');
     }
     if (req.method === 'OPTIONS') {
       res.writeHead(204).end();
       return;
     }
-    const file = files.get(path);
+    if (opts.authorization && authorization !== opts.authorization) {
+      res.writeHead(401, { 'Content-Type': 'text/plain', 'WWW-Authenticate': 'Basic' }).end('Sign in');
+      return;
+    }
+    const file = files.get(path + search) ?? files.get(path);
     if (!file) {
       res.writeHead(404, { 'Content-Type': 'text/plain' }).end('Not found');
       return;

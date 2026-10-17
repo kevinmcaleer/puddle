@@ -4,11 +4,14 @@ import { sourceFileName } from '../compiler';
 import { invalidateCaches } from '../flow/status';
 import { addSource, newId, updateSource, useProjectStore, type Source, type SourceFormat } from '../model';
 import { markAttached } from './attachments';
-import { formatFromName, knownFormat, SourceError } from './detect';
+import { formatFromName, knownFormat } from './detect';
+import { parseAddress, UrlSourceError, type UrlErrorKind } from './address';
 import { headHash } from './hash';
 import { isSampleFile, sampleAddress } from '../samples/catalog';
 import type { HtmlTable } from './html';
 import { fetchTable, tableFetched } from './webpage';
+import { fetchFeed, type FeedSpec, type ReadOptions } from './odata';
+import { rememberSignIn, signInFor } from './odataSignIn';
 
 /**
  * Sources read from a web address (plan D8). The browser fetches the file itself, so the server must allow
@@ -16,46 +19,12 @@ import { fetchTable, tableFetched } from './webpage';
  * server supports them; anything else is fetched once per session and handed to DuckDB.
  */
 
-export type UrlErrorKind = 'address' | 'cors' | 'offline' | 'status' | 'format';
-
-export class UrlSourceError extends SourceError {
-  constructor(
-    message: string,
-    readonly kind: UrlErrorKind,
-  ) {
-    super(message);
-    this.name = 'UrlSourceError';
-  }
-}
-
 /** The brand book's wording for a server that doesn't send CORS headers. */
 export const CORS_MESSAGE = 'This server doesn’t allow other sites to read the file. Download it and drop it here instead.';
 
 const HEAD_BYTES = 1024 * 1024;
 
-/** Plain http is fine on this machine (browsers treat it as secure), and refused anywhere else. */
-const LOCAL_HOSTS = new Set(['localhost', '127.0.0.1', '[::1]']);
-
-/** Check a typed or pasted address: https only (plain http is mixed content), no credentials, no fragment. */
-export function parseAddress(input: string): URL {
-  const text = input.trim();
-  if (!text) throw new UrlSourceError('Paste the address of a CSV, TSV, JSON, NDJSON or Parquet file.', 'address');
-  let url: URL;
-  try {
-    url = new URL(text);
-  } catch {
-    throw new UrlSourceError(`${text} isn’t a web address. Paste one that starts with https://.`, 'address');
-  }
-  if (url.protocol === 'http:' && !LOCAL_HOSTS.has(url.hostname))
-    throw new UrlSourceError(
-      'Puddle only reads https addresses. This page is secure, so the browser blocks plain http requests from it (mixed content). Use the https version of the address.',
-      'address',
-    );
-  if (url.protocol !== 'https:' && url.protocol !== 'http:') throw new UrlSourceError(`Puddle reads web addresses that start with https://, not ${url.protocol}.`, 'address');
-  if (url.username || url.password) throw new UrlSourceError('Addresses with a user name or password in them can’t be read. Remove them, or download the file and drop it here instead.', 'address');
-  url.hash = '';
-  return url;
-}
+export { parseAddress, UrlSourceError, type UrlErrorKind };
 
 /** The address's last path segment, e.g. "orders.csv", or the host when the path has none. */
 export function nameFromAddress(url: URL): string {
@@ -269,6 +238,29 @@ export async function addWebTableSource(address: string | URL, table: HtmlTable,
   return source;
 }
 
+/**
+ * Add a source from an entity set of an OData service, chosen in the From OData feed dialog: every page is read now.
+ * A sign-in is kept for this tab only, under the new source's id.
+ */
+export async function addODataSource(root: URL, spec: FeedSpec, opts: ReadOptions & { position?: { x: number; y: number } } = {}): Promise<Source> {
+  const fetched = await fetchFeed(root, spec, opts);
+  const source: Source = {
+    id: newId('s'),
+    name: spec.entitySet,
+    kind: 'url',
+    format: 'csv',
+    url: { href: root.href, headHash: fetched.headHash, size: fetched.size, odata: spec },
+    parseOptions: {},
+    detectedSchema: [],
+  };
+  if (opts.credentials) rememberSignIn(source.id, opts.credentials);
+  await register(source, fetched);
+  setFetch(source.id, { state: 'ok', at: Date.now(), ranged: false });
+  markAttached(source.id);
+  useProjectStore.getState().apply((p) => addSource(p, source, opts.position ?? { x: 80, y: 80 }));
+  return source;
+}
+
 const inFlight = new Map<string, Promise<void>>();
 
 /**
@@ -284,7 +276,9 @@ export function loadUrlSource(source: Source, opts: FetchOptions & { refresh?: b
     if (!opts.refresh) markAttached(source.id, 'detached');
     setFetch(source.id, { state: 'fetching' });
     try {
-      const fetched = source.url.table
+      const fetched = source.url.odata
+        ? await fetchFeed(new URL(source.url.href), source.url.odata, { ...opts, credentials: signInFor(source.id) })
+        : source.url.table
         ? await fetchTable(addressOf(source), source.url.table, opts)
         : await fetchAddress(addressOf(source), { ...opts, format: source.format, shipped: isSampleFile(source.url.sample) });
       await register(source, fetched);

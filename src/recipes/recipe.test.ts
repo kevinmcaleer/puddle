@@ -140,6 +140,13 @@ describe('exporting a recipe', () => {
     expect(recipeFromProject(web, { name: '', description: '' }).sources[1]!.url).toEqual({ href: 'https://en.wikipedia.org/wiki/List_of_James_Bond_films', table: { index: 1, label: 'Eon Productions films' } });
   });
 
+  it('keeps which entity set an OData source reads, and its query, so the recipe reads the same', () => {
+    const p = sensitive();
+    const odata = { entitySet: 'People', version: 4 as const, filter: 'Age gt 30', columns: [{ name: 'UserName', type: 'VARCHAR' }], auth: 'basic' as const };
+    const feed = { ...p, sources: p.sources.map((s) => (s.url ? { ...s, url: { href: 'https://services.odata.org/TripPinRESTierService', headHash: 'x', odata } } : s)) };
+    expect(recipeFromProject(feed, { name: '', description: '' }).sources[1]!.url).toEqual({ href: 'https://services.odata.org/TripPinRESTierService', odata });
+  });
+
   it('names the file after the recipe', () => {
     expect(recipeFileName('Tidy a contact list!')).toBe('tidy-a-contact-list.puddle-recipe.json');
     expect(recipeFileName('  ')).toBe('recipe.puddle-recipe.json');

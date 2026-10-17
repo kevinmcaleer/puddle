@@ -25,6 +25,14 @@ export const dropTable = (name: string) => `DROP TABLE IF EXISTS ${ident(name)}`
 export function sourceRelation(source: Source): string {
   const file = str(sourceFileName(source));
   const o = source.parseOptions;
+  const odata = source.url?.odata;
+  if (odata) {
+    // An OData feed, written as CSV by src/sources/odata.ts: a header row, quoted empty strings kept apart from nulls,
+    // and the column types from the service's $metadata where it has one (else DuckDB types the columns).
+    const args = [file, 'header = true', `delim = ','`, `quote = '"'`, `escape = '"'`, 'allow_quoted_nulls = false'];
+    if (odata.columns?.length) args.push(`columns = {${odata.columns.map((c) => `${str(c.name)}: ${str(c.type)}`).join(', ')}}`);
+    return `read_csv(${args.join(', ')})`;
+  }
   switch (source.format) {
     case 'csv':
     case 'tsv': {

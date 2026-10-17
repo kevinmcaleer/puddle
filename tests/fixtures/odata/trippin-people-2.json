@@ -1,0 +1,82 @@
+{
+  "@odata.context": "https://services.odata.org/TripPinRESTierService/$metadata#People",
+  "value": [
+    {
+      "@odata.etag": "W/\"08D1694BD49A0F11\"",
+      "UserName": "willieashmore",
+      "FirstName": "Willie",
+      "LastName": "Ashmore",
+      "MiddleName": null,
+      "Gender": "Male",
+      "Age": null,
+      "Emails": [
+        "Willie@example.com",
+        "Willie@contoso.com"
+      ],
+      "AddressInfo": [],
+      "HomeAddress": null,
+      "FavoriteFeature": "Feature1",
+      "Features": []
+    },
+    {
+      "@odata.etag": "W/\"08D1694BD49A0F11\"",
+      "UserName": "vincentcalabrese",
+      "FirstName": "Vincent",
+      "LastName": "Calabrese",
+      "MiddleName": null,
+      "Gender": "Male",
+      "Age": null,
+      "Emails": [
+        "Vincent@example.com",
+        "Vincent@contoso.com"
+      ],
+      "AddressInfo": [
+        {
+          "Address": "55 Grizzly Peak Rd.",
+          "City": {
+            "Name": "Butte",
+            "CountryRegion": "United States",
+            "Region": "MT"
+          }
+        }
+      ],
+      "HomeAddress": null,
+      "FavoriteFeature": "Feature1",
+      "Features": []
+    },
+    {
+      "@odata.etag": "W/\"08D1694BD49A0F11\"",
+      "UserName": "clydeguess",
+      "FirstName": "Clyde",
+      "LastName": "Guess",
+      "MiddleName": null,
+      "Gender": "Male",
+      "Age": null,
+      "Emails": [
+        "Clyde@example.com"
+      ],
+      "AddressInfo": [],
+      "HomeAddress": null,
+      "FavoriteFeature": "Feature1",
+      "Features": []
+    },
+    {
+      "@odata.etag": "W/\"08D1694BD49A0F11\"",
+      "UserName": "keithpinckney",
+      "FirstName": "Keith",
+      "LastName": "Pinckney",
+      "MiddleName": null,
+      "Gender": "Male",
+      "Age": null,
+      "Emails": [
+        "Keith@example.com",
+        "Keith@contoso.com"
+      ],
+      "AddressInfo": [],
+      "HomeAddress": null,
+      "FavoriteFeature": "Feature1",
+      "Features": []
+    }
+  ],
+  "@odata.nextLink": "https://services.odata.org/TripPinRESTierService/People?%24skiptoken=8"
+}

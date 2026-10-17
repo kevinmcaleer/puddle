@@ -49,6 +49,18 @@ test('sources', async ({ page }) => {
   await expect(web.getByTestId('web-table-preview')).toContainText('Dr. No');
   await shot(page, 'sources-web-page', web);
   await web.getByRole('button', { name: 'Cancel' }).click();
+  // From OData feed, with TripPin answered from the fixture.
+  await page.route('https://services.odata.org/TripPinRESTierService/$metadata', (route) =>
+    route.fulfill({ body: fixtureText('odata/trippin-metadata.xml'), contentType: 'application/xml', headers: { 'Access-Control-Allow-Origin': '*' } }),
+  );
+  await page.getByRole('button', { name: 'Add', exact: true }).click();
+  await page.getByRole('menuitem', { name: /From OData feed/ }).click();
+  const odata = page.getByRole('dialog', { name: 'Add source from an OData feed' });
+  await odata.getByLabel('Address').fill('https://services.odata.org/TripPinRESTierService');
+  await odata.getByRole('button', { name: 'Connect' }).click();
+  await expect(odata.getByLabel(/^Entity set/)).toHaveValue('People');
+  await shot(page, 'sources-odata', odata);
+  await odata.getByRole('button', { name: 'Cancel' }).click();
   await addFiles(page, [fixture('sales.xlsx')]);
   await page.waitForTimeout(500);
   await shot(page, 'sources-excel');
