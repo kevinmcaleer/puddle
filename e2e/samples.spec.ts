@@ -1,5 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
-import { cell, expectRows, node, openApp } from './helpers/app';
+import { readFileSync } from 'node:fs';
+import { cell, expectRows, fixture, node, openApp } from './helpers/app';
 
 const projectMenu = async (page: Page, item: string) => {
   await page.getByTestId('project-menu').click();
@@ -50,4 +51,27 @@ test('the home screen offers the samples; a sample is listed and deleted like an
   await page.getByRole('dialog', { name: 'Delete project?' }).getByRole('button', { name: 'Delete project' }).click();
   await expect(page.getByTestId('project-Sample: orders and customers')).toHaveCount(0);
   await expect(samples.getByTestId('sample-orders')).toBeVisible();
+});
+
+test('Help opens the user guide, and starts the taxi tutorial with both of its files added', async ({ page, context }) => {
+  // Puddle's server passes these through from the TLC; here they are small stand-ins with the same columns.
+  const served = { 'trip-data/yellow_tripdata_2024-01.parquet': 'taxi-trips.parquet', 'misc/taxi_zone_lookup.csv': 'taxi-zones.csv' };
+  for (const [path, file] of Object.entries(served))
+    await page.route(`**/tutorial-data/${path}`, (route) => route.fulfill({ body: readFileSync(fixture(file)), contentType: path.endsWith('.csv') ? 'text/csv' : 'binary/octet-stream' }));
+  await openApp(page);
+
+  await page.getByTestId('help-menu').click();
+  const guide = context.waitForEvent('page');
+  await page.getByRole('menuitem', { name: /User guide/ }).click();
+  expect(new URL((await guide).url()).pathname).toBe('/docs/');
+
+  await page.getByTestId('help-menu').click();
+  await page.getByRole('menuitem', { name: /Start the taxi tutorial/ }).click();
+  await expect(page.getByTestId('project-name')).toHaveText('Tutorial: three million taxi trips');
+  await expect(page.getByTestId('notes-preview').getByRole('link', { name: 'the taxi tutorial in the user guide' })).toHaveAttribute('href', 'docs/tutorial-taxi.html');
+  // This build has no DuckDB extensions to read Parquet with; e2e/container/tutorial.spec.ts reads the real trips.
+  await expect(node(page, 'yellow_tripdata_2024-01.parquet')).toHaveAttribute('data-fetch', 'ok', { timeout: 30_000 });
+  await expect(node(page, 'taxi_zone_lookup.csv')).toHaveAttribute('data-status', 'ok', { timeout: 30_000 });
+  await node(page, 'taxi_zone_lookup.csv').click();
+  await expectRows(page, 11);
 });

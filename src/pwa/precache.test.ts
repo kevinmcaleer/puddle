@@ -43,6 +43,14 @@ describe('strategyFor', () => {
     expect(strategyFor(new URL('https://elsewhere.example/x.js'), origin, 'cors')).toBe('network');
   });
 
+  it('leaves the user guide and the taxi tutorial’s files to the network: they aren’t part of the app', () => {
+    expect(strategyFor(new URL('/docs/', origin), origin, 'navigate')).toBe('network');
+    expect(strategyFor(new URL('/docs/_static/furo.css', origin), origin, 'no-cors')).toBe('network');
+    // Read in parts by range requests, which the Cache API refuses to keep.
+    expect(strategyFor(new URL('/tutorial-data/trip-data/yellow_tripdata_2024-01.parquet', origin), origin, 'cors')).toBe('network');
+    expect(strategyFor(new URL('/docsy.csv', origin), origin, 'cors')).toBe('cache-first');
+  });
+
   it('names each build’s cache apart', () => {
     expect(cacheName('abc')).toBe('puddle-abc');
   });

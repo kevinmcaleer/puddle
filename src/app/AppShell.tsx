@@ -21,6 +21,7 @@ import { useResultsStore } from '../results/state';
 import { ACCEPT } from '../sources/detect';
 import { useExcelSources } from '../sources/excel';
 import { SamplesDialog } from '../samples/SamplePicker';
+import { openUserGuide, startTaxiTutorial } from '../samples/open';
 import { Tour } from '../tour/Tour';
 import { TOUR_STOPS } from '../tour/stops';
 import { canResume, readProgress, startTourSafely, useTour } from '../tour/tour';
@@ -142,7 +143,7 @@ function ResultsTitle() {
   );
 }
 
-/** Help: the guided tour (from the start, or from where it was left), the keyboard shortcuts and the theme. */
+/** Help: the user guide, its taxi tutorial, the guided tour (from the start, or from where it was left), the keyboard shortcuts and the theme. */
 function HelpMenu() {
   // Read when the menu opens, so it knows how far the tour got.
   const [progress, setProgress] = useState(readProgress);
@@ -155,6 +156,8 @@ function HelpMenu() {
       button={{ variant: 'ghost', icon: 'help', iconOnly: true, 'aria-label': 'Help', title: 'Help', ...{ 'data-testid': 'help-menu' } }}
       onOpenChange={(open) => open && setProgress(readProgress())}
       items={[
+        { label: 'User guide', icon: 'notes', onSelect: openUserGuide },
+        { label: 'Start the taxi tutorial', icon: 'source', onSelect: () => void startTaxiTutorial() },
         ...(resume != null ? [{ label: 'Resume the tour', icon: 'info' as const, hint: `Stop ${resume + 1} of ${TOUR_STOPS.length}`, onSelect: () => startTourSafely(resume) }] : []),
         { label: 'Take the tour', icon: 'info', onSelect: () => startTourSafely() },
         { label: 'Keyboard shortcuts', icon: 'keyboard', shortcut: shortcutText('help'), onSelect: () => useSession.getState().setShortcutsOpen(true) },

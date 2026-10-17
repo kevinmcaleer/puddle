@@ -20,6 +20,8 @@ What the server does (`deploy/nginx.conf`):
 - Every response carries `Cross-Origin-Opener-Policy: same-origin` and `Cross-Origin-Embedder-Policy: require-corp`, so the page is cross-origin isolated.
 - `.wasm` is served as `application/wasm`, and responses are gzipped.
 - Hashed files (`/assets/`, `/duckdb-extensions/<version>/`) are cached for a year. `index.html`, `sw.js`, `precache.json` and the manifest are always revalidated, so a deploy shows on the next visit.
+- `/docs/` is the user guide, built from `docs/` with Sphinx in its own build stage (the screenshots are committed, so the build needs no browser).
+- `/tutorial-data/` passes the taxi tutorial's two files (`trip-data/yellow_tripdata_2024-01.parquet`, `misc/taxi_zone_lookup.csv`) through from the TLC at `d37ci6vzurychx.cloudfront.net`, Range headers and all, without keeping them. The TLC's host sends no CORS headers, so browsers can't read them from there. nginx looks the host up when a request comes, using the DNS servers in the container's `/etc/resolv.conf` (written to `/tmp/puddle-resolver.conf` at start-up by `deploy/30-puddle-resolver.sh`), so Puddle still starts with no internet connection; only **Start the taxi tutorial** needs one. Any other path there answers 404.
 - `/healthz` answers `ok` for health checks. The container runs as a non-root user and works with a read-only root file system when `/tmp` is writable.
 
 ## Docker Compose

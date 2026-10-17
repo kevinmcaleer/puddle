@@ -8,3 +8,5 @@ public/duckdb-extensions
 .git
 *.tsbuildinfo
 .env
+docs/_build
+docs/_data
