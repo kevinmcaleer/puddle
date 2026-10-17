@@ -161,8 +161,13 @@ const isName = (t: SqlToken | undefined) => !!t && (t.kind === 'word' || t.kind 
 /**
  * Why a custom SQL query can't run as a step, in words that say what to change, or undefined if it can.
  * Pure and synchronous, so the form shows it as you type and the compiler refuses before anything runs.
+ * `tables` are the names the query may read (lower case, as DuckDB compares them): a step's `input`, or a SQL
+ * node's inputs.
  */
-export function customSqlProblem(sql: string): string | undefined {
+export function customSqlProblem(sql: string, tables: readonly string[] = [INPUT_NAME]): string | undefined {
+  const allowed = new Set(tables.map((t) => t.toLowerCase()));
+  // How the refusals name what may be read: "input", or "input1, input2 or their node names".
+  const readable = tables.length === 1 ? tables[0]! : 'one of its inputs';
   let tokens: SqlToken[];
   try {
     tokens = lexSql(sql).filter((t) => t.kind !== 'comment');
@@ -171,18 +176,18 @@ export function customSqlProblem(sql: string): string | undefined {
     throw e;
   }
   while (tokens.length && tokens[tokens.length - 1]!.text === ';') tokens.pop();
-  if (!tokens.length) return 'write a query, such as SELECT * FROM input';
+  if (!tokens.length) return `write a query, such as SELECT * FROM ${tables[0] ?? INPUT_NAME}`;
   if (tokens.some((t) => t.text === ';' && t.kind === 'op')) return 'write one query: a ; may only end it';
 
   const first = tokens[0]!;
   if (first.kind !== 'word' || !QUERY_STARTS.has(first.value)) {
     if (first.kind === 'word' && STATEMENTS.has(first.value)) return `${first.text.toUpperCase()} isn’t allowed: a step can only read its input with SELECT`;
-    return 'start with SELECT, WITH or FROM: a step is one query over input';
+    return `start with SELECT, WITH or FROM: a step is one query over ${readable}`;
   }
 
   const levels: Level[] = [level()];
   const closers: string[] = [];
-  const visible = (name: string) => name === INPUT_NAME || levels.some((l) => l.ctes.has(name));
+  const visible = (name: string) => allowed.has(name) || levels.some((l) => l.ctes.has(name));
   // The next token is a table: after FROM, JOIN, LATERAL, a comma in a FROM list, or TABLE and PIVOT at a statement start.
   let expectTable = false;
   // The next token starts a query: the first, after (, after UNION and friends, after a WITH list.
@@ -220,14 +225,14 @@ export function customSqlProblem(sql: string): string | undefined {
       }
       if (t.kind === 'string') return `FROM ${t.text} isn’t allowed: a step can only read its input, not files`;
       if (name != null) {
-        if (next?.text === '.') return `reading ${shown(t)}.${tokens[k + 2]?.text ?? ''} isn’t allowed: a step can only read input or the CTEs it defines`;
+        if (next?.text === '.') return `reading ${shown(t)}.${tokens[k + 2]?.text ?? ''} isn’t allowed: a step can only read ${readable} or the CTEs it defines`;
         if (isCall) {
-          if (!TABLE_FUNCTIONS.has(name)) return `calling ${t.text}() after FROM isn’t allowed: a step can only read input, or rows from range, generate_series or unnest`;
+          if (!TABLE_FUNCTIONS.has(name)) return `calling ${t.text}() after FROM isn’t allowed: a step can only read ${readable}, or rows from range, generate_series or unnest`;
         } else if (!visible(name)) {
-          return `there’s no table ${shown(t)} for this step to read: use input, or a CTE defined before it`;
+          return `there’s no table ${shown(t)} for this step to read: use ${tables.length === 1 ? tables[0] : tables.join(', ')}, or a CTE defined before it`;
         }
       } else if (t.text !== '(') {
-        return 'put input, a CTE or a subquery after FROM';
+        return `put ${readable}, a CTE or a subquery after FROM`;
       }
     }
 

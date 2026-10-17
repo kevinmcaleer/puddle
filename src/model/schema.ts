@@ -247,7 +247,14 @@ export const DEFAULT_QUERY_SPEC = { tables: [], joins: [], fields: [], distinct:
  */
 export const QueryNodeZ = z.object({ ...NodeBase, type: z.literal('query'), querySpec: QuerySpecZ.default({ tables: [], joins: [], fields: [], distinct: false, totals: false, orRows: 0 }) });
 
-export const NodeZ = z.discriminatedUnion('type', [SourceNodeZ, TransformNodeZ, JoinNodeZ, AppendNodeZ, LookupNodeZ, QueryNodeZ, OutputNodeZ]);
+/** A hand-written DuckDB query over the node's inputs, each readable as input1, input2... and by its node's name. */
+export const SqlSpecZ = z.object({ query: z.string().default('') });
+
+export const DEFAULT_SQL_SPEC = { query: 'SELECT *\nFROM input1' } as const satisfies z.input<typeof SqlSpecZ>;
+
+export const SqlNodeZ = z.object({ ...NodeBase, type: z.literal('sql'), sqlSpec: SqlSpecZ.default(DEFAULT_SQL_SPEC) });
+
+export const NodeZ = z.discriminatedUnion('type', [SourceNodeZ, TransformNodeZ, JoinNodeZ, AppendNodeZ, LookupNodeZ, QueryNodeZ, SqlNodeZ, OutputNodeZ]);
 
 /** Named input ports: Join's left and right, Lookup's main and lookup. Nodes with one input, and the numbered inputs of Append and Query, use an index. */
 export const NAMED_PORTS = ['left', 'right', 'main', 'lookup'] as const;
@@ -340,6 +347,8 @@ export type QueryCriteria = z.infer<typeof QueryCriteriaZ>;
 export type QueryField = z.infer<typeof QueryFieldZ>;
 export type QuerySpec = z.infer<typeof QuerySpecZ>;
 export type QueryNode = z.infer<typeof QueryNodeZ>;
+export type SqlSpec = z.infer<typeof SqlSpecZ>;
+export type SqlNode = z.infer<typeof SqlNodeZ>;
 export type Port = z.infer<typeof PortZ>;
 export type GraphNode = z.infer<typeof NodeZ>;
 export type NodeType = GraphNode['type'];

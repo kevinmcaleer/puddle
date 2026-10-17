@@ -39,7 +39,7 @@ A Docker image (nginx serving the static build) behind a Cloudflare Tunnel at pu
 | `src/app/` | The app shell: the seven-control toolbar (project menu, Add, undo, redo, Help, inspector toggle), inspector and results docks, status strip, theme, engine boot, per-tab session state |
 | `src/engine/` | DuckDB-WASM in a Web Worker and the typed `EngineClient` (priorities, cancellation, Stop, plain-word errors) |
 | `src/model/` | The project graph: Zod schemas, wiring rules, step edits, grouping, undo and redo |
-| `src/compiler/` | The pure graph-to-SQL compiler (steps, joins and lookups over two inputs, appends over any number, and queries from the query designer), step registry, schema cache, the schema book those nodes read their inputs’ columns from, and how each locale writes numbers and dates for the parse steps (`locales.ts`) |
+| `src/compiler/` | The pure graph-to-SQL compiler (steps, joins and lookups over two inputs, appends over any number, queries from the query designer, hand-written SQL nodes over any number of inputs, and the scratch console), step registry, schema cache, the schema book those nodes read their inputs’ columns from, and how each locale writes numbers and dates for the parse steps (`locales.ts`) |
 | `src/sources/` | Adding sources: format detection, file handles, clipboard text, web addresses (fetched again on reopen), choosing files again on reopen (on Chromium, reconnecting them with one permission click through stored file handles), and Excel sources (sheet, header row and range, kept loaded as DuckDB tables) |
 | `src/excel/` | SheetJS in a Web Worker: reading `.xlsx` sheets into typed columns and Arrow tables for DuckDB, and writing Excel exports from Arrow batches. Excel's limits and sheet-name rules live in `limits.ts`, which doesn't load SheetJS |
 | `src/persistence/` | IndexedDB autosave, `.puddle.json` export and import, format migrations |
@@ -62,6 +62,7 @@ A Docker image (nginx serving the static build) behind a Cloudflare Tunnel at pu
 | `src/inspector/` | The right-hand panel, in Node, Project and Notes tabs: source read options, applied steps, step settings, rules and node notes; project and display settings |
 | `src/notes/` | The project notes (the inspector's Notes tab): Markdown written and previewed, rendered with raw HTML off and links in a new tab |
 | `src/results/` | The results table on Glide Data Grid: paging, headers with type and quality |
+| `src/console/` | The scratch SQL console under the results table: one query against the viewed node’s rows (read as `input`), answered in place without adding a node, and turned into a SQL node in one click |
 | `tests/` | Engine integration tests, fixtures and helpers (`scripts/make-excel-fixtures.mjs` writes the Excel fixture) |
 | `e2e/` | Playwright tests |
 

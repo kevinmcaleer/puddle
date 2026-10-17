@@ -5,7 +5,7 @@ export { hashString, hashValue, stableStringify } from './hash';
 export { newId } from './ids';
 export { createProject, parseProject } from './project';
 export { addStep, canGroup, canUngroup, groupNodes, moveStep, removeStep, renameNode, setNodeNotes, splitNode, toggleStep, ungroupNode, updateStep, type GroupCheck } from './steps';
-export { addNode, addSource, moveNodes, nextNodeName, removeNodes, setCollapsed, setKeepResult, setParseOptions, updateSource, type AddableNodeType } from './edits';
+export { addNode, addSource, moveNodes, nextNodeName, removeNodes, setCollapsed, setKeepResult, setParseOptions, setSqlQuery, updateSource, type AddableNodeType } from './edits';
 export { setJoinSpec, swapJoinInputs } from './join';
 export { setAppendSpec, swapAppendInputs } from './append';
 export { setLookupSpec, swapLookupInputs } from './lookup';
