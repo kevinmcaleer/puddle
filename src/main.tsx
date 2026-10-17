@@ -2,6 +2,7 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { App } from './app/App';
 import { bootEngine, useEngineStore, whenEngine } from './app/engine';
+import { blockPageSelectAll } from './app/selectAll';
 import { applyTheme, useTheme } from './app/theme';
 import { useKeptStore } from './flow/kept';
 import { useProjectStore } from './model';
@@ -12,6 +13,7 @@ import './index.css';
 // First, so a Google sign-in's token leaves the address before anything else runs.
 captureSignInReturn();
 applyTheme(useTheme.getState().preference);
+blockPageSelectAll();
 bootEngine();
 // After the engine has loaded, so the worker's precache reads the 36 MB WASM from the HTTP cache instead of
 // downloading it a second time alongside the page (Chromium fails one of the two with ERR_CACHE_WRITE_FAILURE).

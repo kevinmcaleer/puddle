@@ -17,6 +17,19 @@
     background: var(--surface-panel);
     color: var(--ink);
     font-family: var(--font-ui);
+    /* An app, not a page: dragging across the chrome or pressing Ctrl+A (see app/selectAll.ts) selects nothing. */
+    -webkit-user-select: none;
+    user-select: none;
+  }
+  /* Text people type or may want to copy stays selectable: fields, code, and anything marked ui-selectable. */
+  input,
+  textarea,
+  [contenteditable]:not([contenteditable='false']),
+  pre,
+  code,
+  .ui-selectable {
+    -webkit-user-select: text;
+    user-select: text;
   }
 }
 

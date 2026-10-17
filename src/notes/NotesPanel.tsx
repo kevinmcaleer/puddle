@@ -63,7 +63,7 @@ export function NotesPanel() {
         </div>
       ) : notes.trim() ? (
         // Safe to inject: renderMarkdown escapes all HTML and keeps only safe links (see markdown.ts).
-        <div className="puddle-notes min-h-0 flex-1 overflow-auto p-4" data-testid="notes-preview" dangerouslySetInnerHTML={{ __html: html }} />
+        <div className="puddle-notes ui-selectable min-h-0 flex-1 overflow-auto p-4" data-testid="notes-preview" dangerouslySetInnerHTML={{ __html: html }} />
       ) : (
         <p className="p-4 text-ink-muted" data-testid="notes-preview">No notes yet. Write some in the Write tab.</p>
       )}
