@@ -2,7 +2,7 @@ import { autoLayout } from '../canvas/layout';
 import { neighbour, type Direction } from '../canvas/navigate';
 import { suggestJoinKey, suggestLookupColumns } from '../compiler';
 import { useFlowStore } from '../flow/status';
-import { addNode, canConnect, canGroup, connect, disconnect, freePort, groupNodes, inputEdges, moveQueryTable, newId, nodeById, setJoinSpec, setLookupSpec, useProjectStore, type AddableNodeType, type ColumnSchema, type Port, type Project, type Source, type SourceFormat } from '../model';
+import { addNode, canConnect, canMakeGroup, connect, disconnect, freePort, groupOf, inputEdges, makeGroup, setGroupCollapsed, moveQueryTable, newId, nodeById, setJoinSpec, setLookupSpec, useProjectStore, type AddableNodeType, type ColumnSchema, type Port, type Project, type Source, type SourceFormat } from '../model';
 import { addClipboardSource, addFileSource } from '../sources/add';
 import { pickFiles, type PickedFile } from '../sources/handles';
 import { addUrlSource } from '../sources/url';
@@ -102,7 +102,7 @@ export function addNodeAfterSelection(type: AddableNodeType) {
   const { apply, history } = useProjectStore.getState();
   const { selectedNodeId: selected, selectedNodeIds } = useSession.getState();
   const after = selected ? nodeById(history.present, selected) : undefined;
-  const several = selectedNodeIds.length > 1 && (type === 'join' || type === 'append' || type === 'lookup' || type === 'query');
+  const several = selectedNodeIds.length > 1 && (type === 'join' || type === 'append' || type === 'lookup' || type === 'query' || type === 'sql');
   const feeds = several ? (type === 'join' || type === 'lookup' ? selectedNodeIds.slice(0, 2) : selectedNodeIds) : after?.id;
   const position = positionAfter(history.present, Array.isArray(feeds) ? feeds : after ? [after.id] : []);
   let added: string | undefined;
@@ -126,14 +126,14 @@ export function addNodeAfterSelection(type: AddableNodeType) {
 
 export const layoutFlow = () => useProjectStore.getState().apply(autoLayout);
 
-/** Group the selected nodes into one, or say why they can't be. */
+/** Group the selected nodes, collapsed to one card as in Blender, or say why they can't be. */
 export function groupSelection() {
   const { selectedNodeIds, notify, select } = useSession.getState();
-  if (selectedNodeIds.length < 2) return notify({ tone: 'info', text: 'Select two or more Transform nodes in a line to group them (Shift+click adds to the selection).' });
-  const check = canGroup(useProjectStore.getState().history.present, selectedNodeIds);
+  if (selectedNodeIds.length < 2) return notify({ tone: 'info', text: 'Select two or more nodes to group them (Shift+click adds to the selection).' });
+  const check = canMakeGroup(useProjectStore.getState().history.present, selectedNodeIds);
   if (!check.ok) return notify({ tone: 'warn', text: check.reason });
-  useProjectStore.getState().apply((p) => groupNodes(p, selectedNodeIds));
-  select(check.chain[0]!);
+  useProjectStore.getState().apply((p) => makeGroup(p, selectedNodeIds));
+  select(null);
 }
 
 /** Move the selection along the wires (the arrow keys). Selecting doesn't view; V does. Not while the Query designer covers the canvas. */
@@ -141,7 +141,11 @@ export function selectNeighbour(direction: Direction) {
   if (useSession.getState().designerNodeId) return;
   const project = useProjectStore.getState().history.present;
   const next = neighbour(project, useSession.getState().selectedNodeId, direction);
-  if (next) useSession.getState().select(next.id);
+  if (!next) return;
+  // A node hidden in a collapsed group: the group opens, so the selection can be seen.
+  const group = groupOf(project, next.id);
+  if (group?.collapsed) useProjectStore.getState().apply((p) => setGroupCollapsed(p, group.id, false));
+  useSession.getState().select(next.id);
 }
 
 /** Show the selected node in the results table. */

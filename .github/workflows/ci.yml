@@ -147,10 +147,46 @@ jobs:
             test-results
           retention-days: 7
 
+  runner:
+    name: puddle-run image
+    if: github.event_name != 'schedule'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+      - name: Build the runner image for amd64 and arm64
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: Dockerfile.runner
+          platforms: linux/amd64,linux/arm64
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      - name: Load the amd64 runner image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: Dockerfile.runner
+          platforms: linux/amd64
+          load: true
+          tags: puddle-run:ci
+          cache-from: type=gha
+      - name: Run a project file in the container
+        run: |
+          mkdir -p /tmp/projects
+          cp tests/fixtures/projects/v1.puddle.json tests/fixtures/customers.csv /tmp/projects/
+          chmod -R a+rwX /tmp/projects
+          docker run --rm -v /tmp/projects:/projects puddle-run:ci check /projects/v1.puddle.json
+          docker run --rm -v /tmp/projects:/projects puddle-run:ci run /projects/v1.puddle.json
+          ls -l /tmp/projects/out
+          test -s /tmp/projects/out/*.run.json
+          grep -q '"status": "written"' /tmp/projects/out/*.run.json
+
   publish:
     name: Publish the image
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    needs: [check, e2e, container]
+    needs: [check, e2e, container, runner]
     runs-on: ubuntu-latest
     permissions:
       contents: read

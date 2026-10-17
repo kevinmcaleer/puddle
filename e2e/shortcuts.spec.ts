@@ -145,12 +145,12 @@ test('a step search opened before the new node is drawn keeps the focus', async 
   await expect(page.getByTestId('inspector').locator('.ui-step')).toHaveCount(1);
 });
 
-test('G groups the selected Transforms; with too few selected it says how', async ({ page }) => {
+test('G groups the selected nodes into one card; with too few selected it says how', async ({ page }) => {
   await openApp(page);
   await addOrders(page);
   await page.keyboard.press('g');
-  await expect(page.getByTestId('canvas-notice')).toContainText('Select two or more Transform nodes in a line to group them');
-  // Only Transforms with steps group, so each gets one (through the Add step search).
+  await expect(page.getByTestId('canvas-notice')).toContainText('Select two or more nodes to group them');
+  // Each Transform gets a step (through the Add step search) on the way.
   for (const name of ['Transform 1', 'Transform 2']) {
     await page.keyboard.press('t');
     await isSelected(page, name);
@@ -164,6 +164,7 @@ test('G groups the selected Transforms; with too few selected it says how', asyn
   await node(page, 'Transform 1').click();
   await node(page, 'Transform 2').click({ modifiers: ['Shift'] });
   await page.keyboard.press('g');
+  await expect(page.getByTestId('group-Group 1')).toBeVisible();
   await expect(node(page, 'Transform 2')).not.toBeAttached();
   await expect(page.getByTestId('wire-shop-orders.csv->Transform 1')).toBeAttached();
 });

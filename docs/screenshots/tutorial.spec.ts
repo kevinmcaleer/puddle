@@ -50,9 +50,9 @@ async function addRule(page: Page, title: string) {
   await page.getByRole('menuitem', { name: title, exact: true }).click();
 }
 
-/** Add a node after the selected one from the Add node menu, and select it. */
+/** Add a node after the selected one from the Add menu, and select it. */
 async function addNode(page: Page, item: string | RegExp, made: string) {
-  await page.getByRole('button', { name: 'Add node' }).click();
+  await page.getByRole('button', { name: 'Add', exact: true }).click();
   await page.getByRole('menuitem', { name: item }).click();
   await bringIntoView(page, made);
   await expect(node(page, made)).toHaveAttribute('data-status', 'ok', SLOW);
@@ -151,7 +151,7 @@ test('tutorial: New York taxi trips', async ({ page }) => {
   // Look up the borough and zone each trip started in.
   await node(page, 'Transform 1').click();
   await node(page, ZONES).click({ modifiers: ['Shift'] });
-  await page.getByRole('button', { name: 'Add node' }).click();
+  await page.getByRole('button', { name: 'Add', exact: true }).click();
   await page.getByRole('menuitem', { name: /Lookup/ }).click();
   await expect(node(page, 'Lookup 1')).toHaveAttribute('data-status', /ok|error/, SLOW);
   await page.getByRole('button', { name: 'Auto layout' }).click();

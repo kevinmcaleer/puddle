@@ -22,6 +22,8 @@ interface SessionState {
   inspectorOpen: boolean;
   /** The results dock is showing its table. */
   resultsOpen: boolean;
+  /** The scratch SQL console is open under the results table. */
+  consoleOpen: boolean;
   /** The keyboard shortcuts dialog is open. */
   shortcutsOpen: boolean;
   /** The inspector's Add step menu should open with its search focused (the shortcut asked while it may not be showing). */
@@ -39,6 +41,8 @@ interface SessionState {
   openDesigner: (nodeId: string | null) => void;
   setInspectorOpen: (open: boolean) => void;
   setResultsOpen: (open: boolean) => void;
+  /** Show or hide the console; showing it also shows the results dock it sits in. */
+  setConsoleOpen: (open: boolean) => void;
   setShortcutsOpen: (open: boolean) => void;
   requestAddStep: () => void;
   clearAddStep: () => void;
@@ -55,6 +59,7 @@ export const useSession = create<SessionState>((set) => ({
   designerNodeId: null,
   inspectorOpen: true,
   resultsOpen: true,
+  consoleOpen: false,
   shortcutsOpen: false,
   addStepPending: false,
   connectFrom: null,
@@ -74,6 +79,7 @@ export const useSession = create<SessionState>((set) => ({
     set((s) => (designerNodeId ? { designerNodeId, selectedNodeId: designerNodeId, selectedNodeIds: [designerNodeId], selectedStepId: null, inspectorTab: 'node' } : { designerNodeId: null, selectedNodeIds: s.selectedNodeIds })),
   setInspectorOpen: (inspectorOpen) => set({ inspectorOpen }),
   setResultsOpen: (resultsOpen) => set({ resultsOpen }),
+  setConsoleOpen: (consoleOpen) => set(consoleOpen ? { consoleOpen, resultsOpen: true } : { consoleOpen }),
   setShortcutsOpen: (shortcutsOpen) => set({ shortcutsOpen }),
   requestAddStep: () => set({ addStepPending: true, inspectorOpen: true, inspectorTab: 'node' }),
   clearAddStep: () => set({ addStepPending: false }),

@@ -1,23 +1,15 @@
-import { useEngineStore } from '../app/engine';
 import { useSession } from '../app/session';
-import { detectDateFormats } from '../dates';
 import { useNodeStatus } from '../flow/status';
-import { placeStep, useProject, useProjectStore } from '../model';
+import { useProject } from '../model';
 import { QuickFixBar } from '../ui';
 import { QUICK_FIXES, type FixContext } from './fixes';
+import { addStepWhereViewed, detectOnViewed } from './place';
 
 /** Add the fix's step where the viewed data is, then view and select it. */
 async function runFix(id: string, option: string | undefined, ctx: FixContext) {
   const fix = QUICK_FIXES.find((f) => f.id === id);
   if (!fix) return;
-  const step = await fix.build(ctx, option);
-  const { apply, history, setView } = useProjectStore.getState();
-  const placed = placeStep(history.present, step);
-  if (!placed) return;
-  apply(() => placed.project);
-  setView({ viewedNodeId: placed.nodeId, viewedStepIndex: placed.stepIndex });
-  useSession.getState().select(placed.nodeId);
-  useSession.getState().selectStep(step.id);
+  addStepWhereViewed(await fix.build(ctx, option));
 }
 
 /** The quick-fix chips over the results table, shown while columns are selected. */
@@ -32,12 +24,7 @@ export function QuickFixes() {
     columns,
     available: status.state === 'ok' ? status.columns : [],
     locale: project.settings.locale,
-    detectDates: async (column) => {
-      const engine = useEngineStore.getState().engine;
-      const p = useProjectStore.getState().history.present;
-      if (!engine) return undefined;
-      return detectDateFormats(engine, p, { nodeId: viewed, stepIndex: p.view.viewedStepIndex }, column).catch(() => undefined);
-    },
+    detectDates: detectOnViewed(viewed),
   };
   return (
     <div data-testid="quick-fixes" data-columns={columns.join(',')}>

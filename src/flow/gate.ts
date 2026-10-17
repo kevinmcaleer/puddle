@@ -1,6 +1,7 @@
-// The quality gate: an Output node is blocked while a fail-severity rule on it or upstream of it fails.
+// The quality gate: an Output node is blocked while a fail-severity rule on it or upstream of it fails. Pure, so
+// puddle-run applies the same gate; the hook that reads the live rule results is in rules.ts.
 import { nodeById, topoSort, upstreamIds, type Project } from '../model';
-import { useRuleStore, type RuleResult } from './rules';
+import type { RuleResult } from './ruleResult';
 
 export interface BlockingRule {
   nodeId: string;
@@ -33,8 +34,6 @@ export function exportGate(project: Project, nodeId: string, results: Record<str
   if (blocking.length) return { state: 'blocked', blocking };
   return checking ? { state: 'checking' } : { state: 'clear' };
 }
-
-export const useExportGate = (project: Project, nodeId: string): Gate => exportGate(project, nodeId, useRuleStore((s) => s.nodes));
 
 /** One line saying why an export is blocked, e.g. "id is unique fails on 2 rows in Clean." */
 export function describeBlock(b: BlockingRule): string {

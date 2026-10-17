@@ -40,7 +40,7 @@ describe('project files', () => {
 
   it('keeps opening format 1 files (fixture)', () => {
     const p = readProjectFile(fixture('v1.puddle.json'));
-    expect(p.settings).toEqual({ sampleThresholdRows: 1_000_000, locale: 'en-GB', defaultDateFormats: ['%d/%m/%Y'] });
+    expect(p.settings).toEqual({ sampleThresholdRows: 1_000_000, locale: 'en-GB', defaultDateFormats: ['%d/%m/%Y'], stepsAsNodes: false });
     expect(p.nodes.map((n) => n.id)).toEqual(['nCust', 'nPaste', 'nOut']);
   });
 

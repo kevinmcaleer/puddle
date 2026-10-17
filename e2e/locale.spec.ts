@@ -71,7 +71,7 @@ test('a German parse numbers step reads 1.234,56 as 1234.56, and the display loc
 
   // What the values are hasn't changed, nor has the project: the display locale is this device's alone.
   await expect(cell(page, 0, 0)).toHaveText('1234.56');
-  expect((await saved(page))?.settings).toEqual({ sampleThresholdRows: 5_000_000, locale: 'en-GB', defaultDateFormats: [] });
+  expect((await saved(page))?.settings).toEqual({ sampleThresholdRows: 5_000_000, locale: 'en-GB', defaultDateFormats: [], stepsAsNodes: false });
 
   // It's remembered on this device.
   await page.reload();

@@ -1,6 +1,6 @@
-import { CompactSelection, DataEditor, type DataEditorRef, type DrawCellCallback, type GridCell, type GridColumn, type GridSelection, type Item, type Rectangle } from '@glideapps/glide-data-grid';
+import { CompactSelection, DataEditor, type CellClickedEventArgs, type DataEditorRef, type DrawCellCallback, type GridCell, type GridColumn, type GridSelection, type HeaderClickedEventArgs, type Item, type Rectangle } from '@glideapps/glide-data-grid';
 import '@glideapps/glide-data-grid/dist/index.css';
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from 'react';
 import { useEngineStore } from '../app/engine';
 import { useSession } from '../app/session';
 import { useTheme } from '../app/theme';
@@ -25,6 +25,7 @@ import { parseProfile, parseTypeSniff, qualityOf, type ColumnProfile } from './p
 import { cardKind } from '../canvas/kind';
 import { closeCompare, comparedNode } from './pin';
 import { useResultsStore } from './state';
+import { ColumnMenu, type ColumnMenuRequest } from '../quickfix/ColumnMenu';
 
 /** Re-read token colours when the theme preference or the OS scheme changes. */
 function useThemeTick() {
@@ -269,6 +270,41 @@ function Grid({ engine, project, target, columns, pane = 'main', sync, other, on
     if (main) useSession.getState().setSelectedColumns(s.columns.toArray().map((i) => columns[i]!.name));
   };
 
+  // The column menu (main pane only): a right click on a header or cell, or a click on a header's chevron. It acts on
+  // the selected columns when the clicked one is among them; otherwise the clicked column alone is selected first.
+  const [menu, setMenu] = useState<ColumnMenuRequest | null>(null);
+  const openMenu = (col: number, at: { x: number; y: number }, cell?: ColumnMenuRequest['cell']) => {
+    if (!main || col < 0 || !columns[col]) return;
+    const already = selection.columns.hasIndex(col);
+    if (!already) onSelection({ columns: CompactSelection.fromSingleSelection(col), rows: CompactSelection.empty() });
+    const picked = already ? selection.columns.toArray().map((i) => columns[i]!.name) : [columns[col]!.name];
+    setMenu({ ...at, columns: picked, cell });
+  };
+  const pointer = (e: HeaderClickedEventArgs | CellClickedEventArgs) => ({ x: e.bounds.x + e.localEventX, y: e.bounds.y + e.localEventY });
+  const onHeaderContextMenu = (col: number, e: HeaderClickedEventArgs) => {
+    e.preventDefault();
+    openMenu(col, pointer(e));
+  };
+  // The chevron drawn at the header's right edge opens the same menu, under the header.
+  const onHeaderClicked = (col: number, e: HeaderClickedEventArgs) => {
+    if (e.localEventX < e.bounds.width - 24 || e.localEventY > HEADER_HEIGHT - 8) return;
+    openMenu(col, { x: e.bounds.x + e.bounds.width - 24, y: e.bounds.y + e.bounds.height });
+  };
+  // From the keyboard: the context menu key, or Shift+F10, on the selected columns.
+  const onMenuKey = (e: ReactKeyboardEvent) => {
+    const first = selection.columns.first();
+    if (!(e.key === 'ContextMenu' || (e.shiftKey && e.key === 'F10')) || first === undefined) return;
+    e.preventDefault();
+    const box = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    openMenu(first, { x: box.left + 48, y: box.top + HEADER_HEIGHT });
+  };
+  const onCellContextMenu = ([col, row]: Item, e: CellClickedEventArgs) => {
+    e.preventDefault();
+    const r = loader.row(row);
+    if (!r || !columns[col]) return;
+    openMenu(col, pointer(e), { column: columns[col]!.name, value: r[col] ?? null });
+  };
+
   if (isStopped(loader.error)) return <Stopped />;
   if (loader.error && !isCancelled(loader.error))
     return (
@@ -299,6 +335,7 @@ function Grid({ engine, project, target, columns, pane = 'main', sync, other, on
       onWheelCapture={userScrolls}
       onPointerDownCapture={userScrolls}
       onKeyDownCapture={userScrolls}
+      onKeyDown={main ? onMenuKey : undefined}
     >
       <DataEditor
         ref={editor}
@@ -321,7 +358,11 @@ function Grid({ engine, project, target, columns, pane = 'main', sync, other, on
         rangeSelect="rect"
         onVisibleRegionChanged={onVisible}
         getCellsForSelection
+        onHeaderContextMenu={main ? onHeaderContextMenu : undefined}
+        onHeaderClicked={main ? onHeaderClicked : undefined}
+        onCellContextMenu={main ? onCellContextMenu : undefined}
       />
+      {menu && <ColumnMenu request={menu} available={columns} onClose={() => setMenu(null)} />}
     </div>
   );
   if (!sync) return <div className="flex h-full w-full flex-col">{grid}</div>;

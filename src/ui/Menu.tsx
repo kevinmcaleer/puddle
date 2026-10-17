@@ -1,8 +1,8 @@
-import { useCallback, useEffect, useId, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from 'react';
+import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from 'react';
 import { Button, type ButtonProps } from './Button';
 import { cx } from './cx';
 import { Icon, type IconName } from './Icon';
-import { groupItems } from './menuGroups';
+import { groupItems, moveMenuFocus } from './menuGroups';
 
 export interface MenuItem {
   label: string;
@@ -15,6 +15,10 @@ export interface MenuItem {
   group?: string;
   /** A choice among the items of its group (a radio item): the one that is on shows a tick. */
   checked?: boolean;
+  /** With `checked`, an on-or-off setting (a checkbox item) rather than a choice among its group. */
+  toggle?: boolean;
+  /** A submenu: the item opens these beside it (on hover, a click or the right arrow) instead of running onSelect. */
+  items?: MenuItem[];
   onSelect: () => void;
 }
 
@@ -103,14 +107,7 @@ export function Menu({
   useEffect(() => {
     if (open && !search) menuItems()[0]?.focus();
   }, [open, search]);
-  const moveFocus = (e: ReactKeyboardEvent) => {
-    const list = menuItems();
-    const at = list.indexOf(document.activeElement as HTMLButtonElement);
-    const next = { ArrowDown: at + 1, ArrowUp: at - 1, Home: 0, End: list.length - 1 }[e.key];
-    if (next == null || !list.length) return;
-    e.preventDefault();
-    list[(next + list.length) % list.length]!.focus();
-  };
+  const moveFocus = (e: ReactKeyboardEvent<HTMLElement>) => moveMenuFocus(e);
 
   return (
     <div className={cx('relative', className)} ref={ref}>
@@ -133,7 +130,7 @@ export function Menu({
         </Button>
       )}
       {open && (
-        <div role="menu" aria-label={typeof label === 'string' ? label : undefined} className={`ui-popover absolute top-full z-popover mt-1 py-1 ${align === 'end' ? 'right-0' : 'left-0'}`} onKeyDown={moveFocus}>
+        <div role="menu" aria-label={typeof label === 'string' ? label : undefined} className={`ui-popover absolute top-full z-popover mt-1 py-1 ${align === 'end' ? 'right-0' : 'left-0'}`} style={items.some((i) => i.items) ? { overflow: 'visible' } : undefined} onKeyDown={moveFocus}>
           {search && (
             <div className="px-2 pb-1">
               <input
@@ -154,35 +151,118 @@ export function Menu({
             </div>
           )}
           {search && !shown.length && <div className="px-3 py-1 text-ink-muted">No matches</div>}
-          {groupItems(shown).map(({ group, items: members }, g) => {
-            const buttons = members.map((item) => (
-              <button
-                key={item.label}
-                type="button"
-                role={item.checked === undefined ? 'menuitem' : 'menuitemradio'}
-                aria-checked={item.checked}
-                disabled={item.disabled}
-                className="flex w-full items-center gap-2 px-3 py-1 text-left text-body text-ink hover:bg-surface-hover disabled:cursor-not-allowed disabled:text-ink-subtle"
-                onClick={() => pick(item)}
-              >
-                {item.icon && <Icon name={item.icon} size={14} />}
-                <span className="flex-1">{item.label}</span>
-                {item.hint && <span className="text-ink-subtle">{item.hint}</span>}
-                {item.shortcut && <kbd className="font-mono text-label text-ink-subtle">{item.shortcut}</kbd>}
-                {item.checked && <Icon name="check" size={14} />}
-              </button>
-            ));
-            if (!group) return buttons;
-            const id = `${headingId}-${g}`;
-            return (
-              <div key={group} role="group" aria-labelledby={id} className={g > 0 ? 'mt-1 border-t border-line pt-1' : undefined}>
-                <div id={id} className="ui-eyebrow px-3 pb-1 pt-2">
-                  {group}
-                </div>
-                {buttons}
-              </div>
-            );
-          })}
+          <MenuEntries items={shown} headingId={headingId} onPick={pick} />
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** A menu's items, gathered under their group headings. Shared by the menu button and the context menu. */
+export function MenuEntries({ items, headingId, onPick: pick }: { items: MenuItem[]; headingId: string; onPick: (item: MenuItem) => void }) {
+  return (
+    <>
+      {groupItems(items).map(({ group, items: members }, g) => {
+        const buttons = members.map((item) =>
+          item.items ? (
+            <Submenu key={item.label} item={item} onPick={pick} />
+          ) : (
+            <button
+              key={item.label}
+              type="button"
+              role={item.checked === undefined ? 'menuitem' : item.toggle ? 'menuitemcheckbox' : 'menuitemradio'}
+              aria-checked={item.checked}
+              disabled={item.disabled}
+              className={ITEM_CLASS}
+              onClick={() => pick(item)}
+            >
+              {item.icon && <Icon name={item.icon} size={14} />}
+              <span className="flex-1">{item.label}</span>
+              {item.hint && <span className="text-ink-subtle">{item.hint}</span>}
+              {item.shortcut && <kbd className="font-mono text-label text-ink-subtle">{item.shortcut}</kbd>}
+              {item.checked && <Icon name="check" size={14} />}
+            </button>
+          ),
+        );
+        if (!group) return buttons;
+        const id = `${headingId}-${g}`;
+        return (
+          <div key={group} role="group" aria-labelledby={id} className={g > 0 ? 'mt-1 border-t border-line pt-1' : undefined}>
+            <div id={id} className="ui-eyebrow px-3 pb-1 pt-2">
+              {group}
+            </div>
+            {buttons}
+          </div>
+        );
+      })}
+    </>
+  );
+}
+
+const ITEM_CLASS = 'flex w-full items-center gap-2 px-3 py-1 text-left text-body text-ink hover:bg-surface-hover disabled:cursor-not-allowed disabled:text-ink-subtle';
+
+/**
+ * An item that opens a submenu beside it, to the right unless the window is too narrow there. The right arrow opens it
+ * and focuses its first item; the left arrow goes back.
+ */
+function Submenu({ item, onPick }: { item: MenuItem; onPick: (item: MenuItem) => void }) {
+  const [open, setOpen] = useState(false);
+  const [side, setSide] = useState<{ left: boolean; up: number }>({ left: false, up: 0 });
+  const button = useRef<HTMLButtonElement>(null);
+  const panel = useRef<HTMLDivElement>(null);
+  const headingId = useId();
+  const focusFirst = useRef(false);
+
+  useLayoutEffect(() => {
+    const el = panel.current;
+    if (!open || !el) return;
+    const at = button.current!.getBoundingClientRect();
+    const { width, height } = el.getBoundingClientRect();
+    setSide({ left: at.right + width > window.innerWidth - 4, up: Math.max(0, at.top + height - (window.innerHeight - 4)) });
+    if (focusFirst.current) el.querySelector<HTMLButtonElement>('[role^="menuitem"]:not(:disabled)')?.focus();
+    focusFirst.current = false;
+  }, [open]);
+
+  return (
+    <div className="relative" onMouseEnter={() => setOpen(true)} onMouseLeave={() => setOpen(false)}>
+      <button
+        ref={button}
+        type="button"
+        role="menuitem"
+        aria-haspopup="menu"
+        aria-expanded={open}
+        disabled={item.disabled}
+        className={ITEM_CLASS}
+        onClick={() => setOpen(!open)}
+        onKeyDown={(e) => {
+          if (e.key !== 'ArrowRight' && e.key !== 'Enter' && e.key !== ' ') return;
+          e.preventDefault();
+          focusFirst.current = true;
+          setOpen(true);
+          if (open) panel.current?.querySelector<HTMLButtonElement>('[role^="menuitem"]:not(:disabled)')?.focus();
+        }}
+      >
+        {item.icon && <Icon name={item.icon} size={14} />}
+        <span className="flex-1">{item.label}</span>
+        <Icon name="chevron-right" size={14} />
+      </button>
+      {open && (
+        <div
+          ref={panel}
+          role="menu"
+          aria-label={item.label}
+          className={cx('ui-popover absolute z-popover -mt-1 py-1', side.left ? 'right-full' : 'left-full')}
+          style={{ top: -side.up }}
+          onKeyDown={(e) => {
+            e.stopPropagation();
+            if (e.key === 'ArrowLeft') {
+              e.preventDefault();
+              setOpen(false);
+              button.current?.focus();
+            } else moveMenuFocus(e);
+          }}
+        >
+          <MenuEntries items={item.items!} headingId={headingId} onPick={onPick} />
         </div>
       )}
     </div>

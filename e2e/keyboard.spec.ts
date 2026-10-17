@@ -112,7 +112,9 @@ test('the query designer joins tables and moves fields without dragging', async 
   // Add node › Query from the toolbar's menu, by keyboard: the designer opens on the selected source.
   await page.getByRole('button', { name: 'Add', exact: true }).press('Enter');
   await expect(page.getByRole('menuitem').first()).toBeFocused();
+  // End lands on Output, the last node; Query sits two above it, past SQL.
   await page.keyboard.press('End');
+  await page.keyboard.press('ArrowUp');
   await page.keyboard.press('ArrowUp');
   await expect(page.getByRole('menuitem', { name: /Query/ })).toBeFocused();
   await page.keyboard.press('Enter');

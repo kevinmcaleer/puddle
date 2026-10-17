@@ -3,7 +3,7 @@ import type { NodeStatus } from '../flow/status';
 import type { GraphNode } from '../model';
 import { fullCount } from '../ui/format';
 
-const TYPE_LABEL: Record<GraphNode['type'], string> = { source: 'Source', transform: 'Transform', join: 'Join', append: 'Append', lookup: 'Lookup', query: 'Query', output: 'Output' };
+const TYPE_LABEL: Record<GraphNode['type'], string> = { source: 'Source', transform: 'Transform', join: 'Join', append: 'Append', lookup: 'Lookup', query: 'Query', sql: 'SQL', output: 'Output' };
 
 const plural = (n: number, one: string) => `${fullCount(n)} ${one}${n === 1 ? '' : 's'}`;
 

@@ -32,6 +32,7 @@ import { ActivityControl } from './ActivityControl';
 import { addFiles, addNodeAfterSelection, cancelWiring, chooseFiles as pickSourceFiles, addPastedText, groupSelection, layoutFlow, openSelected, pasteFromClipboard, searchAddStep, selectNeighbour, startWiring, viewSelected } from './actions';
 import { useEngineStore, type EngineStatus } from './engine';
 import { ResultsPanel } from './ResultsPanel';
+import { Console } from '../console/Console';
 import { ShortcutsDialog } from './ShortcutsDialog';
 import { openTemplates } from '../templates/actions';
 import { TemplateDialogs } from '../templates/TemplateDialogs';
@@ -78,6 +79,7 @@ function PinOffer() {
 function ResultsTitle() {
   const project = useProject();
   const node = project.view.viewedNodeId ? nodeById(project, project.view.viewedNodeId) : undefined;
+  const consoleOpen = useSession((s) => s.consoleOpen);
   if (!node) return <ResultsBar title="Nothing to view yet" kind="output" />;
   const step = project.view.viewedStepIndex;
   const kind: NodeKind = cardKind(node.type);
@@ -105,6 +107,18 @@ function ResultsTitle() {
       pinned={pinned}
       action={
         <>
+          <Button
+            variant="ghost"
+            size="sm"
+            icon="code"
+            iconOnly
+            aria-label={consoleOpen ? 'Hide the SQL console' : 'Show the SQL console'}
+            title={consoleOpen ? 'Hide the SQL console' : 'Show the SQL console'}
+            aria-pressed={consoleOpen}
+            className={consoleOpen ? 'text-accent-ink' : undefined}
+            data-testid="console-toggle"
+            onClick={() => useSession.getState().setConsoleOpen(!consoleOpen)}
+          />
           {pin}
           {node.type === 'output' && !failing && <ExportButton node={node} />}
         </>
@@ -212,6 +226,7 @@ export function AppShell() {
   const canUndo = useProjectStore((s) => s.history.past.length > 0);
   const canRedo = useProjectStore((s) => s.history.future.length > 0);
   const inspectorOpen = useSession((s) => s.inspectorOpen);
+  const consoleOpen = useSession((s) => s.consoleOpen);
   const designerId = useSession((s) => s.designerNodeId);
   const designing = designerId ? nodeById(project, designerId) : undefined;
   const fileInput = useRef<HTMLInputElement>(null);
@@ -285,6 +300,7 @@ export function AppShell() {
               { label: 'Append', icon: 'append', hint: 'Stack rows', group: 'Nodes', onSelect: () => addNodeAfterSelection('append') },
               { label: 'Lookup', icon: 'join', hint: 'Bring columns across', group: 'Nodes', onSelect: () => addNodeAfterSelection('lookup') },
               { label: 'Query', icon: 'query', hint: 'Design with tables', group: 'Nodes', onSelect: () => addNodeAfterSelection('query') },
+              { label: 'SQL', icon: 'code', hint: 'Write a query', group: 'Nodes', onSelect: () => addNodeAfterSelection('sql') },
               { label: 'Output', icon: 'output', shortcut: shortcutText('add-output'), group: 'Nodes', onSelect: () => addNodeAfterSelection('output') },
             ]}
           />
@@ -357,7 +373,12 @@ export function AppShell() {
         </div>
 
         <ResultsPanel bar={<ResultsTitle />}>
-          <ResultsTable project={viewProject} />
+          <div className="flex h-full min-h-0 flex-col">
+            <div className="min-h-0 flex-1">
+              <ResultsTable project={viewProject} />
+            </div>
+            {consoleOpen && <Console project={viewProject} />}
+          </div>
         </ResultsPanel>
 
         <Strip />
