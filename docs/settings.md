@@ -2,7 +2,7 @@
 
 ## Project settings
 
-With no node selected (click an empty part of the canvas), the inspector shows the project's settings. They're saved with the project.
+The inspector's **Project** tab holds the project's settings. They're saved with the project.
 
 ![The project settings and display settings in the inspector](_static/screenshots/settings-project.png)
 
@@ -14,6 +14,9 @@ Locale
 
 Date formats
 : The formats tried, in order, when text is read as a date, such as `%d/%m/%Y, %Y-%m-%d`.
+
+Run on a schedule
+: When `puddle-run` should run this project, in cron syntax (`0 3 * * *` is 03:00 every day). Only used by a runner that has the project file; the browser never runs anything on its own. See {doc}`self-hosting`.
 
 ## Display
 
