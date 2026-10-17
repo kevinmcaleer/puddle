@@ -37,7 +37,7 @@ function UrlForm({ onChooseFile }: { onChooseFile: () => void }) {
 
   return (
     <Dialog title="Add source from a web address" confirm={busy ? 'Reading…' : 'Add source'} onClose={close} onConfirm={submit}>
-      <Field label="Address" htmlFor="url-address" hint="An https address of a CSV, TSV, JSON, NDJSON or Parquet file.">
+      <Field label="Address" htmlFor="url-address" hint="An https address of a CSV, TSV, JSON, NDJSON, Parquet or XML file.">
         <TextInput
           id="url-address"
           mono
