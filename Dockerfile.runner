@@ -1,0 +1,25 @@
+# puddle-run: Puddle projects run outside the browser, on DuckDB's native Node build. Multi-arch: node:22 images and
+# @duckdb/node-api's prebuilt bindings exist for amd64 and arm64 (a Raspberry Pi 5 runs the arm64 one).
+#   docker build -f Dockerfile.runner -t puddle-run .
+#   docker run --rm -v /srv/puddle/projects:/projects puddle-run run /projects/orders.puddle.json
+#   docker run -d  -v /srv/puddle/projects:/projects puddle-run watch /projects
+
+FROM --platform=$BUILDPLATFORM node:22-bookworm-slim AS build
+WORKDIR /app
+COPY package.json package-lock.json ./
+COPY vendor ./vendor
+RUN npm ci --ignore-scripts
+COPY . .
+RUN npm run build:runner
+
+FROM node:22-bookworm-slim
+WORKDIR /app
+ENV NODE_ENV=production
+# The bundle carries everything but the native DuckDB binding, which is installed for this image's own platform.
+COPY --from=build /app/dist-runner ./
+RUN npm install --omit=dev --ignore-scripts --no-audit --no-fund && npm cache clean --force
+# Projects are mounted here; outputs, run logs and quality reports go to /projects/out unless --out says otherwise.
+VOLUME ["/projects"]
+USER node
+ENTRYPOINT ["node", "puddle-run.mjs"]
+CMD ["watch", "/projects"]

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useEngineStore } from '../app/engine';
-import { describeBlock, useExportGate } from '../flow/gate';
+import { describeBlock } from '../flow/gate';
+import { useExportGate } from '../flow/rules';
 import { useNodeStatus } from '../flow/status';
 import { useProject, type OutputNode } from '../model';
 import { Banner, Button, formatDuration } from '../ui';
