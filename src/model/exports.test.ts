@@ -1,5 +1,5 @@
 import { flow } from '../../tests/helpers/projects';
-import { logExport, setOutputSpec } from './exports';
+import { logExport, setOutputFormat, setOutputSpec } from './exports';
 import { EXPORT_LOG_LIMIT } from './schema';
 
 const entry = { at: '2026-10-15T00:00:00Z', nodeId: 'out', nodeName: 'Out', format: 'csv' as const, fileName: 'Out.csv', rows: 1 };
@@ -17,5 +17,12 @@ describe('export log', () => {
     const next = setOutputSpec(setOutputSpec(p, 'out', { format: 'parquet', fileName: 'tidy' }), 't', { format: 'json' });
     expect(next.nodes[1]).toMatchObject({ outputSpec: { format: 'parquet', fileName: 'tidy', options: {} } });
     expect(next.nodes[0]).toBe(p.nodes[0]);
+  });
+
+  it('switches format keeping the file name, drops the old options, and leaves the same format alone', () => {
+    const p = setOutputSpec(flow({ nodes: [{ id: 't', type: 'transform' }, { id: 'out', type: 'output' }] }), 'out', { fileName: 'tidy', options: { delimiter: ';' } });
+    expect(setOutputFormat(p, 'out', 'parquet').nodes[1]).toMatchObject({ outputSpec: { format: 'parquet', fileName: 'tidy', options: {} } });
+    expect(setOutputFormat(p, 'out', 'csv')).toBe(p);
+    expect(setOutputFormat(p, 't', 'parquet')).toBe(p);
   });
 });
