@@ -41,6 +41,21 @@ describe('IndexedDB project store', () => {
     expect(await loadProject('nope')).toBeUndefined();
   });
 
+  // Regression: when opening the database threw (no IndexedDB, as in a test run without it), the failed open was
+  // kept, so every later save failed too, even once IndexedDB was there.
+  it('tries opening the database again after an open that threw', async () => {
+    const real = globalThis.indexedDB;
+    (globalThis as { indexedDB?: IDBFactory }).indexedDB = undefined;
+    try {
+      await expect(saveProject(createProject('Lost'))).rejects.toThrow();
+    } finally {
+      globalThis.indexedDB = real;
+    }
+    const p = createProject('Kept');
+    await saveProject(p);
+    expect(await loadProject(p.id)).toEqual(p);
+  });
+
   it('keeps project notes', async () => {
     const p = { ...createProject('Noted'), notes: '## Next\n\n- check totals' };
     await saveProject(p);
