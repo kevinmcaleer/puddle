@@ -1,5 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import { cell, fixture, node, openApp } from './helpers/app';
+import { expectAccessible } from './helpers/axe';
 
 const projectMenu = async (page: Page, item: string) => {
   await page.getByTestId('project-menu').click();
@@ -28,12 +29,17 @@ test('a gallery recipe and a matching file make a runnable project, and it expor
   const card = gallery.getByRole('listitem', { name: 'Tidy a contact list' });
   await expect(card).toContainText('Trims stray spaces');
   await expect(card).toContainText('AbcnameAbcemailAbccity');
+  await expectAccessible(page, 'the home screen with the recipe gallery');
+  await page.emulateMedia({ colorScheme: 'dark' });
+  await expectAccessible(page, 'the recipe gallery in the dark theme');
+  await page.emulateMedia({ colorScheme: 'light' });
 
   await useGalleryRecipe(page, 'Tidy a contact list');
   const attach = page.getByTestId('recipe-attach');
   await expect(attach).toContainText('Attach a file to run this recipe');
   await expect(attach.getByRole('listitem', { name: 'Contact list expects' })).toContainText('AbcnameAbcemailAbccity');
   await expect(node(page, 'Clean contacts')).toBeVisible();
+  await expectAccessible(page, 'the attach prompt');
 
   // A file with the columns the recipe expects: no questions, and the project runs.
   await page.locator('[data-testid^="reattach-"]').first().setInputFiles(fixture('recipes/contacts.csv'));
@@ -51,6 +57,7 @@ test('a gallery recipe and a matching file make a runnable project, and it expor
   await expect(dialog.getByLabel('Name', { exact: true })).toHaveValue('Tidy a contact list');
   await dialog.getByLabel('Name', { exact: true }).fill('Our contacts');
   await dialog.getByLabel('Description').fill('How we tidy the contact list.');
+  await expectAccessible(page, 'the export recipe dialog');
   const download = page.waitForEvent('download');
   await dialog.getByRole('button', { name: 'Export recipe' }).click();
   const file = await download;
@@ -78,6 +85,7 @@ test('a file whose columns differ is matched to the recipe’s, and steps needin
   await expect(dialog.getByTestId('recipe-mapping')).toContainText('2 columns aren’t in the input');
   await dialog.getByLabel('Use for name').selectOption('full_name');
   await expect(dialog.getByLabel('Use for city')).toHaveValue('');
+  await expectAccessible(page, 'the column matching dialog');
   await dialog.getByRole('button', { name: 'Use these columns' }).click();
   await expect(dialog).toHaveCount(0);
   await expect(page.getByTestId('canvas-notice')).toContainText('2 steps are turned off');

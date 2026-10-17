@@ -1,12 +1,12 @@
 import { useEffect } from 'react';
-import { Banner, Button } from '../ui';
+import { Banner, Button, Section } from '../ui';
 import { Columns } from '../templates/Mapping';
 import { openGalleryRecipe, useRecipeNotice } from './actions';
 import { loadGallery, useGallery, type GalleryEntry } from './gallery';
 
 function Entry({ entry }: { entry: GalleryEntry }) {
   return (
-    <li className="flex flex-col gap-3 rounded-md border border-line bg-surface-panel p-4" aria-label={entry.name} data-testid={`recipe-${entry.file}`}>
+    <li className="flex flex-col gap-3 rounded-md border border-line bg-surface-raised p-3" aria-label={entry.name} data-testid={`recipe-${entry.file}`}>
       <div className="flex flex-col gap-1">
         <h3 className="text-body-strong">{entry.name}</h3>
         <p className="text-label text-ink-muted">{entry.description}</p>
@@ -33,23 +33,24 @@ export function RecipeGallery() {
   const notice = useRecipeNotice((s) => s.text);
   useEffect(() => void loadGallery(), []);
   return (
-    <section className="flex flex-col gap-3" aria-label="Recipe gallery" data-testid="recipe-gallery">
-      <div>
-        <h2 className="font-display text-heading">Recipe gallery</h2>
-        <p className="text-ink-muted">Ready-made pipelines with no data in them. Use one, then attach a file with the columns it expects.</p>
-      </div>
-      {notice && <Banner tone="info">{notice}</Banner>}
-      {state === 'failed' ? (
-        <Banner tone="warn">The gallery couldn’t be loaded. Reload the page to try again.</Banner>
-      ) : state !== 'ready' ? (
-        <p className="text-label text-ink-muted">Loading recipes…</p>
-      ) : (
-        <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          {entries.map((e) => (
-            <Entry key={e.file} entry={e} />
-          ))}
-        </ul>
-      )}
-    </section>
+    <div className="rounded-md border border-line bg-surface-panel" data-testid="recipe-gallery">
+      <Section title="Recipe gallery">
+        <div className="flex flex-col gap-3">
+          <p className="text-label text-ink-muted">Ready-made pipelines with no data in them. Use one, then attach a file with the columns it expects.</p>
+          {notice && <Banner tone="info">{notice}</Banner>}
+          {state === 'failed' ? (
+            <Banner tone="warn">The gallery couldn’t be loaded. Reload the page to try again.</Banner>
+          ) : state !== 'ready' ? (
+            <p className="text-label text-ink-muted">Loading recipes…</p>
+          ) : (
+            <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2" aria-label="Recipes">
+              {entries.map((e) => (
+                <Entry key={e.file} entry={e} />
+              ))}
+            </ul>
+          )}
+        </div>
+      </Section>
+    </div>
   );
 }
