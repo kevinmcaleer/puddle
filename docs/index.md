@@ -8,7 +8,7 @@ Everything runs on your own machine. Puddle reads your files with [DuckDB](https
 
 ## Where to start
 
-New to Puddle? Read {doc}`getting-started`, which opens a sample and walks through the screen. Then {doc}`cleaning` covers the one-click fixes that do most of the work.
+New to Puddle? Read {doc}`getting-started`, which opens a sample and walks through the screen. Then {doc}`cleaning` covers the one-click fixes that do most of the work, and {doc}`tutorial-taxi` puts it all together on three million real taxi trips.
 
 ```{toctree}
 :maxdepth: 2
@@ -25,6 +25,13 @@ quality-rules
 exporting
 projects
 settings
+```
+
+```{toctree}
+:maxdepth: 2
+:caption: Tutorials
+
+tutorial-taxi
 ```
 
 ```{toctree}

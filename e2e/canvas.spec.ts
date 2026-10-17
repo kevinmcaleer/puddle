@@ -4,7 +4,9 @@ import { addFiles, fixture, node, openApp } from './helpers/app';
 async function dragWire(page: import('@playwright/test').Page, from: string, to: string) {
   const out = node(page, from).locator('.react-flow__handle.source');
   const inp = node(page, to).locator('.react-flow__handle.target').first();
-  await out.hover();
+  // Press where the handle is now, measured just before, rather than where hover() last found it.
+  const start = (await out.boundingBox())!;
+  await page.mouse.move(start.x + start.width / 2, start.y + start.height / 2);
   await page.mouse.down();
   const box = (await inp.boundingBox())!;
   await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2, { steps: 8 });
@@ -88,6 +90,10 @@ test('dragging a wire connects nodes, and a wire that would make a loop is refus
   await page.getByRole('menuitem', { name: 'Transform' }).click();
   await dragWire(page, 'Transform 1', 'Transform 2');
   await expect(page.getByTestId('wire-Transform 1->Transform 2')).toBeAttached();
+  // Regression (Firefox in CI): once wired, Transform 2 reads its input and its counts line grows the node, which
+  // moves its handles. A drag started while that was happening began beside the handle and dragged the canvas
+  // instead, so no connection was tried and no notice came. Wait until it has settled.
+  await expect(node(page, 'Transform 2')).toHaveAttribute('data-status', 'ok');
   // Transform 1 already has an input; a second one from Transform 2 would loop.
   await dragWire(page, 'Transform 2', 'Transform 1');
   await expect(page.getByTestId('canvas-notice')).toBeVisible();
