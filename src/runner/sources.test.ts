@@ -18,7 +18,8 @@ describe('placing a project’s sources for the runner', () => {
     const x = { ...src({ id: 'x', format: 'xlsx' }), file: file({ originalName: 'sales.xlsx' }) };
     const u = { ...src({ id: 'u', format: 'json' }), kind: 'url' as const, url: { href: 'https://example.com/items.json' } };
     const c = { ...src({ id: 'c', format: 'csv' }), kind: 'clipboard' as const, clipboard: { text: 'a,b\n1,2' } };
-    const project = flow({ sources: [a, b, x, u, c], nodes: [], wires: [] });
+    const w = { ...src({ id: 'w', format: 'csv' }), kind: 'url' as const, url: { href: 'https://example.com/page', table: { index: 0, label: 'Prices' } } };
+    const project = flow({ sources: [a, b, x, u, c, w], nodes: [], wires: [] });
     const places = placeSources(project, '/p', (path) => path === '/p/sources/customers.csv');
     expect(places.map((p) => [p.source.id, p.path ?? p.reason])).toEqual([
       ['a', '/p/sources/customers.csv'],
@@ -26,6 +27,7 @@ describe('placing a project’s sources for the runner', () => {
       ['x', 'is an Excel workbook, which the runner can’t read yet'],
       ['u', 'https://example.com/items.json'],
       ['c', ''],
+      ['w', 'is a table on a web page, which the runner can’t read yet'],
     ]);
   });
 });

@@ -26,6 +26,8 @@ import { TOUR_STOPS } from '../tour/stops';
 import { canResume, readProgress, startTourSafely, useTour } from '../tour/tour';
 import { UrlDialog } from '../sources/UrlDialog';
 import { openUrlDialog } from '../sources/urlDialog';
+import { WebPageDialog } from '../sources/WebPageDialog';
+import { openWebPageDialog } from '../sources/webPageDialog';
 import { cardKind } from '../canvas/kind';
 import { Button, Menu, ResultsBar, StatusBadge, StatusStrip, Toolbar, useDisplayFormat, type NodeKind } from '../ui';
 import { ActivityControl } from './ActivityControl';
@@ -293,6 +295,7 @@ export function AppShell() {
             items={[
               { label: 'Choose files', icon: 'source', hint: 'CSV, TSV, JSON, Parquet', shortcut: shortcutText('add-source'), group: 'Sources', onSelect: chooseFiles },
               { label: 'From URL', icon: 'link', hint: 'https address', group: 'Sources', onSelect: () => openUrlDialog() },
+              { label: 'From web page', icon: 'web', hint: 'Its tables', group: 'Sources', onSelect: () => openWebPageDialog() },
               { label: 'Paste from clipboard', icon: 'paste', group: 'Sources', onSelect: () => void pasteFromClipboard() },
               { label: 'Transform', icon: 'transform', shortcut: shortcutText('add-transform'), group: 'Nodes', onSelect: () => addNodeAfterSelection('transform') },
               { label: 'From template', icon: 'template', hint: 'Saved steps', group: 'Nodes', onSelect: openTemplates },
@@ -384,6 +387,7 @@ export function AppShell() {
         <Strip />
       </div>
       <UrlDialog onChooseFile={chooseFiles} />
+      <WebPageDialog />
       <SamplesDialog />
       <ShortcutsDialog />
       <TemplateDialogs />

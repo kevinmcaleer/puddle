@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { addFiles, addStep, cell, expectRows, fixture, node } from '../../e2e/helpers/app';
+import { addFiles, addStep, cell, expectRows, fixture, fixtureText, node } from '../../e2e/helpers/app';
 import { annotate, openSample, projectMenu, selectColumnsAt, settings, shot, shotPanel, start, steps } from './helpers';
 
 // Each test captures the pictures for one page of the docs. Pictures are named <page>-<what>.png.
@@ -38,7 +38,17 @@ test('sources', async ({ page }) => {
   await start(page);
   await page.getByRole('button', { name: 'Add', exact: true }).click();
   await shot(page, 'sources-menu', page.getByRole('menu'));
-  await page.keyboard.press('Escape');
+  // From web page, with Wikipedia's API answered from the fixture.
+  await page.route(/^https:\/\/en\.wikipedia\.org\/w\/api\.php\?/, (route) =>
+    route.fulfill({ json: { parse: { text: fixtureText('bond-films.html') } }, headers: { 'Access-Control-Allow-Origin': '*' } }),
+  );
+  await page.getByRole('menuitem', { name: /From web page/ }).click();
+  const web = page.getByRole('dialog', { name: 'Add source from a web page' });
+  await web.getByLabel('Address').fill('https://en.wikipedia.org/wiki/List_of_James_Bond_films');
+  await web.getByRole('button', { name: 'Find tables' }).click();
+  await expect(web.getByTestId('web-table-preview')).toContainText('Dr. No');
+  await shot(page, 'sources-web-page', web);
+  await web.getByRole('button', { name: 'Cancel' }).click();
   await addFiles(page, [fixture('sales.xlsx')]);
   await page.waitForTimeout(500);
   await shot(page, 'sources-excel');

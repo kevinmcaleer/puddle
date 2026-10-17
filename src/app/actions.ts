@@ -5,7 +5,8 @@ import { useFlowStore } from '../flow/status';
 import { addNode, canConnect, canMakeGroup, connect, disconnect, freePort, groupOf, inputEdges, makeGroup, setGroupCollapsed, moveQueryTable, newId, nodeById, setJoinSpec, setLookupSpec, useProjectStore, type AddableNodeType, type ColumnSchema, type Port, type Project, type Source, type SourceFormat } from '../model';
 import { addClipboardSource, addFileSource } from '../sources/add';
 import { pickFiles, type PickedFile } from '../sources/handles';
-import { addUrlSource } from '../sources/url';
+import { tableToCsv, type HtmlTable } from '../sources/html';
+import { addUrlSource, addWebTableSource } from '../sources/url';
 import { useSession } from './session';
 
 const report = (e: unknown) => useSession.getState().notify({ tone: 'fail', text: e instanceof Error ? e.message : String(e) });
@@ -61,6 +62,16 @@ export async function addPastedText(text: string) {
 /** Add a source from a web address, below the existing sources. Throws, in plain words, when it can't be read. */
 export async function addUrl(address: string, format?: SourceFormat) {
   selectSource(await addUrlSource(address, { format, position: nextSourcePosition() }));
+}
+
+/** Add a table found on a web page; the page is fetched again whenever the project opens. */
+export async function addWebTable(address: URL, table: HtmlTable) {
+  selectSource(await addWebTableSource(address, table, { position: nextSourcePosition() }));
+}
+
+/** Add a table copied from a web page and pasted in: kept in the project as CSV, like other pasted rows. */
+export async function addPastedTable(table: HtmlTable) {
+  selectSource(await addClipboardSource(tableToCsv(table), nextSourcePosition(), /^Table \d+$/.test(table.label) ? 'Pasted table' : table.label));
 }
 
 /** Read the clipboard (asks for permission the first time) and add it as a source. */

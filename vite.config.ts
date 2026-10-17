@@ -76,6 +76,8 @@ const ISOLATED = [
   'src/persistence/workspace.test.ts',
   'src/samples/samples.test.ts',
   'src/sources/handles.test.ts',
+  'src/sources/html.test.ts',
+  'src/sources/webpage.test.ts',
   'src/sync/controller.test.ts',
   'src/templates/library.test.ts',
   'src/ui/locale.test.ts',

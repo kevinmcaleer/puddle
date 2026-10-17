@@ -49,6 +49,11 @@ export const SourceZ = z.object({
        * offline, from the service worker's cache) rather than from `href`, which only records where it was first read.
        */
       sample: z.string().optional(),
+      /**
+       * A table on a web page (Add source › From web page), by its label and position among the page's tables: the
+       * page is fetched and that table read as CSV, rather than the address read as a file.
+       */
+      table: z.object({ index: z.number().int().nonnegative(), label: z.string() }).optional(),
     })
     .optional(),
   clipboard: z.object({ text: z.string() }).optional(),
