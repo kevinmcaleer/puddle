@@ -10,7 +10,7 @@ const projectMenu = async (page: Page, item: string) => {
 
 /** Open the templates library from the Add node menu. */
 async function openLibrary(page: Page) {
-  await page.getByRole('button', { name: 'Add node' }).click();
+  await page.getByRole('button', { name: 'Add', exact: true }).click();
   await page.getByRole('menuitem', { name: /From template/ }).click();
   return page.getByRole('dialog', { name: 'Templates' });
 }
@@ -38,7 +38,7 @@ test('a node saved as a template goes into another project, with a missing colum
   await openApp(page);
   await addFiles(page, [fixture('customers.csv')]);
   await node(page, 'customers.csv').click();
-  await page.getByRole('button', { name: 'Add node' }).click();
+  await page.getByRole('button', { name: 'Add', exact: true }).click();
   await page.getByRole('menuitem', { name: 'Transform' }).click();
   await expect(node(page, 'Transform 1')).toHaveAttribute('data-status', 'ok');
   await node(page, 'Transform 1').click();
@@ -114,7 +114,7 @@ test('templates are renamed, described and deleted from the library', async ({ p
   await openApp(page);
   await addFiles(page, [fixture('customers.csv')]);
   await node(page, 'customers.csv').click();
-  await page.getByRole('button', { name: 'Add node' }).click();
+  await page.getByRole('button', { name: 'Add', exact: true }).click();
   await page.getByRole('menuitem', { name: 'Transform' }).click();
   await expect(node(page, 'Transform 1')).toHaveAttribute('data-status', 'ok');
   await node(page, 'Transform 1').click();

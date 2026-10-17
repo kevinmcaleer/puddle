@@ -24,7 +24,7 @@ test('JSON and Parquet load from a web address; Parquet is read by range request
   test.skip(!manifest.ok() && !process.env.CI, 'This image was built without the DuckDB extensions.');
   await openApp(page);
   for (const path of ['/items.json', '/customers.parquet']) {
-    await page.getByRole('button', { name: 'Add source' }).first().click();
+    await page.getByRole('button', { name: 'Add', exact: true }).click();
     await page.getByRole('menuitem', { name: /From URL/ }).click();
     const dialog = page.getByRole('dialog', { name: 'Add source from a web address' });
     await dialog.getByLabel('Address').fill(server.url(path));

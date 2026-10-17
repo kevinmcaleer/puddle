@@ -11,11 +11,11 @@ const projectMenu = async (page: Page, item: string) => {
 async function smallFlow(page: Page) {
   await addFiles(page, [fixture('customers.csv')]);
   await expect(node(page, 'customers.csv')).toHaveAttribute('data-status', 'ok', { timeout: 20_000 });
-  await page.getByRole('button', { name: 'Add node' }).click();
+  await page.getByRole('button', { name: 'Add', exact: true }).click();
   await page.getByRole('menuitem', { name: /^Transform/ }).click();
   await page.getByRole('button', { name: 'Add step' }).click();
   await page.getByRole('menuitem', { name: /^Trim/ }).click();
-  await page.getByRole('button', { name: 'Add node' }).click();
+  await page.getByRole('button', { name: 'Add', exact: true }).click();
   await page.getByRole('menuitem', { name: /^Output/ }).click();
   await expect(node(page, 'Output 1')).toHaveAttribute('data-status', 'ok', { timeout: 20_000 });
   await node(page, 'Transform 1').click();
@@ -35,7 +35,7 @@ for (const theme of ['light', 'dark'] as const) {
       await expectAccessible(page, 'the samples dialog');
       await page.keyboard.press('Escape');
 
-      await page.getByRole('button', { name: 'Add source' }).first().click();
+      await page.getByRole('button', { name: 'Add', exact: true }).click();
       await page.getByRole('menuitem', { name: /From URL/ }).click();
       await expect(page.getByRole('dialog')).toBeVisible();
       await expectAccessible(page, 'the URL dialog');
@@ -61,15 +61,27 @@ for (const theme of ['light', 'dark'] as const) {
       await expectAccessible(page, 'the rename dialog');
       await page.keyboard.press('Escape');
 
-      await page.getByRole('button', { name: 'Add node' }).click();
+      await page.getByRole('button', { name: 'Add', exact: true }).click();
       await expect(page.getByRole('menu')).toBeVisible();
       await expectAccessible(page, 'an open menu');
       await page.keyboard.press('Escape');
 
-      await page.getByTestId('notes-toggle').click();
-      await expect(page.getByRole('complementary', { name: 'Project notes' })).toBeVisible();
-      await expectAccessible(page, 'the notes panel');
-      await page.getByTestId('notes-toggle').click();
+      await page.getByRole('tab', { name: 'Notes' }).click();
+      await expect(page.getByTestId('notes-panel')).toBeVisible();
+      await expectAccessible(page, 'the notes tab');
+      await page.getByRole('tab', { name: 'Project' }).click();
+      await expect(page.getByTestId('project-settings')).toBeVisible();
+
+      // The open menu hangs over the inspector's tabs, which axe reads as obscured targets, so the dock is hidden
+      // while the menu itself is checked.
+      await page.keyboard.press('i');
+      await expect(page.getByTestId('inspector')).not.toBeAttached();
+      await page.getByTestId('help-menu').click();
+      await expect(page.getByRole('group', { name: 'Theme' })).toBeVisible();
+      await expectAccessible(page, 'the Help menu');
+      await page.keyboard.press('Escape');
+      await page.keyboard.press('i');
+      await expect(page.getByTestId('inspector')).toBeVisible();
 
       await projectMenu(page, 'All projects');
       await expect(page.getByTestId('home')).toBeVisible();
@@ -107,7 +119,7 @@ for (const theme of ['light', 'dark'] as const) {
       await expect(node(page, 'shop-orders.csv')).toHaveAttribute('data-status', 'ok', { timeout: 20_000 });
       await node(page, 'shop-customers.csv').click();
       await node(page, 'shop-orders.csv').click({ modifiers: ['Shift'] });
-      await page.getByRole('button', { name: 'Add node' }).click();
+      await page.getByRole('button', { name: 'Add', exact: true }).click();
       await page.getByRole('menuitem', { name: /Query/ }).click();
       await expect(page.getByTestId('query-designer')).toBeVisible();
 

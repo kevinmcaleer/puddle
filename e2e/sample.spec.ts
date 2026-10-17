@@ -52,7 +52,7 @@ test('exports in sample mode check rules and write every row from the full data'
   await addFiles(page, [fixture('customers.csv')]);
   await expect(node(page, 'customers.csv')).toHaveAttribute('data-status', 'ok');
   await node(page, 'customers.csv').click();
-  await page.getByRole('button', { name: 'Add node' }).click();
+  await page.getByRole('button', { name: 'Add', exact: true }).click();
   await page.getByRole('menuitem', { name: 'Output' }).click();
   await node(page, 'Output 1').click();
   await expect(page.getByTestId('sample-banner')).toBeVisible();
@@ -115,7 +115,7 @@ test('a stopped export saves nothing and is logged as stopped', async ({ page })
   await openApp(page);
   await addFiles(page, [fixture('customers.csv')]);
   await expect(node(page, 'customers.csv')).toHaveAttribute('data-status', 'ok');
-  await page.getByRole('button', { name: 'Add node' }).click();
+  await page.getByRole('button', { name: 'Add', exact: true }).click();
   await page.getByRole('menuitem', { name: 'Output' }).click();
   await node(page, 'Output 1').click();
   await expectRows(page, 4);

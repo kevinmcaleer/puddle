@@ -54,7 +54,7 @@ const writeFiles = (page: Page, names: string[]) =>
 /** Choose files through the toolbar, the way a person would, with no file dialog for Playwright to fill. */
 async function chooseFiles(page: Page, names: string[]) {
   await page.evaluate((n) => ((window as unknown as { __pick: string[] }).__pick = n), names);
-  await page.getByRole('button', { name: 'Add source' }).first().click();
+  await page.getByRole('button', { name: 'Add', exact: true }).click();
   await page.getByRole('menuitem', { name: /Choose files/ }).click();
 }
 

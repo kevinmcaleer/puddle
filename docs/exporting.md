@@ -1,6 +1,6 @@
 # Exporting
 
-An Output node marks data that's ready. Select the node it should follow and choose **Output** from **Add node** (or press O). Its export button sits in the results bar, and its settings in the inspector.
+An Output node marks data that's ready. Select the node it should follow and choose **Output** from **Add** (or press O). Its export button sits in the results bar, and its settings in the inspector.
 
 ## Formats
 
@@ -15,7 +15,7 @@ An Output node marks data that's ready. Select the node it should follow and cho
 
 The file is named after the node unless you give a **File name**. Exports run inside DuckDB in your browser and download straight from there; nothing is uploaded. They always use the full data, even when you've been editing on a sample.
 
-**Export all** in the toolbar runs every Output node in the project.
+**Export all**, in the project menu, runs every Output node in the project.
 
 ![An Output node's settings: format, file name, delimiter and column names](_static/screenshots/export-output-settings.png)
 

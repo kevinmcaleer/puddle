@@ -217,12 +217,11 @@ export function cancelWiring(): boolean {
  * other node in the inspector, with the keyboard moved there.
  */
 export function openSelected(focusInspector: () => void) {
-  const { selectedNodeId, connectFrom, openDesigner, setInspectorOpen, setNotesOpen } = useSession.getState();
+  const { selectedNodeId, connectFrom, openDesigner, setInspectorTab } = useSession.getState();
   if (connectFrom) return finishWiring();
   const node = selectedNodeId ? nodeById(useProjectStore.getState().history.present, selectedNodeId) : undefined;
   if (!node) return;
   if (node.type === 'query') return openDesigner(node.id);
-  setNotesOpen(false);
-  setInspectorOpen(true);
+  setInspectorTab('node');
   focusInspector();
 }

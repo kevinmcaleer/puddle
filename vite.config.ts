@@ -61,18 +61,25 @@ function isolation(): Plugin {
   };
 }
 
-/** Test files that set their own environment or mock modules or globals, so they must not share a registry. */
+/**
+ * Test files that set their own environment or mock modules or globals, so they must not share a registry. The
+ * IndexedDB ones are here because src/persistence/db.ts keeps its open connection in module state: with a shared
+ * registry, one file's fake database (or its lack of one) leaked into the next.
+ */
 const ISOLATED = [
   'src/canvas/focusNode.test.ts',
   'src/compiler/compile.test.ts',
   'src/flow/status.test.ts',
   'src/notes/markdown.test.ts',
+  'src/persistence/db.test.ts',
   'src/persistence/workspace.test.ts',
   'src/samples/samples.test.ts',
+  'src/sources/handles.test.ts',
   'src/sync/controller.test.ts',
   'src/templates/library.test.ts',
   'src/ui/locale.test.ts',
   'tests/engine/handles.test.ts',
+  'tests/engine/samples.test.ts',
 ];
 
 export default defineConfig({

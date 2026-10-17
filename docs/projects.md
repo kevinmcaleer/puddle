@@ -42,7 +42,7 @@ Sync only ever sends the project file: steps, notes and settings. Your data, and
 
 ## Notes
 
-**Notes** in the toolbar opens the project's notes: Markdown you write about the project, such as where the files come from or what each step is for. **Preview** shows it formatted. Each node has its own notes too, in the inspector.
+The **Notes** tab in the inspector holds the project's notes: Markdown you write about the project, such as where the files come from or what each step is for. **Preview** shows it formatted. Each node has its own notes too, in the inspector.
 
 ![Writing the project's notes](_static/screenshots/projects-notes.png)
 
@@ -52,7 +52,7 @@ A template is a Transform node's steps, saved to use again in any project. Selec
 
 ![Saving a Transform's steps as a template](_static/screenshots/templates-save.png)
 
-To use one, choose **From template** in **Add node**. The library shows each template's steps and the columns it expects. When the input calls a column something else, choose which column to use instead; steps whose columns are missing are turned off rather than failing. Templates can be exported and imported as files too.
+To use one, choose **From template** in **Add**. The library shows each template's steps and the columns it expects. When the input calls a column something else, choose which column to use instead; steps whose columns are missing are turned off rather than failing. Templates can be exported and imported as files too.
 
 ![The templates library, with a template's steps and expected columns](_static/screenshots/templates-library.png)
 

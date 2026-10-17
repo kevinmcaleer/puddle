@@ -13,7 +13,7 @@ async function joinShop(page: Page, via: 'menu' | 'selection bar' = 'menu') {
   await node(page, 'shop-orders.csv').click();
   await node(page, 'shop-customers.csv').click({ modifiers: ['Shift'] });
   if (via === 'menu') {
-    await page.getByRole('button', { name: 'Add node' }).click();
+    await page.getByRole('button', { name: 'Add', exact: true }).click();
     await page.getByRole('menuitem', { name: /Join/ }).click();
   } else await page.getByTestId('group-bar').getByRole('button', { name: 'Join these two' }).click();
   await expect(node(page, 'Join 1')).toHaveAttribute('data-status', 'ok');
@@ -113,7 +113,7 @@ test('a wire dragged onto the right input goes there, and a taken input is refus
   // Both sources in place before deselecting, so the Join starts with no wires.
   await expect(node(page, 'shop-customers.csv')).toHaveAttribute('data-status', 'ok');
   await page.getByTestId('canvas').click({ position: { x: 20, y: 20 } });
-  await page.getByRole('button', { name: 'Add node' }).click();
+  await page.getByRole('button', { name: 'Add', exact: true }).click();
   await page.getByRole('menuitem', { name: /Join/ }).click();
   await expect(node(page, 'Join 1')).toHaveAttribute('data-status', 'unwired');
 

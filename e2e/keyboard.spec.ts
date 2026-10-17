@@ -110,7 +110,7 @@ test('the query designer joins tables and moves fields without dragging', async 
   await expect(focusedNode(page)).toHaveAttribute('aria-label', /^shop-customers\.csv/);
 
   // Add node › Query from the toolbar's menu, by keyboard: the designer opens on the selected source.
-  await page.getByRole('button', { name: 'Add node' }).press('Enter');
+  await page.getByRole('button', { name: 'Add', exact: true }).press('Enter');
   await expect(page.getByRole('menuitem').first()).toBeFocused();
   await page.keyboard.press('End');
   await page.keyboard.press('ArrowUp');
@@ -182,10 +182,12 @@ test('dialogs start on their field, keep Tab inside and give focus back to what 
   await expect(dialog).not.toBeAttached();
   await expect(projectMenu).toBeFocused();
 
-  await page.getByTestId('shortcuts-toggle').press('Enter');
+  await page.getByTestId('help-menu').press('Enter');
+  await expect(page.getByRole('menuitem', { name: 'Take the tour' })).toBeFocused();
+  await page.getByRole('menuitem', { name: 'Keyboard shortcuts' }).press('Enter');
   await expect(page.getByRole('dialog', { name: 'Keyboard shortcuts' }).getByRole('button', { name: 'Close' })).toBeFocused();
   await page.keyboard.press('Enter');
-  await expect(page.getByTestId('shortcuts-toggle')).toBeFocused();
+  await expect(page.getByTestId('help-menu')).toBeFocused();
 });
 
 test('a node that breaks is announced, and with reduced motion nothing animates', async ({ page }) => {

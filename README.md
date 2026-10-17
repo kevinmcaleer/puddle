@@ -26,7 +26,7 @@ SheetJS, which reads Excel workbooks, is vendored as `vendor/xlsx-0.20.3.tgz`: i
 
 ## Tests
 
-Every feature ships with its own tests, and every bug fix with a regression test, so later changes can't silently break earlier work. `npm test` runs the pure and engine tests with one shared module registry per worker (`--no-isolate`, about twice as fast), then the component tests and the few files that mock modules in isolation; `vite.config.ts` lists which is which. CI (`.github/workflows/ci.yml`) runs lint, typecheck, the unit and engine tests, and the Playwright suite on every pull request, each browser split into shards that run as parallel jobs. It retakes the user guide's screenshots and builds the guide with Sphinx, warnings as errors. It also builds the Docker image for amd64 and arm64 and runs `npm run e2e:container` against it: isolation headers, JSON and Parquet from the self-hosted extensions, and offline use.
+Every feature ships with its own tests, and every bug fix with a regression test, so later changes can't silently break earlier work. Logic lives in unit and engine tests; each user-facing flow has one Playwright test that shows it working in a real browser. `npm test` runs the pure and engine tests with one shared module registry per worker (`--no-isolate`, about twice as fast), then the component tests and the few files that mock modules in isolation; `vite.config.ts` lists which is which. CI (`.github/workflows/ci.yml`) runs lint, typecheck, the unit and engine tests, and the Playwright suite in Chromium and Firefox on every pull request, each browser split into shards that run as parallel jobs. WebKit (Safari's engine) runs the suite against main every night at 03:00 UTC (`.github/workflows/nightly.yml`), and on demand from the Actions page ("Run workflow"); a red nightly run emails the repository owner. CI also retakes the user guide's screenshots and builds the guide with Sphinx, warnings as errors, and builds the Docker image for amd64 and arm64 and runs `npm run e2e:container` against it: isolation headers, JSON and Parquet from the self-hosted extensions, and offline use.
 
 ## Deploying
 
@@ -38,7 +38,7 @@ A Docker image (nginx serving the static build) behind a Cloudflare Tunnel at pu
 |---|---|
 | `src/design-system/` | Tokens, Tailwind preset and component CSS, vendored from the Puddle design system |
 | `src/ui/` | The design system's components in TypeScript (`Button`, `NodeCard`, `StepList`, `RuleRow` and the rest), and how numbers and dates are shown: the display locale (`locale.ts`, per device) and the one formatting module (`format.ts`) |
-| `src/app/` | The app shell: toolbar actions, inspector and results docks, status strip, theme, engine boot, per-tab session state |
+| `src/app/` | The app shell: the seven-control toolbar (project menu, Add, undo, redo, Help, inspector toggle), inspector and results docks, status strip, theme, engine boot, per-tab session state |
 | `src/engine/` | DuckDB-WASM in a Web Worker and the typed `EngineClient` (priorities, cancellation, Stop, plain-word errors) |
 | `src/model/` | The project graph: Zod schemas, wiring rules, step edits, grouping, undo and redo |
 | `src/compiler/` | The pure graph-to-SQL compiler (steps, joins and lookups over two inputs, appends over any number, and queries from the query designer), step registry, schema cache, the schema book those nodes read their inputs’ columns from, and how each locale writes numbers and dates for the parse steps (`locales.ts`) |
@@ -61,8 +61,8 @@ A Docker image (nginx serving the static build) behind a Cloudflare Tunnel at pu
 | `src/pwa/` | The service worker (precached app, engine and extensions for offline use), its precache list and the web app manifest |
 | `src/export/` | Exports from Output nodes: the quality gate, `COPY ... TO` into DuckDB's in-memory file system (Excel workbooks instead go through the Excel worker), download or clipboard, and the export log |
 | `src/query/` | The query designer, in place of the canvas for a Query node: its tables and the join lines dragged between their fields, and the grid of fields with names, sorting, criteria (with "or" rows) and Show, and its Totals row for grouping and summarising |
-| `src/inspector/` | The right-hand panel: source read options, applied steps, step settings and node notes |
-| `src/notes/` | The project notes panel: Markdown written and previewed, rendered with raw HTML off and links in a new tab |
+| `src/inspector/` | The right-hand panel, in Node, Project and Notes tabs: source read options, applied steps, step settings, rules and node notes; project and display settings |
+| `src/notes/` | The project notes (the inspector's Notes tab): Markdown written and previewed, rendered with raw HTML off and links in a new tab |
 | `src/results/` | The results table on Glide Data Grid: paging, headers with type and quality |
 | `tests/` | Engine integration tests, fixtures and helpers (`scripts/make-excel-fixtures.mjs` writes the Excel fixture) |
 | `e2e/` | Playwright tests |

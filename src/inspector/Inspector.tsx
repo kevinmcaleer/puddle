@@ -1,8 +1,10 @@
 import { useSession } from '../app/session';
+import { NotesPanel } from '../notes/NotesPanel';
+import { inspectorTabs, shownTab } from './tabs';
 import { useNodeStatus } from '../flow/status';
 import { formatLabel } from '../canvas/formatLabel';
-import { nodeById, setParseOptions, useProject, useProjectStore, type ParseOptions, type ProjectSettings as ProjectSettingsT, type Source } from '../model';
-import { Banner, browserLocale, columnKind, DISPLAY_LOCALES, Field, formatDateText, formatNumberText, Icon, NODE_KIND, Section, Select, Switch, TypeTag, useDisplay, useDisplayFormat, type DateDisplay } from '../ui';
+import { nodeById, setParseOptions, useProject, useProjectStore, type GraphNode, type ParseOptions, type ProjectSettings as ProjectSettingsT, type Source } from '../model';
+import { Banner, browserLocale, columnKind, DISPLAY_LOCALES, Field, formatDateText, formatNumberText, Icon, NODE_KIND, Section, Select, Switch, Tabs, TypeTag, useDisplay, useDisplayFormat, type DateDisplay } from '../ui';
 import { CommitInput } from '../steps/StepForm';
 import { AppendPanel } from './AppendPanel';
 import { JoinPanel } from './JoinPanel';
@@ -153,22 +155,41 @@ function DisplaySettings() {
   );
 }
 
-/** The right-hand panel: what the selected node is, how it reads or transforms data, and its columns. */
+/**
+ * The right-hand panel, in three tabs: the selected node (what it is, how it reads or transforms data, its columns
+ * and rules), the project (its settings and this device's display settings) and the project notes.
+ */
 export function Inspector() {
   const project = useProject();
   const selectedId = useSession((s) => s.selectedNodeId);
+  const asked = useSession((s) => s.inspectorTab);
+  const setTab = useSession((s) => s.setInspectorTab);
   const node = selectedId ? nodeById(project, selectedId) : undefined;
+  const tab = shownTab(asked, !!node);
+  return (
+    <div className="flex h-full min-h-0 flex-col">
+      <div className="flex items-center border-b border-line px-4 py-2" data-testid="inspector-tabs">
+        <Tabs label="Inspector" items={inspectorTabs(!!node)} value={tab} onChange={(id) => setTab(id as typeof tab)} />
+      </div>
+      {tab === 'notes' ? (
+        <NotesPanel />
+      ) : tab === 'project' || !node ? (
+        <div className="min-h-0 flex-1 overflow-auto" data-testid="inspector-project">
+          <ProjectSettings />
+          <DisplaySettings />
+        </div>
+      ) : (
+        <div className="min-h-0 flex-1 overflow-auto">
+          <NodeInspector node={node} />
+        </div>
+      )}
+    </div>
+  );
+}
 
-  if (!node)
-    return (
-      <>
-        <Section title="Inspector">
-          <p className="text-ink-muted">Select a node on the canvas to see its steps, settings and rules.</p>
-        </Section>
-        <ProjectSettings />
-        <DisplaySettings />
-      </>
-    );
+/** The Node tab: what the selected node is, how it reads or transforms data, and its columns and rules. */
+function NodeInspector({ node }: { node: GraphNode }) {
+  const project = useProject();
 
   if (node.type === 'transform')
     return (

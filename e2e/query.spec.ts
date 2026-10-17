@@ -9,7 +9,7 @@ async function queryShop(page: Page) {
   await expect(node(page, 'shop-orders.csv')).toHaveAttribute('data-status', 'ok');
   await node(page, 'shop-customers.csv').click();
   await node(page, 'shop-orders.csv').click({ modifiers: ['Shift'] });
-  await page.getByRole('button', { name: 'Add node' }).click();
+  await page.getByRole('button', { name: 'Add', exact: true }).click();
   await page.getByRole('menuitem', { name: /Query/ }).click();
   await expect(page.getByTestId('query-designer')).toBeVisible();
 }

@@ -32,6 +32,22 @@ afterEach(async () => {
 });
 
 describe('IndexedDB project store', () => {
+  // Regression: indexedDB.open threw (no IndexedDB at all) and the rejected open was kept, so every later save
+  // failed even once IndexedDB was there. With a shared test registry that leaked between test files too.
+  it('tries to open again after a failed open', async () => {
+    const real = globalThis.indexedDB;
+    // @ts-expect-error -- simulating a browser (or Node) without IndexedDB
+    delete globalThis.indexedDB;
+    try {
+      await expect(saveProject(createProject('Lost'))).rejects.toThrow();
+    } finally {
+      globalThis.indexedDB = real;
+    }
+    const p = createProject('Found');
+    await saveProject(p);
+    expect(await loadProject(p.id)).toEqual(p);
+  });
+
   it('saves, loads and replaces a project by id', async () => {
     const p = createProject('First');
     await saveProject(p);

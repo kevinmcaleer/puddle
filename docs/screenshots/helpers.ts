@@ -97,12 +97,6 @@ export async function openSample(page: Page, id: keyof typeof SAMPLES) {
   if (sample.rows) await expectRows(page, sample.rows);
 }
 
-/** Close the project notes panel the samples open with, so the inspector shows. */
-export async function closeNotes(page: Page) {
-  const close = page.getByRole('button', { name: /Close (project )?notes/ });
-  if (await close.isVisible()) await close.click();
-}
-
 export const projectMenu = async (page: Page, item: string) => {
   await page.getByTestId('project-menu').click();
   await page.getByRole('menuitem', { name: item }).click();

@@ -21,7 +21,7 @@ test.afterAll(async () => {
 });
 
 async function addFromUrl(page: Page, address: string, format?: string) {
-  await page.getByRole('button', { name: 'Add source' }).first().click();
+  await page.getByRole('button', { name: 'Add', exact: true }).click();
   await page.getByRole('menuitem', { name: /From URL/ }).click();
   const dialog = page.getByRole('dialog', { name: 'Add source from a web address' });
   await dialog.getByLabel('Address').fill(address);

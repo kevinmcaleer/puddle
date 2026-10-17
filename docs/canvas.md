@@ -6,9 +6,9 @@ The canvas is where your flow lives. Data runs left to right along wires: source
 
 ## Kinds of node
 
-**Add node** adds a node after the selected one.
+**Add** in the toolbar adds a source, or a node after the selected one.
 
-![The Add node menu: Transform, From template, Join, Append, Lookup, Query and Output](_static/screenshots/canvas-add-node-menu.png)
+![The Add menu: sources, then the nodes Transform, From template, Join, Append, Lookup, Query and Output](_static/screenshots/canvas-add-node-menu.png)
 
 | Node | What it does | More |
 | --- | --- | --- |
@@ -25,9 +25,9 @@ The canvas is where your flow lives. Data runs left to right along wires: source
 
 - Click a node to select it. Its settings show in the inspector and its data in the results; a **Viewing** tag marks the node whose data is shown.
 - Shift+click adds nodes to the selection. With two or more selected, a bar offers to join, look up, append or query them, or to group Transform nodes into one.
-- Drag a node to move it. **Auto layout** (L) arranges the whole flow neatly.
+- Drag a node to move it. **Auto layout** (L), in the canvas controls at the bottom left, arranges the whole flow neatly.
 - Drag from a node's right-hand handle to another node's input to wire them. Select a wire and press Delete to remove it.
-- The zoom buttons sit at the bottom left, and the overview map at the bottom right.
+- The zoom buttons sit at the bottom left. An overview map appears at the bottom right when part of the flow is off screen.
 
 ![The selection bar shown when two sources are selected](_static/screenshots/combine-selection-bar.png)
 

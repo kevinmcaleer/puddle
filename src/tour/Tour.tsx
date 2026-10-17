@@ -35,7 +35,7 @@ function prepare(stop: TourStop, project: Project) {
     const transform = project.nodes.find((n) => n.type === 'transform' && n.steps.length > 0);
     const pick = stop.id === 'steps' ? (selected?.type === 'transform' ? selected : (transform ?? viewed)) : (selected ?? viewed);
     if (pick && pick.id !== session.selectedNodeId) session.select(pick.id);
-    else session.setNotesOpen(false);
+    else session.setInspectorTab('node');
   }
 }
 

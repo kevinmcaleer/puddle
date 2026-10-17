@@ -81,7 +81,7 @@ describe('opening a node with Enter', () => {
 
   it('opens a Query in its designer and anything else in the inspector', () => {
     let focused = 0;
-    useSession.setState({ inspectorOpen: false, notesOpen: false });
+    useSession.setState({ inspectorOpen: false, inspectorTab: 'project' });
     select('Transform 1');
     openSelected(() => focused++);
     expect(focused).toBe(1);

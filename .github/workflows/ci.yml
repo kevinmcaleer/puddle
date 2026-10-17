@@ -25,8 +25,8 @@ jobs:
       - run: npm test
 
   e2e:
-    # Each browser's suite is split into shards that run as parallel jobs. WebKit is about three times slower than
-    # the others, so it gets more shards; a shard count is chosen to keep every job under ten minutes.
+    # Each browser's suite is split into shards that run as parallel jobs, each kept under about five minutes.
+    # Chromium and Firefox run on every pull request; WebKit runs nightly, in nightly.yml.
     name: Playwright tests in ${{ matrix.browser }} (${{ matrix.shard }} of ${{ matrix.shards }})
     runs-on: ubuntu-latest
     strategy:
@@ -37,9 +37,6 @@ jobs:
           - { browser: chromium, shard: 2, shards: 2 }
           - { browser: firefox, shard: 1, shards: 2 }
           - { browser: firefox, shard: 2, shards: 2 }
-          - { browser: webkit, shard: 1, shards: 3 }
-          - { browser: webkit, shard: 2, shards: 3 }
-          - { browser: webkit, shard: 3, shards: 3 }
     env:
       E2E_BROWSERS: ${{ matrix.browser }}
       E2E_BROWSER_LOGS: '1'

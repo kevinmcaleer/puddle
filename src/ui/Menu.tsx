@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from 'react';
+import { useCallback, useEffect, useId, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from 'react';
 import { Button, type ButtonProps } from './Button';
 import { cx } from './cx';
 import { Icon, type IconName } from './Icon';
+import { groupItems } from './menuGroups';
 
 export interface MenuItem {
   label: string;
@@ -10,8 +11,13 @@ export interface MenuItem {
   /** The item's keyboard shortcut, e.g. "T", shown in mono at the right. */
   shortcut?: string;
   disabled?: boolean;
+  /** Items with the same group sit together under its heading; items without one come first, ungrouped. */
+  group?: string;
+  /** A choice among the items of its group (a radio item): the one that is on shows a tick. */
+  checked?: boolean;
   onSelect: () => void;
 }
+
 
 /**
  * A button that opens a short list of actions, drawn as a raised popover. Escape or a click outside closes it. With
@@ -44,6 +50,7 @@ export function Menu({
 }) {
   const [own, setOwn] = useState(false);
   const open = controlled ?? own;
+  const headingId = useId();
   const setOpen = useCallback(
     (next: boolean) => {
       if (controlled === undefined) setOwn(next);
@@ -55,7 +62,7 @@ export function Menu({
   const ref = useRef<HTMLDivElement>(null);
 
   const trigger = () => ref.current?.querySelector<HTMLElement>('[aria-haspopup="menu"]');
-  const menuItems = () => [...(ref.current?.querySelectorAll<HTMLButtonElement>('[role="menuitem"]:not(:disabled)') ?? [])];
+  const menuItems = () => [...(ref.current?.querySelectorAll<HTMLButtonElement>('[role^="menuitem"]:not(:disabled)') ?? [])];
 
   useEffect(() => {
     if (!open) return;
@@ -147,21 +154,35 @@ export function Menu({
             </div>
           )}
           {search && !shown.length && <div className="px-3 py-1 text-ink-muted">No matches</div>}
-          {shown.map((item) => (
-            <button
-              key={item.label}
-              type="button"
-              role="menuitem"
-              disabled={item.disabled}
-              className="flex w-full items-center gap-2 px-3 py-1 text-left text-body text-ink hover:bg-surface-hover disabled:cursor-not-allowed disabled:text-ink-subtle"
-              onClick={() => pick(item)}
-            >
-              {item.icon && <Icon name={item.icon} size={14} />}
-              <span className="flex-1">{item.label}</span>
-              {item.hint && <span className="text-ink-subtle">{item.hint}</span>}
-              {item.shortcut && <kbd className="font-mono text-label text-ink-subtle">{item.shortcut}</kbd>}
-            </button>
-          ))}
+          {groupItems(shown).map(({ group, items: members }, g) => {
+            const buttons = members.map((item) => (
+              <button
+                key={item.label}
+                type="button"
+                role={item.checked === undefined ? 'menuitem' : 'menuitemradio'}
+                aria-checked={item.checked}
+                disabled={item.disabled}
+                className="flex w-full items-center gap-2 px-3 py-1 text-left text-body text-ink hover:bg-surface-hover disabled:cursor-not-allowed disabled:text-ink-subtle"
+                onClick={() => pick(item)}
+              >
+                {item.icon && <Icon name={item.icon} size={14} />}
+                <span className="flex-1">{item.label}</span>
+                {item.hint && <span className="text-ink-subtle">{item.hint}</span>}
+                {item.shortcut && <kbd className="font-mono text-label text-ink-subtle">{item.shortcut}</kbd>}
+                {item.checked && <Icon name="check" size={14} />}
+              </button>
+            ));
+            if (!group) return buttons;
+            const id = `${headingId}-${g}`;
+            return (
+              <div key={group} role="group" aria-labelledby={id} className={g > 0 ? 'mt-1 border-t border-line pt-1' : undefined}>
+                <div id={id} className="ui-eyebrow px-3 pb-1 pt-2">
+                  {group}
+                </div>
+                {buttons}
+              </div>
+            );
+          })}
         </div>
       )}
     </div>
