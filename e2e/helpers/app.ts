@@ -65,7 +65,7 @@ async function open(page: Page) {
 /** Add files through the toolbar's Add source menu and the system file chooser. */
 export async function addFiles(page: Page, files: string[] | { name: string; mimeType: string; buffer: Buffer }[]) {
   const chooser = page.waitForEvent('filechooser');
-  await page.getByRole('button', { name: 'Add source' }).first().click();
+  await page.getByRole('button', { name: 'Add', exact: true }).click();
   await page.getByRole('menuitem', { name: /Choose files/ }).click();
   await (await chooser).setFiles(files);
 }

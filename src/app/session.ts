@@ -1,5 +1,7 @@
 import { create } from 'zustand';
 
+export type InspectorTab = 'node' | 'project' | 'notes';
+
 /** Per-tab UI state that isn't part of the saved project and isn't undoable. */
 interface SessionState {
   /** The node the inspector shows: the last one clicked. */
@@ -12,11 +14,11 @@ interface SessionState {
   selectedColumns: string[];
   /** A short message shown over the canvas, e.g. why a wire was refused. */
   notice: { tone: 'info' | 'warn' | 'fail'; text: string } | null;
-  /** The project notes panel is open in the right-hand dock, in place of the inspector. */
-  notesOpen: boolean;
+  /** Which of the inspector's tabs shows: the selected node, the project (settings, display) or the project notes. */
+  inspectorTab: InspectorTab;
   /** The Query node whose designer fills the canvas area, in place of the canvas. */
   designerNodeId: string | null;
-  /** The right-hand dock (inspector or notes) is showing. */
+  /** The right-hand dock (the inspector) is showing. */
   inspectorOpen: boolean;
   /** The results dock is showing its table. */
   resultsOpen: boolean;
@@ -31,7 +33,8 @@ interface SessionState {
   selectStep: (id: string | null) => void;
   setSelectedColumns: (cols: string[]) => void;
   notify: (notice: SessionState['notice']) => void;
-  setNotesOpen: (open: boolean) => void;
+  /** Show a tab of the inspector, opening the dock if it was hidden. */
+  setInspectorTab: (tab: InspectorTab) => void;
   /** Open a Query node's designer (selecting the node, so the inspector shows it too), or close it with null. */
   openDesigner: (nodeId: string | null) => void;
   setInspectorOpen: (open: boolean) => void;
@@ -48,15 +51,15 @@ export const useSession = create<SessionState>((set) => ({
   selectedStepId: null,
   selectedColumns: [],
   notice: null,
-  notesOpen: false,
+  inspectorTab: 'project',
   designerNodeId: null,
   inspectorOpen: true,
   resultsOpen: true,
   shortcutsOpen: false,
   addStepPending: false,
   connectFrom: null,
-  // Picking a node shows it in the inspector, so the notes panel makes way.
-  select: (id) => set((s) => ({ selectedNodeId: id, selectedNodeIds: id ? [id] : [], selectedStepId: null, notesOpen: id ? false : s.notesOpen })),
+  // Picking a node shows it in the inspector's Node tab.
+  select: (id) => set((s) => ({ selectedNodeId: id, selectedNodeIds: id ? [id] : [], selectedStepId: null, inspectorTab: id ? 'node' : s.inspectorTab })),
   toggleSelected: (id) =>
     set((s) => {
       const has = s.selectedNodeIds.includes(id);
@@ -66,14 +69,13 @@ export const useSession = create<SessionState>((set) => ({
   selectStep: (selectedStepId) => set({ selectedStepId }),
   setSelectedColumns: (selectedColumns) => set({ selectedColumns }),
   notify: (notice) => set({ notice }),
-  // Opening the notes shows the dock they live in.
-  setNotesOpen: (notesOpen) => set((s) => ({ notesOpen, inspectorOpen: notesOpen || s.inspectorOpen })),
+  setInspectorTab: (inspectorTab) => set({ inspectorTab, inspectorOpen: true }),
   openDesigner: (designerNodeId) =>
-    set((s) => (designerNodeId ? { designerNodeId, selectedNodeId: designerNodeId, selectedNodeIds: [designerNodeId], selectedStepId: null, notesOpen: false } : { designerNodeId: null, selectedNodeIds: s.selectedNodeIds })),
+    set((s) => (designerNodeId ? { designerNodeId, selectedNodeId: designerNodeId, selectedNodeIds: [designerNodeId], selectedStepId: null, inspectorTab: 'node' } : { designerNodeId: null, selectedNodeIds: s.selectedNodeIds })),
   setInspectorOpen: (inspectorOpen) => set({ inspectorOpen }),
   setResultsOpen: (resultsOpen) => set({ resultsOpen }),
   setShortcutsOpen: (shortcutsOpen) => set({ shortcutsOpen }),
-  requestAddStep: () => set({ addStepPending: true, inspectorOpen: true, notesOpen: false }),
+  requestAddStep: () => set({ addStepPending: true, inspectorOpen: true, inspectorTab: 'node' }),
   clearAddStep: () => set({ addStepPending: false }),
   setConnectFrom: (connectFrom) => set({ connectFrom }),
 }));

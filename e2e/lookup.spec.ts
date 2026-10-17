@@ -13,7 +13,7 @@ async function lookUpShop(page: Page, via: 'menu' | 'selection bar' = 'menu') {
   await node(page, 'shop-orders.csv').click();
   await node(page, 'shop-customers.csv').click({ modifiers: ['Shift'] });
   if (via === 'menu') {
-    await page.getByRole('button', { name: 'Add node' }).click();
+    await page.getByRole('button', { name: 'Add', exact: true }).click();
     await page.getByRole('menuitem', { name: /Lookup/ }).click();
   } else await page.getByTestId('group-bar').getByRole('button', { name: 'Look up from the second' }).click();
   await expect(node(page, 'Lookup 1')).toHaveAttribute('data-status', 'ok');

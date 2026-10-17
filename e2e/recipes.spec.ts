@@ -123,7 +123,7 @@ test('a recipe from a newer Puddle, or with a step Puddle doesn’t know, is ref
 
 test('templates export and import as single-node recipes', async ({ page }) => {
   await openApp(page);
-  await page.getByRole('button', { name: 'Add node' }).click();
+  await page.getByRole('button', { name: 'Add', exact: true }).click();
   await page.getByRole('menuitem', { name: /From template/ }).click();
   const library = page.getByRole('dialog', { name: 'Templates' });
   const template = {

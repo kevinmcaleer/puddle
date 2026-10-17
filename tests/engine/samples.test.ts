@@ -52,7 +52,7 @@ describe('opening a sample', () => {
     expect(useProjectStore.getState().history.present.id).toBe(project.id);
     expect(project.name).toMatch(/^Sample: /);
     expect(project.notes).toBe(sample.note);
-    expect(useSession.getState().notesOpen).toBe(true);
+    expect(useSession.getState().inspectorTab).toBe('notes');
     expect(project.sources.map((s) => s.url?.sample)).toEqual(sample.files.map((f) => f.file));
     expect(project.view.viewedNodeId).toBe(project.nodes[0]!.id);
     for (const s of project.sources) {

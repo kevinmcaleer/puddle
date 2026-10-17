@@ -33,9 +33,11 @@ test('? lists every shortcut by area, in mono, and Escape closes it', async ({ p
   await expect(dialog).not.toBeAttached();
   expect((await store(page)).nodes).toEqual([]);
 
-  // The toolbar button opens it too, and its tooltip names the key.
-  await expect(page.getByTestId('shortcuts-toggle')).toHaveAttribute('title', 'Keyboard shortcuts (?)');
-  await page.getByTestId('shortcuts-toggle').click();
+  // The Help menu opens it too, and the item names the key.
+  await page.getByTestId('help-menu').click();
+  const item = page.getByRole('menuitem', { name: 'Keyboard shortcuts' });
+  await expect(item.locator('kbd')).toHaveText('?');
+  await item.click();
   await expect(dialog).toBeVisible();
   await dialog.getByRole('button', { name: 'Close' }).click();
   await expect(dialog).not.toBeAttached();
@@ -180,15 +182,15 @@ test('R and I show and hide the results and the inspector', async ({ page }) => 
   await page.keyboard.press('i');
   await expect(page.getByTestId('inspector')).not.toBeAttached();
   await expect(page.getByTestId('inspector-toggle')).toHaveAttribute('title', 'Show inspector (I)');
-  // Opening the notes brings the dock back.
-  await page.getByTestId('notes-toggle').click();
-  await expect(page.getByRole('complementary', { name: 'Project notes' })).toBeVisible();
-  await page.getByTestId('notes-toggle').click();
-  await expect(page.getByTestId('inspector')).toBeVisible();
-  await page.keyboard.press('i');
-  await expect(page.getByTestId('inspector')).not.toBeAttached();
   await page.getByTestId('inspector-toggle').click();
   await expect(page.getByTestId('inspector')).toBeVisible();
+  // The notes are a tab of the inspector; the Project tab holds the settings.
+  await page.getByRole('tab', { name: 'Notes' }).click();
+  await expect(page.getByTestId('notes-panel')).toBeVisible();
+  await page.getByRole('tab', { name: 'Project' }).click();
+  await expect(page.getByTestId('project-settings')).toBeVisible();
+  await page.keyboard.press('i');
+  await expect(page.getByTestId('inspector')).not.toBeAttached();
 });
 
 test('E exports the viewed Output and Shift+E exports all', async ({ page }) => {
@@ -210,7 +212,9 @@ test('E exports the viewed Output and Shift+E exports all', async ({ page }) => 
   await page.keyboard.press('Shift+E');
   expect((await download).suggestedFilename()).toBe('Output 1.csv');
   await expect(page.getByTestId('canvas-notice')).toContainText('Exported Output 1.csv.');
-  await expect(page.getByRole('button', { name: 'Export all' })).toHaveAttribute('title', 'Export all (Shift+E)');
+  await page.getByTestId('project-menu').click();
+  await expect(page.getByRole('menuitem', { name: 'Export all' }).locator('kbd')).toHaveText('Shift+E');
+  await page.keyboard.press('Escape');
 });
 
 test('no shortcut fires while typing in a text field', async ({ page }) => {
@@ -233,7 +237,7 @@ test('no shortcut fires while typing in a text field', async ({ page }) => {
   await expect(page.getByTestId('results-panel')).toHaveAttribute('data-collapsed', 'false');
   await isSelected(page, 'Transform 1');
 
-  await page.getByTestId('notes-toggle').click();
+  await page.getByRole('tab', { name: 'Notes' }).click();
   const notes = page.getByLabel('Project notes', { exact: true }).and(page.locator('textarea'));
   await notes.click();
   await page.keyboard.type('Total: totals / orders? Look at it later.');

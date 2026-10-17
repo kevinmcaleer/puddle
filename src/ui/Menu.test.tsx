@@ -2,6 +2,7 @@
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { Menu } from './Menu';
+import { groupItems } from './menuGroups';
 
 afterEach(cleanup);
 
@@ -79,6 +80,44 @@ describe('Menu', () => {
     expect(document.activeElement).toBe(keep);
     fireEvent.keyDown(keep!, { key: 'Home' });
     expect(document.activeElement).toBe(trim);
+  });
+
+  it('gathers items under their group headings, ungrouped ones first, and keeps the arrow keys moving across groups', () => {
+    const grouped = [
+      { label: 'Choose files', group: 'Sources', onSelect: vi.fn() },
+      { label: 'From URL', group: 'Sources', onSelect: vi.fn() },
+      { label: 'Transform', group: 'Nodes', onSelect: vi.fn() },
+      { label: 'Output', group: 'Nodes', onSelect: vi.fn() },
+    ];
+    expect(groupItems([{ label: 'Loose', onSelect: vi.fn() }, ...grouped]).map((g) => [g.group, g.items.map((i) => i.label)])).toEqual([
+      [undefined, ['Loose']],
+      ['Sources', ['Choose files', 'From URL']],
+      ['Nodes', ['Transform', 'Output']],
+    ]);
+    render(<Menu label="Add" items={grouped} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Add' }));
+    expect(screen.getAllByRole('group').map((g) => g.getAttribute('aria-labelledby') && document.getElementById(g.getAttribute('aria-labelledby')!)?.textContent)).toEqual(['Sources', 'Nodes']);
+    const [files, url, transform] = screen.getAllByRole('menuitem');
+    expect(document.activeElement).toBe(files);
+    fireEvent.keyDown(files!, { key: 'End' });
+    expect(document.activeElement).toBe(screen.getByRole('menuitem', { name: 'Output' }));
+    url!.focus();
+    fireEvent.keyDown(url!, { key: 'ArrowDown' });
+    expect(document.activeElement).toBe(transform);
+  });
+
+  it('marks a radio item that is on with a tick', () => {
+    const pick = vi.fn();
+    render(<Menu label="Help" items={[{ label: 'Light', group: 'Theme', checked: true, onSelect: () => pick('light') }, { label: 'Dark', group: 'Theme', checked: false, onSelect: () => pick('dark') }]} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Help' }));
+    const light = screen.getByRole('menuitemradio', { name: 'Light' });
+    expect(light.getAttribute('aria-checked')).toBe('true');
+    expect(light.querySelector('svg')).not.toBeNull();
+    const dark = screen.getByRole('menuitemradio', { name: 'Dark' });
+    expect(dark.getAttribute('aria-checked')).toBe('false');
+    expect(dark.querySelector('svg')).toBeNull();
+    fireEvent.click(dark);
+    expect(pick).toHaveBeenCalledWith('dark');
   });
 
   it('opens with the down arrow on its button', () => {

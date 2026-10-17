@@ -9,7 +9,7 @@ async function appendFiles(page: Page, files: string[], via: 'menu' | 'selection
   await node(page, files[0]!).click();
   for (const f of files.slice(1)) await node(page, f).click({ modifiers: ['Shift'] });
   if (via === 'menu') {
-    await page.getByRole('button', { name: 'Add node' }).click();
+    await page.getByRole('button', { name: 'Add', exact: true }).click();
     await page.getByRole('menuitem', { name: /Append/ }).click();
   } else await page.getByTestId('group-bar').getByRole('button', { name: 'Append these' }).click();
 }

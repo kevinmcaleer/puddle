@@ -8,7 +8,7 @@ async function transform(page: Page) {
   await openApp(page);
   await addFiles(page, [fixture('customers.csv')]);
   await node(page, 'customers.csv').click();
-  await page.getByRole('button', { name: 'Add node' }).click();
+  await page.getByRole('button', { name: 'Add', exact: true }).click();
   await page.getByRole('menuitem', { name: 'Transform' }).click();
   await expect(node(page, 'Transform 1')).toHaveAttribute('data-status', 'ok');
   await node(page, 'Transform 1').click();
@@ -81,7 +81,7 @@ test('a step renamed by hand keeps its name; nodes take a name and notes', async
 test('nodes in a line group into one and ungroup back; a node splits at a step', async ({ page }) => {
   await transform(page);
   await addStep(page, 'Trim whitespace');
-  await page.getByRole('button', { name: 'Add node' }).click();
+  await page.getByRole('button', { name: 'Add', exact: true }).click();
   await page.getByRole('menuitem', { name: 'Transform' }).click();
   await node(page, 'Transform 2').click();
   await addStep(page, 'Remove columns');

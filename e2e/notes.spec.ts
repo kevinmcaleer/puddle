@@ -39,9 +39,8 @@ const notesBox = (page: Page) => page.getByLabel('Project notes', { exact: true 
 
 test('project notes are written in Markdown, render safely, undo as one step and survive reload, export and import', async ({ page, browser }) => {
   await openApp(page);
-  await page.getByRole('button', { name: 'Notes' }).click();
-  await expect(page.getByTestId('notes-panel')).toBeVisible();
-  await expect(page.getByTestId('inspector')).toHaveCount(0);
+  await page.getByRole('tab', { name: 'Notes' }).click();
+  await expect(page.getByTestId('inspector').getByTestId('notes-panel')).toBeVisible();
 
   // Typed key by key: one editing session, one undo step.
   await notesBox(page).click();
@@ -81,7 +80,7 @@ test('project notes are written in Markdown, render safely, undo as one step and
   await expect.poll(() => savedNotes(page)).toBe(NOTES);
   await page.reload();
   await expect(page.getByTestId('engine-ready')).toBeVisible({ timeout: 45_000 });
-  await page.getByRole('button', { name: 'Notes' }).click();
+  await page.getByRole('tab', { name: 'Notes' }).click();
   await expect(page.getByTestId('notes-preview').getByRole('heading', { name: 'Monthly orders' })).toBeVisible();
 
   // Export, then import in a clean browser.
@@ -95,7 +94,7 @@ test('project notes are written in Markdown, render safely, undo as one step and
   await other.getByTestId('import-input').setInputFiles(path);
   // The panel opens on Preview only for a project that already has notes, so wait for the import to open first.
   await expect.poll(() => openNotes(other)).toBe(NOTES);
-  await other.getByRole('button', { name: 'Notes' }).click();
+  await other.getByRole('tab', { name: 'Notes' }).click();
   await expect(other.getByTestId('notes-preview')).toContainText('<script>window.__hacked = true</script>');
   await other.getByRole('tab', { name: 'Write' }).click();
   await expect(notesBox(other)).toHaveValue(NOTES);
@@ -106,7 +105,7 @@ test('source and output nodes take a note, marked on the canvas with the note on
   await openApp(page);
   await addFiles(page, [fixture('customers.csv')]);
   await node(page, 'customers.csv').click();
-  await page.getByRole('button', { name: 'Add node' }).click();
+  await page.getByRole('button', { name: 'Add', exact: true }).click();
   await page.getByRole('menuitem', { name: 'Output' }).click();
 
   await expect(node(page, 'customers.csv').getByTestId('node-note')).toHaveCount(0);
@@ -130,8 +129,8 @@ test('source and output nodes take a note, marked on the canvas with the note on
   await page.getByRole('button', { name: 'Undo' }).click();
   await expect(node(page, 'Output 1').getByTestId('node-note')).toHaveCount(1);
 
-  // Opening the notes panel and then picking a node brings the inspector back.
-  await page.getByRole('button', { name: 'Notes' }).click();
+  // Opening the notes tab and then picking a node moves to its Node tab.
+  await page.getByRole('tab', { name: 'Notes' }).click();
   await expect(page.getByTestId('notes-panel')).toBeVisible();
   await node(page, 'customers.csv').click();
   await expect(page.getByTestId('inspector-source')).toBeVisible();

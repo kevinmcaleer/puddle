@@ -16,7 +16,7 @@ test.beforeEach(async ({ page }) => {
   await openApp(page);
   await addFiles(page, [fixture('orders.tsv')]);
   await node(page, 'orders.tsv').click();
-  await page.getByRole('button', { name: 'Add node' }).click();
+  await page.getByRole('button', { name: 'Add', exact: true }).click();
   await page.getByRole('menuitem', { name: 'Transform' }).click();
   await node(page, 'Transform 1').click();
   await addStep(page, 'Custom SQL');

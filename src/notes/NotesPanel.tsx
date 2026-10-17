@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { useSession } from '../app/session';
 import { useProject, useProjectStore, type Project } from '../model';
-import { Button, Tabs } from '../ui';
+import { Tabs } from '../ui';
 import { renderMarkdown } from './markdown';
 import './notes.css';
 
@@ -36,7 +35,7 @@ function useNotesSession() {
   };
 }
 
-/** The project's notes: Markdown written in one tab and read, rendered, in the other. */
+/** The project's notes, in the inspector's Notes tab: Markdown written in one view and read, rendered, in the other. */
 export function NotesPanel() {
   const notes = useProject().notes;
   const [tab, setTab] = useState(notes ? 'preview' : 'write');
@@ -45,10 +44,9 @@ export function NotesPanel() {
 
   return (
     <div className="flex h-full min-h-0 flex-col" data-testid="notes-panel">
-      <div className="flex items-center gap-2 border-b border-line px-4 py-3">
-        <h2 className="min-w-0 flex-1 truncate text-body-strong text-ink">Project notes</h2>
+      <div className="flex items-center gap-2 px-4 pt-3">
+        <h2 className="sr-only">Project notes</h2>
         <Tabs label="Notes view" items={TABS} value={tab} onChange={setTab} />
-        <Button variant="ghost" size="sm" icon="cross" iconOnly aria-label="Close notes" onClick={() => useSession.getState().setNotesOpen(false)} />
       </div>
       {tab === 'write' ? (
         <div className="flex min-h-0 flex-1 flex-col gap-2 p-4">

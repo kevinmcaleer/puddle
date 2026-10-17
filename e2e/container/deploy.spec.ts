@@ -50,7 +50,7 @@ test('JSON and Parquet load and export with no request leaving the site', async 
 
   // Export the Parquet source as Parquet and JSON, then read each file back in.
   await node(page, 'customers.parquet').click();
-  await page.getByRole('button', { name: 'Add node' }).click();
+  await page.getByRole('button', { name: 'Add', exact: true }).click();
   await page.getByRole('menuitem', { name: 'Output' }).click();
   await node(page, 'Output 1').click();
   for (const [format, label, ext] of [['parquet', 'Export Parquet', 'parquet'], ['json', 'Export JSON', 'json'], ['ndjson', 'Export NDJSON', 'ndjson']] as const) {

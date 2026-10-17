@@ -12,7 +12,7 @@ const chip = (page: Page, name: string) => settings(page).getByRole('button', { 
 async function transformOf(page: Page, file: string) {
   await addFiles(page, [fixture(file)]);
   await node(page, file).click();
-  await page.getByRole('button', { name: 'Add node' }).click();
+  await page.getByRole('button', { name: 'Add', exact: true }).click();
   await page.getByRole('menuitem', { name: 'Transform' }).click();
   await node(page, 'Transform 1').click();
 }

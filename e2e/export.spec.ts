@@ -9,7 +9,7 @@ async function customersToOutput(page: Page) {
   await addFiles(page, [fixture('customers.csv')]);
   await expect(node(page, 'customers.csv')).toHaveAttribute('data-status', 'ok', { timeout: 20_000 });
   await node(page, 'customers.csv').click();
-  await page.getByRole('button', { name: 'Add node' }).click();
+  await page.getByRole('button', { name: 'Add', exact: true }).click();
   await page.getByRole('menuitem', { name: 'Output' }).click();
   await expect(node(page, 'Output 1')).toHaveAttribute('data-status', 'ok');
 }
@@ -55,7 +55,8 @@ test('a failing rule upstream blocks the export, which can be overridden and is 
   await expect(blocked).toContainText('No leading or trailing spaces in name fails on 2 rows in customers.csv.');
   await expect(bar(page).getByRole('button', { name: 'Export CSV' })).toBeDisabled();
 
-  await page.getByRole('button', { name: 'Export all' }).click();
+  await page.getByTestId('project-menu').click();
+  await page.getByRole('menuitem', { name: 'Export all' }).click();
   await expect(page.getByTestId('canvas-notice')).toContainText('Nothing exported. Skipped Output 1 is blocked by No leading or trailing spaces in name.');
 
   const download = page.waitForEvent('download');
@@ -70,7 +71,8 @@ test('a failing rule upstream blocks the export, which can be overridden and is 
   await page.getByTestId('rule-settings').getByLabel('Severity').selectOption('warn');
   await expect(node(page, 'Output 1')).toHaveAttribute('data-export', 'ready');
   const again = page.waitForEvent('download');
-  await page.getByRole('button', { name: 'Export all' }).click();
+  await page.getByTestId('project-menu').click();
+  await page.getByRole('menuitem', { name: 'Export all' }).click();
   expect((await again).suggestedFilename()).toBe('Output 1.csv');
   await expect(page.getByTestId('canvas-notice')).toContainText('Exported Output 1.csv.');
 });

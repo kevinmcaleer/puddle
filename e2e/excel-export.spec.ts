@@ -10,7 +10,7 @@ async function toOutput(page: Page, file: Parameters<typeof addFiles>[1][number]
   await addFiles(page, [file] as Parameters<typeof addFiles>[1]);
   await expect(node(page, source)).toHaveAttribute('data-status', 'ok', { timeout: 30_000 });
   await node(page, source).click();
-  await page.getByRole('button', { name: 'Add node' }).click();
+  await page.getByRole('button', { name: 'Add', exact: true }).click();
   await page.getByRole('menuitem', { name: 'Output' }).click();
   await expect(node(page, 'Output 1')).toHaveAttribute('data-status', 'ok', { timeout: 30_000 });
   await node(page, 'Output 1').click();

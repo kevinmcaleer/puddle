@@ -32,7 +32,7 @@ export const TOUR_STOPS: TourStop[] = [
   {
     id: 'sources',
     title: 'Sources',
-    body: 'A source is a file read into DuckDB right here in your browser. This one is a sample contact list; Add source brings in your own CSV, Excel, JSON or Parquet files. Nothing leaves your browser.',
+    body: 'A source is a file read into DuckDB right here in your browser. This one is a sample contact list; Add brings in your own CSV, Excel, JSON or Parquet files. Nothing leaves your browser.',
     anchors: ({ project }) => nodesOf(project, 'source').map((n) => testId(`node-${n.name}`)),
   },
   {
@@ -76,7 +76,7 @@ export const TOUR_STOPS: TourStop[] = [
   {
     id: 'output',
     title: 'The Output node',
-    body: 'An Output node marks data that’s ready. Add one from Add node, then export it as CSV, Excel, JSON or Parquet from the results bar.',
+    body: 'An Output node marks data that’s ready. Add one from the Add menu, then export it as CSV, Excel, JSON or Parquet from the results bar.',
     anchors: ({ project }) => [...nodesOf(project, 'output').map((n) => testId(`node-${n.name}`)), '[data-tour="add-node"]'],
   },
 ];
