@@ -120,7 +120,7 @@ function ResultsTitle() {
             onClick={() => useSession.getState().setConsoleOpen(!consoleOpen)}
           />
           {pin}
-          {node.type === 'output' && !failing && <ExportButton node={node} />}
+          {node.type === 'output' && !failing && <ExportButton node={node} formats />}
         </>
       }
     >

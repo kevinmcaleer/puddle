@@ -53,11 +53,13 @@ test('JSON, NDJSON and Parquet load and export with no request leaving the site'
   await page.getByRole('button', { name: 'Add', exact: true }).click();
   await page.getByRole('menuitem', { name: 'Output' }).click();
   await node(page, 'Output 1').click();
-  for (const [format, label, ext] of [['parquet', 'Export Parquet', 'parquet'], ['json', 'Export JSON', 'json'], ['ndjson', 'Export NDJSON', 'ndjson']] as const) {
-    await page.getByLabel('Format').selectOption(format);
+  // Each through the menu beside the export button, which switches the node's format and exports.
+  for (const [label, ext] of [['Parquet', 'parquet'], ['JSON', 'json'], ['NDJSON', 'ndjson']] as const) {
+    await page.locator('.ui-resultsbar').getByRole('button', { name: 'Export as', exact: true }).click();
     const download = page.waitForEvent('download');
-    await page.locator('.ui-resultsbar').getByRole('button', { name: label }).click();
+    await page.getByRole('menuitemradio', { name: new RegExp(`^${label}\\b`) }).click();
     const file = await download;
+    await expect(page.locator('.ui-resultsbar').getByRole('button', { name: `Export ${label}` })).toBeVisible();
     expect(file.suggestedFilename()).toBe(`Output 1.${ext}`);
     const path = await file.path();
     await addFiles(page, [{ name: `back.${ext}`, mimeType: 'application/octet-stream', buffer: readFileSync(path) }]);

@@ -4,9 +4,9 @@ import { describeBlock } from '../flow/gate';
 import { useExportGate } from '../flow/rules';
 import { useNodeStatus } from '../flow/status';
 import { useProject, type OutputNode } from '../model';
-import { Banner, Button, formatDuration } from '../ui';
-import { exportLabel } from './labels';
-import { exportNode, useExporting } from './run';
+import { Banner, Button, formatDuration, Menu } from '../ui';
+import { exportChoices, exportLabel } from './labels';
+import { exportAs, exportNode, useExporting } from './run';
 
 /** Milliseconds since `since`, ticking while it is set. */
 function useElapsed(since: number | undefined): number {
@@ -19,14 +19,18 @@ function useElapsed(since: number | undefined): number {
   return since == null ? 0 : Math.max(0, now - since);
 }
 
-/** The export button for an Output node, disabled while it can't run, is exporting or is still checking rules. */
-export function ExportButton({ node, size = 'sm' }: { node: OutputNode; size?: 'sm' | 'md' }) {
+/**
+ * The export button for an Output node, disabled while it can't run, is exporting or is still checking rules. With
+ * `formats`, a menu beside it exports in any other format, switching the node to it.
+ */
+export function ExportButton({ node, size = 'sm', formats = false }: { node: OutputNode; size?: 'sm' | 'md'; formats?: boolean }) {
   const project = useProject();
   const gate = useExportGate(project, node.id);
   const status = useNodeStatus(node.id);
   const started = useExporting((s) => s.nodes[node.id]);
   const busy = started != null;
   const elapsed = useElapsed(started);
+  const disabled = busy || status.state !== 'ok' || gate.state !== 'clear';
   // DuckDB-WASM can't report a COPY's progress, so a long export shows how long it has been running.
   const label = busy ? (elapsed >= 1000 ? `Exporting · ${formatDuration(elapsed)}` : 'Exporting') : gate.state === 'checking' ? 'Checking rules' : exportLabel(node);
   return (
@@ -35,12 +39,19 @@ export function ExportButton({ node, size = 'sm' }: { node: OutputNode; size?: '
         size={size}
         variant="primary"
         icon="export"
-        disabled={busy || status.state !== 'ok' || gate.state !== 'clear'}
+        disabled={disabled}
         title={gate.state === 'blocked' ? 'A failing rule blocks this export. See why below.' : undefined}
         onClick={() => void exportNode(node.id)}
       >
         {label}
       </Button>
+      {formats && !busy && (
+        <Menu
+          label={<span className="sr-only">Export as</span>}
+          button={{ size, variant: 'secondary', icon: 'chevron-down', iconOnly: true, 'aria-label': 'Export as', title: 'Export as another file type', disabled, ...{ 'data-testid': 'export-formats' } }}
+          items={exportChoices(node).map((c) => ({ label: c.label, hint: c.hint, checked: c.checked, onSelect: () => void exportAs(node.id, c.format) }))}
+        />
+      )}
       {busy && (
         <Button size={size} variant="secondary" icon="cross" data-testid="export-stop" onClick={() => useEngineStore.getState().engine?.stop()}>
           Stop

@@ -39,6 +39,24 @@ test('an Output node exports CSV through DuckDB and logs it', async ({ page }) =
   await expect(bar(page).getByRole('button', { name: 'Export Parquet' })).toBeEnabled();
 });
 
+test('the menu beside the export button exports another format in one go', async ({ page }) => {
+  await customersToOutput(page);
+  await node(page, 'Output 1').click();
+  await expectRows(page, 4);
+
+  await bar(page).getByRole('button', { name: 'Export as', exact: true }).click();
+  await expect(page.getByRole('menuitemradio', { name: 'CSV' })).toHaveAttribute('aria-checked', 'true');
+  await expect(page.getByRole('menuitemradio', { name: 'Parquet' })).toBeVisible();
+  // Excel rather than Parquet: the dev server has no DuckDB extensions to write Parquet with. The container tests
+  // export Parquet through this menu.
+  const download = page.waitForEvent('download');
+  await page.getByRole('menuitemradio', { name: 'Excel' }).click();
+  expect((await download).suggestedFilename()).toBe('Output 1.xlsx');
+  await expect(bar(page).getByRole('button', { name: 'Export Excel' })).toBeVisible();
+  await expect(page.getByLabel('Format')).toHaveValue('xlsx');
+  await expect(log(page)).toContainText('Output 1.xlsx · 4 rows');
+});
+
 test('a failing rule upstream blocks the export, which can be overridden and is logged', async ({ page }) => {
   await customersToOutput(page);
   await node(page, 'customers.csv').click();

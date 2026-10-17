@@ -2,6 +2,10 @@
 
 An Output node marks data that's ready. Select the node it should follow and choose **Output** from **Add** (or press O). Its export button sits in the results bar, and its settings in the inspector.
 
+The button exports in the node's format, CSV to begin with. To export as Parquet, Excel, JSON or anything else, open the menu beside it (the arrow next to **Export CSV**) and pick a format: the node switches to that format and exports straight away, and the button then says, for example, **Export Parquet**. You can also change the **Format** in the inspector.
+
+![The menu beside the export button, listing every format](_static/screenshots/export-as-menu.png)
+
 ## Formats
 
 | Format | Settings |
@@ -10,7 +14,7 @@ An Output node marks data that's ready. Select the node it should follow and cho
 | Excel | The sheet name, whether to include column names and freeze the header row. |
 | JSON | An array of objects. |
 | NDJSON | One object per line. |
-| Parquet | The compression (zstd, snappy or none). |
+| Parquet | The compression (zstd, snappy or none). Keeps each column's type and is much smaller than CSV, so it suits large outputs and other data tools. |
 | Clipboard | Copies the rows as tab-separated text, ready to paste into a spreadsheet. |
 
 The file is named after the node unless you give a **File name**. Exports run inside DuckDB in your browser and download straight from there; nothing is uploaded. They always use the full data, even when you've been editing on a sample.

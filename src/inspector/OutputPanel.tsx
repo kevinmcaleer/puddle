@@ -1,14 +1,14 @@
 import { CSV_DELIMITERS, EXPORT_FORMATS, exportFileName, exportOptions, PARQUET_COMPRESSION, type ExportFormat } from '../compiler';
 import { useState } from 'react';
 import { SHEET_ROWS, sheetNameProblem, toSheetName } from '../excel/limits';
-import { ExportBlockedBanner, ExportButton } from '../export';
+import { ExportBlockedBanner, ExportButton, formatName } from '../export';
 import { useNodeStatus } from '../flow/status';
 import { setOutputSpec, useProject, useProjectStore, type OutputNode } from '../model';
 import { QualityReportButton } from '../report';
 import { CommitInput } from '../steps/CommitInput';
 import { Banner, Button, Field, Section, Select, Switch } from '../ui';
 
-const FORMATS = (Object.keys(EXPORT_FORMATS) as ExportFormat[]).map((value) => ({ value, label: value === 'clipboard' ? 'Copy to clipboard' : EXPORT_FORMATS[value].label }));
+const FORMATS = (Object.keys(EXPORT_FORMATS) as ExportFormat[]).map((value) => ({ value, label: formatName(value) }));
 const DELIMITER_LABELS: Record<(typeof CSV_DELIMITERS)[number], string> = { ',': 'Comma', ';': 'Semicolon', '\t': 'Tab', '|': 'Pipe' };
 const COMPRESSION_LABELS: Record<(typeof PARQUET_COMPRESSION)[number], string> = { zstd: 'Zstandard (smallest)', snappy: 'Snappy (fastest)', uncompressed: 'None' };
 

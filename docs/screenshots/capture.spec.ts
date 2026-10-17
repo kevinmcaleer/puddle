@@ -176,6 +176,19 @@ test('rules, outputs and export', async ({ page }) => {
   await shot(page, 'export-report-dialog', page.getByRole('dialog'));
 });
 
+test('the export as menu', async ({ page }) => {
+  await start(page);
+  await openSample(page, 'contacts');
+  await node(page, 'contacts.csv').click();
+  await page.getByRole('button', { name: 'Add', exact: true }).click();
+  await page.getByRole('menuitem', { name: 'Output' }).click();
+  await node(page, 'Output 1').click();
+  await expect(node(page, 'Output 1')).toHaveAttribute('data-status', 'ok', { timeout: 20_000 });
+  const bar = page.locator('.ui-resultsbar');
+  await bar.getByRole('button', { name: 'Export as', exact: true }).click();
+  await shot(page, 'export-as-menu', page.getByRole('menu'));
+});
+
 /** Two files on the canvas, selected in order (click, then Shift+click), and the Add menu item applied to them. */
 async function combine(page: Page, files: string[], item: RegExp, made: string) {
   await addFiles(page, files.map(fixture));

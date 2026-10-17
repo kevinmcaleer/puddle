@@ -12,7 +12,7 @@ import { describeBlock, exportGate, type Gate } from '../flow/gate';
 import { checkRules, useRuleStore, type RuleResult } from '../flow/rules';
 import { currentSample, sampledUpstream, type Sample } from '../flow/sample';
 import { schemaCacheFor, useFlowStore } from '../flow/status';
-import { logExport, newId, nodeById, topoSort, upstreamIds, useProjectStore, type ExportLogEntry, type OutputNode, type Project } from '../model';
+import { logExport, newId, nodeById, setOutputFormat, topoSort, upstreamIds, useProjectStore, type ExportLogEntry, type OutputNode, type Project } from '../model';
 import { copyText, reserveClipboard, saveBlob, type ClipboardSlot } from './deliver';
 
 const STOPPED = stoppedError().message;
@@ -193,6 +193,12 @@ export async function exportNode(nodeId: string, override = false): Promise<void
   } catch (e) {
     useSession.getState().notify({ tone: 'fail', text: messageOf(e) });
   }
+}
+
+/** Switch an Output node to `format` (one undo step) and export it, so another format is one pick away. */
+export async function exportAs(nodeId: string, format: ExportFormat): Promise<void> {
+  useProjectStore.getState().apply((p) => setOutputFormat(p, nodeId, format));
+  return exportNode(nodeId);
 }
 
 /** Export the Output node the results table shows (the E shortcut); a blocked one stays blocked. */
