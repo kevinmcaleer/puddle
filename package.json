@@ -18,6 +18,8 @@
     "test:watch": "vitest",
     "e2e": "playwright test",
     "e2e:container": "playwright test -c playwright.container.config.ts",
+    "docs": "python3 -m sphinx -W --keep-going -b html docs docs/_build/html",
+    "docs:screenshots": "playwright test -c docs/playwright.config.ts",
     "fetch-extensions": "node scripts/fetch-duckdb-extensions.mjs public/duckdb-extensions",
     "build:runner": "esbuild src/runner/cli.ts --bundle --platform=node --target=node20 --format=esm --external:@duckdb/node-api --outfile=dist-runner/puddle-run.mjs --log-level=warning && node scripts/runner-package.mjs",
     "runner": "npm run build:runner && node dist-runner/puddle-run.mjs"

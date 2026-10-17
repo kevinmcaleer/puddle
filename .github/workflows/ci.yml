@@ -58,6 +58,36 @@ jobs:
             test-results
           retention-days: 7
 
+  docs:
+    # Retakes every screenshot from this commit's app, so a change that breaks one fails here, then builds the user
+    # guide with warnings as errors. The pictures are kept as an artifact to compare with the committed ones.
+    name: User guide and screenshots
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: docs/requirements.txt
+      - run: npm ci
+      - run: pip install -r docs/requirements.txt
+      - run: npx playwright install --with-deps chromium
+      - run: npm run docs:screenshots
+      - run: npm run docs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: user-guide
+          path: |
+            docs/_build/html
+            test-results/docs
+          retention-days: 7
+
   container:
     name: Container image and deployment tests
     runs-on: ubuntu-latest

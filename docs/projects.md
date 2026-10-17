@@ -1,0 +1,57 @@
+# Projects
+
+A project is your flow: its sources (how to read them, not their data), nodes, steps, rules, notes and settings. Puddle saves it in your browser as you work, so there's no save button.
+
+## The projects list
+
+**All projects**, in the project menu (click the project's name in the toolbar), opens the home screen: your projects, newest first, with the samples and the recipe gallery below. **New project** starts an empty one, and each project's **...** menu renames, duplicates or deletes it.
+
+![The projects home screen with samples and the recipe gallery](_static/screenshots/projects-home.png)
+
+The project menu also renames the open project, and exports and imports projects and recipes.
+
+![The project menu](_static/screenshots/projects-menu.png)
+
+## Moving projects between browsers
+
+Projects live in this browser's storage. To move one, or keep a backup, choose **Export project**: it downloads a `.puddle.json` file with the steps, notes and settings (and any pasted rows), but no file data. **Import project** opens one again.
+
+To have a project follow you from browser to browser automatically, sync it:
+
+GitHub Gist
+: **Sync to GitHub Gist** keeps the project in a secret Gist. It needs a fine-grained personal access token with the Gists permission only; the token stays in this browser. **Open from GitHub Gist** on the home screen brings a synced project into another browser.
+
+Google Drive
+: Where the site has been set up with a Google client ID, **Sync to Google Drive** keeps the project in a Puddle folder in your Drive. Puddle can see only the files it makes there, and keeps the sign-in for an hour at most.
+
+![Connecting a project to a GitHub Gist](_static/screenshots/sync-gist.png)
+
+Sync only ever sends the project file: steps, notes and settings. Your data, and any pasted rows, stay in this browser. If the same project changes in two places, Puddle asks which to keep.
+
+## Notes
+
+The **Notes** tab in the inspector holds the project's notes: Markdown you write about the project, such as where the files come from or what each step is for. **Preview** shows it formatted. Each node has its own notes too, in the inspector.
+
+![Writing the project's notes](_static/screenshots/projects-notes.png)
+
+## Templates
+
+A template is a Transform node's steps, saved to use again in any project. Select a Transform and choose **Save as template** in the inspector. The template remembers which columns its steps read.
+
+![Saving a Transform's steps as a template](_static/screenshots/templates-save.png)
+
+To use one, choose **From template** in **Add**. The library shows each template's steps and the columns it expects. When the input calls a column something else, choose which column to use instead; steps whose columns are missing are turned off rather than failing. Templates can be exported and imported as files too.
+
+![The templates library, with a template's steps and expected columns](_static/screenshots/templates-library.png)
+
+## Recipes
+
+A recipe is a whole pipeline with no data in it: sources (as the columns they expect), steps, rules and outputs. Share one with a colleague, or keep one for a job you do every month. **Export recipe** in the project menu saves the open project as a `.puddle-recipe.json`, leaving out rows, file names, pasted data and anything else private.
+
+The recipe gallery on the home screen has a few to start from.
+
+![The recipe gallery](_static/screenshots/recipes-gallery.png)
+
+**Use recipe** (or **Open recipe** for a file) makes a new project from it, and asks you to attach a file for each source. Choose a file with the columns it expects and the project runs; if the columns are named differently, Puddle asks which to use.
+
+![A new project from a recipe, waiting for its file](_static/screenshots/recipes-attach.png)

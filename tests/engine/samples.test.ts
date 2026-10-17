@@ -1,6 +1,9 @@
 // The onboarding samples on real DuckDB-WASM (Node build), served over HTTP from public/samples as the app serves
 // them: each opens as a project with its data read, has the problems its note describes, and the fixes the note
 // suggests clear them.
+// openSample saves the new project, so IndexedDB must be there before it runs. Without it the save fails and leaves
+// src/persistence/db.ts holding a failed open, which broke whichever IndexedDB test ran next in the same worker.
+import 'fake-indexeddb/auto';
 import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { useEngineStore } from '../../src/app/engine';

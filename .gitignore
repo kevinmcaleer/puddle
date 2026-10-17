@@ -9,3 +9,5 @@ playwright-report
 .DS_Store
 public/duckdb-extensions
 .env
+docs/_build
+.venv
