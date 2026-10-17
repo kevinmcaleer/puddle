@@ -12,6 +12,7 @@ export { Icon, type IconName } from './Icon';
 export { announce } from './announce';
 export { LiveRegions } from './LiveRegion';
 export { Menu, type MenuItem } from './Menu';
+export { ContextMenu } from './ContextMenu';
 export { groupItems } from './menuGroups';
 export { NodeCard, type NodeCardProps, type NodeStepSummary } from './Node';
 export { NODE_KIND, type NodeKind } from './nodeKinds';

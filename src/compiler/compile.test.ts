@@ -160,6 +160,10 @@ describe('step snapshots', () => {
     ['collapseSpaces', { columns: ['name', 'email'] }],
     ['removeNonPrinting', { columns: ['name'] }],
     ['emptyToNull', { columns: ['name', 'id'] }],
+    ['replaceValues', { columns: ['name', 'email'], match: 'null', replace: 'empty' }],
+    ['replaceValues', { columns: ['id'], match: 'blank', replace: 'n/a', toText: true }],
+    ['replaceValues', { columns: ['name'], match: 'value', find: "O'Brien", replace: 'OBrien', matchCase: false }],
+    ['replaceValues', { columns: ['id'], match: 'value', find: '0', replaceWithNull: true }],
     ['parseNumbers', { columns: ['id'], decimal: '.' }],
     ['parseNumbers', { columns: ['id'], decimal: ',' }],
     ['parseNumbers', { columns: ['id'], decimal: '.', locale: 'de-DE' }],
@@ -342,6 +346,8 @@ describe('column step settings', () => {
     expect(regexProblem('a(?=b)')).toMatch(/look-aheads/);
     expect(regexProblem('(a)\\1')).toMatch(/back-references/);
     expect(invalid('findReplace', { columns: ['name'], find: '(', regex: true })).toThrow(/close every \(/);
+    expect(invalid('replaceValues', { columns: ['name'], match: 'value', find: '' })).toThrow(/give the value to find/);
+    expect(invalid('replaceValues', { columns: ['name'], match: 'null', find: '' })).not.toThrow();
     expect(invalid('findReplace', { columns: ['name'], find: '(', regex: false })).not.toThrow();
     expect(invalid('extractText', { column: 'name', mode: 'regex', pattern: '[', into: 'x' })).toThrow(/close every \[/);
     expect(invalid('padText', { columns: ['id'], length: 3, character: '00' })).toThrow(/one character/);

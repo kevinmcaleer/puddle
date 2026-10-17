@@ -41,6 +41,24 @@ describe('placing a quick fix', () => {
     expect(placed.project.edges).toHaveLength(3);
   });
 
+  it('with steps as nodes, a Transform viewed at its end gets a new Transform after it', () => {
+    const p = view(base(), 't');
+    const placed = placeStep({ ...p, settings: { ...p.settings, stepsAsNodes: true } }, fix, 'new')!;
+    expect(placed).toMatchObject({ nodeId: 'new', stepIndex: 0 });
+    const t = placed.project.nodes.find((n) => n.id === 't');
+    expect(t?.type === 'transform' && t.steps.map((s) => s.id)).toEqual(['a', 'b']);
+    expect(inputEdges(placed.project, 'new').map((e) => e.from.nodeId)).toEqual(['t']);
+    expect(inputEdges(placed.project, 'out').map((e) => e.from.nodeId)).toEqual(['new']);
+  });
+
+  it('with steps as nodes, a Transform viewed at an earlier step or with no steps still takes the step itself', () => {
+    const p = base();
+    const asNodes = { ...p, settings: { ...p.settings, stepsAsNodes: true } };
+    expect(placeStep(view(asNodes, 't', 0), fix, 'new')).toMatchObject({ nodeId: 't', stepIndex: 1 });
+    const empty = { ...asNodes, nodes: asNodes.nodes.map((n) => (n.id === 't' && n.type === 'transform' ? { ...n, steps: [] } : n)) };
+    expect(placeStep(view(empty, 't'), fix, 'new')).toMatchObject({ nodeId: 't', stepIndex: 0 });
+  });
+
   it('does nothing when nothing is viewed', () => {
     expect(placeStep(base(), fix)).toBeUndefined();
   });

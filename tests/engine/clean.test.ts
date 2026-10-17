@@ -51,4 +51,27 @@ describe('clean steps', () => {
     const comma = await run('parseNumbers', { columns: ['price'], decimal: ',' });
     expect(comma.col('price')[3]).toBe('7.5');
   });
+
+  it('replaces empty values with text, as Power Query’s Replace values does', async () => {
+    const r = await run('replaceValues', { columns: ['city'], match: 'null', replace: 'empty' });
+    expect(r.col('city')).toEqual(['LONDON', '  new york', 'Paris', 'empty', 'Paris']);
+  });
+
+  it('replaces whole values only, ignoring case when asked, and can put an empty value in their place', async () => {
+    const r = await run('replaceValues', { columns: ['city'], match: 'value', find: 'paris', replace: 'Paris, France', matchCase: false });
+    expect(r.col('city')).toEqual(['LONDON', '  new york', 'Paris, France', null, 'Paris, France']);
+    const exact = await run('replaceValues', { columns: ['city'], match: 'value', find: 'paris', replace: 'x' });
+    expect(exact.col('city')[2]).toBe('Paris');
+    const toNull = await run('replaceValues', { columns: ['name'], match: 'blank', replaceWithNull: true });
+    expect(toNull.col('name')[3]).toBeNull();
+  });
+
+  it('keeps a number column’s type, or turns it into text to take a word', async () => {
+    const kept = await run('replaceValues', { columns: ['id'], match: 'value', find: '3', replace: '30' });
+    expect(kept.types.id).toBe('BIGINT');
+    expect(kept.col('id')).toEqual(['1', '2', '30', '4', '30']);
+    const text = await run('replaceValues', { columns: ['id'], match: 'value', find: '3', replace: 'three', toText: true });
+    expect(text.types.id).toBe('VARCHAR');
+    expect(text.col('id')).toEqual(['1', '2', 'three', '4', 'three']);
+  });
 });

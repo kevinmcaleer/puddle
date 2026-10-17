@@ -59,3 +59,43 @@ export const parseNumbers = defineStep({
       return `CASE WHEN regexp_matches(trim(${text(c)}), '^\\(.*\\)$') THEN -${n} ELSE ${n} END`;
     }),
 });
+
+/** What Replace values looks for: one value, empty values (null), or empty values and blank text. */
+export const REPLACE_MATCHES = { value: 'A value', null: 'Empty values (null)', blank: 'Empty values and blank text' } as const;
+export type ReplaceMatch = keyof typeof REPLACE_MATCHES;
+
+export const replaceValues = defineStep({
+  type: 'replaceValues',
+  params: z
+    .object({
+      columns: Columns,
+      match: z.enum(Object.keys(REPLACE_MATCHES) as [ReplaceMatch, ...ReplaceMatch[]]).default('value'),
+      /** The whole value to find, with `match` 'value'. */
+      find: z.string().default(''),
+      replace: z.string().default(''),
+      /** Put an empty value (null) in place of what matched, rather than `replace`. */
+      replaceWithNull: z.boolean().default(false),
+      matchCase: z.boolean().default(true),
+      /** Turn the columns into text, so a number or date column can take a word such as "empty". */
+      toText: z.boolean().default(false),
+    })
+    .refine((p) => p.match !== 'value' || p.find !== '', { path: ['find'], message: 'give the value to find' }),
+  label: (p) => {
+    const what = p.match === 'value' ? JSON.stringify(p.find) : p.match === 'null' ? 'empty values' : 'empty and blank values';
+    return `Replaced ${what} with ${p.replaceWithNull ? 'empty values' : JSON.stringify(p.replace)} in ${names(p.columns)}`;
+  },
+  // Whole values only, as Power Query's Replace values does; Find and replace changes text inside values.
+  compile: (p, { input }) =>
+    replaceEach(input, p.columns, (c) => {
+      const col = ident(c);
+      const found =
+        p.match === 'null'
+          ? `${col} IS NULL`
+          : p.match === 'blank'
+            ? `${col} IS NULL OR trim(${text(c)}) = ''`
+            : p.matchCase
+              ? `${text(c)} = ${str(p.find)}`
+              : `lower(${text(c)}) = ${str(p.find.toLowerCase())}`;
+      return `CASE WHEN ${found} THEN ${p.replaceWithNull ? 'NULL' : str(p.replace)} ELSE ${p.toText ? text(c) : col} END`;
+    }),
+});

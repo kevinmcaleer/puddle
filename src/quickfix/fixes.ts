@@ -34,7 +34,7 @@ export const decimalFor = (locale: string): '.' | ',' => {
 };
 
 /** The step a fix adds, with its settings set to the selection rather than the form's defaults. */
-const make = (type: string, ctx: FixContext, params: Record<string, unknown>) => {
+export const make = (type: string, ctx: FixContext, params: Record<string, unknown>) => {
   const step = newStep(type, { selected: ctx.columns, available: ctx.available, decimal: decimalFor(ctx.locale), locale: ctx.locale });
   return relabel({ ...step, params: { ...step.params, ...params } });
 };

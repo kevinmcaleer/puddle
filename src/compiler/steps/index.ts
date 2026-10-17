@@ -38,7 +38,7 @@ export {
   type TruncateTo,
 } from './dates';
 export { absoluteValue, bucketLabels, bucketNumbers, convertExpr, convertUnits, decimalsOf, roundNumbers, standardise, UNITS, type Unit } from './numbers';
-export { collapseSpaces, emptyToNull, parseNumbers, removeNonPrinting } from './clean';
+export { collapseSpaces, emptyToNull, parseNumbers, removeNonPrinting, REPLACE_MATCHES, replaceValues, type ReplaceMatch } from './clean';
 export { CUSTOM_SQL_OPENER, customSql, customSqlErrorLine } from './advanced';
 export {
   AGGREGATES,
