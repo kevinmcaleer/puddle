@@ -61,6 +61,12 @@ describe('the column menu', () => {
     expect((await build(ctx(), 'Duplicate column')).params).toEqual({ column: 'city', into: 'city_copy' });
   });
 
+  it('keeps only the rows whose value repeats, or removes the repeats', async () => {
+    const kept = await build(ctx(), 'Keep duplicates');
+    expect(kept).toMatchObject({ type: 'duplicateRows', params: { columns: ['city'], keep: 'duplicates' }, label: 'Kept only duplicate rows by city' });
+    expect((await build(ctx(), 'Remove duplicates')).params).toEqual({ columns: ['city'], keep: 'first' });
+  });
+
   it('cuts long values short in its labels', () => {
     expect(shown('a'.repeat(40))).toBe(`“${'a'.repeat(23)}…”`);
   });

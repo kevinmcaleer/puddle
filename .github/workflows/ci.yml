@@ -10,6 +10,16 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  cors-probe:
+    name: Probe CORS on the TLC host (temporary)
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          for u in https://d37ci6vzurychx.cloudfront.net/misc/taxi_zone_lookup.csv https://d37ci6vzurychx.cloudfront.net/trip-data/yellow_tripdata_2024-01.parquet; do
+            echo "== GET $u"; curl -sS -o /dev/null -D - -H 'Origin: https://puddle.kevspowertools.com' -H 'Range: bytes=0-99' "$u"
+            echo "== OPTIONS $u"; curl -sS -o /dev/null -D - -X OPTIONS -H 'Origin: https://puddle.kevspowertools.com' -H 'Access-Control-Request-Method: GET' -H 'Access-Control-Request-Headers: range' "$u"
+          done
+
   check:
     name: Lint, typecheck and unit tests
     runs-on: ubuntu-latest
