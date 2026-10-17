@@ -11,19 +11,20 @@ import {
   type OnMove,
 } from '@xyflow/react';
 import '@xyflow/react/dist/base.css';
-import { useCallback, useMemo, useState, type DragEvent } from 'react';
-import { addFiles, addNodeAfterSelection } from '../app/actions';
+import { useCallback, useEffect, useMemo, useState, type DragEvent, type FocusEvent } from 'react';
+import { addFiles, addNodeAfterSelection, wireNodes } from '../app/actions';
 import { droppedFiles } from '../sources/handles';
 import { FilesNotKeptBanner, ReconnectBanner } from '../sources/ReconnectBanner';
 import { useSession } from '../app/session';
 import { useFlowStore } from '../flow/status';
 import { JOIN_TYPES, ruleRefs } from '../compiler';
-import { canConnect, canGroup, connect, freePort, groupNodes, hasOutput, inputPorts, moveNodes, newId, parsePort, removeNodes, samePort, setCollapsed, upstreamIds, useProject, useProjectStore, type GraphNode } from '../model';
+import { canGroup, groupNodes, hasOutput, inputPorts, moveNodes, parsePort, removeNodes, samePort, setCollapsed, upstreamIds, useProject, useProjectStore, type GraphNode } from '../model';
 import { Banner, Button } from '../ui';
 import { viewNode } from '../results/pin';
 import { hostOf } from '../sources/url';
 import { openSamplesDialog } from '../samples/samplesDialog';
 import { TourOffer } from '../tour/TourOffer';
+import { CANVAS_ARIA, nodeLabel, wireLabel } from './a11y';
 import { formatLabel } from './formatLabel';
 import { portBroken, portName } from './ports';
 import { PuddleNode, type PuddleFlowNode } from './PuddleNode';
@@ -136,6 +137,7 @@ export function Canvas({ onAddSource }: { onAddSource: () => void }) {
   const { apply, setView } = useProjectStore.getState();
   const selectedNodeIds = useSession((s) => s.selectedNodeIds);
   const notice = useSession((s) => s.notice);
+  const connectFrom = useSession((s) => s.connectFrom);
   const statuses = useFlowStore((s) => s.nodes);
   const [dragging, setDragging] = useState<Record<string, { x: number; y: number }>>({});
   // Each node's size as React Flow measured it. The nodes below are rebuilt on every change to the flow, and a node
@@ -159,10 +161,12 @@ export function Canvas({ onAddSource }: { onAddSource: () => void }) {
       position: dragging[n.id] ?? n.position,
       measured: measured[n.id],
       selected: selectedNodeIds.includes(n.id),
+      ariaLabel: nodeLabel(n, { detail: detailFor(n, project.sources, project.edges), status: statuses[n.id]?.status, viewed: n.id === viewedId }),
+      className: n.id === connectFrom ? 'is-wiring-from' : undefined,
       data: { node: n, viewed: n.id === viewedId, detail: detailFor(n, project.sources, project.edges), refIn: ends.to.has(n.id), refOut: ends.from.has(n.id) },
     }));
     // eslint-disable-next-line react-hooks/exhaustive-deps -- references are read from project.nodes
-  }, [project.nodes, project.sources, project.edges, dragging, measured, selectedNodeIds, viewedId],
+  }, [project.nodes, project.sources, project.edges, dragging, measured, selectedNodeIds, viewedId, statuses, connectFrom],
   );
 
   const edges: PuddleEdge[] = useMemo(
@@ -184,6 +188,7 @@ export function Canvas({ onAddSource }: { onAddSource: () => void }) {
           target: e.to.nodeId,
           targetHandle: String(e.to.port),
           selected: selectedEdges.includes(e.id),
+          ariaLabel: wireLabel(name(e.from.nodeId), name(e.to.nodeId), spec && portName(spec)),
           data: { state: broken ? 'broken' : active ? 'active' : 'idle', fromNodeId: e.from.nodeId, hovered: hoveredEdge === e.id, label: `${name(e.from.nodeId)}->${name(e.to.nodeId)}`, port: spec && String(spec.id), portName: spec && portName(spec) },
         };
       }),
@@ -213,21 +218,35 @@ export function Canvas({ onAddSource }: { onAddSource: () => void }) {
     [apply, dragging, project.nodes],
   );
 
-  const onConnect = useCallback(
-    (c: Connection) => {
-      const present = useProjectStore.getState().history.present;
-      // The input the wire was dropped on; the first free one when React Flow doesn't say.
-      const port = parsePort(c.targetHandle) ?? freePort(present, c.target);
-      const check = canConnect(present, c.source, c.target, port);
-      if (!check.ok || port == null) {
-        useSession.getState().notify({ tone: 'warn', text: check.ok ? 'That node has no free input.' : check.reason });
-        return;
-      }
-      useSession.getState().notify(null);
-      apply((p) => connect(p, { id: newId('e'), from: { nodeId: c.source }, to: { nodeId: c.target, port } }));
-    },
-    [apply],
-  );
+  // The input the wire was dropped on; the first free one when React Flow doesn't say.
+  const onConnect = useCallback((c: Connection) => {
+    if (wireNodes(c.source, c.target, parsePort(c.targetHandle))) useSession.getState().notify(null);
+  }, []);
+
+  // A node reached with Tab is selected, as the arrow keys select, so the inspector follows the keyboard. (A click
+  // focuses the node too, but leaves selecting to the click, which may be adding to the selection.)
+  const onFocus = (e: FocusEvent) => {
+    const el = e.target instanceof HTMLElement ? e.target : null;
+    const id = el?.classList.contains('react-flow__node') ? el.dataset.id : undefined;
+    if (id && el!.matches(':focus-visible') && useSession.getState().selectedNodeId !== id) useSession.getState().select(id);
+  };
+  // And a node selected from the keyboard (an arrow key, T or O) takes the focus, while the keyboard is on the canvas.
+  const selectedId = useSession((s) => s.selectedNodeId);
+  useEffect(() => {
+    const active = document.activeElement;
+    const onCanvas = active === document.body || !!active?.closest('main[aria-label="Canvas"]');
+    if (!selectedId || !onCanvas || active?.closest('.puddle-canvas button, .puddle-canvas [role="menu"]')) return;
+    // A node just added is drawn, and can take focus once React Flow has measured it, a few frames later.
+    let frame = 0;
+    let tries = 0;
+    const focus = () => {
+      const el = document.querySelector<HTMLElement>(`.puddle-canvas .react-flow__node[data-id="${CSS.escape(selectedId)}"]`);
+      el?.focus();
+      if (document.activeElement !== el && tries++ < 60) frame = requestAnimationFrame(focus);
+    };
+    focus();
+    return () => cancelAnimationFrame(frame);
+  }, [selectedId]);
 
   const onMoveEnd: OnMove = useCallback((_e, viewport) => setView({ canvasViewport: viewport }), [setView]);
 
@@ -243,7 +262,7 @@ export function Canvas({ onAddSource }: { onAddSource: () => void }) {
     <div
       className={`puddle-canvas relative h-full min-h-0 ${dropping ? 'is-dropping' : ''}`}
       data-testid="canvas"
-      aria-label="Canvas"
+      onFocus={onFocus}
       onDragOver={(e) => {
         if (e.dataTransfer.types.includes('Files')) {
           e.preventDefault();
@@ -287,6 +306,7 @@ export function Canvas({ onAddSource }: { onAddSource: () => void }) {
         onEdgeMouseEnter={(_e, edge) => setHoveredEdge(edge.id)}
         onEdgeMouseLeave={() => setHoveredEdge(null)}
         deleteKeyCode={['Delete', 'Backspace']}
+        ariaLabelConfig={CANVAS_ARIA}
         minZoom={0.2}
         maxZoom={2}
         proOptions={{ hideAttribution: true }}
@@ -299,7 +319,7 @@ export function Canvas({ onAddSource }: { onAddSource: () => void }) {
       {project.nodes.length === 0 && (
         <div className="pointer-events-none absolute inset-0 grid place-items-center">
           <div className="pointer-events-auto flex max-w-[420px] flex-col items-center gap-3 text-center">
-            <h1 className="font-display text-title text-ink">Start with a source</h1>
+            <h2 className="font-display text-title text-ink">Start with a source</h2>
             <p className="text-ink-muted">
               Add a CSV, TSV, JSON or Parquet file, drop one here, or paste from the clipboard. Nothing leaves your browser. Projects save the steps, not the data.
             </p>

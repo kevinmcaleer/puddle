@@ -1,3 +1,4 @@
+import { PARSE_LOCALES } from '../compiler';
 import type { ParseOptions, Source } from '../model';
 
 /** Delimiter choices; "auto" leaves it to DuckDB's sniffer. */
@@ -38,12 +39,6 @@ export const parseNullStrings = (text: string) =>
     .map((s) => s.trim())
     .filter(Boolean);
 
-export const LOCALES = [
-  { value: 'en-GB', label: 'English (UK)' },
-  { value: 'en-US', label: 'English (US)' },
-  { value: 'de-DE', label: 'German' },
-  { value: 'fr-FR', label: 'French' },
-  { value: 'es-ES', label: 'Spanish' },
-  { value: 'nl-NL', label: 'Dutch' },
-];
+/** The locales a project's data can be written in; new parse numbers steps start with the project's. */
+export const LOCALES = Object.entries(PARSE_LOCALES).map(([value, l]) => ({ value, label: l.label }));
 

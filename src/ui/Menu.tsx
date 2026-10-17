@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from 'react';
 import { Button, type ButtonProps } from './Button';
 import { cx } from './cx';
 import { Icon, type IconName } from './Icon';
@@ -54,10 +54,19 @@ export function Menu({
   const [query, setQuery] = useState('');
   const ref = useRef<HTMLDivElement>(null);
 
+  const trigger = () => ref.current?.querySelector<HTMLElement>('[aria-haspopup="menu"]');
+  const menuItems = () => [...(ref.current?.querySelectorAll<HTMLButtonElement>('[role="menuitem"]:not(:disabled)') ?? [])];
+
   useEffect(() => {
     if (!open) return;
     const onDown = (e: PointerEvent) => !ref.current?.contains(e.target as Node) && setOpen(false);
-    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setOpen(false);
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return;
+      // Escape from inside the menu goes back to its button, as a menu button should.
+      const inside = ref.current?.contains(document.activeElement);
+      setOpen(false);
+      if (inside) trigger()?.focus();
+    };
     window.addEventListener('pointerdown', onDown);
     window.addEventListener('keydown', onKey);
     return () => {
@@ -78,7 +87,22 @@ export function Menu({
   const shown = q ? items.filter((i) => `${i.label} ${i.hint ?? ''}`.toLowerCase().includes(q)) : items;
   const pick = (item: MenuItem) => {
     setOpen(false);
+    // Focus goes back to the menu's button before the item runs, so a dialog the item opens returns focus there.
+    trigger()?.focus();
     item.onSelect();
+  };
+
+  // Opened, a menu without a search field puts focus on its first item; the arrow keys, Home and End move between them.
+  useEffect(() => {
+    if (open && !search) menuItems()[0]?.focus();
+  }, [open, search]);
+  const moveFocus = (e: ReactKeyboardEvent) => {
+    const list = menuItems();
+    const at = list.indexOf(document.activeElement as HTMLButtonElement);
+    const next = { ArrowDown: at + 1, ArrowUp: at - 1, Home: 0, End: list.length - 1 }[e.key];
+    if (next == null || !list.length) return;
+    e.preventDefault();
+    list[(next + list.length) % list.length]!.focus();
   };
 
   return (
@@ -86,13 +110,23 @@ export function Menu({
       {renderTrigger ? (
         renderTrigger({ 'aria-haspopup': 'menu', 'aria-expanded': open, onClick: () => setOpen(!open) })
       ) : (
-        <Button {...button} aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen(!open)}>
+        <Button
+          {...(button as ButtonProps)}
+          aria-haspopup="menu"
+          aria-expanded={open}
+          onClick={() => setOpen(!open)}
+          onKeyDown={(e) => {
+            if (e.key !== 'ArrowDown' || open) return;
+            e.preventDefault();
+            setOpen(true);
+          }}
+        >
           {label}
           {!button?.iconOnly && <Icon name="chevron-down" size={14} />}
         </Button>
       )}
       {open && (
-        <div role="menu" className={`ui-popover absolute top-full z-popover mt-1 py-1 ${align === 'end' ? 'right-0' : 'left-0'}`}>
+        <div role="menu" aria-label={typeof label === 'string' ? label : undefined} className={`ui-popover absolute top-full z-popover mt-1 py-1 ${align === 'end' ? 'right-0' : 'left-0'}`} onKeyDown={moveFocus}>
           {search && (
             <div className="px-2 pb-1">
               <input

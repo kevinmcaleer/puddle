@@ -35,11 +35,11 @@ A Docker image (nginx serving the static build) behind a Cloudflare Tunnel at pu
 | Path | What lives there |
 |---|---|
 | `src/design-system/` | Tokens, Tailwind preset and component CSS, vendored from the Puddle design system |
-| `src/ui/` | The design system's components in TypeScript (`Button`, `NodeCard`, `StepList`, `RuleRow` and the rest) |
+| `src/ui/` | The design system's components in TypeScript (`Button`, `NodeCard`, `StepList`, `RuleRow` and the rest), and how numbers and dates are shown: the display locale (`locale.ts`, per device) and the one formatting module (`format.ts`) |
 | `src/app/` | The app shell: toolbar actions, inspector and results docks, status strip, theme, engine boot, per-tab session state |
 | `src/engine/` | DuckDB-WASM in a Web Worker and the typed `EngineClient` (priorities, cancellation, Stop, plain-word errors) |
 | `src/model/` | The project graph: Zod schemas, wiring rules, step edits, grouping, undo and redo |
-| `src/compiler/` | The pure graph-to-SQL compiler (steps, joins and lookups over two inputs, appends over any number, and queries from the query designer), step registry, schema cache and the schema book those nodes read their inputs’ columns from |
+| `src/compiler/` | The pure graph-to-SQL compiler (steps, joins and lookups over two inputs, appends over any number, and queries from the query designer), step registry, schema cache, the schema book those nodes read their inputs’ columns from, and how each locale writes numbers and dates for the parse steps (`locales.ts`) |
 | `src/sources/` | Adding sources: format detection, file handles, clipboard text, web addresses (fetched again on reopen), choosing files again on reopen (on Chromium, reconnecting them with one permission click through stored file handles), and Excel sources (sheet, header row and range, kept loaded as DuckDB tables) |
 | `src/excel/` | SheetJS in a Web Worker: reading `.xlsx` sheets into typed columns and Arrow tables for DuckDB, and writing Excel exports from Arrow batches. Excel's limits and sheet-name rules live in `limits.ts`, which doesn't load SheetJS |
 | `src/persistence/` | IndexedDB autosave, `.puddle.json` export and import, format migrations |
@@ -56,7 +56,7 @@ A Docker image (nginx serving the static build) behind a Cloudflare Tunnel at pu
 | `src/report/` | Quality reports: what the rules found (counts, overrides from the export log, sources with row counts and head hashes, opt-in failing rows) written as Markdown, JSON or one self-contained HTML file, and the export dialog |
 | `src/pwa/` | The service worker (precached app, engine and extensions for offline use), its precache list and the web app manifest |
 | `src/export/` | Exports from Output nodes: the quality gate, `COPY ... TO` into DuckDB's in-memory file system (Excel workbooks instead go through the Excel worker), download or clipboard, and the export log |
-| `src/query/` | The query designer, in place of the canvas for a Query node: its tables and the join lines dragged between their fields, and the grid of fields with names, sorting, criteria and Show, and its Totals row for grouping and summarising |
+| `src/query/` | The query designer, in place of the canvas for a Query node: its tables and the join lines dragged between their fields, and the grid of fields with names, sorting, criteria (with "or" rows) and Show, and its Totals row for grouping and summarising |
 | `src/inspector/` | The right-hand panel: source read options, applied steps, step settings and node notes |
 | `src/notes/` | The project notes panel: Markdown written and previewed, rendered with raw HTML off and links in a new tab |
 | `src/results/` | The results table on Glide Data Grid: paging, headers with type and quality |

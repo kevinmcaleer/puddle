@@ -66,7 +66,7 @@ export function QueryPanel({ node }: { node: QueryNode }) {
             ))}
           </ul>
         ) : (
-          <p className="text-ink-muted">In the designer, drag a field of one table onto the matching field of another, such as a customer’s id onto the order’s customer id.</p>
+          <p className="text-ink-muted">In the designer, drag a field of one table onto the matching field of another, such as a customer’s id onto the order’s customer id, or press Enter on a field.</p>
         )}
       </Section>
       {!designing && fields.length > 0 && (

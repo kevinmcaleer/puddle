@@ -19,3 +19,16 @@
     font-family: var(--font-ui);
   }
 }
+
+/* With reduced motion asked for, nothing animates: the tokens already zero the design system's durations, and this
+   catches everything else (third-party styles, utility classes). */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

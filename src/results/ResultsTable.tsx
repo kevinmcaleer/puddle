@@ -9,8 +9,9 @@ import { isCancelled, isStopped, tableRows, toEngineError, type EngineClient } f
 import { runAgain } from '../flow/rerun';
 import { countRows, schemaCacheFor, useNodeStatus } from '../flow/status';
 import { nodeById, type ColumnSchema, type Project } from '../model';
-import { Banner, Button, columnKind, glideTheme, Icon, NODE_KIND, StatusStrip, type NodeKind } from '../ui';
+import { Banner, Button, columnKind, glideTheme, Icon, NODE_KIND, StatusStrip, useDisplayFormat, type NodeKind } from '../ui';
 import { failingCells, nullTheme, resultCell } from './cells';
+import { gridLabel } from './label';
 import { follow, onlyHere, ScrollSync, supersedeKey, type Pane } from './compare';
 import { HEADER_HEIGHT, headerColors, makeDrawHeader } from './header';
 import { PageLoader, type Row } from './pages';
@@ -56,7 +57,7 @@ function createLoader(engine: EngineClient, project: Project, target: Target, co
 async function loadProfile(engine: EngineClient, project: Project, target: Target, columns: ColumnSchema[], pane: Pane, onUpdate: (p: Record<string, ColumnProfile>) => void) {
   const supersede = supersedeKey(pane, 'profile');
   const r = await engine.query(compileProfile(project, target), { priority: 'background', supersede, label: 'Profiling columns' });
-  const profile = parseProfile(tableRows(r.table));
+  const profile = parseProfile(tableRows(r.table), Object.fromEntries(columns.map((c) => [c.name, columnKind(c.type)])));
   onUpdate(profile);
   const text = columns.filter((c) => columnKind(c.type) === 'text').map((c) => c.name);
   if (!text.length) return;
@@ -131,6 +132,7 @@ function Grid({ engine, project, target, columns, pane = 'main', sync, other, on
   const leading = useRef(false);
 
   const kinds = useMemo(() => columns.map((c) => columnKind(c.type)), [columns]);
+  const display = useDisplayFormat();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const theme = useMemo(() => glideTheme(), [themeTick]);
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -196,11 +198,11 @@ function Grid({ engine, project, target, columns, pane = 'main', sync, other, on
   const getCellContent = useCallback(
     ([col, row]: Item): GridCell => {
       const r = loader.row(row);
-      return resultCell(r ? (r[col] ?? null) : undefined, kinds[col] ?? 'text', subtle);
+      return resultCell(r ? (r[col] ?? null) : undefined, kinds[col] ?? 'text', subtle, display);
     },
     // `loaded` changes as pages arrive, so the grid redraws them.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [loader, kinds, subtle, loaded],
+    [loader, kinds, subtle, loaded, display],
   );
 
   const drawHeader = useMemo(
@@ -239,6 +241,29 @@ function Grid({ engine, project, target, columns, pane = 'main', sync, other, on
     [loader, sync, pane, names],
   );
 
+  // Glide draws on a canvas and mirrors the visible cells in a table with role="grid" inside it, its row and column
+  // counts included; it has no name of its own, so it's given one, and so is the region around it, which every
+  // screen reader can find whether or not it reads a canvas's contents.
+  const label = gridLabel(nodeById(project, target.nodeId)?.name ?? '', total, columns.length);
+  const labelNow = useRef(label);
+  useEffect(() => {
+    labelNow.current = label;
+    box.current?.querySelector('table[role="grid"]')?.setAttribute('aria-label', label);
+  }, [label]);
+  // Glide draws its table a moment after each render of its own, so it's named again whenever it's drawn.
+  const gridBox = useCallback((el: HTMLDivElement | null) => {
+    box.current = el;
+    if (!el) return;
+    const name = () => {
+      const table = el.querySelector('table[role="grid"]');
+      if (table && table.getAttribute('aria-label') !== labelNow.current) table.setAttribute('aria-label', labelNow.current);
+    };
+    const watch = new MutationObserver(name);
+    watch.observe(el, { childList: true, subtree: true });
+    name();
+    return () => watch.disconnect();
+  }, []);
+
   const onSelection = (s: GridSelection) => {
     setSelection(s);
     if (main) useSession.getState().setSelectedColumns(s.columns.toArray().map((i) => columns[i]!.name));
@@ -258,7 +283,9 @@ function Grid({ engine, project, target, columns, pane = 'main', sync, other, on
   };
   const grid = (
     <div
-      ref={box}
+      ref={gridBox}
+      role="region"
+      aria-label={label}
       className="min-h-0 w-full flex-1"
       data-testid={main ? 'results-table' : 'results-table-compare'}
       data-failing-columns={[...failingCols].map((i) => columns[i]?.name).join(',')}

@@ -24,3 +24,8 @@
 .puddle-canvas .puddle-port-label { position: absolute; right: calc(100% + var(--space-1)); bottom: 100%; pointer-events: none; }
 /* Where a rule's reference to another node starts and ends: never connectable, never seen. */
 .puddle-canvas .react-flow__handle.puddle-ref-handle { opacity: 0; pointer-events: none; min-width: 0; min-height: 0; width: 0; height: 0; border: 0; }
+/* The node a wire is being drawn from with the keyboard (C). */
+.puddle-canvas .react-flow__node.is-wiring-from .ui-node { outline: 2px dashed var(--brand); outline-offset: 4px; }
+/* A wire with the keyboard on it is drawn as a selected one (an outline doesn't follow a curve). */
+.puddle-canvas .react-flow__edge:focus-visible { outline: none; }
+.puddle-canvas .react-flow__edge:focus-visible .ui-wire { stroke: var(--brand); stroke-width: 2.75; }

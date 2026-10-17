@@ -42,4 +42,10 @@ describe('quick fixes', () => {
     const fix = QUICK_FIXES.find((f) => f.id === 'parseNumbers')!;
     expect((await fix.build(ctx({ locale: 'fr-FR' }))).params.decimal).toBe(',');
   });
+
+  it('parse numbers keeps the project locale on the step, so it reads the same on any machine', async () => {
+    const fix = QUICK_FIXES.find((f) => f.id === 'parseNumbers')!;
+    expect((await fix.build(ctx({ locale: 'de-DE' }))).params).toMatchObject({ decimal: ',', locale: 'de-DE' });
+    expect(decimalFor('de-CH')).toBe('.');
+  });
 });

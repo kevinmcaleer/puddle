@@ -26,12 +26,11 @@ function ColumnsPicker({ id, value, columns, single, onChange }: { id: string; v
             key={c.name}
             type="button"
             aria-pressed={on}
-            aria-label={c.name}
             title={c.type}
             className={cx('ui-chip font-mono', on && 'bg-brand-tint text-ink')}
             onClick={() => onChange(single ? [c.name] : on ? value.filter((v) => v !== c.name) : [...value, c.name])}
           >
-            <TypeTag type={columnKind(c.type)} />
+            <TypeTag type={columnKind(c.type)} decorative />
             {c.name}
           </button>
         );
@@ -113,7 +112,7 @@ function FieldInput({
   columns: ColumnSchema[];
   nodes?: OtherNode[];
   error?: string;
-  detectDates?: (column: string) => Promise<Detection>;
+  detectDates?: (column: string, locale?: string) => Promise<Detection>;
   readRows?: ReadTransposeRows;
   onChange: (v: unknown) => void;
   /** For fields that set several settings at once. */
@@ -168,7 +167,8 @@ function FieldInput({
     case 'dateFormats': {
       const cols = params.columns;
       const column = Array.isArray(cols) && typeof cols[0] === 'string' ? cols[0] : '';
-      return <DateFormatsInput id={id} value={Array.isArray(value) ? value.map(String) : []} column={column} detect={detectDates} onChange={onChange} />;
+      const locale = typeof params.locale === 'string' && params.locale ? params.locale : undefined;
+      return <DateFormatsInput id={id} value={Array.isArray(value) ? value.map(String) : []} column={column} locale={locale} detect={detectDates} onChange={onChange} />;
     }
     case 'renames':
       return <Renames value={Array.isArray(value) ? (value as { from: string; to: string }[]) : []} columns={columns} onChange={onChange} />;
@@ -237,7 +237,7 @@ export function FormFields({
   params: Params;
   errors: Record<string, string>;
   columns: ColumnSchema[];
-  detectDates?: (column: string) => Promise<Detection>;
+  detectDates?: (column: string, locale?: string) => Promise<Detection>;
   readPivotValues?: ReadPivotValues;
   /** Other nodes, for fields that pick one (rules that read another node). */
   nodes?: OtherNode[];
@@ -298,7 +298,7 @@ export function StepForm({
   type: string;
   params: Params;
   columns: ColumnSchema[];
-  detectDates?: (column: string) => Promise<Detection>;
+  detectDates?: (column: string, locale?: string) => Promise<Detection>;
   readPivotValues?: ReadPivotValues;
   readRows?: ReadTransposeRows;
   onChange: (params: Params) => void;

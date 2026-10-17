@@ -3,6 +3,7 @@ import { compileLookupCheck, upstreamKey } from '../compiler';
 import { tableRows, type EngineClient } from '../engine';
 import type { Project } from '../model';
 import { schemaCacheFor } from './status';
+import { fullCount } from '../ui/format';
 
 export interface LookupCounts {
   /** Rows in the main input, and so out of the lookup. */
@@ -27,7 +28,7 @@ export function parseLookupCounts(row: Record<string, unknown>): LookupCounts {
 /** "4 of 5 rows matched (80%)" */
 export function matchRate(c: LookupCounts): string {
   const pct = c.rows ? Math.round((100 * c.matched) / c.rows) : 0;
-  return `${c.matched.toLocaleString()} of ${c.rows.toLocaleString()} ${c.rows === 1 ? 'row' : 'rows'} matched (${pct}%)`;
+  return `${fullCount(c.matched)} of ${fullCount(c.rows)} ${c.rows === 1 ? 'row' : 'rows'} matched (${pct}%)`;
 }
 
 const checks = new Map<string, Promise<LookupCounts>>();

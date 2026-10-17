@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useProject } from '../model';
-import { Banner, Button, Dialog, Field, TextInput } from '../ui';
+import { Banner, Button, Dialog, Field, TextInput, useDisplayFormat } from '../ui';
 import { PROVIDERS, sync, useSync, type ProviderId, type RemoteFile } from '.';
 import { openSyncDialog, syncTime, useSyncDialog } from './dialogs';
 
@@ -70,7 +70,7 @@ function TokenField({ value, onChange, error }: { value: string; onChange: (v: s
         </>
       }
     >
-      <TextInput id="sync-token" type="password" mono autoComplete="off" spellCheck={false} value={value} error={!!error} autoFocus onChange={(e) => onChange(e.target.value)} />
+      <TextInput id="sync-token" type="password" mono autoComplete="off" spellCheck={false} value={value} error={!!error} data-autofocus onChange={(e) => onChange(e.target.value)} />
     </Field>
   );
 }
@@ -202,6 +202,7 @@ function ProjectSyncDialog({ provider }: { provider: ProviderId }) {
 
 function OpenRemoteDialog({ provider }: { provider: ProviderId }) {
   const account = useSync((s) => s.accounts[provider]);
+  const display = useDisplayFormat();
   const [token, setToken] = useState('');
   const [problem, setProblem] = useState<string | null>(null);
   const [files, setFiles] = useState<RemoteFile[] | null>(null);
@@ -264,7 +265,7 @@ function OpenRemoteDialog({ provider }: { provider: ProviderId }) {
             <li key={f.id} className="flex items-center gap-3 px-3 py-2" data-testid={`remote-${f.title}`}>
               <div className="min-w-0 flex-1">
                 <div className="truncate text-body-strong">{f.title}</div>
-                <div className="text-label text-ink-muted">Updated {syncTime(f.updatedAt)}</div>
+                <div className="text-label text-ink-muted">Updated {syncTime(f.updatedAt, display)}</div>
               </div>
               <Button size="sm" onClick={() => void open(f.id)}>
                 Open
@@ -288,6 +289,7 @@ export function SyncDialogs() {
 export function SyncConflictBanner() {
   const conflict = useSync((s) => (s.status === 'conflict' ? s.conflict : null));
   const provider = useSync((s) => s.provider);
+  const display = useDisplayFormat();
   const label = provider && PROVIDERS[provider]?.label;
   if (!conflict || !label) return null;
   return (
@@ -304,8 +306,8 @@ export function SyncConflictBanner() {
         }
       >
         <div>
-          This browser’s version was saved <span data-testid="sync-local-time">{syncTime(conflict.localAt)}</span>; the {label} version{' '}
-          <span data-testid="sync-remote-time">{syncTime(conflict.remoteAt)}</span>. Nothing is overwritten until you choose.
+          This browser’s version was saved <span data-testid="sync-local-time">{syncTime(conflict.localAt, display)}</span>; the {label} version{' '}
+          <span data-testid="sync-remote-time">{syncTime(conflict.remoteAt, display)}</span>. Nothing is overwritten until you choose.
         </div>
       </Banner>
     </div>
