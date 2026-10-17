@@ -42,16 +42,11 @@ test('JSON, NDJSON and Parquet load and export with no request leaving the site'
   await openApp(page);
   expect(await page.evaluate(() => (globalThis as unknown as { __puddle: { engine: { info: { extensions: string } } } }).__puddle.engine.info.extensions)).toBe(new URL('/duckdb-extensions', baseURL).href);
 
-  await addFiles(page, [fixture('items.json'), fixture('events.ndjson'), fixture('customers.parquet')]);
+  await addFiles(page, [fixture('items.json'), fixture('customers.parquet')]);
   await expect(node(page, 'items.json')).toHaveAttribute('data-status', 'ok', { timeout: 30_000 });
-  await expect(node(page, 'events.ndjson')).toHaveAttribute('data-status', 'ok', { timeout: 30_000 });
   await expect(node(page, 'customers.parquet')).toHaveAttribute('data-status', 'ok', { timeout: 30_000 });
   await node(page, 'items.json').click();
   await expectRows(page, 2);
-  await bringIntoView(page, 'events.ndjson');
-  await node(page, 'events.ndjson').click();
-  await expectRows(page, 3);
-  await expect(page.getByTestId('inspector-columns').locator('.ui-col')).toHaveText(['event', 'at']);
 
   // Export the Parquet source as Parquet and JSON, then read each file back in.
   await node(page, 'customers.parquet').click();
@@ -73,6 +68,14 @@ test('JSON, NDJSON and Parquet load and export with no request leaving the site'
     await expectRows(page, 4);
     await node(page, 'Output 1').click();
   }
+
+  // NDJSON last: a third source added before the Output would put that node under the minimap.
+  await addFiles(page, [fixture('events.ndjson')]);
+  await expect(node(page, 'events.ndjson')).toHaveAttribute('data-status', 'ok', { timeout: 30_000 });
+  await bringIntoView(page, 'events.ndjson');
+  await node(page, 'events.ndjson').click();
+  await expectRows(page, 3);
+  await expect(page.getByTestId('inspector-columns').locator('.ui-col')).toHaveText(['event', 'at']);
   expect(away).toEqual([]);
 });
 
