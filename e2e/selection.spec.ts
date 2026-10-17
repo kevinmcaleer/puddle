@@ -40,5 +40,11 @@ test('the page selects like an app: never the whole page, but fields and answers
   await page.mouse.up();
   expect(await selected(page)).not.toBe('');
   await page.keyboard.press(`${mod}+a`);
-  expect((await selected(page)).trim()).toBe((await answer.innerText()).trim());
+  // Browsers write a selected table out differently, so check where the selection is rather than its exact text.
+  const selection = await answer.evaluate((el) => {
+    const range = window.getSelection()!.getRangeAt(0);
+    return { inside: el.contains(range.commonAncestorContainer), whole: range.intersectsNode(el.firstElementChild!) && range.intersectsNode(el.lastElementChild!), text: range.toString() };
+  });
+  expect(selection).toMatchObject({ inside: true, whole: true });
+  expect(selection.text).toContain('customer_id');
 });
