@@ -6,6 +6,7 @@ import { addSource, newId, updateSource, useProjectStore, type Source, type Sour
 import { markAttached } from './attachments';
 import { formatFromName, knownFormat, SourceError } from './detect';
 import { headHash } from './hash';
+import { isSampleFile, sampleAddress } from '../samples/catalog';
 
 /**
  * Sources read from a web address (plan D8). The browser fetches the file itself, so the server must allow
@@ -125,14 +126,25 @@ export interface FetchOptions {
   format?: SourceFormat;
   fetchImpl?: typeof fetch;
   online?: () => boolean;
+  /**
+   * A small file shipped with Puddle (a sample): fetched with one plain same-origin GET, no Range header and the
+   * default cache mode and credentials, the same shape as the service worker's precache request, so it is
+   * answered from the precache offline in every browser. Read as a typed address (ranged, no-store, no
+   * credentials), a sample failed to load offline in Firefox.
+   */
+  shipped?: boolean;
 }
+
+/** How a request is made: addresses typed in skip the HTTP cache and send no cookies; shipped files are plain GETs. */
+export const requestInit = (init: RequestInit, opts: Pick<FetchOptions, 'shipped'>): RequestInit =>
+  opts.shipped ? init : { ...init, cache: 'no-store', credentials: 'omit' };
 
 const isAbort = (e: unknown) => e instanceof DOMException && e.name === 'AbortError';
 
 async function request(url: URL, init: RequestInit, opts: FetchOptions): Promise<Response> {
   let res: Response;
   try {
-    res = await (opts.fetchImpl ?? fetch)(url.href, { ...init, cache: 'no-store', credentials: 'omit' });
+    res = await (opts.fetchImpl ?? fetch)(url.href, requestInit(init, opts));
   } catch (e) {
     if (isAbort(e)) throw e;
     // The browser reports a CORS refusal as a bare network error, with no detail, by design.
@@ -155,11 +167,12 @@ export function totalFromContentRange(header: string | null): number | undefined
 
 /**
  * Fetch an address once: the first megabyte by a range request (for the head hash, and to learn whether the
- * server supports ranges), then the rest of the file unless DuckDB can read it by ranges (Parquet).
+ * server supports ranges), then the rest of the file unless DuckDB can read it by ranges (Parquet). A shipped file
+ * is fetched whole in one plain request.
  */
 export async function fetchAddress(address: string | URL, opts: FetchOptions = {}): Promise<Fetched> {
   const url = typeof address === 'string' ? parseAddress(address) : address;
-  const probe = await request(url, { headers: { Range: `bytes=0-${HEAD_BYTES - 1}` } }, opts);
+  const probe = await request(url, opts.shipped ? {} : { headers: { Range: `bytes=0-${HEAD_BYTES - 1}` } }, opts);
   const format = opts.format ?? formatFromAddress(url, probe.headers.get('content-type'));
   const head = new Uint8Array(await probe.arrayBuffer());
   const hash = await headHash(new Blob([head.slice(0, HEAD_BYTES)]));
@@ -186,12 +199,24 @@ const setFetch = (sourceId: string, f: UrlFetch) => useUrlFetches.setState((s) =
 /** True once a URL source's file has been fetched and registered in this tab. */
 export const urlFetched = (sourceId: string) => useUrlFetches.getState().fetches[sourceId]?.state === 'ok';
 
+/**
+ * Where a URL source is read from: its address, or for a sample shipped with Puddle, the sample next to the app
+ * wherever it is served now (so a sample project still reads after a move, and offline from the service worker).
+ * Already checked, so it skips parseAddress (a sample on a plain-http LAN host is still same-origin).
+ */
+export function addressOf(source: Source): URL | string {
+  const sample = source.url?.sample;
+  if (!isSampleFile(sample)) return source.url?.href ?? '';
+  const base = typeof document !== 'undefined' ? document.baseURI : new URL('..', source.url!.href).href;
+  return sampleAddress(sample, base);
+}
+
 /** Hand what was fetched to DuckDB under the source's file name, replacing what was there. */
 async function register(source: Source, fetched: Fetched) {
   const engine = await whenEngine();
   const name = sourceFileName(source);
   await engine.dropFile(name).catch(() => undefined);
-  if (fetched.ranged) await engine.registerUrl(name, source.url!.href);
+  if (fetched.ranged) await engine.registerUrl(name, String(addressOf(source)));
   else await engine.registerBuffer(name, fetched.data!);
 }
 
@@ -236,7 +261,7 @@ export function loadUrlSource(source: Source, opts: FetchOptions & { refresh?: b
     if (!opts.refresh) markAttached(source.id, 'detached');
     setFetch(source.id, { state: 'fetching' });
     try {
-      const fetched = await fetchAddress(source.url.href, { ...opts, format: source.format });
+      const fetched = await fetchAddress(addressOf(source), { ...opts, format: source.format, shipped: isSampleFile(source.url.sample) });
       await register(source, fetched);
       const current = useProjectStore.getState().history.present.sources.find((s) => s.id === source.id);
       const before = current?.url?.headHash ?? source.url.headHash;

@@ -155,6 +155,21 @@ export function newProject(name?: string) {
   return show(createProject(name));
 }
 
+/**
+ * Open a project built here rather than loaded (a sample), saved straight away so it is on the home screen even if
+ * the tab closes before anything changes. Saving can fail (storage blocked): it still opens, as an unsaved project.
+ */
+export async function openNewProject(project: Project) {
+  await flush();
+  try {
+    await saveProject(project);
+    stored.add(project.id);
+  } catch {
+    // Autosave says so on the next change.
+  }
+  await show(project);
+}
+
 export async function goHome() {
   // Forget the open project first, so a reload straight after this lands on the home screen too.
   remember(null);
@@ -209,6 +224,19 @@ export async function replaceProject(project: Project) {
   await saveProject(project);
   stored.add(project.id);
   await show(project);
+}
+
+/**
+ * Save the open project now, even if it is untouched, so the page can leave (to sign in to Google Drive) and reopen
+ * it on coming back.
+ */
+export async function keepOpenProject() {
+  await flush();
+  if (useWorkspace.getState().screen !== 'editor') return;
+  const project = useProjectStore.getState().history.present;
+  if (stored.has(project.id)) return;
+  await saveProject(project);
+  stored.add(project.id);
 }
 
 /** Save a project beside the others without opening it. */

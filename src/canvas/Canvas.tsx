@@ -22,6 +22,7 @@ import { canConnect, canGroup, connect, freePort, groupNodes, hasOutput, inputPo
 import { Banner, Button } from '../ui';
 import { viewNode } from '../results/pin';
 import { hostOf } from '../sources/url';
+import { openSamplesDialog } from '../samples/samplesDialog';
 import { formatLabel } from './formatLabel';
 import { portBroken, portName } from './ports';
 import { PuddleNode, type PuddleFlowNode } from './PuddleNode';
@@ -79,7 +80,7 @@ function detailFor(node: GraphNode, sources: ReturnType<typeof useProject>['sour
   if (node.type !== 'source') return undefined;
   const s = sources.find((x) => x.id === node.sourceId);
   if (!s) return 'Source';
-  if (s.kind === 'url' && s.url) return `${hostOf(s.url.href)} · ${formatLabel(s.format)}`;
+  if (s.kind === 'url' && s.url) return `${s.url.sample ? 'Sample' : hostOf(s.url.href)} · ${formatLabel(s.format)}`;
   return s.kind === 'clipboard' ? `Source · Pasted ${formatLabel(s.format)}` : `Source · ${formatLabel(s.format)}`;
 }
 
@@ -301,7 +302,10 @@ export function Canvas({ onAddSource }: { onAddSource: () => void }) {
             <p className="text-ink-muted">
               Add a CSV, TSV, JSON or Parquet file, drop one here, or paste from the clipboard. Nothing leaves your browser. Projects save the steps, not the data.
             </p>
-            <Button variant="primary" icon="plus" onClick={onAddSource}>Add source</Button>
+            <div className="flex gap-2">
+              <Button variant="primary" icon="plus" onClick={onAddSource}>Add source</Button>
+              <Button variant="secondary" icon="eye" onClick={() => openSamplesDialog()}>Try a sample</Button>
+            </div>
           </div>
         </div>
       )}
