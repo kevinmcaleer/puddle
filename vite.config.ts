@@ -61,6 +61,18 @@ function isolation(): Plugin {
   };
 }
 
+/** Test files that set their own environment or mock modules or globals, so they must not share a registry. */
+const ISOLATED = [
+  'src/canvas/focusNode.test.ts',
+  'src/compiler/compile.test.ts',
+  'src/flow/status.test.ts',
+  'src/notes/markdown.test.ts',
+  'src/samples/samples.test.ts',
+  'src/sync/controller.test.ts',
+  'src/ui/locale.test.ts',
+  'tests/engine/handles.test.ts',
+];
+
 export default defineConfig({
   plugins: [react(), precache(), isolation()],
   define: { __PUDDLE_BUILD__: JSON.stringify(build) },
@@ -77,10 +89,24 @@ export default defineConfig({
   test: {
     globals: true,
     environment: 'node',
-    include: ['src/**/*.test.{ts,tsx}', 'tests/**/*.test.{ts,tsx}'],
     setupFiles: ['./tests/setup.ts'],
     testTimeout: 30_000,
     // The quality report inlines the design system's CSS (?raw); without this, tests would see it empty.
     css: { include: [/src\/design-system\/.*\.css/] },
+    // Most test files are pure functions and engine runs against DuckDB, so `npm test` runs them with one module
+    // registry per worker instead of rebuilding it per file (--no-isolate), which halves the run. Files that need a
+    // fresh registry (a jsdom environment, or vi.mock and friends, which change the registry for everything loaded
+    // after them) stay isolated: every .tsx test and the .ts tests listed above. Vitest 3.2 only takes `isolate`
+    // from the command line in this layout, so package.json runs the two projects one after the other.
+    projects: [
+      {
+        extends: true,
+        test: { name: 'isolated', include: ['src/**/*.test.tsx', ...ISOLATED] },
+      },
+      {
+        extends: true,
+        test: { name: 'shared', include: ['src/**/*.test.ts', 'tests/**/*.test.ts'], exclude: ['**/node_modules/**', ...ISOLATED] },
+      },
+    ],
   },
 });

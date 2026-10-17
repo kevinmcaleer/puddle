@@ -24,7 +24,8 @@ export default defineConfig({
   use: { baseURL: `http://localhost:${port}`, trace: 'retain-on-failure', serviceWorkers: 'block', locale: 'en-GB' },
   projects: browserProjects(),
   webServer: {
-    command: `npm run build && npx vite preview --port ${port} --strictPort`,
+    // vite build alone: the typecheck that `npm run build` adds is its own CI step and its own script.
+    command: `npx vite build && npx vite preview --port ${port} --strictPort`,
     // A test-only Google client ID, so the Google Drive option shows (against a mocked Google). The default build has
     // none and hides it; src/home/HomeScreen.test.tsx covers that.
     env: { VITE_GOOGLE_CLIENT_ID: E2E_GOOGLE_CLIENT_ID },

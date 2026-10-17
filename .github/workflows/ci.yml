@@ -25,12 +25,21 @@ jobs:
       - run: npm test
 
   e2e:
-    name: Playwright tests in ${{ matrix.browser }}
+    # Each browser's suite is split into shards that run as parallel jobs. WebKit is about three times slower than
+    # the others, so it gets more shards; a shard count is chosen to keep every job under ten minutes.
+    name: Playwright tests in ${{ matrix.browser }} (${{ matrix.shard }} of ${{ matrix.shards }})
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        browser: [chromium, firefox, webkit]
+        include:
+          - { browser: chromium, shard: 1, shards: 2 }
+          - { browser: chromium, shard: 2, shards: 2 }
+          - { browser: firefox, shard: 1, shards: 2 }
+          - { browser: firefox, shard: 2, shards: 2 }
+          - { browser: webkit, shard: 1, shards: 3 }
+          - { browser: webkit, shard: 2, shards: 3 }
+          - { browser: webkit, shard: 3, shards: 3 }
     env:
       E2E_BROWSERS: ${{ matrix.browser }}
       E2E_BROWSER_LOGS: '1'
@@ -42,11 +51,11 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npx playwright install --with-deps ${{ matrix.browser }}
-      - run: npm run e2e
+      - run: npm run e2e -- --shard=${{ matrix.shard }}/${{ matrix.shards }}
       - if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: playwright-report-${{ matrix.browser }}
+          name: playwright-report-${{ matrix.browser }}-${{ matrix.shard }}
           path: |
             playwright-report
             test-results
