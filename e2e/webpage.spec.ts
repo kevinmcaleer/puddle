@@ -51,14 +51,10 @@ test('a site that blocks other sites: Puddle says so, and takes the table copied
   await expect(error).toContainText('can’t fetch it from your browser');
 
   await error.getByRole('button', { name: 'Paste instead' }).click();
-  const box = dialog.getByLabel('Pasted table');
-  // What the clipboard holds after copying a table on a page: its HTML.
-  await box.evaluate((el) => {
-    const data = new DataTransfer();
-    data.setData('text/html', '<meta charset="utf-8"><h2>Prices</h2><table><tr><th>Item</th><th>Price</th></tr><tr><td>Tea</td><td>2.50</td></tr><tr><td>Cake</td><td>3.10</td></tr></table>');
-    data.setData('text/plain', 'Item\tPrice\nTea\t2.50\nCake\t3.10');
-    el.dispatchEvent(new ClipboardEvent('paste', { clipboardData: data, bubbles: true, cancelable: true }));
-  });
+  // The HTML of a copied table, pasted as text (a synthetic paste event carries no data in Firefox; the dialog's
+  // own handling of a clipboard that holds HTML is covered in src/sources/WebPageDialog.test.tsx).
+  await dialog.getByLabel('Pasted table').fill('<h2>Prices</h2><table><tr><th>Item</th><th>Price</th></tr><tr><td>Tea</td><td>2.50</td></tr><tr><td>Cake</td><td>3.10</td></tr></table>');
+  await dialog.getByRole('button', { name: 'Find tables' }).click();
   await expect(dialog.getByTestId('web-table-preview')).toContainText('Cake');
   await dialog.getByRole('button', { name: 'Add source' }).click();
   await expect(dialog).toHaveCount(0);
