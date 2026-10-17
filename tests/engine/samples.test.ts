@@ -118,11 +118,13 @@ describe('each sample has the problems its note describes, and the suggested fix
     expect(await one(`SELECT count(DISTINCT currency) FROM (${raw})`)).toBeGreaterThan(3);
     expect(await one(`SELECT count(*) FROM (${raw}) WHERE region IS NULL OR region IN ('n/a', '')`)).toBeGreaterThan(0);
 
-    // Parse dates detects the commonest format; the others are there to add.
+    // Parse dates detects every format in the column, and values like 24/01/2024 settle the day and month order.
+    // Regression: it used to detect only the commonest, so 43 of the 72 dates became empty.
     const detection = await detectDateFormats(engine, project, { nodeId: 'out' }, 'order_date');
-    expect(detection.best).toBe('%Y-%m-%d');
+    expect(detection.formats).toEqual(['%Y-%m-%d', '%d/%m/%Y', '%d %b %Y', '%B %d, %Y']);
+    expect(detection.ambiguous).toMatchObject({ order: 'day', byValues: expect.stringMatching(/^(1[3-9]|2\d|3[01])\//) });
     const fixed = cleaned(sales!, [
-      step('d', 'parseDates', { columns: ['order_date'], formats: ['%Y-%m-%d', '%d/%m/%Y', '%d %b %Y', '%B %d, %Y'] }),
+      step('d', 'parseDates', { columns: ['order_date'], formats: detection.formats }),
       step('n', 'parseNumbers', { columns: ['amount'], decimal: '.' }),
       step('t', 'trimWhitespace', { columns: ['currency', 'region'] }),
       step('u', 'changeCase', { columns: ['currency'], mode: 'upper' }),

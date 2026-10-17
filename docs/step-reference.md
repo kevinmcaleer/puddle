@@ -56,12 +56,37 @@ Every step a Transform node can hold, as the **Add step** menu groups them. Each
 
 | Step | What it does |
 | --- | --- |
-| Parse dates | Reads text as dates. Puddle ranks the likely formats by how many values each reads, tries them in order, and asks when a value such as `03/04/2024` could be day first or month first. Values no format reads become empty, or stop the step with an error. |
+| Parse dates | Reads text as dates, even when one column mixes several formats. Puddle finds the formats the column uses, tries them in order, and settles day and month order from the values themselves, or asks. Values no format reads become empty, or stop the step with an error. See [How dates are read](#how-dates-are-read). |
 | Extract date part | Takes the year, quarter, month (number or name), week of the year, day of the month, day of the week (number or name) or hour from a date, into a new column or in place of the date. |
 | Add or subtract time | Moves dates by a number of years, quarters, months, weeks, days, hours, minutes or seconds, the same for every row or taken from a column. |
 | Time between dates | The whole number of years, months, days or other units between two date columns, in a new column. |
 | Truncate dates | Rounds dates down to the start of their year, quarter, month, week (from Monday), day or hour. |
 | Format dates as text | Writes dates as text in a format you choose, such as `%d/%m/%Y`. |
+
+### How dates are read
+
+When you add **Parse dates**, Puddle tries over 80 formats on a sample of the column (its first 1,000 values) and picks the fewest that together read every value it can, commonest first. A column holding `2024-05-28`, `24/01/2024`, `16 Feb 2024` and `April 28, 2024` gets all four formats, so every row is read. The form lists them with the share of values each reads; **Use the detected formats** puts them back if you've changed the list.
+
+Puddle reads:
+
+- ISO dates and times: `2024-01-24`, `2024-01-24 14:30`, `2024-01-24T14:30:00.250`, with `Z` or an offset such as `+01:00` (read as the time in UTC).
+- Day and month as numbers, with `/`, `-` or `.` between them, four- or two-digit years, and times in 24-hour or 12-hour clock: `24/01/2024`, `24.01.24`, `01/24/2024 2:30 PM`.
+- Month names, full or abbreviated and in any case, with or without the weekday: `24 January 2024`, `24-Jan-24`, `Jan. 24, 2024`, `Sept 3, 2024`, `Wednesday, 24 January 2024`.
+- Ordinals: `24th January 2024`, `March 3rd, 2024`, `1st of May 2024`.
+- Email, log and C-style dates: `Wed, 24 Jan 2024 14:30:00 +0000`, `24/Jan/2024:14:30:00 +0000`, `Wed Jan 24 14:30:00 2024`.
+- Numbers that stand for dates: Excel serial numbers (five digits, such as `45315`), and Unix times in seconds (`1706106600`) or milliseconds (`1706106600000`). These show in the list as `excel serial`, `unix seconds` and `unix milliseconds`.
+- Month and day names in the step's locale, such as `31. Dezember 2026` in German.
+
+Two-digit years from `00` to `68` are 2000 to 2068, and `69` to `99` are 1969 to 1999. A four-digit year format never reads a short year: `24/01/24` is read by `%d/%m/%y`, not as the year 24.
+
+**Day and month order.** A value such as `02/01/2024` could be 2 January or 1 February. Puddle never guesses:
+
+1. If some values can only be read one way (`24/01/2024` can only be day first), that order is used for the whole column, and the form says which value settled it.
+2. Otherwise a date format in the project's settings with a day and month order settles it.
+3. Otherwise the step's locale does, such as English (US) for month first.
+4. Otherwise the form asks you to choose. It also asks if some values only fit day first and others only month first.
+
+**Values no format reads** stay empty (or stop the flow, if you choose that), and are never guessed at. The form says how many of the sample's values none of the formats reads, with examples, so you can add a format or fix them first. `31/02/2024` and `not a date` are two such values.
 
 ## Numbers
 

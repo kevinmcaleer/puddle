@@ -39,7 +39,7 @@ defineStepForm({
   ],
   detectsDates: true,
   // An ambiguous day and month order leaves formats empty, so the form asks. No locale until one is picked.
-  defaults: (ctx) => ({ columns: pickColumns(ctx).slice(0, 1), formats: ctx.dates?.best ? [ctx.dates.best] : [], onError: 'empty', locale: undefined }),
+  defaults: (ctx) => ({ columns: pickColumns(ctx).slice(0, 1), formats: ctx.dates?.formats ?? [], onError: 'empty', locale: undefined }),
 });
 
 defineStepForm({

@@ -1,15 +1,19 @@
 import { useEffect, useRef, useState } from 'react';
 import { parseLocale } from '../compiler';
-import { describeFormat, type Detection } from '../dates';
+import { describeFormat, orderOf, swapDayMonth, unreadValues, type Detection, type Order } from '../dates';
 import { Banner, Button, cx } from '../ui';
 import { CommitInput } from './CommitInput';
 
 const pct = (matched: number, total: number) => (total ? `${Math.round((matched / total) * 100)}%` : '0%');
 
+/** Every day and month format turned the other way round, without repeats. */
+const turn = (formats: string[]) => [...new Set(formats.map((f) => (orderOf(f) ? swapDayMonth(f)! : f)))];
+
 /**
- * The formats a parse dates step tries, in order, with the formats detected on its column and how many
- * values each reads. Day and month order is never guessed: an ambiguous column asks, or follows the step's locale
- * (and follows it again when the locale changes), saying so either way.
+ * The formats a parse dates step tries, in order, with the formats detected on its column, how many values each
+ * reads, and the values none of the step's formats reads. Day and month order is never guessed: an ambiguous column
+ * asks, or follows values that fit only one order, or the step's locale (and follows it again when the locale
+ * changes), saying so each time.
  */
 export function DateFormatsInput({
   id,
@@ -43,40 +47,52 @@ export function DateFormatsInput({
   const detection = found?.key === key ? found.detection : undefined;
   const add = (f: string) => !value.includes(f) && onChange([...value, f]);
   const amb = detection?.ambiguous;
-  // Which of the two orders is in use (the earlier one, if both), shown either way so it's never settled silently.
-  const di = amb ? value.indexOf(amb.dayFirst) : -1;
-  const mi = amb ? value.indexOf(amb.monthFirst) : -1;
-  const chosen = di < 0 && mi < 0 ? undefined : mi < 0 || (di >= 0 && di < mi) ? 'day' : 'month';
+  // Which order is in use (the first day and month format's), shown either way so it's never settled silently.
+  const chosen = value.map(orderOf).find((o): o is Order => o != null);
+  // Choosing an order puts the formats detected for it first, keeping any others.
+  const pick = (o: Order) => amb && onChange([...amb.covers[o], ...value.filter((f) => !amb.covers[o].includes(f))]);
   const rate = (f: string) => detection?.ranked.find((m) => m.format === f);
-  const swap = (from: string, to: string) => onChange(value.includes(to) ? value.filter((x) => x !== from) : value.map((x) => (x === from ? to : x)));
+  const unread = detection && value.length ? unreadValues(detection, value) : undefined;
+  const detected = detection?.formats;
+  const sameAsDetected = detected != null && detected.length === value.length && detected.every((f, i) => value[i] === f);
 
   // The locale's order is used once detection for a column and locale is in: when no order is chosen yet, and in
   // place of the other order when the locale or column has just changed. An order picked by hand, or a format removed,
   // under the same locale stands.
   const seen = useRef<string | null>(null);
   const byLocale = amb?.byLocale ? parseLocale(amb.byLocale) : undefined;
+  const localeOrder: Order | undefined = byLocale ? (byLocale.dayFirst ? 'day' : 'month') : undefined;
   useEffect(() => {
     if (!detection || seen.current === key) return;
     const first = seen.current === null;
     seen.current = key;
-    if (!amb || !byLocale) return;
-    const want = byLocale.dayFirst ? 'day' : 'month';
-    if (chosen === want || (chosen && first)) return;
-    const [from, to] = want === 'day' ? [amb.monthFirst, amb.dayFirst] : [amb.dayFirst, amb.monthFirst];
-    if (chosen) swap(from, to);
-    else onChange([to, ...value]);
+    if (!amb || !localeOrder) return;
+    if (chosen === localeOrder || (chosen && first)) return;
+    if (chosen) onChange(turn(value));
+    else pick(localeOrder);
   });
+
+  /** Why the order in use is the one it is, or a prompt to check it. */
+  const why = () => {
+    if (!amb) return '';
+    const byLocaleText = byLocale && chosen === localeOrder ? `this is the order ${byLocale.label} uses.` : undefined;
+    if (amb.mixed) return `Some values fit only day first (${amb.mixed.day}) and others only month first (${amb.mixed.month}), so not all can be read; ${byLocaleText ?? 'check this is the order most of the data uses.'}`;
+    const either = amb.example ? `${amb.example} could be read either way; ` : 'These values could be read either way; ';
+    if (amb.byValues && chosen === amb.order) return `${either}${amb.byValues} can only be read this way.`;
+    return either + (byLocaleText ?? 'check this is the order the data uses.');
+  };
 
   return (
     <div id={id} className="flex flex-col gap-2" data-testid="date-formats">
       {amb && !chosen && (
         <Banner tone="warn" title="Day and month order is unclear">
-          {amb.example ? `${amb.example} could be read either way. ` : ''}Choose which comes first.
+          {amb.mixed ? `Some values fit only day first (${amb.mixed.day}) and others only month first (${amb.mixed.month}). ` : amb.example ? `${amb.example} could be read either way. ` : ''}Choose
+          which comes first.
           <div className="mt-2 flex flex-wrap gap-2">
-            <Button size="sm" onClick={() => onChange([amb.dayFirst, ...value])}>
+            <Button size="sm" onClick={() => pick('day')}>
               Day first ({describeFormat(amb.dayFirst)})
             </Button>
-            <Button size="sm" onClick={() => onChange([amb.monthFirst, ...value])}>
+            <Button size="sm" onClick={() => pick('month')}>
               Month first ({describeFormat(amb.monthFirst)})
             </Button>
           </div>
@@ -87,13 +103,17 @@ export function DateFormatsInput({
           tone="warn"
           title={chosen === 'day' ? 'Reading the day first' : 'Reading the month first'}
           action={
-            <Button size="sm" variant="ghost" onClick={() => (chosen === 'day' ? swap(amb.dayFirst, amb.monthFirst) : swap(amb.monthFirst, amb.dayFirst))}>
+            <Button size="sm" variant="ghost" onClick={() => onChange(turn(value))}>
               {chosen === 'day' ? 'Read month first' : 'Read day first'}
             </Button>
           }
         >
-          {amb.example ? `${amb.example} could be read either way; ` : 'These values could be read either way; '}
-          {byLocale && chosen === (byLocale.dayFirst ? 'day' : 'month') ? `this is the order ${byLocale.label} uses.` : 'check this is the order the data uses.'}
+          {why()}
+        </Banner>
+      )}
+      {unread && unread.count > 0 && (
+        <Banner tone="warn" title={`${unread.count} of ${unread.total} values fit none of these formats`}>
+          {`They can’t be read as dates: ${unread.examples.map((v) => `“${v}”`).join(', ')}${unread.count > unread.examples.length ? ' and more' : ''}. Add a format that reads them, or fix them first.`}
         </Banner>
       )}
 
@@ -114,6 +134,11 @@ export function DateFormatsInput({
       {detection && (
         <div className="flex flex-col gap-1" aria-label="Detected formats" role="group">
           <span className="text-label text-ink-muted">{detection.ranked.length ? `Detected in ${column}` : `No format reads ${column}`}</span>
+          {detected && detected.length > 0 && !sameAsDetected && (
+            <Button size="sm" onClick={() => onChange(detected)}>
+              {detected.length === 1 ? 'Use the detected format' : `Use the ${detected.length} detected formats`}
+            </Button>
+          )}
           {detection.ranked.slice(0, 6).map((m) => {
             const used = value.includes(m.format);
             return (

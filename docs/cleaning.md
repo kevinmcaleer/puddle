@@ -19,7 +19,7 @@ Select one or more column headers in the results table, and the quick-fix bar ap
 | Collapse spaces | Turns runs of spaces inside a value into one. |
 | Empty to null | Treats empty text as a missing value. |
 | Parse numbers | Reads text such as `£1,234.50` as a number. |
-| Parse dates | Reads text as dates, detecting the format. |
+| Parse dates | Reads text as dates, detecting every format the column uses. |
 | Non-printing | Removes invisible characters. |
 | Remove duplicates | Removes rows that repeat in the selected columns. |
 

@@ -1,14 +1,11 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
-exports[`column step settings > detects date formats on a sample of non-empty values, one constant format per SELECT 1`] = `
-"WITH s AS (SELECT trim(CAST("joined" AS VARCHAR)) AS v FROM (WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv', null_padding = true)),
+exports[`column step settings > detects date formats on a sample of non-empty values: which formats read each distinct value 1`] = `
+"WITH s AS (SELECT raw, regexp_replace(regexp_replace(regexp_replace(raw, '([0-9])(?:st|nd|rd|th)\\b(?:\\s+of\\b)?', '\\1', 'gi'), '\\bsept\\b', 'Sep', 'gi'), '\\b(jan|feb|mar|apr|jun|jul|aug|sep|oct|nov|dec)\\.', '\\1', 'gi') AS v, row_number() OVER () AS i FROM (SELECT trim(CAST("joined" AS VARCHAR)) AS raw FROM (WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv', null_padding = true)),
   "n_clean_s0" AS (SELECT * REPLACE (trim("name") AS "name") FROM "n_src"),
   "n_clean_s1" AS (SELECT * REPLACE (list_aggr(list_transform(string_split("name", ' '), w -> upper(left(w, 1)) || lower(substr(w, 2))), 'string_agg', ' ') AS "name") FROM "n_clean_s0")
-SELECT * FROM "n_clean_s1") WHERE coalesce(trim(CAST("joined" AS VARCHAR)), '') <> '' LIMIT 1000)
-SELECT format, matched, total, example FROM (
-  SELECT 0 AS i, '%Y-%m-%d' AS format, count(*) FILTER (WHERE try_strptime(v, '%Y-%m-%d') IS NOT NULL) AS matched, count(*) AS total, any_value(v) FILTER (WHERE try_strptime(v, '%Y-%m-%d') IS NOT NULL) AS example FROM s
-  UNION ALL SELECT 1 AS i, '%d/%m/%Y' AS format, count(*) FILTER (WHERE try_strptime(v, '%d/%m/%Y') IS NOT NULL) AS matched, count(*) AS total, any_value(v) FILTER (WHERE try_strptime(v, '%d/%m/%Y') IS NOT NULL) AS example FROM s
-) ORDER BY i"
+SELECT * FROM "n_clean_s1") WHERE coalesce(trim(CAST("joined" AS VARCHAR)), '') <> '' LIMIT 1000))
+SELECT raw AS value, count(*) AS n, concat_ws(',', CASE WHEN CASE WHEN year(try_strptime(v, '%Y-%m-%d')) >= 1000 THEN try_strptime(v, '%Y-%m-%d') END IS NOT NULL THEN '0' END, CASE WHEN CASE WHEN year(try_strptime(v, '%d/%m/%Y')) >= 1000 THEN try_strptime(v, '%d/%m/%Y') END IS NOT NULL THEN '1' END) AS reads FROM s GROUP BY raw, v ORDER BY min(i)"
 `;
 
 exports[`compile > compiles a source node 1`] = `
@@ -351,19 +348,19 @@ SELECT * FROM "n_clean_s0""
 
 exports[`step snapshots > parseDates {"columns":["joined"],"formats":["%Y-%m-%d %H:%M:%S","%d %b '%y"],"onError":"fail"} 1`] = `
 "WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv', null_padding = true)),
-  "n_clean_s0" AS (SELECT * REPLACE (CAST(strptime(trim(CAST("joined" AS VARCHAR)), ['%Y-%m-%d %H:%M:%S', '%d %b ''%y']) AS TIMESTAMP) AS "joined") FROM "n_src")
+  "n_clean_s0" AS (SELECT * EXCLUDE ("__puddle_date_text_0") REPLACE (coalesce(CAST(CASE WHEN year(try_strptime("__puddle_date_text_0", '%Y-%m-%d %H:%M:%S')) >= 1000 THEN try_strptime("__puddle_date_text_0", '%Y-%m-%d %H:%M:%S') END AS TIMESTAMP), CAST(try_strptime("__puddle_date_text_0", '%d %b ''%y') AS TIMESTAMP), CASE WHEN coalesce(trim(CAST("joined" AS VARCHAR)), '') = '' THEN NULL ELSE error('Puddle: Can’t read “' || trim(CAST("joined" AS VARCHAR)) || '” as a date with the formats given. Add a format that reads it, or let values no format reads become empty.') END) AS "joined") FROM (SELECT *, regexp_replace(regexp_replace(regexp_replace(trim(CAST("joined" AS VARCHAR)), '([0-9])(?:st|nd|rd|th)\\b(?:\\s+of\\b)?', '\\1', 'gi'), '\\bsept\\b', 'Sep', 'gi'), '\\b(jan|feb|mar|apr|jun|jul|aug|sep|oct|nov|dec)\\.', '\\1', 'gi') AS "__puddle_date_text_0" FROM "n_src"))
 SELECT * FROM "n_clean_s0""
 `;
 
 exports[`step snapshots > parseDates {"columns":["joined"],"formats":["%d. %B %Y"],"onError":"empty","locale":"de-DE"} 1`] = `
 "WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv', null_padding = true)),
-  "n_clean_s0" AS (SELECT * REPLACE (CAST(try_strptime(regexp_replace(regexp_replace(regexp_replace(regexp_replace(regexp_replace(regexp_replace(regexp_replace(regexp_replace(regexp_replace(regexp_replace(regexp_replace(regexp_replace(regexp_replace(regexp_replace(regexp_replace(regexp_replace(regexp_replace(regexp_replace(regexp_replace(trim(CAST("joined" AS VARCHAR)), '(^|[^\\pL])(?:januar|jänner)([^\\pL]|$)', '\\1January\\2', 'gi'), '(^|[^\\pL])(?:februar|feber)([^\\pL]|$)', '\\1February\\2', 'gi'), '(^|[^\\pL])(?:märz|maerz)([^\\pL]|$)', '\\1March\\2', 'gi'), '(^|[^\\pL])(?:mai)([^\\pL]|$)', '\\1May\\2', 'gi'), '(^|[^\\pL])(?:juni)([^\\pL]|$)', '\\1June\\2', 'gi'), '(^|[^\\pL])(?:juli)([^\\pL]|$)', '\\1July\\2', 'gi'), '(^|[^\\pL])(?:oktober)([^\\pL]|$)', '\\1October\\2', 'gi'), '(^|[^\\pL])(?:dezember)([^\\pL]|$)', '\\1December\\2', 'gi'), '(^|[^\\pL])(?:(?:jän)\\.?)([^\\pL]|$)', '\\1Jan\\2', 'gi'), '(^|[^\\pL])(?:(?:mär|mrz)\\.?)([^\\pL]|$)', '\\1Mar\\2', 'gi'), '(^|[^\\pL])(?:(?:okt)\\.?)([^\\pL]|$)', '\\1Oct\\2', 'gi'), '(^|[^\\pL])(?:(?:dez)\\.?)([^\\pL]|$)', '\\1Dec\\2', 'gi'), '(^|[^\\pL])(?:montag)([^\\pL]|$)', '\\1Monday\\2', 'gi'), '(^|[^\\pL])(?:dienstag)([^\\pL]|$)', '\\1Tuesday\\2', 'gi'), '(^|[^\\pL])(?:mittwoch)([^\\pL]|$)', '\\1Wednesday\\2', 'gi'), '(^|[^\\pL])(?:donnerstag)([^\\pL]|$)', '\\1Thursday\\2', 'gi'), '(^|[^\\pL])(?:freitag)([^\\pL]|$)', '\\1Friday\\2', 'gi'), '(^|[^\\pL])(?:samstag|sonnabend)([^\\pL]|$)', '\\1Saturday\\2', 'gi'), '(^|[^\\pL])(?:sonntag)([^\\pL]|$)', '\\1Sunday\\2', 'gi'), '%d. %B %Y') AS DATE) AS "joined") FROM "n_src")
+  "n_clean_s0" AS (SELECT * EXCLUDE ("__puddle_date_text_0") REPLACE (CAST(CASE WHEN year(try_strptime("__puddle_date_text_0", '%d. %B %Y')) >= 1000 THEN try_strptime("__puddle_date_text_0", '%d. %B %Y') END AS DATE) AS "joined") FROM (SELECT *, regexp_replace(regexp_replace(regexp_replace(regexp_replace(regexp_replace(regexp_replace(regexp_replace(regexp_replace(regexp_replace(regexp_replace(regexp_replace(regexp_replace(regexp_replace(regexp_replace(regexp_replace(regexp_replace(regexp_replace(regexp_replace(regexp_replace(regexp_replace(regexp_replace(regexp_replace(trim(CAST("joined" AS VARCHAR)), '(^|[^\\pL])(?:januar|jänner)([^\\pL]|$)', '\\1January\\2', 'gi'), '(^|[^\\pL])(?:februar|feber)([^\\pL]|$)', '\\1February\\2', 'gi'), '(^|[^\\pL])(?:märz|maerz)([^\\pL]|$)', '\\1March\\2', 'gi'), '(^|[^\\pL])(?:mai)([^\\pL]|$)', '\\1May\\2', 'gi'), '(^|[^\\pL])(?:juni)([^\\pL]|$)', '\\1June\\2', 'gi'), '(^|[^\\pL])(?:juli)([^\\pL]|$)', '\\1July\\2', 'gi'), '(^|[^\\pL])(?:oktober)([^\\pL]|$)', '\\1October\\2', 'gi'), '(^|[^\\pL])(?:dezember)([^\\pL]|$)', '\\1December\\2', 'gi'), '(^|[^\\pL])(?:(?:jän)\\.?)([^\\pL]|$)', '\\1Jan\\2', 'gi'), '(^|[^\\pL])(?:(?:mär|mrz)\\.?)([^\\pL]|$)', '\\1Mar\\2', 'gi'), '(^|[^\\pL])(?:(?:okt)\\.?)([^\\pL]|$)', '\\1Oct\\2', 'gi'), '(^|[^\\pL])(?:(?:dez)\\.?)([^\\pL]|$)', '\\1Dec\\2', 'gi'), '(^|[^\\pL])(?:montag)([^\\pL]|$)', '\\1Monday\\2', 'gi'), '(^|[^\\pL])(?:dienstag)([^\\pL]|$)', '\\1Tuesday\\2', 'gi'), '(^|[^\\pL])(?:mittwoch)([^\\pL]|$)', '\\1Wednesday\\2', 'gi'), '(^|[^\\pL])(?:donnerstag)([^\\pL]|$)', '\\1Thursday\\2', 'gi'), '(^|[^\\pL])(?:freitag)([^\\pL]|$)', '\\1Friday\\2', 'gi'), '(^|[^\\pL])(?:samstag|sonnabend)([^\\pL]|$)', '\\1Saturday\\2', 'gi'), '(^|[^\\pL])(?:sonntag)([^\\pL]|$)', '\\1Sunday\\2', 'gi'), '([0-9])(?:st|nd|rd|th)\\b(?:\\s+of\\b)?', '\\1', 'gi'), '\\bsept\\b', 'Sep', 'gi'), '\\b(jan|feb|mar|apr|jun|jul|aug|sep|oct|nov|dec)\\.', '\\1', 'gi') AS "__puddle_date_text_0" FROM "n_src"))
 SELECT * FROM "n_clean_s0""
 `;
 
 exports[`step snapshots > parseDates {"columns":["joined"],"formats":["%d/%m/%Y"],"onError":"empty"} 1`] = `
 "WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv', null_padding = true)),
-  "n_clean_s0" AS (SELECT * REPLACE (CAST(try_strptime(trim(CAST("joined" AS VARCHAR)), '%d/%m/%Y') AS DATE) AS "joined") FROM "n_src")
+  "n_clean_s0" AS (SELECT * EXCLUDE ("__puddle_date_text_0") REPLACE (CAST(CASE WHEN year(try_strptime("__puddle_date_text_0", '%d/%m/%Y')) >= 1000 THEN try_strptime("__puddle_date_text_0", '%d/%m/%Y') END AS DATE) AS "joined") FROM (SELECT *, regexp_replace(regexp_replace(regexp_replace(trim(CAST("joined" AS VARCHAR)), '([0-9])(?:st|nd|rd|th)\\b(?:\\s+of\\b)?', '\\1', 'gi'), '\\bsept\\b', 'Sep', 'gi'), '\\b(jan|feb|mar|apr|jun|jul|aug|sep|oct|nov|dec)\\.', '\\1', 'gi') AS "__puddle_date_text_0" FROM "n_src"))
 SELECT * FROM "n_clean_s0""
 `;
 

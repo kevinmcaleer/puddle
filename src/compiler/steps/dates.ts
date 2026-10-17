@@ -1,8 +1,9 @@
 // The Dates step group. Parse dates turns text into DATE or TIMESTAMP; the rest work on those types:
 // extract a part, add or subtract an interval, difference, truncate, format to text.
 import { z } from 'zod';
-import { englishDateNames, PARSE_LOCALE_IDS } from '../locales';
-import { ident, list, num, str, strList } from '../sql';
+import { dateText, hasTime, readDates } from '../dateRead';
+import { PARSE_LOCALE_IDS } from '../locales';
+import { ident, list, num, str } from '../sql';
 import { defineStep } from './registry';
 
 const Column = z.string().min(1, 'pick a column');
@@ -14,8 +15,7 @@ const names = (cols: string[]) => cols.join(', ');
 const replaceEach = (input: string, columns: string[], expr: (col: string) => string) =>
   `SELECT * REPLACE (${list(columns.map((c) => `${expr(c)} AS ${ident(c)}`))}) FROM ${input}`;
 
-/** Whether a strptime format reads a time of day as well as a date. */
-export const hasTime = (format: string) => /%[HIMSfpTXcgnz]/.test(format);
+export { hasTime };
 
 export const parseDates = defineStep({
   type: 'parseDates',
@@ -33,12 +33,13 @@ export const parseDates = defineStep({
     locale: z.preprocess((v) => (v === '' ? undefined : v), z.enum(PARSE_LOCALE_IDS, 'pick a locale Puddle knows').optional()),
   }),
   label: (p) => `Parsed ${p.columns.join(', ')} as ${p.formats.some(hasTime) ? 'date and time' : 'dates'}`,
+  // Each column's text is tidied once, into a column of its own that each format then reads.
   compile: (p, { input }) => {
-    const formats = p.formats.length === 1 ? str(p.formats[0]!) : strList(p.formats);
-    const fn = p.onError === 'fail' ? 'strptime' : 'try_strptime';
-    const as = p.formats.some(hasTime) ? 'TIMESTAMP' : 'DATE';
-    const text = (c: string) => englishDateNames(`trim(CAST(${ident(c)} AS VARCHAR))`, p.locale);
-    return `SELECT * REPLACE (${list(p.columns.map((c) => `CAST(${fn}(${text(c)}, ${formats}) AS ${as}) AS ${ident(c)}`))}) FROM ${input}`;
+    const raw = (c: string) => `trim(CAST(${ident(c)} AS VARCHAR))`;
+    const tidy = (i: number) => ident(`__puddle_date_text_${i}`);
+    const tidied = p.columns.map((c, i) => `${dateText(raw(c), p.locale)} AS ${tidy(i)}`);
+    const read = p.columns.map((c, i) => `${readDates(tidy(i), p.formats, p.onError === 'fail' ? { fail: { raw: raw(c) } } : {})} AS ${ident(c)}`);
+    return `SELECT * EXCLUDE (${list(p.columns.map((_, i) => tidy(i)))}) REPLACE (${list(read)}) FROM (SELECT *, ${list(tidied)} FROM ${input})`;
   },
 });
 

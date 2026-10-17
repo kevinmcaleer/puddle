@@ -60,10 +60,10 @@ export const QUICK_FIXES: QuickFixDef[] = [
   {
     id: 'parseDates',
     label: 'Parse dates',
-    // Detected on the first column; an ambiguous day and month order leaves the formats for the user to choose.
+    // Detected on the first column: the formats that together read it. An ambiguous day and month order leaves them for the user to choose.
     build: async (ctx) => {
       const detection = ctx.columns[0] ? await ctx.detectDates(ctx.columns[0]) : undefined;
-      return make('parseDates', ctx, { columns: ctx.columns, formats: detection?.best ? [detection.best] : [] });
+      return make('parseDates', ctx, { columns: ctx.columns, formats: detection?.formats ?? [] });
     },
   },
   onColumns('removeNonPrinting', 'Non-printing'),

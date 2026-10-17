@@ -9,7 +9,7 @@ const ctx = (over: Partial<FixContext> = {}): FixContext => ({
     { name: 'city', type: 'VARCHAR' },
   ],
   locale: 'en-GB',
-  detectDates: async () => ({ ranked: [], best: '%d/%m/%Y' }),
+  detectDates: async () => ({ ranked: [], formats: ['%d/%m/%Y', '%d %B %Y'] }),
   ...over,
 });
 
@@ -29,10 +29,10 @@ describe('quick fixes', () => {
     expect((await fix.build(ctx(), 'upper')).label).toBe('Changed name, city to upper case');
   });
 
-  it('parse dates uses the detected format, and leaves an ambiguous order to the user', async () => {
+  it('parse dates uses the detected formats, and leaves an ambiguous order to the user', async () => {
     const fix = QUICK_FIXES.find((f) => f.id === 'parseDates')!;
-    expect((await fix.build(ctx())).params.formats).toEqual(['%d/%m/%Y']);
-    const ambiguous = await fix.build(ctx({ detectDates: async () => ({ ranked: [], ambiguous: { dayFirst: '%d/%m/%Y', monthFirst: '%m/%d/%Y' } }) }));
+    expect((await fix.build(ctx())).params.formats).toEqual(['%d/%m/%Y', '%d %B %Y']);
+    const ambiguous = await fix.build(ctx({ detectDates: async () => ({ ranked: [], ambiguous: { dayFirst: '%d/%m/%Y', monthFirst: '%m/%d/%Y', covers: { day: ['%d/%m/%Y'], month: ['%m/%d/%Y'] } } }) }));
     expect(ambiguous.params.formats).toEqual([]);
   });
 

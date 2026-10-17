@@ -63,8 +63,9 @@ describe('locale settings on the parse steps', () => {
 
   it('parse dates reads the locale’s names before strptime', () => {
     const sql = parseDates.compile(parseDates.params.parse({ columns: ['d'], formats: ['%d. %B %Y'], locale: 'de-DE' }), { input: 'x' });
-    expect(sql).toMatch(/^SELECT \* REPLACE \(CAST\(try_strptime\(regexp_replace\(/);
-    expect(sql).toContain(`trim(CAST("d" AS VARCHAR))`);
-    expect(parseDates.compile(parseDates.params.parse({ columns: ['d'], formats: ['%d/%m/%Y'] }), { input: 'x' })).not.toContain('regexp_replace');
+    expect(sql).toMatch(/^SELECT \* EXCLUDE \("__puddle_date_text_0"\) REPLACE \(CAST\(CASE WHEN year\(try_strptime\("__puddle_date_text_0", '%d\. %B %Y'\)\)/);
+    expect(sql).toContain(`regexp_replace(trim(CAST("d" AS VARCHAR)), '(^|[^\\pL])(?:januar|jänner)`);
+    expect(sql).toContain(`'\\1December\\2'`);
+    expect(parseDates.compile(parseDates.params.parse({ columns: ['d'], formats: ['%d/%m/%Y'] }), { input: 'x' })).not.toContain('December');
   });
 });

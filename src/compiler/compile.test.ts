@@ -369,7 +369,7 @@ describe('column step settings', () => {
     expect(advice).toEqual(['close every ( with a )', 'close every [ with a ]', expect.stringMatching(/put something before/), 'escape a trailing \\ as \\\\']);
   });
 
-  it('detects date formats on a sample of non-empty values, one constant format per SELECT', () => {
+  it('detects date formats on a sample of non-empty values: which formats read each distinct value', () => {
     const sql = compileDateDetection(cleanFlow(), { nodeId: 'clean' }, 'joined', ['%Y-%m-%d', '%d/%m/%Y']);
     expect(sql).toMatchSnapshot();
     expect(() => compileDateDetection(cleanFlow(), { nodeId: 'clean' }, 'joined', [])).toThrow(RangeError);
