@@ -4,7 +4,8 @@ import { useStepColumns } from '../inspector/useStepColumns';
 import { inputEdges, nodeById, useProject, type TransformNode } from '../model';
 import { Banner, Button, Dialog, Field, StepList, Switch, TextInput } from '../ui';
 import { insertFeed, insertTemplateAfter, openTemplateDialog, saveAsTemplate, useTemplateDialog } from './actions';
-import { editTemplate, refreshTemplates, removeTemplate, useTemplates } from './library';
+import { editTemplate, refreshTemplates, removeTemplate, templateOperations, useTemplates } from './library';
+import { OperationButtons } from '../app/OperationButtons';
 import { expectedColumns, suggestedMapping } from './mapping';
 import { Columns, Mapping } from './Mapping';
 import { exportTemplateRecipe, importTemplateFile } from '../recipes/actions';
@@ -153,6 +154,7 @@ function LibraryDialog() {
   const [picks, setPicks] = useState<Record<string, string>>({});
   const [feed] = useState(insertFeed);
   const importInput = useRef<HTMLInputElement>(null);
+  const body = useRef<HTMLDivElement>(null);
   const [imported, setImported] = useState<{ tone: 'info' | 'fail'; text: string } | null>(null);
   const project = useProject();
   const feedNode = feed ? nodeById(project, feed) : undefined;
@@ -187,6 +189,9 @@ function LibraryDialog() {
         <Button variant="ghost" icon="source" title="Add a template from a .puddle-recipe.json file" onClick={() => importInput.current?.click()}>
           Import template
         </Button>
+        <div ref={body} className="flex">
+          <OperationButtons ops={templateOperations} within={body} onError={(text) => setImported({ tone: 'fail', text })} />
+        </div>
         <input
           ref={importInput}
           type="file"
