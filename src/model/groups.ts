@@ -45,7 +45,46 @@ const updateGroup = (project: Project, groupId: string, patch: Partial<NodeGroup
   groups: project.groups.map((g) => (g.id === groupId ? { ...g, ...patch } : g)),
 });
 
-export const setGroupCollapsed = (project: Project, groupId: string, collapsed: boolean) => updateGroup(project, groupId, { collapsed });
+/** Close a group to its card, or open it round its nodes, making room for them first if anything sits in the way. */
+export function setGroupCollapsed(project: Project, groupId: string, collapsed: boolean): Project {
+  const next = updateGroup(project, groupId, { collapsed });
+  return collapsed ? next : makeRoom(next, groupId);
+}
+
+// A node's size on the canvas, and the space kept round an opened group, for making room.
+const NODE_W = 232;
+const NODE_H = 96;
+const ROOM = 64;
+
+/**
+ * A collapsed group's card takes less room than its nodes, so a layout made while it was closed (such as Auto layout)
+ * can put other nodes where its nodes are. Opening it then moves whatever lies to its right further right, by as much
+ * as the nearest one in the way needs, so nothing is hidden under the group and the flow keeps its shape.
+ */
+function makeRoom(project: Project, groupId: string): Project {
+  const group = groupById(project, groupId);
+  const members = group?.nodeIds.flatMap((id) => nodeById(project, id) ?? []) ?? [];
+  if (!group || !members.length) return project;
+  const left = Math.min(...members.map((n) => n.position.x));
+  const right = Math.max(...members.map((n) => n.position.x)) + NODE_W + ROOM;
+  const top = Math.min(...members.map((n) => n.position.y)) - ROOM;
+  const bottom = Math.max(...members.map((n) => n.position.y)) + NODE_H + ROOM;
+  // What moves: nodes on their own, and other collapsed groups as a whole (their card, with their nodes).
+  const closed = project.groups.filter((g) => g.id !== groupId && g.collapsed);
+  const inClosed = new Set(closed.flatMap((g) => g.nodeIds));
+  const loose = project.nodes.filter((n) => !group.nodeIds.includes(n.id) && !inClosed.has(n.id) && n.position.x > left);
+  const cards = closed.filter((g) => g.position.x > left);
+  const inWay = [...loose.map((n) => n.position), ...cards.map((g) => g.position)].filter((p) => p.x < right && p.y + NODE_H > top && p.y < bottom);
+  if (!inWay.length) return project;
+  const dx = right - Math.min(...inWay.map((p) => p.x));
+  const moved = new Set([...loose.map((n) => n.id), ...cards.flatMap((g) => g.nodeIds)]);
+  const shifted = new Set(cards.map((g) => g.id));
+  return {
+    ...project,
+    nodes: project.nodes.map((n) => (moved.has(n.id) ? { ...n, position: { x: n.position.x + dx, y: n.position.y } } : n)),
+    groups: project.groups.map((g) => (shifted.has(g.id) ? { ...g, position: { x: g.position.x + dx, y: g.position.y } } : g)),
+  };
+}
 
 export const renameGroup = (project: Project, groupId: string, name: string) => (name.trim() ? updateGroup(project, groupId, { name: name.trim() }) : project);
 

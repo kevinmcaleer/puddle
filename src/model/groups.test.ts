@@ -61,10 +61,40 @@ describe('node groups', () => {
     let p = makeGroup(base(), ['a', 'b'], 'g1');
     p = setGroupCollapsed(p, 'g1', false);
     expect(p.groups[0]!.collapsed).toBe(false);
+    // Nothing was in the way, so nothing moved.
+    expect(p.nodes).toEqual(base().nodes);
     p = renameGroup(p, 'g1', '  Clean up  ');
     expect(p.groups[0]!.name).toBe('Clean up');
     expect(renameGroup(p, 'g1', ' ')).toBe(p);
     expect(ungroup(p, 'g1').groups).toEqual([]);
+  });
+
+  it('opening a group moves what was laid out where its nodes are further right, keeping the flow\'s shape', () => {
+    // As Auto layout leaves it with in and a grouped: the join where a is, the output one step on.
+    const closed = makeGroup(base(), ['in', 'a'], 'g1');
+    const at = (p: Project, id: string) => p.nodes.find((n) => n.id === id)!.position;
+    const laidOut = { ...closed, nodes: closed.nodes.map((n) => (n.id === 'b' ? { ...n, position: { x: 300, y: 0 } } : n.id === 'out' ? { ...n, position: { x: 600, y: 0 } } : n)) };
+    const open = setGroupCollapsed(laidOut, 'g1', false);
+    // a's right edge (300 + 232) plus room: b moves from 300 to 596, and out by the same.
+    expect(at(open, 'b')).toEqual({ x: 596, y: 0 });
+    expect(at(open, 'out')).toEqual({ x: 896, y: 0 });
+    // The group's own nodes, and side (level with the group's left edge), stay put.
+    expect(['in', 'a', 'side'].map((id) => at(open, id))).toEqual(['in', 'a', 'side'].map((id) => at(laidOut, id)));
+    // Closing moves nothing back, and opening again finds the room already there.
+    const again = setGroupCollapsed(setGroupCollapsed(open, 'g1', true), 'g1', false);
+    expect(again.nodes).toEqual(open.nodes);
+  });
+
+  it('opening a group moves another collapsed group in its way as a whole', () => {
+    let p = makeGroup(base(), ['in', 'a'], 'g1');
+    p = makeGroup(p, ['b', 'out'], 'g2');
+    p = moveGroup(p, 'g2', { x: 300, y: 100 });
+    const open = setGroupCollapsed(p, 'g1', false);
+    expect(open.groups.find((g) => g.id === 'g2')!.position).toEqual({ x: 596, y: 100 });
+    expect(open.nodes.filter((n) => ['b', 'out'].includes(n.id)).map((n) => n.position)).toEqual([
+      { x: 596, y: 100 },
+      { x: 896, y: 100 },
+    ]);
   });
 
   it('moving a collapsed card moves its nodes with it', () => {

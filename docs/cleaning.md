@@ -2,7 +2,7 @@
 
 Cleaning in Puddle is a list of steps in a Transform node. Each step does one thing, such as trimming spaces or parsing dates, and the steps run in order. Nothing changes your file: the steps are a recipe that DuckDB runs each time you look at the data.
 
-There are two ways to add steps: the quick-fix bar, which covers the common fixes in one click, and the **Add step** menu, which has every step.
+There are three ways to add steps: the quick-fix bar, which covers the common fixes in one click; the column menu, which opens when you right-click a column in the results; and the **Add step** menu, which has every step.
 
 ## Quick fixes
 
@@ -51,6 +51,41 @@ The results show the data after the selected step, and the results title says wh
 
 ![The data viewed at step 1, before the case change](_static/screenshots/steps-view-earlier.png)
 
+## The column menu
+
+Right-click a column header in the results table, or click the arrow at the right of a header, to open the column menu. It works on the columns selected in the results: right-clicking a column that isn't selected selects it first. With a header selected, the context menu key or Shift+F10 opens it from the keyboard.
+
+![The column menu for the city column](_static/screenshots/column-menu.png)
+
+The top of the menu has the steps you reach for most: **Replace values**, **Remove matching rows**, **Keep matching rows**, **Remove empty rows**, **Remove duplicates** and the two sorts. The rest sit in submenus:
+
+| Submenu | What's in it |
+| --- | --- |
+| Clean | Trim, Collapse spaces, Remove non-printing characters, Empty text to null, Fill down, Fill up. |
+| Text | UPPER CASE, lower case, Title Case, Find and replace, Split column. |
+| Change type | Parse numbers, Parse dates, To text, To whole number, To decimal number. |
+| Columns | Rename, Duplicate column, Move to the front, Remove column, Remove other columns. |
+
+![The Text submenu open beside the column menu](_static/screenshots/column-menu-submenu.png)
+
+Right-click a cell and the menu adds a **This value** group at the top for the value in that cell: replace it, keep only the rows that have it, or remove the rows that have it.
+
+![The column menu for a cell holding London, with its This value group](_static/screenshots/column-menu-cell.png)
+
+Like a quick fix, a step from the column menu lands where you're looking (see [Quick fixes](#quick-fixes)). Items that end in "…" open the step's settings, or a short dialog, before anything is added.
+
+### Replace values
+
+**Replace values** swaps whole values for another value. Choose what to find: a value you type, empty values (null), or empty values and blank text. Then type what goes in their place, or turn on **Replace with an empty value (null)**. A typed value matches the whole value, not part of it, and matches case unless you turn off **Match case** in the step's settings. To change text inside a value, use **Find and replace** instead.
+
+![The Replace values dialog, set to replace empty values in city with the word empty](_static/screenshots/column-menu-replace.png)
+
+A number or date column can't hold a word such as `empty`. Turn on **Change to text** and the column becomes text first, so the word fits. Puddle turns it on for you when the replacement wouldn't fit, and warns you if you turn it off.
+
+### Each step as a new node
+
+Turn on **Add each step as a new node**, at the bottom of the column menu or in the project settings, to give each step you add from the results table (by the column menu or a quick fix) a Transform node of its own, wired after the one you're viewing. The canvas then shows every step as its own node, the way Power Query lists its applied steps. Viewing an earlier step of a Transform still adds the step in place, after the one you're viewing.
+
 ## The Add step menu
 
 **Add step**, above the step list, has every step, grouped as Clean, Columns, Rows, Text, Dates, Numbers, Reshape and Advanced. Type to search it. A new step starts on the columns selected in the results.
@@ -59,6 +94,6 @@ The results show the data after the selected step, and the results title says wh
 
 The {doc}`step-reference` describes them all.
 
-## Grouping
+## Merging Transform nodes
 
-Several Transform nodes in a row can become one: select them, then choose **Group into one node** on the selection bar (or press G). The group runs their steps in order, and can be ungrouped again.
+Several Transform nodes in a line can become one: select them, then choose **Merge into one node** on the selection bar. The merged node runs their steps in order, and **Split into the original nodes** in the inspector puts them back. To tidy the canvas without changing any nodes, group them instead (see [Groups](canvas.md#groups)).

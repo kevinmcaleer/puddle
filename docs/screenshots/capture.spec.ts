@@ -76,6 +76,59 @@ test('quick fixes and steps', async ({ page }) => {
   await shot(page, 'steps-view-earlier');
 });
 
+/** Right-click in the results grid (a canvas) at a point in pixels from its left edge, on the header or on a row. */
+async function rightClickAt(page: Page, x: number, row?: number) {
+  const box = (await page.getByTestId('results-table').boundingBox())!;
+  await page.mouse.click(box.x + x, row == null ? box.y + 20 : box.y + 52 + 28 * row + 14, { button: 'right' });
+  await expect(page.getByTestId('context-menu')).toBeVisible();
+}
+
+test('the column menu', async ({ page }) => {
+  await start(page);
+  await openSample(page, 'contacts');
+  await node(page, 'contacts.csv').click();
+  const menu = page.getByTestId('context-menu');
+  // city.
+  await rightClickAt(page, 450);
+  await shot(page, 'column-menu', menu);
+  await menu.getByRole('menuitem', { name: 'Text' }).hover();
+  await expect(menu.getByRole('menu', { name: 'Text' })).toBeVisible();
+  await shot(page, 'column-menu-submenu');
+  await page.keyboard.press('Escape');
+  await expect(menu).toHaveCount(0);
+
+  // A cell adds a group for its value.
+  await rightClickAt(page, 450, 1);
+  await shot(page, 'column-menu-cell', menu);
+  await page.keyboard.press('Escape');
+
+  await rightClickAt(page, 450);
+  await menu.getByRole('menuitem', { name: 'Replace values…' }).click();
+  await shot(page, 'column-menu-replace', page.getByRole('dialog', { name: 'Replace values in city' }));
+  await page.getByRole('dialog').getByRole('button', { name: 'Replace' }).click();
+  await expect(steps(page)).toHaveCount(1);
+});
+
+test('groups', async ({ page }) => {
+  await start(page);
+  await openSample(page, 'contacts');
+  await node(page, 'contacts.csv').click();
+  await page.keyboard.press('t');
+  await expect(node(page, 'Transform 1')).toHaveAttribute('data-status', 'ok');
+  await page.keyboard.press('o');
+  await expect(node(page, 'Output 1')).toHaveAttribute('data-status', 'ok');
+  await node(page, 'contacts.csv').click();
+  await node(page, 'Transform 1').click({ modifiers: ['Shift'] });
+  await page.keyboard.press('g');
+  await expect(page.getByTestId('group-Group 1')).toBeVisible();
+  await page.getByRole('button', { name: 'Auto layout' }).click();
+  await shot(page, 'groups-card');
+  await page.getByTestId('group-Group 1').dblclick();
+  await expect(page.getByTestId('frame-Group 1')).toBeVisible();
+  await page.getByRole('button', { name: 'Fit View' }).click();
+  await shot(page, 'groups-open');
+});
+
 test('rules, outputs and export', async ({ page }) => {
   await start(page);
   await openSample(page, 'contacts');
