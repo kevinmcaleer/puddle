@@ -107,6 +107,47 @@ describe('useShortcuts', () => {
     elsewhere.remove();
   });
 
+  it('leaves arrows to a menu or the query designer on the canvas', () => {
+    const { actions } = setup();
+    const canvas = document.body.appendChild(document.createElement('main'));
+    canvas.setAttribute('aria-label', 'Canvas');
+    const menu = canvas.appendChild(document.createElement('div'));
+    menu.setAttribute('role', 'menu');
+    const item = menu.appendChild(document.createElement('button'));
+    const designer = canvas.appendChild(document.createElement('div'));
+    designer.className = 'puddle-qd';
+    const head = designer.appendChild(document.createElement('div'));
+    expect(key(item, { key: 'ArrowDown' }).defaultPrevented).toBe(false);
+    expect(key(head, { key: 'ArrowLeft' }).defaultPrevented).toBe(false);
+    expect(actions['select-below']).not.toHaveBeenCalled();
+    expect(actions['select-upstream']).not.toHaveBeenCalled();
+    canvas.remove();
+  });
+
+  it('opens a node with Enter only from a node, the canvas or the page, never from a button', () => {
+    const { actions } = setup();
+    const canvas = document.body.appendChild(document.createElement('main'));
+    canvas.setAttribute('aria-label', 'Canvas');
+    const nodeEl = canvas.appendChild(document.createElement('div'));
+    nodeEl.className = 'react-flow__node';
+    const button = canvas.appendChild(document.createElement('button'));
+    key(button, { key: 'Enter' });
+    expect(actions['open-node']).not.toHaveBeenCalled();
+    key(nodeEl, { key: 'Enter' });
+    key(canvas, { key: 'Enter' });
+    expect(actions['open-node']).toHaveBeenCalledTimes(2);
+    canvas.remove();
+  });
+
+  it('lets Escape through when there was no wiring to cancel', () => {
+    const { actions } = setup();
+    actions.cancel.mockReturnValue(false);
+    expect(key(document.body, { key: 'Escape' }).defaultPrevented).toBe(false);
+    actions.cancel.mockReturnValue(true);
+    expect(key(document.body, { key: 'Escape' }).defaultPrevented).toBe(true);
+    expect(actions.cancel).toHaveBeenCalledTimes(2);
+  });
+
   it('ignores a held-down letter repeating', () => {
     const { actions } = setup();
     key(document.body, { key: 't', repeat: true });

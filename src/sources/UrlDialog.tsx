@@ -41,7 +41,7 @@ function UrlForm({ onChooseFile }: { onChooseFile: () => void }) {
         <TextInput
           id="url-address"
           mono
-          autoFocus
+          data-autofocus
           inputMode="url"
           spellCheck={false}
           placeholder="https://example.org/orders.csv"

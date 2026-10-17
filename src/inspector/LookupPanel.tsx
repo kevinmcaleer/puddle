@@ -5,7 +5,7 @@ import { checkLookup, matchRate, type LookupCounts } from '../flow/lookup';
 import { useNodeStatus } from '../flow/status';
 import { inputEdge, nodeById, renameNode, setLookupSpec, swapLookupInputs, useProject, useProjectStore, type ColumnSchema, type LookupKey, type LookupNode, type LookupSpec } from '../model';
 import { CommitInput } from '../steps/CommitInput';
-import { Banner, Button, columnKind, FieldChip, Field, Section, Select, Switch } from '../ui';
+import { Banner, Button, columnKind, FieldChip, Field, fullCount, Section, Select, Switch } from '../ui';
 
 const apply = (edit: Parameters<ReturnType<typeof useProjectStore.getState>['apply']>[0]) => useProjectStore.getState().apply(edit);
 const NONE: ColumnSchema[] = [];
@@ -41,7 +41,7 @@ function useCounts(node: LookupNode): LookupCounts | undefined {
   return found?.key === key ? found.value : undefined;
 }
 
-const plural = (n: number, one: string, many = `${one}s`) => `${n.toLocaleString()} ${n === 1 ? one : many}`;
+const plural = (n: number, one: string, many = `${one}s`) => `${fullCount(n)} ${n === 1 ? one : many}`;
 
 /** The match rate, then what happened to keys with several matches and keys with none. */
 function MatchReport({ counts, spec }: { counts: LookupCounts; spec: LookupSpec }) {

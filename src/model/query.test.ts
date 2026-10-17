@@ -1,9 +1,9 @@
 import { flow, src } from '../../tests/helpers/projects';
 import { addNode } from './edits';
 import { GraphError, inputPorts } from './graph';
-import { initHistory, pushHistory, undo } from './history';
+import { initHistory, pushHistory, redo, undo } from './history';
 import { parseProject } from './project';
-import { addQueryField, addQueryJoin, addQueryTable, moveQueryField, moveQueryTable, removeQueryField, removeQueryJoin, removeQueryTable, setQueryJoinKind, setQuerySpec, updateQueryField } from './query';
+import { addQueryField, addQueryJoin, addQueryOrRow, addQueryTable, criteriaCell, moveQueryField, moveQueryTable, removeQueryField, removeQueryJoin, removeQueryOrRow, removeQueryTable, setQueryCriteria, setQueryJoinKind, setQuerySpec, updateQueryField } from './query';
 import type { Project, QueryNode } from './schema';
 
 const base = () =>
@@ -161,5 +161,82 @@ describe('the Totals row', () => {
     p = addQueryField(p, 'q', { port: 1, column: 'status' }, undefined, 'f3');
     p = updateQueryField(p, 'q', 'f3', { total: 'where', show: false, criteria: { op: '=', value: 'shipped' } });
     expect(parseProject(JSON.parse(JSON.stringify(p)))).toEqual(p);
+  });
+});
+
+describe('or rows', () => {
+  const grid = () => {
+    let p = addQueryField(addQueryField(twoTables(), 'q', { port: 0, column: 'status' }, undefined, 'f1'), 'q', { port: 1, column: 'total' }, undefined, 'f2');
+    p = setQueryCriteria(p, 'q', 'f1', 0, { op: '=', value: 'lapsed' });
+    return p;
+  };
+  const cells = (p: Project, row: number) => spec(p).fields.map((f) => criteriaCell(f, row));
+
+  it('adds rows below Criteria and sets a field’s condition in any of them', () => {
+    let p = addQueryOrRow(addQueryOrRow(grid(), 'q'), 'q');
+    expect(spec(p).orRows).toBe(2);
+    p = setQueryCriteria(p, 'q', 'f2', 2, { op: '>', value: '10' });
+    expect(cells(p, 0)).toEqual([{ op: '=', value: 'lapsed' }, undefined]);
+    expect(cells(p, 1)).toEqual([undefined, undefined]);
+    expect(cells(p, 2)).toEqual([undefined, { op: '>', value: '10' }]);
+    expect(spec(p).fields[1]!.or).toEqual([null, { op: '>', value: '10' }]);
+    // A row that isn't there takes nothing.
+    expect(setQueryCriteria(p, 'q', 'f2', 3, { op: '>', value: '1' })).toBe(p);
+  });
+
+  it('clearing a cell keeps the field’s list short', () => {
+    let p = setQueryCriteria(addQueryOrRow(grid(), 'q'), 'q', 'f2', 1, { op: '>', value: '10' });
+    p = setQueryCriteria(p, 'q', 'f2', 1, undefined);
+    expect(spec(p).fields[1]).not.toHaveProperty('or');
+    p = setQueryCriteria(p, 'q', 'f1', 0, undefined);
+    expect(spec(p).fields[0]).not.toHaveProperty('criteria');
+  });
+
+  it('removing a row takes its cells, and the rows below move up', () => {
+    let p = addQueryOrRow(addQueryOrRow(grid(), 'q'), 'q');
+    p = setQueryCriteria(p, 'q', 'f2', 1, { op: '>', value: '10' });
+    p = setQueryCriteria(p, 'q', 'f1', 2, { op: '=', value: 'active' });
+    p = removeQueryOrRow(p, 'q', 1);
+    expect(spec(p).orRows).toBe(1);
+    expect(cells(p, 1)).toEqual([{ op: '=', value: 'active' }, undefined]);
+    expect(removeQueryOrRow(p, 'q', 2)).toBe(p);
+  });
+
+  it('removing every or row gives the original query', () => {
+    const before = grid();
+    let p = addQueryOrRow(addQueryOrRow(before, 'q'), 'q');
+    p = setQueryCriteria(p, 'q', 'f2', 1, { op: '>', value: '10' });
+    p = setQueryCriteria(p, 'q', 'f1', 2, { op: '=', value: 'active' });
+    p = removeQueryOrRow(removeQueryOrRow(p, 'q', 2), 'q', 1);
+    expect(p).toEqual(before);
+  });
+
+  it('round-trips through the project format, and is off in projects saved before it', () => {
+    const p = setQueryCriteria(addQueryOrRow(grid(), 'q'), 'q', 'f2', 1, { op: '>', value: '10' });
+    expect(parseProject(JSON.parse(JSON.stringify(p)))).toEqual(p);
+    const saved = JSON.parse(JSON.stringify(grid()));
+    delete saved.nodes.find((n: { id: string }) => n.id === 'q').querySpec.orRows;
+    expect(spec(parseProject(saved)).orRows).toBe(0);
+  });
+
+  it('undo and redo cover adding, editing and removing rows', () => {
+    const p0 = grid();
+    let h = initHistory(p0);
+    h = pushHistory(h, addQueryOrRow(h.present, 'q'));
+    const added = h.present;
+    h = pushHistory(h, setQueryCriteria(h.present, 'q', 'f2', 1, { op: '>', value: '10' }));
+    const edited = h.present;
+    h = pushHistory(h, removeQueryOrRow(h.present, 'q', 1));
+    expect(spec(h.present).orRows).toBe(0);
+    h = undo(h);
+    expect(h.present).toEqual(edited);
+    h = undo(h);
+    expect(h.present).toEqual(added);
+    h = undo(h);
+    expect(h.present).toEqual(p0);
+    h = redo(redo(redo(h)));
+    expect(spec(h.present).orRows).toBe(0);
+    h = undo(h);
+    expect(cells(h.present, 1)).toEqual([undefined, { op: '>', value: '10' }]);
   });
 });

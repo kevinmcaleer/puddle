@@ -2,7 +2,7 @@ import { useSession } from '../app/session';
 import { useNodeStatus } from '../flow/status';
 import { formatLabel } from '../canvas/formatLabel';
 import { nodeById, setParseOptions, useProject, useProjectStore, type ParseOptions, type ProjectSettings as ProjectSettingsT, type Source } from '../model';
-import { Banner, columnKind, Field, Icon, NODE_KIND, Section, Select, Switch, TypeTag } from '../ui';
+import { Banner, browserLocale, columnKind, DISPLAY_LOCALES, Field, formatDateText, formatNumberText, Icon, NODE_KIND, Section, Select, Switch, TypeTag, useDisplay, useDisplayFormat, type DateDisplay } from '../ui';
 import { CommitInput } from '../steps/StepForm';
 import { AppendPanel } from './AppendPanel';
 import { JoinPanel } from './JoinPanel';
@@ -103,7 +103,7 @@ function ProjectSettings() {
             }}
           />
         </Field>
-        <Field label="Locale" htmlFor="set-locale" hint="How numbers and dates are written.">
+        <Field label="Locale" htmlFor="set-locale" hint="How this project’s data writes numbers. New parse numbers steps start with it.">
           <Select id="set-locale" options={LOCALES} value={settings.locale} onChange={(e) => set({ locale: e.target.value })} />
         </Field>
         <Field label="Date formats" htmlFor="set-dates" hint="Tried in order when text is read as a date, separated by commas.">
@@ -113,6 +113,39 @@ function ProjectSettings() {
             value={settings.defaultDateFormats.join(', ')}
             placeholder="%d/%m/%Y, %Y-%m-%d"
             onCommit={(v) => set({ defaultDateFormats: parseNullStrings(v) })}
+          />
+        </Field>
+      </div>
+    </Section>
+  );
+}
+
+/** How numbers and dates look on this device: a viewer's preference, kept out of the project. */
+function DisplaySettings() {
+  const preference = useDisplay((s) => s.preference);
+  const setPreference = useDisplay((s) => s.setPreference);
+  const format = useDisplayFormat();
+  const example = `${formatNumberText('1234567.89', format.locale)} · ${formatDateText('2026-12-31 14:05:09', format)}`;
+  return (
+    <Section title="Display">
+      <div className="flex flex-col gap-3" data-testid="display-settings">
+        <Field label="Show numbers and dates as" htmlFor="set-display-locale" hint="On this device only. Values, steps and exports stay as they are.">
+          <Select
+            id="set-display-locale"
+            options={[{ value: 'browser', label: `The browser’s language (${browserLocale()})` }, ...DISPLAY_LOCALES]}
+            value={preference.locale}
+            onChange={(e) => setPreference({ locale: e.target.value })}
+          />
+        </Field>
+        <Field label="Show dates" htmlFor="set-display-dates" hint={<span data-testid="display-example">{example}</span>}>
+          <Select
+            id="set-display-dates"
+            options={[
+              { value: 'locale', label: 'In the locale’s short form' },
+              { value: 'iso', label: 'As ISO 8601 (2026-12-31)' },
+            ]}
+            value={preference.dates}
+            onChange={(e) => setPreference({ dates: e.target.value as DateDisplay })}
           />
         </Field>
       </div>
@@ -133,6 +166,7 @@ export function Inspector() {
           <p className="text-ink-muted">Select a node on the canvas to see its steps, settings and rules.</p>
         </Section>
         <ProjectSettings />
+        <DisplaySettings />
       </>
     );
 

@@ -184,9 +184,10 @@ export function PivotEditor({
                 label={c.name}
                 items={ZONES.map((z) => ({ label: z.add, onSelect: () => commit(addToZone(d, c.name, z.zone, columns)) }))}
                 renderTrigger={(t) => (
-                  <button type="button" className="ui-chip font-mono" draggable onDragStart={startDrag({ column: c.name })} title={c.type} aria-label={`Add ${c.name}`} {...t}>
-                    <TypeTag type={columnKind(c.type)} />
-                    {c.name}
+                  <button type="button" className="ui-chip font-mono" draggable onDragStart={startDrag({ column: c.name })} title={c.type} {...t}>
+                    <TypeTag type={columnKind(c.type)} decorative />
+                    {/* Named "Add region" from its text, so the name holds the words that are seen. */}
+                    <span className="sr-only">Add</span> {c.name}
                   </button>
                 )}
               />

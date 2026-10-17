@@ -1,6 +1,7 @@
 import { Button } from './Button';
 import { cx } from './cx';
 import { abbreviate } from './format';
+import { useDisplayFormat } from './locale';
 import { StatusBadge } from './StatusBadge';
 
 /**
@@ -44,6 +45,7 @@ export function RuleRow({
    */
   suggestion?: { reason: string; onAdd: () => void; onDismiss: () => void };
 }) {
+  const display = useDisplayFormat();
   if (suggestion)
     return (
       <div className="ui-rule text-ink-muted" data-status="suggested">
@@ -62,7 +64,7 @@ export function RuleRow({
   const ok = !error && failures === 0;
   const status = disabled ? 'neutral' : pending ? 'pending' : error ? 'fail' : ok ? 'pass' : severity;
   const word = disabled ? 'Off' : pending ? 'Checking' : error ? 'Can’t run' : ok ? 'Pass' : severity === 'warn' ? 'Warn' : 'Fail';
-  const metric = disabled || pending ? '' : error ? '' : (metricText ?? (ok ? `${abbreviate(total)} checked` : `${abbreviate(failures)} of ${abbreviate(total)}`));
+  const metric = disabled || pending ? '' : error ? '' : (metricText ?? (ok ? `${abbreviate(total, display)} checked` : `${abbreviate(failures, display)} of ${abbreviate(total, display)}`));
   return (
     <div className={cx('ui-rule', selected && 'bg-surface-hover')} data-status={status}>
       <span className="ui-rule__sev">

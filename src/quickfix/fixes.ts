@@ -1,4 +1,5 @@
 // The quick fixes: one click on the selected columns adds one step.
+import { parseLocale } from '../compiler';
 import type { Detection } from '../dates';
 import type { ColumnSchema, Step } from '../model';
 import { newStep, relabel } from '../steps';
@@ -21,8 +22,10 @@ export interface QuickFixDef {
   build: (ctx: FixContext, option?: string) => Step | Promise<Step>;
 }
 
-/** The locale's decimal mark, so 1.234,50 reads right in de-DE. */
+/** The locale's decimal mark, so 1.234,50 reads right in de-DE: from the steps' own table, else the browser's. */
 export const decimalFor = (locale: string): '.' | ',' => {
+  const known = parseLocale(locale);
+  if (known) return known.decimal;
   try {
     return new Intl.NumberFormat(locale).formatToParts(1.5).find((p) => p.type === 'decimal')?.value === ',' ? ',' : '.';
   } catch {
@@ -32,7 +35,7 @@ export const decimalFor = (locale: string): '.' | ',' => {
 
 /** The step a fix adds, with its settings set to the selection rather than the form's defaults. */
 const make = (type: string, ctx: FixContext, params: Record<string, unknown>) => {
-  const step = newStep(type, { selected: ctx.columns, available: ctx.available, decimal: decimalFor(ctx.locale) });
+  const step = newStep(type, { selected: ctx.columns, available: ctx.available, decimal: decimalFor(ctx.locale), locale: ctx.locale });
   return relabel({ ...step, params: { ...step.params, ...params } });
 };
 

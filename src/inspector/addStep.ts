@@ -47,10 +47,11 @@ async function readRowsFor(engine: EngineClient, project: Project, nodeId: strin
  * step's defaults never start from nothing. Without an engine the step gets whatever `known` gives.
  */
 export async function buildStep(form: StepForm, engine: EngineClient | null, project: Project, nodeId: string, after: number, known: ColumnSchema[], selected: string[]): Promise<Step> {
-  if (!engine) return newStep(form.type, { selected, available: known });
+  const locale = project.settings.locale;
+  if (!engine) return newStep(form.type, { selected, available: known, locale });
   const available = known.length ? known : await columnsAfter(engine, project, nodeId, after);
   const firstRow = form.needsFirstRow ? await readFirstRow(engine, project, nodeId, after, available) : undefined;
   const dates = form.detectsDates ? await detectFor(engine, project, nodeId, after, form.defaults({ selected, available }).columns) : undefined;
   const rows = form.readsRows ? await readRowsFor(engine, project, nodeId, after, available) : undefined;
-  return newStep(form.type, { selected, available, firstRow, dates, rows });
+  return newStep(form.type, { selected, available, firstRow, dates, rows, locale });
 }
