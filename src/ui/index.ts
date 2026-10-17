@@ -9,6 +9,8 @@ export { abbreviate, formatBytes, formatDateText, formatDuration, formatInstant,
 export { browserLocale, DISPLAY_LOCALES, displayFormat, resolveDisplay, useDisplay, useDisplayFormat, type DateDisplay, type DisplayFormat, type DisplayPreference } from './locale';
 export { glideTheme } from './glideTheme';
 export { Icon, type IconName } from './Icon';
+export { announce } from './announce';
+export { LiveRegions } from './LiveRegion';
 export { Menu, type MenuItem } from './Menu';
 export { NodeCard, type NodeCardProps, type NodeStepSummary } from './Node';
 export { NODE_KIND, type NodeKind } from './nodeKinds';

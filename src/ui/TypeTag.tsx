@@ -13,10 +13,11 @@ const TYPES: Record<ColumnKind, { label?: string; icon?: 'calendar' | 'clock'; t
   json: { label: '{ }', title: 'JSON / STRUCT' },
 };
 
-export function TypeTag({ type = 'text' }: { type?: ColumnKind }) {
+/** `decorative` hides the tag from screen readers, where the type is said another way (a chip's own title) and the tag's text would only get in the way of its name. */
+export function TypeTag({ type = 'text', decorative }: { type?: ColumnKind; decorative?: boolean }) {
   const t = TYPES[type];
   return (
-    <span className="ui-type" title={t.title}>
+    <span className="ui-type" title={t.title} aria-hidden={decorative || undefined}>
       {t.icon ? <Icon name={t.icon} size={12} /> : t.label}
     </span>
   );

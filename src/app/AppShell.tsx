@@ -27,7 +27,7 @@ import { openUrlDialog } from '../sources/urlDialog';
 import { cardKind } from '../canvas/kind';
 import { Button, Menu, ResultsBar, StatusBadge, StatusStrip, Toolbar, useDisplayFormat, type NodeKind } from '../ui';
 import { ActivityControl } from './ActivityControl';
-import { addFiles, addNodeAfterSelection, chooseFiles as pickSourceFiles, addPastedText, groupSelection, layoutFlow, pasteFromClipboard, searchAddStep, selectNeighbour, viewSelected } from './actions';
+import { addFiles, addNodeAfterSelection, cancelWiring, chooseFiles as pickSourceFiles, addPastedText, groupSelection, layoutFlow, openSelected, pasteFromClipboard, searchAddStep, selectNeighbour, startWiring, viewSelected } from './actions';
 import { useEngineStore, type EngineStatus } from './engine';
 import { ResultsPanel } from './ResultsPanel';
 import { ShortcutsDialog } from './ShortcutsDialog';
@@ -186,6 +186,9 @@ export function AppShell() {
   const designing = designerId ? nodeById(project, designerId) : undefined;
   const fileInput = useRef<HTMLInputElement>(null);
   const canvas = useRef<HTMLElement>(null);
+  const inspector = useRef<HTMLElement>(null);
+  // The inspector may only be drawn on the next render (it was hidden, or the notes were showing).
+  const focusInspector = () => requestAnimationFrame(() => inspector.current?.focus());
   useExcelSources();
   useFlowEvaluation();
 
@@ -193,7 +196,7 @@ export function AppShell() {
   const chooseFiles = () => void pickSourceFiles(() => fileInput.current?.click());
 
   const session = useSession.getState;
-  const actions: Record<GlobalShortcutId, () => void> = {
+  const actions: Record<GlobalShortcutId, () => void | boolean> = {
     help: () => session().setShortcutsOpen(true),
     undo,
     redo,
@@ -214,12 +217,16 @@ export function AppShell() {
     'toggle-results': () => session().setResultsOpen(!session().resultsOpen),
     pin: togglePin,
     'add-step': searchAddStep,
+    'open-node': () => openSelected(focusInspector),
+    connect: startWiring,
+    cancel: cancelWiring,
   };
   useShortcuts(actions, (text) => void addPastedText(text));
 
   return (
     <ReactFlowProvider>
       <div className="grid h-full min-w-[960px] grid-rows-[auto_auto_minmax(0,1fr)_auto_auto] bg-surface-panel text-body text-ink">
+        <h1 className="sr-only">{project.name}</h1>
         <Toolbar
           project={project.name}
           projectMenu={[
@@ -325,7 +332,7 @@ export function AppShell() {
         />
 
         <div className={inspectorOpen ? 'grid min-h-0 grid-cols-[minmax(0,1fr)_var(--size-inspector)]' : 'grid min-h-0 grid-cols-[minmax(0,1fr)]'}>
-          <main ref={canvas} tabIndex={-1} className="min-h-0 focus-visible:outline-none" aria-label="Canvas">
+          <main ref={canvas} tabIndex={-1} className="min-h-0 focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-brand" aria-label="Canvas">
             {designing?.type === 'query' ? <QueryDesigner node={designing} /> : <Canvas onAddSource={chooseFiles} />}
           </main>
 
@@ -334,7 +341,7 @@ export function AppShell() {
               <NotesPanel />
             </aside>
           ) : (
-            <aside className="min-h-0 overflow-auto border-l border-line bg-surface-panel" aria-label="Inspector" data-testid="inspector">
+            <aside ref={inspector} tabIndex={-1} className="min-h-0 overflow-auto border-l border-line bg-surface-panel focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-brand" aria-label="Inspector" data-testid="inspector">
               <Inspector />
             </aside>
           )}

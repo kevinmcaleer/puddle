@@ -70,7 +70,7 @@ function TokenField({ value, onChange, error }: { value: string; onChange: (v: s
         </>
       }
     >
-      <TextInput id="sync-token" type="password" mono autoComplete="off" spellCheck={false} value={value} error={!!error} autoFocus onChange={(e) => onChange(e.target.value)} />
+      <TextInput id="sync-token" type="password" mono autoComplete="off" spellCheck={false} value={value} error={!!error} data-autofocus onChange={(e) => onChange(e.target.value)} />
     </Field>
   );
 }

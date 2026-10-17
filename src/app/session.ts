@@ -24,6 +24,8 @@ interface SessionState {
   shortcutsOpen: boolean;
   /** The inspector's Add step menu should open with its search focused (the shortcut asked while it may not be showing). */
   addStepPending: boolean;
+  /** Wiring from the keyboard (C): the node a wire starts from, until another node is chosen or Escape cancels. */
+  connectFrom: string | null;
   select: (id: string | null) => void;
   toggleSelected: (id: string) => void;
   selectStep: (id: string | null) => void;
@@ -37,6 +39,7 @@ interface SessionState {
   setShortcutsOpen: (open: boolean) => void;
   requestAddStep: () => void;
   clearAddStep: () => void;
+  setConnectFrom: (id: string | null) => void;
 }
 
 export const useSession = create<SessionState>((set) => ({
@@ -51,6 +54,7 @@ export const useSession = create<SessionState>((set) => ({
   resultsOpen: true,
   shortcutsOpen: false,
   addStepPending: false,
+  connectFrom: null,
   // Picking a node shows it in the inspector, so the notes panel makes way.
   select: (id) => set((s) => ({ selectedNodeId: id, selectedNodeIds: id ? [id] : [], selectedStepId: null, notesOpen: id ? false : s.notesOpen })),
   toggleSelected: (id) =>
@@ -71,4 +75,5 @@ export const useSession = create<SessionState>((set) => ({
   setShortcutsOpen: (shortcutsOpen) => set({ shortcutsOpen }),
   requestAddStep: () => set({ addStepPending: true, inspectorOpen: true, notesOpen: false }),
   clearAddStep: () => set({ addStepPending: false }),
+  setConnectFrom: (connectFrom) => set({ connectFrom }),
 }));

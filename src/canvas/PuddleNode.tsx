@@ -91,6 +91,8 @@ export function PuddleNode({ data, selected }: NodeProps<PuddleFlowNode>) {
                 className={portBroken(status, port.id) ? 'ui-port is-broken' : 'ui-port'}
                 style={{ top: portTop(i, ports.length) }}
                 title={ports.length > 1 ? portName(port) : undefined}
+                // A named port is drawn as a picture of its input ("Input 3"), the wire into it saying the same (see wireLabel).
+                role={ports.length > 1 ? 'img' : undefined}
                 aria-label={ports.length > 1 ? portName(port) : undefined}
               >
                 {/* An Append's inputs are numbered on the node, so the order rows stack in is visible; a Query's are its tables. */}
