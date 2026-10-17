@@ -1,11 +1,13 @@
-import { useEffect, useState, type KeyboardEvent } from 'react';
+import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
 import { useFlowStore } from '../flow/status';
 import { useStepColumns } from '../inspector/useStepColumns';
-import { inputEdges, nodeById, useProject, type ColumnSchema, type TransformNode } from '../model';
-import { Banner, Button, columnKind, Dialog, Field, FieldChip, Select, StepList, Switch, TextInput } from '../ui';
+import { inputEdges, nodeById, useProject, type TransformNode } from '../model';
+import { Banner, Button, Dialog, Field, StepList, Switch, TextInput } from '../ui';
 import { insertFeed, insertTemplateAfter, openTemplateDialog, saveAsTemplate, useTemplateDialog } from './actions';
 import { editTemplate, refreshTemplates, removeTemplate, useTemplates } from './library';
-import { expectedColumns, missingColumns, suggestedMapping } from './mapping';
+import { expectedColumns, suggestedMapping } from './mapping';
+import { Columns, Mapping } from './Mapping';
+import { exportTemplateRecipe, importTemplateFile } from '../recipes/actions';
 import { notTemplatable, searchTemplates, type Template } from './template';
 
 const close = () => openTemplateDialog(null);
@@ -16,18 +18,6 @@ const onEnter = (then: () => void) => (e: KeyboardEvent) => {
   e.preventDefault();
   then();
 };
-
-/** Expected columns as field chips, with their types. */
-function Columns({ columns, testId }: { columns: ColumnSchema[]; testId?: string }) {
-  if (!columns.length) return <p className="text-label text-ink-muted">Reads no input columns by name.</p>;
-  return (
-    <div className="flex flex-wrap gap-1" data-testid={testId}>
-      {columns.map((c) => (
-        <FieldChip key={c.name} name={c.name} type={columnKind(c.type)} onRemove={false} draggable={false} />
-      ))}
-    </div>
-  );
-}
 
 /** Save a Transform node's steps, all of them or some, as a template. */
 function SaveDialog({ node }: { node: TransformNode }) {
@@ -132,6 +122,9 @@ function Manage({ template }: { template: Template }) {
       <Button size="sm" variant="ghost" icon="text" onClick={() => setEditing(true)}>
         Rename or describe
       </Button>
+      <Button size="sm" variant="ghost" icon="export" title="Download as a single-node recipe, to share" onClick={() => exportTemplateRecipe(template)}>
+        Export
+      </Button>
       {deleting ? (
         <>
           <Button size="sm" variant="danger" onClick={() => void removeTemplate(template.id)}>
@@ -150,30 +143,6 @@ function Manage({ template }: { template: Template }) {
   );
 }
 
-/** For each expected column the input lacks, a pick list of the input's columns to use in its place. */
-function Mapping({ template, actual, mapping, onChange }: { template: Template; actual: ColumnSchema[]; mapping: Record<string, string | undefined>; onChange: (expected: string, column: string) => void }) {
-  const missing = missingColumns(template.expectedColumns, actual);
-  if (!missing.length) return <p className="text-label text-ink-muted">The input has every column this template expects.</p>;
-  const unmapped = missing.filter((m) => !mapping[m.expected.name]).length;
-  return (
-    <div className="flex flex-col gap-2" data-testid="template-mapping">
-      <Banner tone="warn" title={`${missing.length} ${missing.length === 1 ? 'column isn’t' : 'columns aren’t'} in the input`}>
-        Pick a column to use in place of each. {unmapped ? 'Steps that read an unmapped column arrive turned off.' : 'Every one is mapped.'}
-      </Banner>
-      {missing.map((m) => (
-        <Field key={m.expected.name} label={`Use for ${m.expected.name}`} htmlFor={`map-${m.expected.name}`}>
-          <Select
-            id={`map-${m.expected.name}`}
-            value={mapping[m.expected.name] ?? ''}
-            options={[{ value: '', label: 'Leave unmapped' }, ...actual.map((a) => ({ value: a.name, label: a.name }))]}
-            onChange={(e) => onChange(m.expected.name, e.target.value)}
-          />
-        </Field>
-      ))}
-    </div>
-  );
-}
-
 /** The templates library: search, preview, map the input's columns and insert; rename, describe and delete. */
 function LibraryDialog() {
   const templates = useTemplates((s) => s.templates);
@@ -183,6 +152,8 @@ function LibraryDialog() {
   // Picks made in the mapping, '' for Leave unmapped; columns not picked yet take their suggestion.
   const [picks, setPicks] = useState<Record<string, string>>({});
   const [feed] = useState(insertFeed);
+  const importInput = useRef<HTMLInputElement>(null);
+  const [imported, setImported] = useState<{ tone: 'info' | 'fail'; text: string } | null>(null);
   const project = useProject();
   const feedNode = feed ? nodeById(project, feed) : undefined;
   const status = useFlowStore((s) => (feed ? s.nodes[feed]?.status : undefined));
@@ -211,7 +182,29 @@ function LibraryDialog() {
       }}
       className="w-[640px] max-w-[calc(100vw-32px)]"
     >
-      <input className="ui-input" aria-label="Search templates" placeholder="Search templates" value={query} autoFocus onChange={(e) => setQuery(e.target.value)} onKeyDown={onEnter(() => shown[0] && choose(shown[0]))} />
+      <div className="flex gap-2">
+        <input className="ui-input min-w-0 flex-1" aria-label="Search templates" placeholder="Search templates" value={query} autoFocus onChange={(e) => setQuery(e.target.value)} onKeyDown={onEnter(() => shown[0] && choose(shown[0]))} />
+        <Button variant="ghost" icon="source" title="Add a template from a .puddle-recipe.json file" onClick={() => importInput.current?.click()}>
+          Import template
+        </Button>
+        <input
+          ref={importInput}
+          type="file"
+          accept=".json,application/json"
+          hidden
+          data-testid="template-import-input"
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            e.target.value = '';
+            if (file)
+              void importTemplateFile(file).then(({ template, ...result }) => {
+                setImported(result);
+                if (template) choose(template);
+              });
+          }}
+        />
+      </div>
+      {imported && <Banner tone={imported.tone}>{imported.text}</Banner>}
       {unreadable > 0 && <Banner tone="warn">{unreadable === 1 ? 'One template' : `${unreadable} templates`} can’t be read here: saved by a newer Puddle, or damaged.</Banner>}
       <div className="flex max-h-[40vh] flex-col gap-1 overflow-auto" role="listbox" aria-label="Templates library">
         {!templates.length ? (
@@ -262,7 +255,7 @@ function LibraryDialog() {
           ) : !actual ? (
             <Banner tone="warn">Puddle can’t read the columns of {feedNode?.name} yet, so its steps arrive as they were saved.</Banner>
           ) : (
-            <Mapping template={chosen} actual={actual} mapping={mapping} onChange={(name, column) => setPicks({ ...picks, [name]: column })} />
+            <Mapping expected={chosen.expectedColumns} actual={actual} mapping={mapping} onChange={(name, column) => setPicks({ ...picks, [name]: column })} />
           )}
           <Manage key={chosen.id + chosen.updatedAt} template={chosen} />
         </div>

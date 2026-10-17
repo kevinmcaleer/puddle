@@ -1,0 +1,188 @@
+{
+  "puddleRecipe": 1,
+  "kind": "pipeline",
+  "formatVersion": 1,
+  "name": "Tidy a contact list",
+  "description": "Trims stray spaces, fixes capitals in names and towns, lower-cases emails and removes duplicate rows.",
+  "notes": "## Tidy a contact list\n\nFor a contact list typed in by hand or pasted together from exports.\n\n- **Names** are trimmed, inner spaces collapsed and written in title case.\n- **Emails** are trimmed and lower-cased; a rule warns about blank ones.\n- **Towns** are trimmed and written in title case.\n- **Duplicate rows** go, keeping the first of each.\n",
+  "settings": {
+    "sampleThresholdRows": 5000000,
+    "locale": "en-GB",
+    "defaultDateFormats": []
+  },
+  "sources": [
+    {
+      "id": "contacts",
+      "name": "Contact list",
+      "kind": "file",
+      "format": "csv",
+      "parseOptions": {},
+      "detectedSchema": [
+        {
+          "name": "name",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "email",
+          "type": "VARCHAR"
+        },
+        {
+          "name": "city",
+          "type": "VARCHAR"
+        }
+      ]
+    }
+  ],
+  "nodes": [
+    {
+      "id": "n_contacts",
+      "type": "source",
+      "name": "Contact list",
+      "sourceId": "contacts",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "rules": []
+    },
+    {
+      "id": "n_tidy",
+      "type": "transform",
+      "name": "Tidy contacts",
+      "position": {
+        "x": 260,
+        "y": 0
+      },
+      "rules": [
+        {
+          "id": "r_email",
+          "type": "notEmpty",
+          "label": "email is never empty",
+          "enabled": true,
+          "severity": "warn",
+          "params": {
+            "column": "email"
+          }
+        }
+      ],
+      "steps": [
+        {
+          "id": "st_trim",
+          "type": "trimWhitespace",
+          "label": "Trimmed name, email",
+          "enabled": true,
+          "params": {
+            "columns": [
+              "name",
+              "email"
+            ]
+          }
+        },
+        {
+          "id": "st_spaces",
+          "type": "collapseSpaces",
+          "label": "Collapsed spaces in name",
+          "enabled": true,
+          "params": {
+            "columns": [
+              "name"
+            ]
+          }
+        },
+        {
+          "id": "st_name",
+          "type": "changeCase",
+          "label": "Changed name to title case",
+          "enabled": true,
+          "params": {
+            "columns": [
+              "name"
+            ],
+            "mode": "title"
+          }
+        },
+        {
+          "id": "st_email",
+          "type": "changeCase",
+          "label": "Changed email to lower case",
+          "enabled": true,
+          "params": {
+            "columns": [
+              "email"
+            ],
+            "mode": "lower"
+          }
+        },
+        {
+          "id": "st_city_trim",
+          "type": "trimWhitespace",
+          "label": "Trimmed city",
+          "enabled": true,
+          "params": {
+            "columns": [
+              "city"
+            ]
+          }
+        },
+        {
+          "id": "st_city",
+          "type": "changeCase",
+          "label": "Changed city to title case",
+          "enabled": true,
+          "params": {
+            "columns": [
+              "city"
+            ],
+            "mode": "title"
+          }
+        },
+        {
+          "id": "st_dupes",
+          "type": "duplicateRows",
+          "label": "Removed duplicate rows",
+          "enabled": true,
+          "params": {
+            "columns": [],
+            "keep": "first"
+          }
+        }
+      ]
+    },
+    {
+      "id": "n_out",
+      "type": "output",
+      "name": "Clean contacts",
+      "position": {
+        "x": 520,
+        "y": 0
+      },
+      "rules": [],
+      "outputSpec": {
+        "format": "csv",
+        "options": {}
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "e1",
+      "from": {
+        "nodeId": "n_contacts"
+      },
+      "to": {
+        "nodeId": "n_tidy",
+        "port": 0
+      }
+    },
+    {
+      "id": "e2",
+      "from": {
+        "nodeId": "n_tidy"
+      },
+      "to": {
+        "nodeId": "n_out",
+        "port": 0
+      }
+    }
+  ]
+}

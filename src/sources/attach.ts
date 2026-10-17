@@ -56,7 +56,8 @@ export async function attachProject(project: Project): Promise<void> {
 
 /**
  * Connect a detached source to a file chosen again. The file's first megabyte is checked against the one the
- * project was built on; a different file still attaches, but is marked so the user is warned.
+ * project was built on; a different file still attaches, but is marked so the user is warned. A recipe's source is
+ * attached to its first file the same way.
  */
 export async function reattachFile(source: Source, file: File, handle?: FileHandle): Promise<Attachment> {
   const format = formatFromName(file.name);
@@ -73,7 +74,8 @@ export async function reattachFile(source: Source, file: File, handle?: FileHand
   useProjectStore.getState().amend((p) =>
     updateSource(p, source.id, { file: { ...source.file, originalName: file.name, size: file.size, lastModified: file.lastModified, headHash: hash } }),
   );
-  const state: Attachment = same ? 'attached' : 'mismatch';
+  // A source with no file yet (one opened from a recipe) has nothing to compare against: its columns are checked instead.
+  const state: Attachment = same || !source.file ? 'attached' : 'mismatch';
   markAttached(source.id, state);
   return state;
 }
@@ -86,6 +88,7 @@ export function filesNotKeptMessage(names: string[]): string {
 }
 
 export function detachedMessage(source: Source): string {
+  if (!source.file && source.kind === 'file') return `Recipes hold the steps, not the data, so choose a file for ${source.name} to read it.`;
   const name = source.file?.originalName ?? source.name;
   return `Projects save the steps, not the data, so choose ${name} again to read it.`;
 }

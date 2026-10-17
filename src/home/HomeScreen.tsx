@@ -6,21 +6,25 @@ import { SamplePicker } from '../samples/SamplePicker';
 import { openProjectDialog } from './dialogs';
 import { PROVIDER_IDS, PROVIDERS } from '../sync';
 import { openSyncDialog } from '../sync/dialogs';
+import { openRecipeFile } from '../recipes/actions';
+import { RecipeGallery } from '../recipes/RecipeGallery';
 
 
 const plural = (n: number, one: string) => `${n} ${one}${n === 1 ? '' : 's'}`;
 
-/** The projects home screen: every project saved in this browser, with create, open, rename, duplicate, delete, and the samples to try. */
+/** The projects home screen: every project saved in this browser, with create, open, rename, duplicate, delete, the samples to try and the recipe gallery. */
 export function HomeScreen() {
   const { projects, error } = useWorkspace();
   const theme = useTheme();
   const display = useDisplayFormat();
   const importInput = useRef<HTMLInputElement>(null);
+  const recipeInput = useRef<HTMLInputElement>(null);
 
   return (
     <div className="grid h-full grid-rows-[auto_minmax(0,1fr)] bg-surface-canvas text-body text-ink" data-testid="home">
       <Toolbar>
         <Button variant="ghost" icon="export" onClick={() => importInput.current?.click()}>Import project</Button>
+        <Button variant="ghost" icon="template" onClick={() => recipeInput.current?.click()}>Open recipe</Button>
         {PROVIDER_IDS.map((id) => (
           <Button key={id} variant="ghost" icon="refresh" onClick={() => openSyncDialog({ kind: 'open', provider: id })}>
             Open from {PROVIDERS[id]!.label}
@@ -46,6 +50,18 @@ export function HomeScreen() {
           const file = e.target.files?.[0];
           e.target.value = '';
           if (file) void importProject(file);
+        }}
+      />
+      <input
+        ref={recipeInput}
+        type="file"
+        accept=".json,application/json"
+        hidden
+        data-testid="recipe-input"
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          e.target.value = '';
+          if (file) void openRecipeFile(file);
         }}
       />
       <main className="overflow-auto">
@@ -84,6 +100,7 @@ export function HomeScreen() {
           <div className="rounded-md border border-line bg-surface-panel" data-testid="home-samples">
             <SamplePicker />
           </div>
+          <RecipeGallery />
         </div>
       </main>
     </div>

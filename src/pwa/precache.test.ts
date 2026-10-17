@@ -47,3 +47,11 @@ describe('strategyFor', () => {
     expect(cacheName('abc')).toBe('puddle-abc');
   });
 });
+
+describe('the recipe gallery offline', () => {
+  it('is precached and read from the cache, like the rest of the app', () => {
+    const origin = 'https://puddle.example';
+    expect(precacheList(['index.html', 'recipes/index.json', 'recipes/tidy-contact-list.puddle-recipe.json'])).toEqual(['./', 'index.html', 'recipes/index.json', 'recipes/tidy-contact-list.puddle-recipe.json']);
+    expect(strategyFor(new URL('/recipes/index.json', origin), origin, 'cors')).toBe('cache-first');
+  });
+});
