@@ -41,7 +41,7 @@ export function ProjectDialogs() {
       }}
     >
       <p className="text-ink-muted">
-        {dialog.name} and its steps will be deleted from this browser. Your data files aren’t touched. Export the project first if you might want it again.
+        {dialog.name} and its steps will be deleted from this browser. Your data files aren’t touched. Undo on the projects screen brings it back until you close this tab.
       </p>
     </Dialog>
   );

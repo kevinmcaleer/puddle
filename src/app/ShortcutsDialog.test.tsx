@@ -4,7 +4,8 @@ import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import { useSession } from './session';
 import { SHORTCUTS, type GlobalShortcutId, type Shortcut } from './shortcuts';
 import { ShortcutsDialog } from './ShortcutsDialog';
-import { useShortcuts } from './useShortcuts';
+import { UNDO_ATTRIBUTE } from '../ui';
+import { useShortcuts, useUndoKeys } from './useShortcuts';
 
 beforeAll(() => {
   // jsdom has <dialog> but not its modal methods.
@@ -72,7 +73,8 @@ describe('useShortcuts', () => {
     for (const tag of ['input', 'textarea', 'select']) {
       const field = document.body.appendChild(document.createElement(tag));
       key(field, { key: 'l' });
-      key(field, { key: 'z', ctrlKey: true });
+      // A select has no text to undo (see below); a text field undoes its own typing.
+      if (tag !== 'select') key(field, { key: 'z', ctrlKey: true });
       field.remove();
     }
     const editable = document.body.appendChild(document.createElement('div'));
@@ -81,6 +83,34 @@ describe('useShortcuts', () => {
     editable.remove();
     expect(actions.layout).not.toHaveBeenCalled();
     expect(actions.undo).not.toHaveBeenCalled();
+  });
+
+  it('undoes and redoes the project from a field with nothing of its own to undo', () => {
+    const { actions } = setup();
+    const select = document.body.appendChild(document.createElement('select'));
+    const toggle = document.body.appendChild(document.createElement('input'));
+    toggle.type = 'checkbox';
+    const committed = document.body.appendChild(document.createElement('input'));
+    committed.setAttribute(UNDO_ATTRIBUTE, '');
+    const typing = document.body.appendChild(document.createElement('input'));
+    expect(key(select, { key: 'z', ctrlKey: true }).defaultPrevented).toBe(true);
+    key(toggle, { key: 'z', ctrlKey: true });
+    key(committed, { key: 'y', ctrlKey: true });
+    // Typing not yet committed: the field's own undo.
+    expect(key(typing, { key: 'z', ctrlKey: true }).defaultPrevented).toBe(false);
+    key(select, { key: 'l' });
+    expect(actions.undo).toHaveBeenCalledTimes(2);
+    expect(actions.redo).toHaveBeenCalledOnce();
+    expect(actions.layout).not.toHaveBeenCalled();
+    for (const el of [select, toggle, committed, typing]) el.remove();
+  });
+
+  it('keeps undoing while the keys are held, but runs other shortcuts once per press', () => {
+    const { actions } = setup();
+    for (let i = 0; i < 3; i++) key(document.body, { key: 'z', ctrlKey: true, repeat: i > 0 });
+    for (let i = 0; i < 3; i++) key(document.body, { key: 'l', repeat: i > 0 });
+    expect(actions.undo).toHaveBeenCalledTimes(3);
+    expect(actions.layout).toHaveBeenCalledOnce();
   });
 
   it('never runs while a dialog is open', () => {
@@ -152,5 +182,48 @@ describe('useShortcuts', () => {
     const { actions } = setup();
     key(document.body, { key: 't', repeat: true });
     expect(actions['add-transform']).not.toHaveBeenCalled();
+  });
+});
+
+describe('useUndoKeys', () => {
+  const key = (target: EventTarget, init: KeyboardEventInit) => {
+    const e = new KeyboardEvent('keydown', { bubbles: true, cancelable: true, ...init });
+    act(() => void target.dispatchEvent(e));
+    return e;
+  };
+
+  it('undoes and redoes a history of its own from the page, but not while a dialog is open', () => {
+    const undo = vi.fn();
+    const redo = vi.fn();
+    renderHook(() => useUndoKeys(undo, redo));
+    key(document.body, { key: 'z', ctrlKey: true });
+    key(document.body, { key: 'z', ctrlKey: true, shiftKey: true });
+    key(document.body, { key: 'l' });
+    const dialog = document.body.appendChild(document.createElement('dialog'));
+    dialog.setAttribute('open', '');
+    key(document.body, { key: 'z', ctrlKey: true });
+    dialog.remove();
+    expect(undo).toHaveBeenCalledOnce();
+    expect(redo).toHaveBeenCalledOnce();
+  });
+
+  it('within a dialog, takes the keys pressed anywhere in that dialog and nowhere else', () => {
+    const undo = vi.fn();
+    const dialog = document.body.appendChild(document.createElement('dialog'));
+    dialog.setAttribute('open', '');
+    const anchor = dialog.appendChild(document.createElement('div'));
+    const button = dialog.appendChild(document.createElement('button'));
+    const search = dialog.appendChild(document.createElement('input'));
+    renderHook(() => useUndoKeys(undo, vi.fn(), { current: anchor }));
+    key(button, { key: 'z', ctrlKey: true });
+    key(search, { key: 'z', ctrlKey: true });
+    const outside = document.body.appendChild(document.createElement('button'));
+    key(outside, { key: 'z', ctrlKey: true });
+    expect(undo).toHaveBeenCalledOnce();
+    // Focus that fell to the page (the Undo button just turned disabled) still counts as the dialog's.
+    key(document.body, { key: 'z', ctrlKey: true });
+    expect(undo).toHaveBeenCalledTimes(2);
+    outside.remove();
+    dialog.remove();
   });
 });

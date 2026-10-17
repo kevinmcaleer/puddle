@@ -1,6 +1,6 @@
 import { useLayoutEffect, useRef, useState } from 'react';
 import type { ColumnSchema } from '../model';
-import { columnKind, cx, TypeTag } from '../ui';
+import { appUndo, columnKind, cx, TypeTag } from '../ui';
 import { insertColumn, suggest, wordAt } from './expression';
 
 /**
@@ -65,6 +65,7 @@ export function ExpressionInput({
         aria-autocomplete="list"
         className={cx('ui-input is-mono h-auto resize-y py-1', error && 'is-error')}
         value={draft}
+        {...appUndo(draft === value)}
         onChange={(e) => {
           setDraft(e.target.value);
           setCaret(e.target.selectionStart);
