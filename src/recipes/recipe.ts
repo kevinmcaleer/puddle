@@ -68,7 +68,7 @@ export function shareableHref(href: string): string {
 export function recipeSource(source: Source): Source {
   const { file: _f, sampleRows: _s, expected: _e, url, ...rest } = withoutHeaderValues(withoutPastedRows(source));
   const href = source.kind === 'url' && url ? shareableHref(url.href) : '';
-  if (href) return { ...rest, url: { href, ...(url?.headers ? { headers: url.headers } : {}) } };
+  if (href) return { ...rest, url: { href, ...(url?.headers ? { headers: url.headers } : {}), ...(url?.table ? { table: url.table } : {}) } };
   // Pasted rows don't travel, and an address that can't be shared isn't one: either asks for a file.
   return { ...rest, kind: 'file' };
 }

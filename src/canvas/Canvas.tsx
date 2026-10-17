@@ -54,7 +54,7 @@ import { hostOf } from '../sources/url';
 import { openSamplesDialog } from '../samples/samplesDialog';
 import { TourOffer } from '../tour/TourOffer';
 import { CANVAS_ARIA, nodeLabel, wireLabel } from './a11y';
-import { formatLabel } from './formatLabel';
+import { formatLabel, sourceFormatLabel } from './formatLabel';
 import { focusNodeWhenDrawn } from './focusNode';
 import { portBroken, portName } from './ports';
 import { PuddleNode, type PuddleFlowNode } from './PuddleNode';
@@ -134,7 +134,7 @@ function detailFor(node: GraphNode, sources: ReturnType<typeof useProject>['sour
   if (node.type !== 'source') return undefined;
   const s = sources.find((x) => x.id === node.sourceId);
   if (!s) return 'Source';
-  if (s.kind === 'url' && s.url) return `${s.url.sample ? 'Sample' : hostOf(s.url.href)} · ${formatLabel(s.format)}`;
+  if (s.kind === 'url' && s.url) return `${s.url.sample ? 'Sample' : hostOf(s.url.href)} · ${sourceFormatLabel(s)}`;
   return s.kind === 'clipboard' ? `Source · Pasted ${formatLabel(s.format)}` : `Source · ${formatLabel(s.format)}`;
 }
 
