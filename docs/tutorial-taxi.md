@@ -27,7 +27,7 @@ Puddle can also read a file from its web address with **From URL**, without down
 
 ## 2. Look before you clean
 
-Click a column header in the results and the status strip profiles that column over all three million rows. `passenger_count` shows the first problem: it runs from 0, and part of it is empty. A trip with no passengers, or none recorded, can't be counted in a passengers-per-trip figure.
+Click a column header in the results and the status strip profiles that column over all three million rows. `passenger_count` shows the first problem: it runs from 0 to 9, and 5% of it is empty. A trip with no passengers, or none recorded, can't be counted in a passengers-per-trip figure.
 
 ![The status strip profiling passenger_count](_static/screenshots/tutorial-profile.png)
 
@@ -41,13 +41,13 @@ Rules turn what you just found into checks that run every time the data changes 
 - **Never empty** on `passenger_count`.
 - **Custom expression**: `tpep_dropoff_datetime > tpep_pickup_datetime`, since a trip can't end before it starts.
 
-Set each one's **Severity** to *warning*. These rules describe the raw file, which is allowed to be messy; a failing *fail* rule would block every export after it. Each rule says how many rows break it, and the node shows a badge.
+Set each one's **Severity** to *warning*. These rules describe the raw file, which is allowed to be messy; a failing *fail* rule would block every export after it. Each rule says how many rows break it: about 37 thousand negative fares, 140 thousand trips with no passenger count, and 870 trips that don't end after they start. The node shows a badge.
 
 ![Three warnings on the trips source, each with its count of failing rows](_static/screenshots/tutorial-rules.png)
 
-**Show failing rows** on the custom expression lists the trips that end before they start.
+**Show failing rows** on the custom expression lists those 870 trips. Most have the same pickup and dropoff time and no distance: trips that never really happened.
 
-![The results showing only the trips whose dropoff is before their pickup](_static/screenshots/tutorial-failing-rows.png)
+![The results showing only the trips whose dropoff isn't after their pickup](_static/screenshots/tutorial-failing-rows.png)
 
 **Show all rows** goes back to the whole table.
 
@@ -72,7 +72,7 @@ With the trips source selected, choose **Add node**, then **Transform**. A Trans
 
 ![The filter's six conditions in the step settings](_static/screenshots/tutorial-filter.png)
 
-The Transform node now shows how many trips survived. Click any earlier step in the list to see the data as it was at that point.
+The Transform node now shows how many trips survived: 2,715,718 of 2,964,624, about 92%. Click any earlier step in the list to see the data as it was at that point.
 
 ![The Transform node after its three steps, with fewer rows than the source](_static/screenshots/tutorial-clean.png)
 
@@ -83,9 +83,9 @@ The Transform node now shows how many trips survived. Click any earlier step in 
 - Under **Match on**, pair `PULocationID` with `LocationID`.
 - Under **Bring across**, add `Borough` and `Zone`.
 
-A lookup keeps every trip exactly once, and says how many found their zone.
+A lookup keeps every trip exactly once, and says how many found their zone: here, all of them.
 
-Turn on **Keep result in memory** for the Lookup node. Everything after it then reads the looked-up trips straight from DuckDB's memory instead of reading, filtering and matching three million rows again at each change.
+Turn on **Keep result in memory** for the Lookup node. Everything after it then reads the looked-up trips straight from DuckDB's memory instead of reading, filtering and matching three million rows again at each change. The node says how much memory that takes, about 650 MB here.
 
 ![The Lookup settings: PULocationID matched to LocationID, Borough and Zone brought across, and the match rate](_static/screenshots/tutorial-lookup.png)
 
@@ -93,7 +93,7 @@ Turn on **Keep result in memory** for the Lookup node. Everything after it then 
 
 With the Lookup node selected, add another Transform and give it a **Pivot or group by** step (in Reshape; see {doc}`reshaping`). Drag `tpep_pickup_datetime_hour` to **Rows**, `Borough` to **Columns** and `fare_amount` to **Values**, then choose **Average** from the `fare_amount` field's menu. Add a **Round** step on the average columns, to two decimal places, to finish.
 
-The result is 24 rows, one per hour of the day, with the average fare for trips starting in each borough. Read down a column to see when fares peak, and across a row to compare boroughs.
+The result is 24 rows, one per hour of the day, with the average fare for trips starting in each borough. Read down a column to see when fares peak, and across a row to compare boroughs. The EWR column (Newark airport) is mostly empty: yellow cabs rarely pick up there, so most hours have no trips to average.
 
 ![The average fare by pickup hour, a column per borough](_static/screenshots/tutorial-pivot.png)
 

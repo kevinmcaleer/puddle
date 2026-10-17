@@ -36,8 +36,14 @@ async function selectColumn(page: Page, name: string) {
   throw new Error(`There's no ${name} column in view.`);
 }
 
-/** Wait until DuckDB has finished what it's doing, so the status strip doesn't show a query running. */
-const quiet = (page: Page) => expect(page.getByTestId('activity')).toHaveCount(0, SLOW);
+/**
+ * Wait until DuckDB has finished what it's doing, so the status strip doesn't show a query running. The strip only
+ * shows a query after it has run for a second, so give one that has just started the chance to show first.
+ */
+async function quiet(page: Page) {
+  await page.waitForTimeout(1500);
+  await expect(page.getByTestId('activity')).toHaveCount(0, SLOW);
+}
 
 async function addRule(page: Page, title: string) {
   await page.getByRole('button', { name: 'Add rule' }).click();
@@ -69,6 +75,7 @@ test('tutorial: New York taxi trips', async ({ page }) => {
 
   // passenger_count: the status strip profiles it.
   await selectColumn(page, 'passenger_count');
+  await quiet(page);
   await shot(page, 'tutorial-profile', page.locator('footer.ui-strip'), { pad: 0 });
   await page.keyboard.press('Escape');
 
