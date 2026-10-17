@@ -123,6 +123,26 @@ test('/ opens the Add step menu with its search focused, and Enter adds the firs
   await expect(page.getByRole('button', { name: 'Add step' })).toHaveAttribute('title', 'Add step (/)');
 });
 
+// Regression (WebKit): a node added with T takes the focus once React Flow has drawn it, which in WebKit could be after
+// / had opened the step search. The node took the focus from the search, and the Enter meant for it opened the node.
+test('a step search opened before the new node is drawn keeps the focus', async ({ page }) => {
+  await openApp(page);
+  await addOrders(page);
+  // Nodes can't take the focus while hidden: this holds the new node back the way a slow first draw does.
+  const hidden = await page.addStyleTag({ content: '.react-flow__node { visibility: hidden !important; }' });
+  await page.keyboard.press('t');
+  await page.keyboard.press('/');
+  const search = page.getByLabel('Search steps');
+  await expect(search).toBeFocused();
+  await hidden.evaluate((el) => (el as Element).remove());
+  // A few frames for the node to be drawn, while it would still be trying to take the focus.
+  await page.evaluate(() => new Promise<void>((done) => { let n = 0; const tick = () => (++n < 5 ? requestAnimationFrame(tick) : done()); requestAnimationFrame(tick); }));
+  await expect(search).toBeFocused();
+  await search.fill('trim');
+  await search.press('Enter');
+  await expect(page.getByTestId('inspector').locator('.ui-step')).toHaveCount(1);
+});
+
 test('G groups the selected Transforms; with too few selected it says how', async ({ page }) => {
   await openApp(page);
   await addOrders(page);
