@@ -72,6 +72,7 @@ const ISOLATED = [
   'src/flow/status.test.ts',
   'src/notes/markdown.test.ts',
   'src/persistence/db.test.ts',
+  'src/persistence/workspace.test.ts',
   'src/samples/samples.test.ts',
   'src/sources/handles.test.ts',
   'src/sync/controller.test.ts',

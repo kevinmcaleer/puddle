@@ -418,4 +418,14 @@ describe('sync controller', () => {
     expect(t.kept).toEqual([project.id]);
     expect(signIn).toHaveBeenCalledWith({ then: 'link', projectId: project.id });
   });
+
+  it('a deleted project put back by undo syncs where it did, after its forgetting has run', async () => {
+    const t = await synced();
+    const link = t.links.get(t.project.id)!;
+    const forgetting = t.sync.forget(t.project.id);
+    const restoring = t.sync.restore(link);
+    await Promise.all([forgetting, restoring]);
+    expect(t.links.get(t.project.id)).toEqual(link);
+  });
 });
+

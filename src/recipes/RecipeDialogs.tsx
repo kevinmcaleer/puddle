@@ -89,7 +89,8 @@ function MatchSource({ source, nodeId }: { source: Source; nodeId: string }) {
   }, [fits, source.id]);
   if (!actual || fits) return null;
   const mapping: Record<string, string | undefined> = { ...suggestedMapping(expected, actual), ...Object.fromEntries(Object.entries(picks).map(([k, v]) => [k, v || undefined])) };
-  const forget = () => useProjectStore.getState().amend((p) => updateSource(p, source.id, { expected: undefined }));
+  // Declining the mapping is a choice, so an undo step: undo asks again.
+  const forget = () => useProjectStore.getState().apply((p) => updateSource(p, source.id, { expected: undefined }));
   return (
     <Dialog
       title={`Match the columns of ${source.name}`}

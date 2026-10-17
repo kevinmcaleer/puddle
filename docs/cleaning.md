@@ -43,7 +43,7 @@ With a step selected you can:
 - drag it up or down the list by its handle (or press Alt+Up or Alt+Down) to run it earlier or later;
 - delete it with **Delete step**.
 
-Undo (Ctrl+Z) and redo (Ctrl+Shift+Z or Ctrl+Y) cover every change.
+Undo (Ctrl+Z) and redo (Ctrl+Shift+Z or Ctrl+Y) cover every change, even with focus still on the setting you just changed. See [Undo and redo](projects.md#undo-and-redo).
 
 ## Seeing the data at any step
 

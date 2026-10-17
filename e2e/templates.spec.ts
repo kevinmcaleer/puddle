@@ -140,4 +140,12 @@ test('templates are renamed, described and deleted from the library', async ({ p
   await library.getByRole('button', { name: 'Delete template' }).click();
   await expect(library.getByText('No templates yet.')).toBeVisible();
   expect(await storedTemplates(page)).toEqual([]);
+
+  // Deleting can be undone right there in the library, from the button or the keys.
+  await library.getByRole('button', { name: 'Undo' }).click();
+  await expect(templateList(library).getByRole('option', { name: 'Trim names' })).toBeVisible();
+  expect(await storedTemplates(page)).toHaveLength(1);
+  await page.keyboard.press('ControlOrMeta+Shift+z');
+  await expect(library.getByText('No templates yet.')).toBeVisible();
+  expect(await storedTemplates(page)).toEqual([]);
 });

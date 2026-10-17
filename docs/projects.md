@@ -4,13 +4,25 @@ A project is your flow: its sources (how to read them, not their data), nodes, s
 
 ## The projects list
 
-**All projects**, in the project menu (click the project's name in the toolbar), opens the home screen: your projects, newest first, with the samples and the recipe gallery below. **New project** starts an empty one, and each project's **...** menu renames, duplicates or deletes it.
+**All projects**, in the project menu (click the project's name in the toolbar), opens the home screen: your projects, newest first, with the samples and the recipe gallery below. **New project** starts an empty one, and each project's **...** menu renames, duplicates or deletes it. Undo on this screen brings back a project deleted by mistake (see [Undo and redo](#undo-and-redo)).
 
 ![The projects home screen with samples and the recipe gallery](_static/screenshots/projects-home.png)
 
 The project menu also renames the open project, and exports and imports projects and recipes.
 
 ![The project menu](_static/screenshots/projects-menu.png)
+
+## Undo and redo
+
+Every change you make can be undone: **Undo** and **Redo** in the toolbar, or Ctrl+Z to undo and Ctrl+Shift+Z or Ctrl+Y to redo (Cmd on a Mac). Hold the keys to step back through several changes.
+
+- **In a project**, undo covers everything you change: adding sources and nodes, wiring, moving and grouping nodes, steps and their settings, read options, rules, the query designer, notes, renaming, and the column mapping for a recipe. One action is one undo step, so several files chosen or dropped together come off with one undo. The keys work from the canvas and from a field you've just changed, such as a drop-down or a switch; in a text box you're still typing in, they undo the typing first.
+- **On the projects screen**, undo brings back a deleted project (with its saved file access and its sync), and undoes renaming or duplicating one.
+- **In the templates library**, the undo and redo buttons beside **Import template** (or the keys) undo adding, importing, renaming and deleting templates.
+
+A few things aren't undo steps, because they record what happened rather than change your work: exports (the export history), which file a source is attached to, and moving around the canvas or changing what the results show. Undoing never takes a source back to a file it no longer reads. When sync brings in a newer version of the open project from another browser, that is an undo step too, so undo returns to the version you had.
+
+The undo history lasts while the tab is open. Projects themselves are saved as you go.
 
 ## Moving projects between browsers
 

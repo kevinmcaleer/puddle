@@ -25,16 +25,19 @@ function selectSource(source: Source) {
 }
 
 /** Add files as sources: at `at` (a drop point) stacked downwards, or below the existing sources. */
-export async function addFiles(files: Iterable<File | PickedFile>, at?: { x: number; y: number }) {
-  let i = 0;
-  for (const item of files) {
-    const { file, handle } = item instanceof File ? { file: item, handle: undefined } : item;
-    try {
-      selectSource(await addFileSource(file, at ? { x: at.x, y: at.y + i++ * 128 } : nextSourcePosition(), handle));
-    } catch (e) {
-      report(e);
+export function addFiles(files: Iterable<File | PickedFile>, at?: { x: number; y: number }) {
+  // Several files chosen or dropped together are one operation, so one undo step.
+  return useProjectStore.getState().batch(async () => {
+    let i = 0;
+    for (const item of files) {
+      const { file, handle } = item instanceof File ? { file: item, handle: undefined } : item;
+      try {
+        selectSource(await addFileSource(file, at ? { x: at.x, y: at.y + i++ * 128 } : nextSourcePosition(), handle));
+      } catch (e) {
+        report(e);
+      }
     }
-  }
+  });
 }
 
 /**
