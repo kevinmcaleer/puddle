@@ -62,6 +62,14 @@ function isolation(): Plugin {
 }
 
 /**
+ * The taxi tutorial's files, passed through from the TLC as the image's nginx does (deploy/nginx.conf), so Help's
+ * Start the taxi tutorial works from `npm run dev` and `npm run preview` too.
+ */
+const tutorialData = {
+  '/tutorial-data/': { target: 'https://d37ci6vzurychx.cloudfront.net', changeOrigin: true, rewrite: (path: string) => path.replace(/^\/tutorial-data/, '') },
+};
+
+/**
  * Test files that set their own environment or mock modules or globals, so they must not share a registry. The
  * IndexedDB ones are here because src/persistence/db.ts keeps its open connection in module state: with a shared
  * registry, one file's fake database (or its lack of one) leaked into the next.
@@ -85,6 +93,8 @@ const ISOLATED = [
 
 export default defineConfig({
   plugins: [react(), precache(), isolation()],
+  server: { proxy: tutorialData },
+  preview: { proxy: tutorialData },
   define: { __PUDDLE_BUILD__: JSON.stringify(build) },
   worker: { format: 'es' },
   optimizeDeps: { exclude: ['@duckdb/duckdb-wasm'] },

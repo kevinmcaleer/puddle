@@ -14,7 +14,7 @@ import { detectDateFormats } from '../../src/dates';
 import { schemaCacheFor } from '../../src/flow/status';
 import { useProjectStore, type Project, type Source } from '../../src/model';
 import { gatherSuggestionFacts, suggestRules } from '../../src/rules';
-import { SAMPLES } from '../../src/samples/catalog';
+import { SAMPLES, TAXI_TUTORIAL } from '../../src/samples/catalog';
 import { openSample } from '../../src/samples/open';
 import { useAttachments } from '../../src/sources/attachments';
 import { useUrlFetches } from '../../src/sources/url';
@@ -30,8 +30,12 @@ let server: FileServer;
 beforeAll(async () => {
   engine = new EngineClient(await createNodeBackend());
   useEngineStore.setState({ engine, status: { state: 'ready', info: engine.info } });
-  server = await startFileServer();
+  server = await startFileServer({ ranges: true });
   for (const f of readdirSync(dir)) server.files.set(`/app/samples/${f}`, { body: readFileSync(join(dir, f)), type: 'text/csv' });
+  // The taxi tutorial's files, as Puddle's server passes them through from the TLC: small stand-ins with their columns.
+  const fixtures = join(__dirname, '../fixtures');
+  server.files.set('/app/tutorial-data/trip-data/yellow_tripdata_2024-01.parquet', { body: readFileSync(join(fixtures, 'taxi-trips.parquet')), type: 'binary/octet-stream' });
+  server.files.set('/app/tutorial-data/misc/taxi_zone_lookup.csv', { body: readFileSync(join(fixtures, 'taxi-zones.csv')), type: 'text/csv' });
 });
 afterAll(async () => {
   await server.close();
@@ -75,6 +79,21 @@ describe('opening a sample', () => {
     expect(reads.length).toBeGreaterThan(0);
     // One plain GET each, as the service worker precached it, so it is answered from there offline (Firefox too).
     expect(reads.every((r) => r.method === 'GET' && r.range == null)).toBe(true);
+  });
+
+  it('opens the taxi tutorial with its trips read in parts and its zones whole, from beside the app', async () => {
+    const project = await open('taxi');
+    expect(project.notes).toBe(TAXI_TUTORIAL.note);
+    const [trips, zones] = project.sources;
+    expect([trips!.format, zones!.format]).toEqual(['parquet', 'csv']);
+    for (const s of project.sources) expect(useUrlFetches.getState().fetches[s.id]).toMatchObject({ state: 'ok' });
+    expect(useUrlFetches.getState().fetches[trips!.id]).toMatchObject({ ranged: true });
+    const nodeOf = (s: Source) => project.nodes.find((n) => n.type === 'source' && n.sourceId === s.id)!.id;
+    expect(await count(project, nodeOf(zones!))).toBe(11);
+    // The Node build here runs without DuckDB's parquet extension, so the trips are queried in e2e/samples.spec.ts.
+    // Read like a typed address: the first megabyte by a range request, not one plain GET as shipped samples are.
+    const reads = server.requests.filter((r) => r.path === '/app/tutorial-data/trip-data/yellow_tripdata_2024-01.parquet');
+    expect(reads[0]).toMatchObject({ method: 'GET', range: 'bytes=0-1048575' });
   });
 
   it('refuses a sample that doesn’t exist', async () => {

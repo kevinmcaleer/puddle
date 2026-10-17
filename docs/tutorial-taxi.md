@@ -17,6 +17,12 @@ The [data dictionary](https://www.nyc.gov/assets/tlc/downloads/pdf/data_dictiona
 
 Nothing is uploaded at any point. Puddle reads both files from your disk, and everything below runs in DuckDB inside the browser tab.
 
+### Or start from Puddle
+
+Choose **Help**, then **Start the taxi tutorial**. Puddle opens a new project called *Tutorial: three million taxi trips* with both files already added as sources, and a note that links back here. Skip step 1 and carry on from {ref}`step 2 <look-before-you-clean>`.
+
+The TLC's site doesn't let other sites' pages read its files, so Puddle's own server fetches them from the TLC for you as your browser reads them, and keeps nothing (see {doc}`self-hosting`). The trips are still read and cleaned in your browser. This needs Puddle's container or `npm run dev`; elsewhere, download the files as above.
+
 ## 1. Add the files
 
 Open a new project and choose **Add**, then **Choose files**, and pick both files (or drop them on the canvas). Each becomes a source node. The trips file says how many rows it has once DuckDB has counted them; Parquet files carry their column types, so the timestamps and numbers arrive ready to use.
@@ -25,6 +31,7 @@ Open a new project and choose **Add**, then **Choose files**, and pick both file
 
 Puddle can also read a file from its web address with **From URL**, without downloading it first, when the server lets browsers read it (see {doc}`sources`). If the TLC's server doesn't, Puddle says so, and downloading the files is the way in.
 
+(look-before-you-clean)=
 ## 2. Look before you clean
 
 Click a column header in the results and the status strip profiles that column over all three million rows. `passenger_count` shows the first problem: it runs from 0 to 9, and 5% of it is empty. A trip with no passengers, or none recorded, can't be counted in a passengers-per-trip figure.

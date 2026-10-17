@@ -1,9 +1,7 @@
 import { useState } from 'react';
-import { useSession } from '../app/session';
-import { useWorkspace } from '../persistence/workspace';
 import { Dialog, Section, StatusBadge } from '../ui';
 import { SAMPLES, type Sample } from './catalog';
-import { openSample } from './open';
+import { openSampleOrSay } from './open';
 import { openSamplesDialog, useSamplesDialog } from './samplesDialog';
 
 /** Each card's cover blocks, in the brand cover's colours, turned round so no two samples look alike. */
@@ -55,16 +53,9 @@ export function SamplePicker({ title = 'Try a sample', onOpened }: { title?: str
   const [busy, setBusy] = useState(false);
   const open = async (sample: Sample) => {
     setBusy(true);
-    try {
-      onOpened?.();
-      await openSample(sample.id);
-    } catch (e) {
-      const text = `Puddle couldn’t open the ${sample.title.toLowerCase()} sample: ${e instanceof Error ? e.message : String(e)}`;
-      useWorkspace.setState({ error: text });
-      useSession.getState().notify({ tone: 'fail', text });
-    } finally {
-      setBusy(false);
-    }
+    onOpened?.();
+    await openSampleOrSay(sample);
+    setBusy(false);
   };
   return (
     <Section title={title}>

@@ -1,9 +1,12 @@
 // The onboarding samples: small, deliberately messy datasets shipped in public/samples (written by
 // scripts/make-samples.mjs), served with the app and precached by the service worker so they work offline.
+// The taxi tutorial's files are too big to ship; Puddle's server passes them through from the TLC (deploy/nginx.conf).
 
 export interface SampleFile {
-  /** The file under public/samples. */
+  /** The file under public/samples, or the file's name when it is served from `path`. */
   file: string;
+  /** Where it is served beside the app, when it isn't shipped in public/samples. */
+  path?: string;
 }
 
 export interface Sample {
@@ -15,6 +18,8 @@ export interface Sample {
   files: SampleFile[];
   /** The project note (Markdown): what is wrong with the data, and where to start. */
   note: string;
+  /** The project's name, when it isn't "Sample: <title>". */
+  projectName?: string;
 }
 
 export const SAMPLES = [
@@ -89,17 +94,58 @@ This is a sample project. Delete it from the projects list when you’re done.`,
   },
 ] as const satisfies readonly Sample[];
 
-export type SampleId = (typeof SAMPLES)[number]['id'];
+/** Where the user guide is served, beside the app (the image builds it from docs/; see the Dockerfile). */
+export const GUIDE_PATH = 'docs/';
 
-export const sampleById = (id: string): Sample | undefined => SAMPLES.find((s) => s.id === id);
+/** The user guide's page for the taxi tutorial. */
+export const TAXI_TUTORIAL_PAGE = `${GUIDE_PATH}tutorial-taxi.html`;
+
+/**
+ * The user guide's taxi tutorial as a project: a month of New York's yellow cab trips and the zone lookup, read
+ * through Puddle's server from the TLC (whose own host doesn't let browsers read its files), not shipped.
+ */
+export const TAXI_TUTORIAL = {
+  id: 'taxi',
+  title: 'Taxi trips tutorial',
+  blurb: 'Three million New York taxi trips, for the user guide’s tutorial.',
+  projectName: 'Tutorial: three million taxi trips',
+  files: [
+    { file: 'yellow_tripdata_2024-01.parquet', path: 'tutorial-data/trip-data/yellow_tripdata_2024-01.parquet' },
+    { file: 'taxi_zone_lookup.csv', path: 'tutorial-data/misc/taxi_zone_lookup.csv' },
+  ],
+  note: `## Tutorial: three million taxi trips
+
+Every yellow cab trip in New York in January 2024 (2,964,624 rows), and the borough and name of each of the 265 zones they start and end in. The New York City Taxi and Limousine Commission (TLC) publishes them as open data; Puddle reads them from its site, and nothing is uploaded.
+
+Both files are added already, so skip the tutorial’s first step and follow it from **Look before you clean**: [the taxi tutorial in the user guide](${TAXI_TUTORIAL_PAGE}).
+
+This is a tutorial project. Delete it from the projects list when you’re done.`,
+} as const satisfies Sample;
+
+export type SampleId = (typeof SAMPLES)[number]['id'] | typeof TAXI_TUTORIAL.id;
+
+const ALL: readonly Sample[] = [...SAMPLES, TAXI_TUTORIAL];
+
+export const sampleById = (id: string): Sample | undefined => ALL.find((s) => s.id === id);
 
 /** The project name for a sample: labelled as one on the home screen. */
-export const sampleProjectName = (sample: Sample) => `Sample: ${sample.title.toLowerCase()}`;
+export const sampleProjectName = (sample: Sample) => sample.projectName ?? `Sample: ${sample.title.toLowerCase()}`;
 
-const FILES = new Set<string>(SAMPLES.flatMap((s) => s.files.map((f) => f.file)));
+const FILES = new Map<string, SampleFile>(ALL.flatMap((s) => s.files.map((f): [string, SampleFile] => [f.file, f])));
 
-/** True for a file Puddle ships as a sample; anything else in a project's `url.sample` is ignored. */
+/** True for a file Puddle ships or serves as a sample; anything else in a project's `url.sample` is ignored. */
 export const isSampleFile = (file: string | undefined): file is string => file != null && FILES.has(file);
 
+/** True for a sample file shipped in public/samples (small, and precached for offline use). */
+export const isShippedFile = (file: string | undefined): file is string => isSampleFile(file) && FILES.get(file)!.path == null;
+
+const servedPath = (file: string) => FILES.get(file)?.path ?? `samples/${encodeURIComponent(file)}`;
+
 /** Where a sample file is served: next to the app, wherever it is hosted. */
-export const sampleAddress = (file: string, base: string) => new URL(`samples/${encodeURIComponent(file)}`, base);
+export const sampleAddress = (file: string, base: string) => new URL(servedPath(file), base);
+
+/** Where the app was served when a sample file was read from this address: the address minus the file's path. */
+export const sampleBase = (file: string, href: string) => {
+  const path = servedPath(file);
+  return href.endsWith(path) ? href.slice(0, -path.length) : new URL('..', href).href;
+};

@@ -39,7 +39,7 @@ Show dates
 
 ## Help and keyboard shortcuts
 
-The **Help** menu starts the guided tour again (or picks it up where you left it) and lists the keyboard shortcuts. Press **?** anywhere outside a text field to see them. On a Mac, use Command in place of Ctrl.
+The **Help** menu opens this **User guide** in a new tab, starts the {doc}`taxi tutorial <tutorial-taxi>` with its files already added (**Start the taxi tutorial**), starts the guided tour again (or picks it up where you left it) and lists the keyboard shortcuts. Press **?** anywhere outside a text field to see them. On a Mac, use Command in place of Ctrl.
 
 ![The Help menu](_static/screenshots/settings-help-menu.png)
 

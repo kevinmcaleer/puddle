@@ -6,7 +6,7 @@ import { addSource, newId, updateSource, useProjectStore, type Source, type Sour
 import { markAttached } from './attachments';
 import { formatFromName, knownFormat, SourceError } from './detect';
 import { headHash } from './hash';
-import { isSampleFile, sampleAddress } from '../samples/catalog';
+import { isSampleFile, isShippedFile, sampleAddress, sampleBase } from '../samples/catalog';
 
 /**
  * Sources read from a web address (plan D8). The browser fetches the file itself, so the server must allow
@@ -207,7 +207,7 @@ export const urlFetched = (sourceId: string) => useUrlFetches.getState().fetches
 export function addressOf(source: Source): URL | string {
   const sample = source.url?.sample;
   if (!isSampleFile(sample)) return source.url?.href ?? '';
-  const base = typeof document !== 'undefined' ? document.baseURI : new URL('..', source.url!.href).href;
+  const base = typeof document !== 'undefined' ? document.baseURI : sampleBase(sample, source.url!.href);
   return sampleAddress(sample, base);
 }
 
@@ -261,7 +261,7 @@ export function loadUrlSource(source: Source, opts: FetchOptions & { refresh?: b
     if (!opts.refresh) markAttached(source.id, 'detached');
     setFetch(source.id, { state: 'fetching' });
     try {
-      const fetched = await fetchAddress(addressOf(source), { ...opts, format: source.format, shipped: isSampleFile(source.url.sample) });
+      const fetched = await fetchAddress(addressOf(source), { ...opts, format: source.format, shipped: isShippedFile(source.url.sample) });
       await register(source, fetched);
       const current = useProjectStore.getState().history.present.sources.find((s) => s.id === source.id);
       const before = current?.url?.headHash ?? source.url.headHash;
