@@ -253,12 +253,12 @@ export function AppShell() {
             button={{ icon: 'transform' }}
             items={[
               { label: 'Transform', icon: 'transform', shortcut: shortcutText('add-transform'), onSelect: () => addNodeAfterSelection('transform') },
+              { label: 'From template', icon: 'template', hint: 'Saved steps', onSelect: openTemplates },
               { label: 'Join', icon: 'join', hint: 'Two inputs', onSelect: () => addNodeAfterSelection('join') },
               { label: 'Append', icon: 'append', hint: 'Stack rows', onSelect: () => addNodeAfterSelection('append') },
               { label: 'Lookup', icon: 'join', hint: 'Bring columns across', onSelect: () => addNodeAfterSelection('lookup') },
               { label: 'Query', icon: 'query', hint: 'Design with tables', onSelect: () => addNodeAfterSelection('query') },
               { label: 'Output', icon: 'output', shortcut: shortcutText('add-output'), onSelect: () => addNodeAfterSelection('output') },
-              { label: 'From template', icon: 'template', hint: 'Saved steps', onSelect: openTemplates },
             ]}
           />
           <Button variant="ghost" icon="layout" title={withShortcut('Auto layout', 'layout')} onClick={layoutFlow} disabled={!project.nodes.length}>Auto layout</Button>

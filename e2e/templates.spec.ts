@@ -54,7 +54,7 @@ test('a node saved as a template goes into another project, with a missing colum
   await save.getByLabel('Description').fill('Trims and title-cases names.');
   await save.getByRole('button', { name: 'Save template' }).click();
   await expect(save).toHaveCount(0);
-  await expect(page.getByText('Saved “Tidy names” as a template.')).toBeVisible();
+  await expect(page.getByTestId('canvas-notice')).toContainText('Saved “Tidy names” as a template.');
 
   // A new project reading the same rows, where the column is called full_name.
   await projectMenu(page, 'All projects');
@@ -92,7 +92,7 @@ test('a node saved as a template goes into another project, with a missing colum
   await expect(library.getByLabel('Use for name')).toHaveValue('');
   await library.getByRole('button', { name: 'Insert template' }).click();
   await expect(node(page, 'Tidy names 2')).toHaveAttribute('data-status', 'ok');
-  await expect(page.getByText('2 of 2 steps arrived turned off')).toBeVisible();
+  await expect(page.getByTestId('canvas-notice')).toContainText('2 of 2 steps arrived turned off');
   await expect(steps(page).nth(0)).toHaveAttribute('aria-disabled', 'true');
   // Playwright won't click an aria-disabled option; Enter selects it as a click would.
   await steps(page).nth(0).press('Enter');
