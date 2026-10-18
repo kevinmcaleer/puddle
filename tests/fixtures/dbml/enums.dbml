@@ -1,0 +1,26 @@
+// enum belonged to default "public" schema
+enum job_status {
+  created [note: 'Waiting to be processed']
+  running
+  done
+  failure
+}
+
+// enum belonged to a schema
+enum v2.job_status {
+  queued
+  finished
+}
+
+Table jobs {
+  id integer
+  status job_status
+  status_v2 v2.job_status
+}
+
+enum grade {
+  "A+"
+  "A"
+  "A-"
+  "Not Yet Set"
+}

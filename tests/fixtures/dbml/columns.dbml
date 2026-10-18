@@ -1,0 +1,24 @@
+Table buildings {
+  address varchar(255) [unique, not null, note: 'to include unit number']
+  id integer [ pk, unique, default: 123, note: 'Number' ]
+  price "double precision" [null]
+  big "bigint unsigned" [pk]
+  ratio decimal(10, 2) [default: -1.5]
+  tags text[]
+}
+
+Table users {
+  id integer [primary key]
+  username varchar(255) [not null, unique]
+  full_name varchar(255) [not null]
+  gender varchar(1) [not null]
+  source varchar(255) [default: 'direct']
+  created_at timestamp [default: `now()`]
+  removed_at timestamp [default: `now() - interval '5 days'`]
+  rating integer [default: 10]
+  active boolean [default: false]
+  nickname varchar [default: null]
+  serial integer [increment]
+  age int [check: `age >= 0`, check: `age < 150`]
+  "first name" varchar
+}

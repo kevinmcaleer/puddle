@@ -1,0 +1,20 @@
+Table users {
+  id integer [pk]
+}
+
+Ref: orders.user_id > users.id
+Ref: users.nope > users.id
+
+Table orders {
+  ~missing_partial
+  id integer
+}
+
+TableGroup g {
+  users
+  ghosts
+}
+
+records users(id, name) {
+  1, 'a'
+}

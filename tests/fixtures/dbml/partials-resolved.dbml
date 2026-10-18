@@ -1,0 +1,13 @@
+Table users [headerColor: #ff0000] {
+  id int [pk, not null]
+  created_at timestamp [default: `now()`]
+  updated_at timestamp [default: `now()`]
+  email varchar [unique]
+  name varchar
+  delete_status boolean [not null]
+  deleted_at timestamp [default: `now()`]
+
+  indexes {
+    email [unique]
+  }
+}

@@ -1,0 +1,63 @@
+// A small shop: the example the guide and tests use.
+Project shop {
+  database_type: 'PostgreSQL'
+  Note: 'Customers, their orders and what they bought'
+}
+
+Enum order_status {
+  pending
+  paid
+  shipped [note: 'Left the warehouse']
+  cancelled
+}
+
+Table customers as C [headercolor: #3498DB] {
+  id integer [pk, increment]
+  email varchar(255) [not null, unique]
+  name varchar(100) [not null]
+  country char(2) [default: 'GB']
+  created_at timestamp [default: `now()`]
+
+  Note: 'Everyone who has signed up'
+}
+
+Table orders {
+  id integer [pk, increment]
+  customer_id integer [not null, ref: > C.id]
+  status order_status [not null, default: 'pending']
+  total decimal(10,2) [not null, check: `total >= 0`]
+  ordered_at timestamp [not null]
+
+  indexes {
+    (customer_id, ordered_at) [name: 'orders_by_customer']
+  }
+}
+
+Table products {
+  id integer [pk, increment]
+  sku varchar(32) [unique, not null]
+  name varchar [not null]
+  price decimal(10,2) [not null]
+}
+
+Table order_items {
+  order_id integer [not null]
+  product_id integer [not null]
+  quantity integer [not null, default: 1]
+
+  indexes {
+    (order_id, product_id) [pk]
+  }
+}
+
+Ref: order_items.order_id > orders.id [delete: cascade]
+Ref: order_items.product_id > products.id
+
+TableGroup sales [color: #79AD51] {
+  orders
+  order_items
+}
+
+Note about {
+  'Prices are in pounds'
+}

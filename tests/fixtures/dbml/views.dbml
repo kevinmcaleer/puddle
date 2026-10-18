@@ -1,0 +1,52 @@
+Table users {
+  id int
+}
+
+Table orders {
+  id int
+}
+
+Table products {
+  id int
+}
+
+Note reminder_note {
+  'Hi'
+}
+
+Table core.things {
+  id int
+}
+
+TableGroup group_2 {
+  users
+}
+
+// Show all items in all categories
+DiagramView full_view {
+  Tables { * }
+  Notes { * }
+  TableGroups { * }
+  Schemas { * }
+}
+
+// Show nothing (empty view)
+DiagramView empty_view {
+}
+
+// Select specific tables
+DiagramView sales_view {
+  Tables {
+    users
+    orders
+    products
+  }
+}
+
+// Mixed filtering with all items in some categories
+DiagramView mixed_view {
+  Tables { * }
+  Notes { reminder_note }
+  TableGroups { group_2 }
+  Schemas { core }
+}

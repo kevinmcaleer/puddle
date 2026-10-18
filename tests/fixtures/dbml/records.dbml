@@ -1,0 +1,76 @@
+// Outside table definition
+Table users {
+  id int [pk]
+  name varchar
+  email varchar
+}
+
+records users(id, name, email) {
+  1, 'Alice', 'alice@example.com'
+  2, 'Bob', 'bob@example.com'
+}
+
+// Inside table definition with explicit column list
+Table posts {
+  id int [pk]
+  title varchar
+  published boolean
+
+  records (id, title, published) {
+    1, 'First Post', true
+    2, 'Second Post', false
+  }
+}
+
+// Inside table definition with implicit column list
+Table comments {
+  id int [pk]
+  user_id int [ref: > users.id]
+  post_id int [ref: > posts.id]
+  title string
+
+  records {
+    1, 2, 1, 'First comment of first post by the second user'
+  }
+}
+
+enum Status {
+  active
+  inactive
+  pending
+}
+
+Table members {
+  id int
+  name varchar
+  age int
+  status Status
+  created_at timestamp
+}
+
+records members(id, name, age, status, created_at) {
+  1, 'Alice', 30, Status.active, '2024-01-15 10:30:00'
+  2, 'Bob', null, 'inactive', `now()`
+  3, 'Charlie', , Status.pending, '2024-01-15'
+  4, 'Dan\'s', -2.5e3, 'active', ''
+}
+
+Table examples {
+  id int [pk]
+  name varchar
+
+  records [example] {
+    1, 'Alice'
+    2, 'Bob'
+  }
+}
+
+Table examples2 {
+  id int [pk]
+  name varchar
+}
+
+records examples2(id, name) [example] {
+  1, 'Alice'
+  2, 'Bob'
+}

@@ -1,0 +1,22 @@
+Table merchants {
+  id int
+}
+
+Table countries {
+  id int
+}
+
+Table core.table3 {
+  id int
+}
+
+TableGroup tablegroup_name { // tablegroup is case-insensitive.
+  merchants
+  countries
+  core.table3
+}
+
+tablegroup e_commerce1 [color: #3498DB, team: "growth"] {
+  merchants
+  countries
+}
