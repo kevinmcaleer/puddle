@@ -8,6 +8,7 @@ import { pickFiles, type PickedFile } from '../sources/handles';
 import { tableToCsv, type HtmlTable } from '../sources/html';
 import type { FeedSpec, ReadOptions } from '../sources/odata';
 import { addODataSource, addUrlSource, addWebTableSource } from '../sources/url';
+import { viewHere, viewNode } from '../results/pin';
 import { useSession } from './session';
 
 const report = (e: unknown) => useSession.getState().notify({ tone: 'fail', text: e instanceof Error ? e.message : String(e) });
@@ -163,12 +164,15 @@ export function selectNeighbour(direction: Direction) {
   const group = groupOf(project, next.id);
   if (group?.collapsed) useProjectStore.getState().apply((p) => setGroupCollapsed(p, group.id, false));
   useSession.getState().select(next.id);
+  viewNode(next.id);
 }
 
-/** Show the selected node in the results table. */
+/** V: show the selected node in the results table, moving the pin there when the table is pinned. */
 export function viewSelected() {
   const id = useSession.getState().selectedNodeId;
-  if (id && nodeById(useProjectStore.getState().history.present, id)) useProjectStore.getState().setView({ viewedNodeId: id, viewedStepIndex: undefined });
+  if (!id || !nodeById(useProjectStore.getState().history.present, id)) return;
+  if (useProjectStore.getState().history.present.view.pinned) viewHere(id);
+  else useProjectStore.getState().setView({ viewedNodeId: id, viewedStepIndex: undefined });
 }
 
 /** Open the inspector's Add step menu with its search focused, for a selected Transform node. */

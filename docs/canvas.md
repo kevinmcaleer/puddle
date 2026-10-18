@@ -34,7 +34,7 @@ The canvas is where your flow lives. Data runs left to right along wires: source
 
 ## Using the keyboard
 
-Arrow keys move between connected nodes, Enter opens the selected node, T adds a Transform after it, O an Output, and G groups the selected nodes. C starts wiring the selected node: move to another node and press Enter to wire or unwire them. **?** lists every shortcut (see {doc}`settings`).
+Arrow keys move between connected nodes and show each one in the results, as a click does (with the results pinned they only select, and V moves the pin to the selected node). Enter opens the selected node, T adds a Transform after it, O an Output, and G groups the selected nodes. C starts wiring the selected node: move to another node and press Enter to wire or unwire them. **?** lists every shortcut (see {doc}`settings`).
 
 ## Groups
 
