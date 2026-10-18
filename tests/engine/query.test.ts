@@ -1,12 +1,12 @@
 // Query nodes on real DuckDB-WASM (Node build): shop customers and orders joined by the lines the designer draws,
-// with the grid's fields, aliases, criteria (and or rows), sorting and unique values, and the Totals row grouping and
-// summarising.
+// with the grid's fields, aliases, criteria (and or rows), sorting and unique values, the Totals row grouping and
+// summarising, and the SQL view: its SQL run as written, and SQL read back into the design.
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { compileDisplayPage, sourceFileName } from '../../src/compiler';
+import { compileDisplayPage, designSql, readQuerySql, sourceFileName, type QueryTable } from '../../src/compiler';
 import { EngineClient, tableRows } from '../../src/engine/client';
 import { evaluateFlow, invalidateCaches, schemaCacheFor, useFlowStore } from '../../src/flow/status';
-import { addQueryField, addQueryJoin, addQueryOrRow, addQueryTable, removeQueryOrRow, removeQueryTable, setQueryCriteria, setQueryJoinKind, setQuerySpec, updateQueryField, type Project, type QueryField, type QueryJoinKind } from '../../src/model';
+import { addQueryField, addQueryJoin, addQueryOrRow, addQueryTable, removeQueryOrRow, removeQueryTable, setQueryCriteria, setQueryDesign, setQueryJoinKind, setQuerySpec, setQuerySql, updateQueryField, type Project, type QueryField, type QueryJoinKind } from '../../src/model';
 import { createNodeBackend } from '../helpers/nodeBackend';
 import { flow, src, step } from '../helpers/projects';
 
@@ -293,5 +293,53 @@ describe('query in the flow', () => {
       message: 'customer_id in c is a number and status in o is text; change one with Change type.',
       ports: [1],
     });
+  });
+});
+
+describe('query SQL view', () => {
+  /** The Query's tables with their columns, as the SQL view reads them. */
+  async function sqlTables(p: Project): Promise<QueryTable[]> {
+    const cache = schemaCacheFor(engine);
+    return [{ port: 0, label: 'c', columns: await cache.get(p, { nodeId: 'c' }) }, { port: 1, label: 'o', columns: await cache.get(p, { nodeId: 'o' }) }];
+  }
+  const spec = (p: Project) => (p.nodes.find((n) => n.id === 'q') as Extract<Project['nodes'][number], { type: 'query' }>).querySpec;
+
+  it('the SQL it shows runs as written to the same rows as the design, totals and or rows included', async () => {
+    const designs = [
+      shop('left', [[1, 'order_id', { sort: 'desc' }], [0, 'name', { alias: 'Customer name', criteria: { op: 'contains', value: 'a' } }], [0, 'status', { show: false, criteria: { op: 'notEmpty', value: '' }, or: [{ op: 'empty', value: '' }] }]]),
+      withTotals(shop('inner', [[0, 'name', { sort: 'asc' }], [1, 'total', { total: 'sum', criteria: { op: '>', value: '5' } }], [1, 'total', { total: 'expression', expression: 'round(sum(total) / count(*), 3)' }], [1, 'status', { total: 'where', show: false, criteria: { op: '=', value: 'shipped' } }]])),
+    ];
+    designs[0] = addQueryOrRow(designs[0]!, 'q');
+    for (const p of designs) {
+      const sql = designSql(spec(p), await sqlTables(p));
+      const [design, written] = [await run(p), await run(setQuerySql(p, 'q', sql))];
+      expect(written).toEqual(design);
+      expect(design.rows.length).toBeGreaterThan(0);
+    }
+  });
+
+  it('hand-written SQL read into the design gives the rows the SQL does', async () => {
+    const p = shop('inner', []);
+    const sql = `SELECT name AS who, sum(total) AS spent, count(*) AS orders, sum(x.total) * 2 AS doubled
+FROM o AS x JOIN c ON c.customer_id = x.customer_id
+WHERE x.status ILIKE 'ship%'
+GROUP BY name
+HAVING sum(total) > 1
+ORDER BY spent DESC`;
+    const reading = readQuerySql(sql, await sqlTables(p), spec(p));
+    if ('reason' in reading) throw new Error(reading.reason);
+    const [design, written] = [await run(setQueryDesign(p, 'q', reading.spec)), await run(setQuerySql(p, 'q', sql))];
+    expect(design.columns).toEqual(['who', 'spent', 'orders', 'doubled']);
+    expect(design).toEqual(written);
+    expect(design.rows).toEqual([['Ada', '15.75', '2', '31.5']]);
+  });
+
+  it('SQL the grid can’t show runs as written, and discarding it brings back the design', async () => {
+    const p = shop();
+    const kept = setQuerySql(p, 'q', 'SELECT order_id, total FROM o ORDER BY total DESC LIMIT 2');
+    expect((await run(kept)).rows).toEqual([['100', '12.5'], ['103', '9.99']]);
+    expect(await run(setQuerySql(kept, 'q', undefined))).toEqual(await run(p));
+    await evaluateFlow(engine, setQuerySql(p, 'q', 'SELECT * FROM somewhere'));
+    expect(useFlowStore.getState().nodes.q!.status).toMatchObject({ state: 'error', message: expect.stringContaining('This query can’t run: there’s no table somewhere') });
   });
 });

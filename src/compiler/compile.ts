@@ -6,6 +6,7 @@ import { compileLookup, firstMatches, lookupCondition, lookupProblems } from './
 import { keptTable, knownKept, type KeptBook } from './keptBook';
 import { dateText, readDateFormat } from './dateRead';
 import { compileQuery, queryProblems } from './query';
+import { compileQuerySql, querySqlProblem } from './querySql';
 import { compileSqlNode, sqlNodeProblem } from './sqlNode';
 import { knownSchemas, type SchemaBook } from './schemaBook';
 import { sourceRelation } from './sources';
@@ -186,10 +187,20 @@ function build(project: Project, target: Target, book: SchemaBook, options: Comp
       case 'query': {
         const wired = wiredInputs(project, n, out);
         if (!wired.length) throw new UnwiredError(`${n.name} has no tables. Connect a wire into it, or add a table in the query designer.`, n.id, 0);
+        const name = cteName(n.id);
+        const kept = n.querySpec.sql;
+        if (kept != null) {
+          // SQL from the SQL view that the grid can't show runs as written.
+          const inputs = wired.map((w) => ({ port: w.port as number, cte: w.cte, label: nodeById(project, w.fromId)!.name }));
+          const problem = querySqlProblem(kept, inputs);
+          if (problem) throw new CompileError(`This query can’t run: ${problem}.`, n.id);
+          ctes.push(`${name} AS (${compileQuerySql(kept, inputs)})`);
+          out.set(n.id, name);
+          break;
+        }
         const tables = wired.map((w) => ({ port: w.port as number, cte: w.cte, label: nodeById(project, w.fromId)!.name, columns: inputColumns(project, n, w, book) }));
         const problem = queryProblems(n.querySpec, tables)[0];
         if (problem) throw new CompileError(problem.message, n.id, undefined, problem.port == null ? undefined : [problem.port]);
-        const name = cteName(n.id);
         ctes.push(`${name} AS (${compileQuery(n.querySpec, tables)})`);
         out.set(n.id, name);
         break;
@@ -297,7 +308,8 @@ export function upstreamKey(project: Project, target: Target): string {
       // The source column holds each input's node name, so names matter only when it's on.
       if (n.type === 'append') return { id: n.id, type: n.type, inputs, append: n.appendSpec, ...(n.appendSpec.tagRows ? { labels: inputEdges(project, n.id).map((e) => nodeById(project, e.from.nodeId)?.name) } : {}) };
       // Where tables sit in the designer doesn't change the rows.
-      if (n.type === 'query') return { id: n.id, type: n.type, inputs, query: { ...n.querySpec, tables: undefined } };
+      // SQL kept from the SQL view reads the tables by their node names, so those matter then.
+      if (n.type === 'query') return { id: n.id, type: n.type, inputs, query: { ...n.querySpec, tables: undefined }, ...(n.querySpec.sql != null ? { labels: inputEdges(project, n.id).map((e) => nodeById(project, e.from.nodeId)?.name) } : {}) };
       // The query reads its inputs by their node names, so those matter here.
       if (n.type === 'sql') return { id: n.id, type: n.type, inputs, sql: n.sqlSpec, labels: inputEdges(project, n.id).map((e) => nodeById(project, e.from.nodeId)?.name) };
       return { id: n.id, type: n.type, inputs };

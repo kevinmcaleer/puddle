@@ -19,6 +19,9 @@ export interface TabItem {
   id: string;
   label: string;
   count?: number;
+  disabled?: boolean;
+  /** Says why, when it's disabled. */
+  title?: string;
 }
 
 export function Tabs({ items, value, onChange, label }: { items: TabItem[]; value?: string; onChange?: (id: string) => void; label?: string }) {
@@ -27,7 +30,7 @@ export function Tabs({ items, value, onChange, label }: { items: TabItem[]; valu
   return (
     <div className="ui-tabs" role="tablist" aria-label={label}>
       {items.map((t) => (
-        <button key={t.id} type="button" role="tab" className="ui-tab" aria-selected={t.id === current} onClick={() => (onChange ? onChange(t.id) : setOwn(t.id))}>
+        <button key={t.id} type="button" role="tab" className="ui-tab" aria-selected={t.id === current} disabled={t.disabled} title={t.title} onClick={() => (onChange ? onChange(t.id) : setOwn(t.id))}>
           {t.label}
           {t.count != null && <span className="ui-tab__count">{t.count}</span>}
         </button>

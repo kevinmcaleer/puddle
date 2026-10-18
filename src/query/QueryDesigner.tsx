@@ -1,8 +1,8 @@
 import { useEffect, useLayoutEffect, useRef, useState, type DragEvent, type KeyboardEvent as ReactKeyboardEvent, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent } from 'react';
 import { useSession } from '../app/session';
 import { cardKind } from '../canvas/kind';
-import { CRITERIA_OPS, crossJoinedTables, defaultNames, fieldTotal, TOTALS, totalsProblems } from '../compiler';
-import { useFlowStore } from '../flow/status';
+import { CRITERIA_OPS, crossJoinedTables, defaultNames, designSql, fieldTotal, queryProblems, querySqlProblem, readQuerySql, TOTALS, totalsProblems } from '../compiler';
+import { useFlowStore, useNodeStatus } from '../flow/status';
 import {
   addQueryField,
   addQueryJoin,
@@ -16,7 +16,9 @@ import {
   removeQueryOrRow,
   removeQueryTable,
   setQueryCriteria,
+  setQueryDesign,
   setQuerySpec,
+  setQuerySql,
   updateQueryField,
   useProject,
   useProjectStore,
@@ -31,7 +33,7 @@ import {
 import { viewNode } from '../results/pin';
 import { CommitInput } from '../steps/CommitInput';
 import { ExpressionInput } from '../steps/ExpressionInput';
-import { Banner, Button, columnKind, cx, Dialog, Field, Icon, Menu, NODE_KIND, Select, Switch, TypeTag } from '../ui';
+import { announce, Banner, Button, columnKind, cx, Dialog, Field, Icon, Menu, NODE_KIND, Select, Switch, Tabs, TypeTag } from '../ui';
 import { designerTables, refKey, tableCandidates, useDesigner, type DesignerTable } from './tables';
 import './query.css';
 
@@ -516,6 +518,88 @@ function QueryGrid({ node, tables }: { node: QueryNode; tables: DesignerTable[] 
   );
 }
 
+/** A reason the SQL reader gives, as a sentence. */
+const sentence = (reason: string) => reason[0]!.toUpperCase() + reason.slice(1) + (/[.?!]$/.test(reason) ? '' : '.');
+
+/**
+ * The SQL view, as in Access: the design written as SQL. Edited SQL goes back into the design when the grid can show
+ * it; otherwise the Query keeps the SQL and runs it as written, and says why, until the SQL is discarded.
+ */
+function SqlView({ node, tables, onDiscard }: { node: QueryNode; tables: DesignerTable[]; onDiscard: () => void }) {
+  const status = useNodeStatus(node.id);
+  const known = tables.every((t) => t.columns);
+  const queryTables = tables.map((t) => ({ port: t.port, label: t.label, columns: t.columns ?? [] }));
+  const kept = node.querySpec.sql;
+  const designProblem = kept == null && known ? queryProblems(node.querySpec, queryTables)[0] : undefined;
+  const shown = kept ?? (known && !designProblem ? designSql(node.querySpec, queryTables) : '');
+  const runProblem = kept != null ? querySqlProblem(kept, tables) : undefined;
+  const why = kept == null || runProblem ? undefined : known ? readQuerySql(kept, queryTables, node.querySpec) : { reason: 'its tables’ columns aren’t known yet' };
+
+  const commit = (sql: string) => {
+    if (sql.trim() === shown.trim()) return;
+    const read = known ? readQuerySql(sql, queryTables, node.querySpec) : undefined;
+    if (read && 'spec' in read) {
+      // Only the spacing changed: the design stays as it is.
+      if (kept == null && designSql(read.spec, queryTables) === shown) return;
+      apply((p) => setQueryDesign(p, node.id, read.spec));
+      announce('The design now matches the SQL');
+    } else {
+      apply((p) => setQuerySql(p, node.id, sql));
+      announce('The grid can’t show this SQL, so the query runs it as written');
+    }
+  };
+
+  return (
+    <div className="puddle-qd-sql" data-testid="query-sql-view">
+      {why && 'reason' in why && (
+        <div data-testid="query-sql-kept">
+          <Banner
+            tone="warn"
+            title="This query runs as SQL"
+            action={
+              <Button variant="ghost" size="sm" onClick={onDiscard}>
+                Back to the design
+              </Button>
+            }
+          >
+            {sentence(why.reason)} The design grid stays as it was; going back to it discards this SQL.
+          </Banner>
+        </div>
+      )}
+      {runProblem && (
+        <Banner tone="fail" title="This query can’t run">
+          {sentence(runProblem)}
+        </Banner>
+      )}
+      {kept != null && !runProblem && status.state === 'error' && (
+        <Banner tone="fail" title="DuckDB refused the query">
+          {status.message}
+        </Banner>
+      )}
+      {designProblem && (
+        <Banner tone="info" title="The design can’t be written as SQL yet">
+          {designProblem.message} Or write the query here, and the grid fills in from it.
+        </Banner>
+      )}
+      {!known && kept == null && <Banner tone="info">Reading the tables’ columns.</Banner>}
+      <ExpressionInput
+        key={shown}
+        id="query-sql"
+        aria-label="SQL"
+        rows={12}
+        value={shown}
+        columns={tables.flatMap((t) => t.columns ?? [])}
+        error={!!runProblem}
+        placeholder={`SELECT ...\nFROM ${tables[0]?.label ?? 'input1'}`}
+        onCommit={commit}
+      />
+      <p className="text-label text-ink-muted">
+        Edit the SQL, then press Ctrl+Enter or click away, and the design grid follows. Tables are read by their node’s name, or as input1, input2. SQL the grid can’t show, such as LIMIT or UNION, runs as written.
+      </p>
+    </div>
+  );
+}
+
 /**
  * The query designer, in place of the canvas while it's open: the Query's tables up top, joined by lines drawn from
  * one table's field to another's, and the grid of fields below. The results table shows the query's rows as it's built.
@@ -530,6 +614,10 @@ export function QueryDesigner({ node }: { node: QueryNode }) {
   const selectJoin = useDesigner((s) => s.selectJoin);
   const { totals } = node.querySpec;
   const problems = totalsProblems(node.querySpec, tables.map((t) => ({ ...t, columns: t.columns ?? [] })));
+  const kept = node.querySpec.sql != null;
+  const [chosen, setView] = useState<'design' | 'sql'>(kept ? 'sql' : 'design');
+  // SQL the grid can't show is all there is to see until it's discarded.
+  const view = kept ? 'sql' : chosen;
 
   // The node's rows show below while it's being designed, unless the results table is pinned.
   useEffect(() => {
@@ -551,20 +639,33 @@ export function QueryDesigner({ node }: { node: QueryNode }) {
         </Button>
         <Icon name="query" />
         <span className="text-body-strong text-ink" data-testid="query-designer-title">{node.name}</span>
+        <Tabs
+          label="View"
+          value={view}
+          onChange={(v) => setView(v as 'design' | 'sql')}
+          items={[
+            { id: 'design', label: 'Design', disabled: kept, title: kept ? 'The grid can’t show this SQL: go back to the design to discard it' : undefined },
+            { id: 'sql', label: 'SQL' },
+          ]}
+        />
         <span className="flex-1" />
-        <Button
-          variant="ghost"
-          size="sm"
-          icon="totals"
-          aria-pressed={totals}
-          title={totals ? 'Hide the Total row' : 'Group and summarise with a Total row'}
-          className={totals ? 'bg-surface-hover text-ink' : undefined}
-          data-testid="query-totals-toggle"
-          onClick={() => apply((p) => setQuerySpec(p, node.id, { totals: !totals }))}
-        >
-          Totals
-        </Button>
-        <Switch id="query-distinct" label="Unique values" checked={node.querySpec.distinct} onChange={(distinct) => apply((p) => setQuerySpec(p, node.id, { distinct }))} />
+        {view === 'design' && (
+          <>
+            <Button
+              variant="ghost"
+              size="sm"
+              icon="totals"
+              aria-pressed={totals}
+              title={totals ? 'Hide the Total row' : 'Group and summarise with a Total row'}
+              className={totals ? 'bg-surface-hover text-ink' : undefined}
+              data-testid="query-totals-toggle"
+              onClick={() => apply((p) => setQuerySpec(p, node.id, { totals: !totals }))}
+            >
+              Totals
+            </Button>
+            <Switch id="query-distinct" label="Unique values" checked={node.querySpec.distinct} onChange={(distinct) => apply((p) => setQuerySpec(p, node.id, { distinct }))} />
+          </>
+        )}
         <Menu
           label="Add table"
           button={{ size: 'sm', icon: 'plus', variant: 'primary', disabled: !candidates.length }}
@@ -583,14 +684,14 @@ export function QueryDesigner({ node }: { node: QueryNode }) {
           }))}
         />
       </div>
-      {(error || cross.length > 0 || problems.length > 0) && (
+      {(error || (view === 'design' && (cross.length > 0 || problems.length > 0))) && (
         <div className="puddle-qd-notes">
           {error && (
             <Banner tone="warn" action={<Button variant="ghost" size="sm" onClick={() => setError(null)}>Dismiss</Button>}>
               {error}
             </Banner>
           )}
-          {problems.length > 0 && (
+          {view === 'design' && problems.length > 0 && (
             <div data-testid="query-totals-problems">
               <Banner tone="warn" title={problems.length === 1 ? 'This query can’t run yet' : `This query can’t run yet: ${problems.length} problems`}>
                 {problems.length === 1 ? (
@@ -605,7 +706,7 @@ export function QueryDesigner({ node }: { node: QueryNode }) {
               </Banner>
             </div>
           )}
-          {cross.length > 0 && (
+          {view === 'design' && cross.length > 0 && (
             <div data-testid="query-cross-join">
               <Banner tone="info">
                 {cross.map((p) => tables.find((t) => t.port === p)!.label).join(', ')} {cross.length === 1 ? 'has' : 'have'} no join line, so every row pairs with every row. Drag a field onto the matching field of another table to join them, or press Enter on a field.
@@ -614,8 +715,21 @@ export function QueryDesigner({ node }: { node: QueryNode }) {
           )}
         </div>
       )}
-      <TablePane node={node} tables={tables} />
-      <QueryGrid node={node} tables={tables} />
+      {view === 'design' ? (
+        <>
+          <TablePane node={node} tables={tables} />
+          <QueryGrid node={node} tables={tables} />
+        </>
+      ) : (
+        <SqlView
+          node={node}
+          tables={tables}
+          onDiscard={() => {
+            apply((p) => setQuerySql(p, node.id, undefined));
+            setView('design');
+          }}
+        />
+      )}
     </div>
   );
 }
