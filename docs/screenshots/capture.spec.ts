@@ -274,6 +274,8 @@ test('query designer', async ({ page }) => {
   await page.getByLabel('Criteria value for total').fill('5');
   await page.getByLabel('Criteria value for total').press('Enter');
   await expect(page.getByTestId('results-title')).toHaveText('Query 1');
+  // Filling in the criteria scrolled the designer down; the shot starts at its bar.
+  await designer.evaluate((el) => el.scrollTo(0, 0));
   await shot(page, 'query-designer');
   await designer.getByRole('tab', { name: 'SQL' }).click();
   await expect(designer.getByLabel('SQL', { exact: true })).toHaveValue(/WHERE t2.total > 5/);

@@ -29,6 +29,7 @@ The canvas is where your flow lives. Tabs above it switch to the {doc}`relations
 - Drag a node to move it. **Auto layout** (L), in the canvas controls at the bottom left, arranges the whole flow neatly.
 - Drag from a node's right-hand handle to another node's input to wire them. Select a wire and press Delete to remove it.
 - The zoom buttons sit at the bottom left. An overview map appears at the bottom right when part of the flow is off screen.
+- The canvas keeps what you are working on in view. A node you add or select off screen is panned into view, and a project you open, such as a sample, starts with all its nodes showing. A project you have already panned or zoomed opens where you left it.
 
 ![The selection bar shown when two sources are selected](_static/screenshots/combine-selection-bar.png)
 
