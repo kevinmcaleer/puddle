@@ -258,9 +258,22 @@ export async function connect(address: string, opts: ReadOptions = {}): Promise<
     const entitySet = root !== url && last && s.entitySets.some((e) => e.name === last) ? last : undefined;
     return { service, ...(entitySet ? { entitySet } : {}), ...(select?.length ? { select } : {}), ...(filter ? { filter } : {}), ...(top ? { top } : {}) };
   };
+  // A wrong guess (an entity set's own /$metadata, say) often gets an error page without CORS headers, which the
+  // browser reports exactly as it reports a service that blocks other sites. So a refusal only counts once every
+  // address has been tried.
+  let refused: UrlSourceError | undefined;
+  const ask = async (address: URL, accept: string) => {
+    try {
+      return await get(address, accept, url.origin, opts);
+    } catch (e) {
+      if (!(e instanceof UrlSourceError) || e.kind !== 'cors') throw e;
+      refused ??= e;
+      return undefined;
+    }
+  };
   for (const root of candidates) {
-    const res = await get(withPath(root, '$metadata'), 'application/xml', url.origin, opts);
-    if (!res.ok) continue;
+    const res = await ask(withPath(root, '$metadata'), 'application/xml');
+    if (!res?.ok) continue;
     const xml = await res.text();
     try {
       const m = parseMetadata(xml);
@@ -270,11 +283,12 @@ export async function connect(address: string, opts: ReadOptions = {}): Promise<
     }
   }
   for (const root of candidates) {
-    const res = await get(root, 'application/json', url.origin, opts);
-    if (!res.ok) continue;
+    const res = await ask(root, 'application/json');
+    if (!res?.ok) continue;
     const doc = parseServiceDocument(await res.json().catch(() => undefined));
     if (doc?.entitySets.length) return found(root, doc);
   }
+  if (refused) throw refused;
   throw new UrlSourceError(`There’s no OData service at this address (${url.host}): it has no $metadata or service document. Check the address; it’s usually the part before the entity set’s name.`, 'format');
 }
 
