@@ -40,6 +40,9 @@ test('extract a part, add time and truncate, with text columns pointed at parse 
   await expect(settings(page).getByTestId('expected-type')).toHaveText('Date or date and time columns');
   await chip(page, 'label').click();
   await expect(settings(page).getByText('label is text. Add a Parse dates step before this one to read it as dates.')).toBeVisible();
+  // Regression (Firefox in CI): the step then fails to run, and the banner saying so lands above the form a moment
+  // later, moving the chips down under a click already aimed. Wait for the step to have failed first.
+  await expect(node(page, 'Transform 1')).toHaveAttribute('data-status', 'error');
   await chip(page, 'label').click();
   await expect(settings(page).getByText(/is text\./)).toHaveCount(0);
   await settings(page).getByLabel('Part', { exact: true }).selectOption('weekdayName');
