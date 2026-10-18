@@ -10,7 +10,10 @@ import { DbmlEditor, type DbmlEditorHandle } from './editor/DbmlEditor';
 import { EXAMPLE_DBML } from './example';
 import { parseDbml } from './parse';
 import { addTable } from './edit';
+import { ExportImageDialog } from './ExportImageDialog';
+import { ExportMermaidDialog } from './ExportMermaidDialog';
 import { ExportSqlDialog } from './ExportSqlDialog';
+import { layoutDiagram } from './diagram/geometry';
 import { SchemaViews } from './SchemaViews';
 import { currentView, hideFromSchemaView, moveInSchemaView, setSchemaZoom, viewPositions, viewTables } from './views';
 import './schema.css';
@@ -56,7 +59,7 @@ export function SchemaView() {
   const [share, setShare] = useState(editorShare);
   const [caret, setCaret] = useState<number | null>(null);
   const [selected, setSelected] = useState<string[]>([]);
-  const [exporting, setExporting] = useState<'sql' | null>(null);
+  const [exporting, setExporting] = useState<'sql' | 'image' | 'mermaid' | null>(null);
   const view = currentView(project.schema);
   const only = useMemo(() => viewTables(view), [view]);
 
@@ -143,7 +146,11 @@ export function SchemaView() {
         <Menu
           label="Export"
           button={{ size: 'sm', variant: 'ghost', icon: 'export', disabled: !schema.tables.length }}
-          items={[{ label: 'SQL…', hint: 'PostgreSQL, MySQL, SQL Server, SQLite or DuckDB', onSelect: () => setExporting('sql') }]}
+          items={[
+            { label: 'Image…', hint: 'SVG, PNG or PDF of this view', onSelect: () => setExporting('image') },
+            { label: 'Mermaid…', hint: 'An erDiagram for a README', onSelect: () => setExporting('mermaid') },
+            { label: 'SQL…', hint: 'PostgreSQL, MySQL, SQL Server, SQLite or DuckDB', onSelect: () => setExporting('sql') },
+          ]}
         />
         <Button size="sm" variant="ghost" onClick={() => apply((p) => setSchemaDbml(p, p.schema.dbml.trim() ? `${p.schema.dbml.trimEnd()}\n\n${EXAMPLE_DBML}` : EXAMPLE_DBML))}>
           Insert example
@@ -223,6 +230,15 @@ export function SchemaView() {
         </section>
       </div>
       {exporting === 'sql' && <ExportSqlDialog schema={schema} onClose={() => setExporting(null)} />}
+      {exporting === 'mermaid' && <ExportMermaidDialog schema={schema} detail={view?.detail ?? project.schema.detail} only={only} onClose={() => setExporting(null)} />}
+      {exporting === 'image' && (
+        <ExportImageDialog
+          diagram={layoutDiagram(schema, viewPositions(project.schema, view), { detail: view?.detail ?? project.schema.detail, only })}
+          selected={selected}
+          fileName={view ? `${project.name || 'schema'} - ${view.name}` : project.name || 'schema'}
+          onClose={() => setExporting(null)}
+        />
+      )}
     </div>
   );
 }
