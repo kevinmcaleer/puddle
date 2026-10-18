@@ -1,5 +1,5 @@
 import { ReactFlowProvider } from '@xyflow/react';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Canvas } from '../canvas/Canvas';
 import { useFlowEvaluation } from '../flow/useFlowEvaluation';
 import { Inspector } from '../inspector/Inspector';
@@ -15,6 +15,7 @@ import { SampleBanner } from '../results/SampleBanner';
 import { describeProfile } from '../results/profile';
 import { exportAll, ExportBlockedBanner, ExportButton, exportViewed } from '../export';
 import { QueryDesigner } from '../query/QueryDesigner';
+import { SchemaView } from '../schema/SchemaView';
 import { compareWith, offeredNode, togglePin, viewHere } from '../results/pin';
 import { ResultsTable } from '../results/ResultsTable';
 import { useResultsStore } from '../results/state';
@@ -237,6 +238,9 @@ export function AppShell() {
   const consoleOpen = useSession((s) => s.consoleOpen);
   const designerId = useSession((s) => s.designerNodeId);
   const designing = designerId ? nodeById(project, designerId) : undefined;
+  const schemaOpen = useSession((s) => s.schemaOpen);
+  // The Schema view belongs to the project it was opened on.
+  useEffect(() => () => useSession.getState().setSchemaOpen(false), [project.id]);
   const fileInput = useRef<HTMLInputElement>(null);
   const canvas = useRef<HTMLElement>(null);
   const inspector = useRef<HTMLElement>(null);
@@ -252,30 +256,32 @@ export function AppShell() {
   const chooseFiles = () => void pickSourceFiles(() => fileInput.current?.click());
 
   const session = useSession.getState;
+  /** A canvas key does nothing while the Schema view covers the canvas, and the key goes on to the view. */
+  const onCanvas = (run: () => void | boolean) => () => (session().schemaOpen ? false : run());
   const actions: Record<GlobalShortcutId, () => void | boolean> = {
     help: () => session().setShortcutsOpen(true),
     undo,
     redo,
     'toggle-inspector': () => session().setInspectorOpen(!session().inspectorOpen),
     'add-source': chooseFiles,
-    'add-transform': () => addNodeAfterSelection('transform'),
-    'add-output': () => addNodeAfterSelection('output'),
-    layout: () => project.nodes.length > 0 && layoutFlow(),
-    group: groupSelection,
+    'add-transform': onCanvas(() => addNodeAfterSelection('transform')),
+    'add-output': onCanvas(() => addNodeAfterSelection('output')),
+    layout: onCanvas(() => project.nodes.length > 0 && layoutFlow()),
+    group: onCanvas(groupSelection),
     'focus-canvas': () => canvas.current?.focus(),
-    'select-upstream': () => selectNeighbour('upstream'),
-    'select-downstream': () => selectNeighbour('downstream'),
-    'select-above': () => selectNeighbour('above'),
-    'select-below': () => selectNeighbour('below'),
+    'select-upstream': onCanvas(() => selectNeighbour('upstream')),
+    'select-downstream': onCanvas(() => selectNeighbour('downstream')),
+    'select-above': onCanvas(() => selectNeighbour('above')),
+    'select-below': onCanvas(() => selectNeighbour('below')),
     view: viewSelected,
     export: () => void exportViewed(),
     'export-all': () => void exportAll(),
     'toggle-results': () => session().setResultsOpen(!session().resultsOpen),
     pin: togglePin,
     'add-step': searchAddStep,
-    'open-node': () => openSelected(focusInspector),
-    connect: startWiring,
-    cancel: cancelWiring,
+    'open-node': () => (session().schemaOpen ? false : openSelected(focusInspector)),
+    connect: onCanvas(startWiring),
+    cancel: onCanvas(cancelWiring),
   };
   useShortcuts(actions, (text) => void addPastedText(text));
 
@@ -287,6 +293,7 @@ export function AppShell() {
           project={project.name}
           projectMenu={[
             { label: 'Rename', icon: 'text', onSelect: () => openProjectDialog({ kind: 'rename', id: project.id, name: project.name }) },
+            { label: 'Schema', icon: 'schema', hint: 'Design tables in DBML', onSelect: () => session().setSchemaOpen(true) },
             { label: 'Export project', icon: 'export', hint: '.puddle.json', onSelect: exportProject },
             { label: 'Import project', icon: 'source', onSelect: () => importInput.current?.click() },
             { label: 'Export recipe', icon: 'template', hint: 'Steps, no data', onSelect: () => openExportRecipe() },
@@ -373,7 +380,7 @@ export function AppShell() {
 
         <div className={inspectorOpen ? 'grid min-h-0 grid-cols-[minmax(0,1fr)_var(--size-inspector)]' : 'grid min-h-0 grid-cols-[minmax(0,1fr)]'}>
           <main ref={canvas} tabIndex={-1} className="min-h-0 focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-brand" aria-label="Canvas">
-            {designing?.type === 'query' ? <QueryDesigner node={designing} /> : <Canvas onAddSource={chooseFiles} onLayout={layoutFlow} />}
+            {schemaOpen ? <SchemaView /> : designing?.type === 'query' ? <QueryDesigner node={designing} /> : <Canvas onAddSource={chooseFiles} onLayout={layoutFlow} />}
           </main>
 
           {inspectorOpen && (

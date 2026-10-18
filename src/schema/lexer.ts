@@ -12,6 +12,7 @@ export type TokenKind =
   | 'op' // < > <> -
   | 'punct' // { } [ ] ( ) , : . ~ ? *
   | 'newline'
+  | 'comment' // only with { comments: true }, for highlighting
   | 'eof';
 
 export interface Token {
@@ -55,7 +56,8 @@ export function blockString(raw: string): string {
   return text;
 }
 
-export function lex(text: string): { tokens: Token[]; errors: LexError[] } {
+/** Tokens and mistakes. With `comments`, comments are kept as tokens too (the editor colours them); the parser drops them. */
+export function lex(text: string, { comments = false } = {}): { tokens: Token[]; errors: LexError[] } {
   const tokens: Token[] = [];
   const errors: LexError[] = [];
   let i = 0;
@@ -71,14 +73,17 @@ export function lex(text: string): { tokens: Token[]; errors: LexError[] } {
       i++;
     } else if (c === '/' && text[i + 1] === '/') {
       while (i < text.length && text[i] !== '\n') i++;
+      if (comments) push('comment', text.slice(start, i), start, i);
     } else if (c === '/' && text[i + 1] === '*') {
       const close = text.indexOf('*/', i + 2);
       if (close < 0) {
         errors.push({ message: 'This comment is never closed with */', start, end: i + 2 });
+        if (comments) push('comment', text.slice(start), start, text.length);
         i = text.length;
       } else {
+        if (comments) push('comment', text.slice(start, close + 2), start, close + 2);
         // Keep the newlines a block comment spans, so the lines around it stay separate.
-        for (let k = i; k < close; k++) if (text[k] === '\n') push('newline', '\n', k, k + 1);
+        else for (let k = i; k < close; k++) if (text[k] === '\n') push('newline', '\n', k, k + 1);
         i = close + 2;
       }
     } else if (c === "'" && text.startsWith("'''", i)) {

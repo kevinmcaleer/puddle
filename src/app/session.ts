@@ -18,6 +18,8 @@ interface SessionState {
   inspectorTab: InspectorTab;
   /** The Query node whose designer fills the canvas area, in place of the canvas. */
   designerNodeId: string | null;
+  /** The Schema view (DBML and its diagram) fills the canvas area, in place of the canvas. */
+  schemaOpen: boolean;
   /** The right-hand dock (the inspector) is showing. */
   inspectorOpen: boolean;
   /** The results dock is showing its table. */
@@ -39,6 +41,8 @@ interface SessionState {
   setInspectorTab: (tab: InspectorTab) => void;
   /** Open a Query node's designer (selecting the node, so the inspector shows it too), or close it with null. */
   openDesigner: (nodeId: string | null) => void;
+  /** Show the Schema view in place of the canvas (closing any query designer), or go back to the canvas. */
+  setSchemaOpen: (open: boolean) => void;
   setInspectorOpen: (open: boolean) => void;
   setResultsOpen: (open: boolean) => void;
   /** Show or hide the console; showing it also shows the results dock it sits in. */
@@ -57,6 +61,7 @@ export const useSession = create<SessionState>((set) => ({
   notice: null,
   inspectorTab: 'project',
   designerNodeId: null,
+  schemaOpen: false,
   inspectorOpen: true,
   resultsOpen: true,
   consoleOpen: false,
@@ -76,7 +81,8 @@ export const useSession = create<SessionState>((set) => ({
   notify: (notice) => set({ notice }),
   setInspectorTab: (inspectorTab) => set({ inspectorTab, inspectorOpen: true }),
   openDesigner: (designerNodeId) =>
-    set((s) => (designerNodeId ? { designerNodeId, selectedNodeId: designerNodeId, selectedNodeIds: [designerNodeId], selectedStepId: null, inspectorTab: 'node' } : { designerNodeId: null, selectedNodeIds: s.selectedNodeIds })),
+    set((s) => (designerNodeId ? { designerNodeId, schemaOpen: false, selectedNodeId: designerNodeId, selectedNodeIds: [designerNodeId], selectedStepId: null, inspectorTab: 'node' } : { designerNodeId: null, selectedNodeIds: s.selectedNodeIds })),
+  setSchemaOpen: (schemaOpen) => set(schemaOpen ? { schemaOpen, designerNodeId: null } : { schemaOpen }),
   setInspectorOpen: (inspectorOpen) => set({ inspectorOpen }),
   setResultsOpen: (resultsOpen) => set({ resultsOpen }),
   setConsoleOpen: (consoleOpen) => set(consoleOpen ? { consoleOpen, resultsOpen: true } : { consoleOpen }),
