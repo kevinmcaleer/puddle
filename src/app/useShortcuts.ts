@@ -18,12 +18,12 @@ const ON_NODE = new Set<GlobalShortcutId>(['open-node', 'cancel']);
 
 /**
  * Arrow keys move the canvas selection only from the canvas or the page itself; elsewhere (the results grid, the
- * step list, the results dock's resize handle, a menu, the query designer) they keep their own meaning.
+ * step list, the results dock's resize handle, a menu, the query designer, the Schema view) they keep their own meaning.
  */
 const onCanvas = (t: EventTarget | null) =>
   t === document.body ||
   t === document.documentElement ||
-  (t instanceof Element && !!t.closest('main[aria-label="Canvas"]') && !t.closest('[role="menu"], .puddle-qd'));
+  (t instanceof Element && !!t.closest('main[aria-label="Canvas"]') && !t.closest('[role="menu"], .puddle-qd, .puddle-schema'));
 
 const onNode = (t: EventTarget | null) =>
   t === document.body || t === document.documentElement || (t instanceof Element && (t.matches('main[aria-label="Canvas"], .react-flow__node, .react-flow__pane') || t.classList.contains('react-flow')));

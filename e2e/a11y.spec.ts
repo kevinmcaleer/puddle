@@ -136,5 +136,16 @@ for (const theme of ['light', 'dark'] as const) {
       await expect(node(page, 'Join 1')).toHaveAttribute('data-status', 'ok', { timeout: 20_000 });
       await expectAccessible(page, 'the Join inspector');
     });
+
+    test('the Schema view', async ({ page }) => {
+      await openApp(page);
+      await projectMenu(page, 'Schema');
+      await page.getByRole('button', { name: 'Insert example' }).click();
+      await expect(page.getByTestId('schema-table-orders')).toBeVisible();
+      await page.getByRole('combobox', { name: 'DBML' }).press('End');
+      await page.keyboard.type('\nTable broken {\n  oops');
+      await expect(page.getByTestId('schema-errors')).toBeVisible();
+      await expectAccessible(page, 'the Schema view, with a mistake listed');
+    });
   });
 }

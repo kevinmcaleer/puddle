@@ -18,6 +18,8 @@ interface SessionState {
   inspectorTab: InspectorTab;
   /** The Query node whose designer fills the canvas area, in place of the canvas. */
   designerNodeId: string | null;
+  /** The Schema view (DBML and its diagram) fills the canvas area, in place of the canvas. */
+  schemaOpen: boolean;
   /** The relationships view fills the canvas area, in place of the canvas. */
   relationshipsOpen: boolean;
   /** The right-hand dock (the inspector) is showing. */
@@ -43,6 +45,8 @@ interface SessionState {
   setInspectorTab: (tab: InspectorTab) => void;
   /** Open a Query node's designer (selecting the node, so the inspector shows it too), or close it with null. */
   openDesigner: (nodeId: string | null) => void;
+  /** Show the Schema view in place of the canvas (closing any query designer), or go back to the canvas. */
+  setSchemaOpen: (open: boolean) => void;
   /** Show the relationships view in place of the canvas (closing any query designer), or go back to the canvas. */
   setRelationshipsOpen: (open: boolean) => void;
   setInspectorOpen: (open: boolean) => void;
@@ -65,6 +69,7 @@ export const useSession = create<SessionState>((set) => ({
   notice: null,
   inspectorTab: 'project',
   designerNodeId: null,
+  schemaOpen: false,
   relationshipsOpen: false,
   inspectorOpen: true,
   resultsOpen: true,
@@ -86,8 +91,9 @@ export const useSession = create<SessionState>((set) => ({
   notify: (notice) => set({ notice }),
   setInspectorTab: (inspectorTab) => set({ inspectorTab, inspectorOpen: true }),
   openDesigner: (designerNodeId) =>
-    set((s) => (designerNodeId ? { designerNodeId, relationshipsOpen: false, selectedNodeId: designerNodeId, selectedNodeIds: [designerNodeId], selectedStepId: null, inspectorTab: 'node' } : { designerNodeId: null, selectedNodeIds: s.selectedNodeIds })),
-  setRelationshipsOpen: (relationshipsOpen) => set(relationshipsOpen ? { relationshipsOpen, designerNodeId: null } : { relationshipsOpen }),
+    set((s) => (designerNodeId ? { designerNodeId, schemaOpen: false, relationshipsOpen: false, selectedNodeId: designerNodeId, selectedNodeIds: [designerNodeId], selectedStepId: null, inspectorTab: 'node' } : { designerNodeId: null, selectedNodeIds: s.selectedNodeIds })),
+  setSchemaOpen: (schemaOpen) => set(schemaOpen ? { schemaOpen, relationshipsOpen: false, designerNodeId: null } : { schemaOpen }),
+  setRelationshipsOpen: (relationshipsOpen) => set(relationshipsOpen ? { relationshipsOpen, schemaOpen: false, designerNodeId: null } : { relationshipsOpen }),
   setInspectorOpen: (inspectorOpen) => set({ inspectorOpen }),
   setResultsOpen: (resultsOpen) => set({ resultsOpen }),
   setConsoleOpen: (consoleOpen) => set(consoleOpen ? { consoleOpen, resultsOpen: true } : { consoleOpen }),

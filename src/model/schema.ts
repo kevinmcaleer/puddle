@@ -359,6 +359,17 @@ export const NodeGroupZ = z.object({
   position: PositionZ.default({ x: 0, y: 0 }),
 });
 
+/**
+ * The project's schema design (Phase 4): its DBML, which is the source of truth (the schema model is parsed from it,
+ * src/schema), and where the diagram draws each table, enum and note, by diagram key (src/schema/diagram).
+ */
+export const SchemaDocZ = z.object({
+  dbml: z.string().default(''),
+  positions: z.record(z.string(), PositionZ).default({}),
+});
+
+export const DEFAULT_SCHEMA_DOC = { dbml: '', positions: {} };
+
 export const ProjectZ = z.object({
   id: z.string().min(1),
   name: z.string(),
@@ -372,6 +383,7 @@ export const ProjectZ = z.object({
   edges: z.array(EdgeZ).default([]),
   groups: z.array(NodeGroupZ).default([]),
   view: ProjectViewZ.default({ pinned: false, canvasViewport: { x: 0, y: 0, zoom: 1 } }),
+  schema: SchemaDocZ.default(DEFAULT_SCHEMA_DOC),
   /** Newest first, at most EXPORT_LOG_LIMIT entries. Not part of undo: an export happened either way. */
   exportLog: z.array(ExportLogEntryZ).default([]),
 });
@@ -417,3 +429,5 @@ export type NodeGroup = z.infer<typeof NodeGroupZ>;
 export type ProjectView = z.infer<typeof ProjectViewZ>;
 export type Project = z.infer<typeof ProjectZ>;
 export type ExportLogEntry = z.infer<typeof ExportLogEntryZ>;
+export type SchemaDoc = z.infer<typeof SchemaDocZ>;
+export type Position = z.infer<typeof PositionZ>;
