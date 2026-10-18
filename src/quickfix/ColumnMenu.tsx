@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { REPLACE_MATCHES, type ReplaceMatch } from '../compiler';
-import { useProject, useProjectStore, type ColumnSchema } from '../model';
+import { useProject, type ColumnSchema } from '../model';
 import { holdsReplacement, replacementProblem } from '../steps';
 import { ContextMenu, Dialog, Field, Select, Switch, TextInput, type MenuItem } from '../ui';
 import { columnActions, type ColumnAction, type ColumnMenuContext } from './columnMenu';
@@ -31,7 +31,6 @@ export function ColumnMenu({ request, available, onClose }: { request: ColumnMen
   if (!viewed) return null;
 
   const ctx: ColumnMenuContext = { columns: request.columns, available, locale: project.settings.locale, detectDates: detectOnViewed(viewed), readPivotValues: readOnViewed(viewed), cell: request.cell };
-  const asNodes = project.settings.stepsAsNodes;
   const entry = (a: ColumnAction): MenuItem => ({
     label: a.label,
     group: a.submenu ? undefined : a.group,
@@ -50,13 +49,6 @@ export function ColumnMenu({ request, available, onClose }: { request: ColumnMen
       else items.push({ label: a.submenu, group: a.group, items: [entry(a)], onSelect: () => undefined });
     }
   }
-  items.push({
-    label: 'Add each step as a new node',
-    group: 'Steps',
-    checked: asNodes,
-    toggle: true,
-    onSelect: () => useProjectStore.getState().apply((p) => ({ ...p, settings: { ...p.settings, stepsAsNodes: !asNodes } })),
-  });
 
   if (replacing) return <ReplaceValuesDialog ctx={ctx} find={replacing.find} onClose={onClose} />;
   const what = request.columns.length === 1 ? request.columns[0] : `${request.columns.length} columns`;

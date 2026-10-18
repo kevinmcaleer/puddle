@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { addFiles, cell, expectRows, fixture, node, openApp } from './helpers/app';
+import { addFiles, cell, expectRows, fixture, node, openApp, stackSteps } from './helpers/app';
 
 const steps = (page: Page) => page.getByRole('listbox', { name: 'Applied steps' }).getByRole('option');
 const menu = (page: Page) => page.getByTestId('context-menu');
@@ -14,15 +14,16 @@ async function rightClick(page: Page, col: number, row?: number) {
   await expect(menu(page)).toBeVisible();
 }
 
-test('the column menu replaces values, removes matching rows and can add each step as a node', async ({ page }) => {
+test('the column menu replaces values, removes matching rows, and follows the project’s each-step-as-a-node setting', async ({ page }) => {
   await openApp(page);
   await addFiles(page, [fixture('messy.csv')]);
   await expectRows(page, 5);
 
-  // Each step as a node is the default; off, steps stack into the viewed Transform.
+  // Each step as a node is the default; off (in the Project tab, its one place), steps stack into the viewed Transform.
   await rightClick(page, 2);
-  await expect(menu(page).getByRole('menuitemcheckbox', { name: 'Add each step as a new node' })).toHaveAttribute('aria-checked', 'true');
-  await menu(page).getByRole('menuitemcheckbox', { name: 'Add each step as a new node' }).click();
+  await expect(menu(page).getByRole('menuitemcheckbox', { name: 'Add each step as a new node' })).toHaveCount(0);
+  await page.keyboard.press('Escape');
+  await stackSteps(page);
 
   // Replace values from a header: empty cities become the word "empty".
   await rightClick(page, 2);
@@ -43,11 +44,10 @@ test('the column menu replaces values, removes matching rows and can add each st
   await expectRows(page, 3);
 
   // Back to each step as a node, the next one goes in a Transform of its own after this one.
+  await page.getByRole('tab', { name: 'Project' }).click();
+  await page.getByRole('switch', { name: 'Add each step as a new node' }).click();
+  await expect(page.getByRole('switch', { name: 'Add each step as a new node' })).toHaveAttribute('aria-checked', 'true');
   await rightClick(page, 1);
-  await expect(menu(page).getByRole('menuitemcheckbox', { name: 'Add each step as a new node' })).toHaveAttribute('aria-checked', 'false');
-  await menu(page).getByRole('menuitemcheckbox', { name: 'Add each step as a new node' }).click();
-  await rightClick(page, 1);
-  await expect(menu(page).getByRole('menuitemcheckbox', { name: 'Add each step as a new node' })).toHaveAttribute('aria-checked', 'true');
   await menu(page).getByRole('menuitem', { name: 'Text' }).hover();
   await menu(page).getByRole('menu', { name: 'Text' }).getByRole('menuitem', { name: 'UPPER CASE' }).click();
   await expect(node(page, 'Transform 2')).toBeVisible();
