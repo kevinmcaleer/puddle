@@ -41,7 +41,7 @@ export function ReportDialog({ node, onClose }: { node: GraphNode; onClose: () =
     setError(undefined);
     try {
       const fileName = await exportQualityReport(node.id, { format, scope, samples: withRows ? n : 0 });
-      useSession.getState().notify({ tone: 'info', text: `Exported ${fileName}.` });
+      useSession.getState().notify({ tone: 'info', text: `Saved ${fileName}.` });
       onClose();
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
@@ -50,7 +50,7 @@ export function ReportDialog({ node, onClose }: { node: GraphNode; onClose: () =
   };
 
   return (
-    <Dialog title="Export quality report" confirm={busy ? 'Exporting…' : waiting ? 'Checking rules…' : 'Export report'} onClose={onClose} onConfirm={() => void submit()}>
+    <Dialog title="Write quality report" confirm={busy ? 'Saving…' : waiting ? 'Checking rules…' : 'Save report'} onClose={onClose} onConfirm={() => void submit()}>
       <div className="flex flex-col gap-3" data-testid="report-dialog">
         <Field label="Format" htmlFor="report-format">
           <Select id="report-format" options={FORMATS} value={format} onChange={(e) => setFormat(e.target.value as ReportFormat)} />
@@ -89,13 +89,13 @@ export function ReportDialog({ node, onClose }: { node: GraphNode; onClose: () =
   );
 }
 
-/** "Export quality report", opening the dialog for this node. */
+/** "Write quality report", opening the dialog for this node. */
 export function QualityReportButton({ node }: { node: GraphNode }) {
   const [open, setOpen] = useState(false);
   return (
     <>
       <Button size="sm" variant="secondary" icon="notes" onClick={() => setOpen(true)}>
-        Export quality report
+        Write quality report
       </Button>
       {open && <ReportDialog node={node} onClose={() => setOpen(false)} />}
     </>

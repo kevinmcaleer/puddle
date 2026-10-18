@@ -292,9 +292,9 @@ export function AppShell() {
           projectMenu={[
             { label: 'Rename', icon: 'text', onSelect: () => openProjectDialog({ kind: 'rename', id: project.id, name: project.name }) },
             { label: 'Relationships', icon: 'relationships', hint: 'Tables and keys, DBML', onSelect: () => session().setRelationshipsOpen(true) },
-            { label: 'Export project', icon: 'export', hint: '.puddle.json', onSelect: exportProject },
-            { label: 'Import project', icon: 'source', onSelect: () => importInput.current?.click() },
-            { label: 'Export recipe', icon: 'template', hint: 'Steps, no data', onSelect: () => openExportRecipe() },
+            { label: 'Save project file', icon: 'export', hint: '.puddle.json', onSelect: exportProject },
+            { label: 'Open project file', icon: 'source', onSelect: () => importInput.current?.click() },
+            { label: 'Share as recipe', icon: 'template', hint: 'Steps, no data', onSelect: () => openExportRecipe() },
             { label: 'Open recipe', icon: 'template', hint: '.puddle-recipe.json', onSelect: () => recipeInput.current?.click() },
             ...PROVIDER_IDS.map((id) => ({ label: `Sync to ${PROVIDERS[id]!.label}`, icon: 'refresh' as const, onSelect: () => openSyncDialog({ kind: 'project', provider: id }) })),
             { label: 'Export all', icon: 'export', hint: hasOutput ? 'Every Output node' : 'No Output node yet', shortcut: shortcutText('export-all'), disabled: !hasOutput, onSelect: () => void exportAll() },

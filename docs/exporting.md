@@ -33,8 +33,8 @@ Fix the data, change the rule to a warning, or choose **Export anyway**. Exporti
 
 ## Quality reports
 
-**Export quality report**, in the Rules section of the inspector, writes up what the rules found: each rule's result and counts, any overrides from the export log, and every source with its row count and a fingerprint of the start of its file. Choose Markdown (for tickets and wikis), JSON, or one self-contained HTML page.
+**Write quality report**, in the Rules section of the inspector, writes up what the rules found: each rule's result and counts, any overrides from the export log, and every source with its row count and a fingerprint of the start of its file. Choose Markdown (for tickets and wikis), JSON, or one self-contained HTML page.
 
-![The Export quality report dialog](_static/screenshots/export-report-dialog.png)
+![The Write quality report dialog](_static/screenshots/export-report-dialog.png)
 
 A report holds no values from your data unless you turn on **Include sample failing rows**, so it's safe to share.

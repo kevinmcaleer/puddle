@@ -113,7 +113,7 @@ test('an exported project imports in a clean browser and re-runs once its file i
   await page.getByRole('dialog').getByLabel('Name', { exact: true }).fill('Shared project');
   await page.getByRole('button', { name: 'Rename', exact: true }).click();
   const download = page.waitForEvent('download');
-  await projectMenu(page, 'Export project');
+  await projectMenu(page, 'Save project file');
   const file = await download;
   expect(file.suggestedFilename()).toBe('shared-project.puddle.json');
   const path = await file.path();
@@ -122,7 +122,7 @@ test('an exported project imports in a clean browser and re-runs once its file i
   const other = await clean.newPage();
   await openApp(other);
   await other.getByTestId('project-menu').click();
-  await other.getByRole('menuitem', { name: 'Import project' }).click();
+  await other.getByRole('menuitem', { name: 'Open project file' }).click();
   await other.getByTestId('import-input').setInputFiles(path);
   await expect(other.getByTestId('project-name')).toHaveText('Shared project');
   await expect(node(other, 'customers.csv')).toHaveAttribute('data-status', 'detached');

@@ -108,7 +108,7 @@ for (const theme of ['light', 'dark'] as const) {
 
       await node(page, 'Output 1').click();
       await expectAccessible(page, 'the Output inspector, viewing a waiting node');
-      await page.getByRole('button', { name: 'Export quality report' }).click();
+      await page.getByRole('button', { name: 'Write quality report' }).click();
       await expect(page.getByTestId('report-dialog')).toBeVisible();
       await expectAccessible(page, 'the report dialog');
     });

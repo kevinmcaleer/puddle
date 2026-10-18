@@ -124,7 +124,7 @@ function Manage({ template }: { template: Template }) {
         Rename or describe
       </Button>
       <Button size="sm" variant="ghost" icon="export" title="Download as a single-node recipe, to share" onClick={() => exportTemplateRecipe(template)}>
-        Export
+        Save to file
       </Button>
       {deleting ? (
         <>
@@ -187,7 +187,7 @@ function LibraryDialog() {
       <div className="flex gap-2">
         <input className="ui-input min-w-0 flex-1" aria-label="Search templates" placeholder="Search templates" value={query} autoFocus onChange={(e) => setQuery(e.target.value)} onKeyDown={onEnter(() => shown[0] && choose(shown[0]))} />
         <Button variant="ghost" icon="source" title="Add a template from a .puddle-recipe.json file" onClick={() => importInput.current?.click()}>
-          Import template
+          Open template file
         </Button>
         <div ref={body} className="flex">
           <OperationButtons ops={templateOperations} within={body} onError={(text) => setImported({ tone: 'fail', text })} />

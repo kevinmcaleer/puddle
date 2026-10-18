@@ -154,7 +154,7 @@ function checkTypes(raw: Record<string, unknown>) {
 export function parseRecipe(raw: unknown, at: Date = new Date()): Recipe {
   if (!isObject(raw)) throw new RecipeError('This isn’t a Puddle recipe.');
   if (raw.puddleRecipe === undefined) {
-    if (Array.isArray(raw.nodes) && typeof raw.id === 'string') throw new RecipeError('This is a Puddle project, not a recipe. Use Import project to open it.');
+    if (Array.isArray(raw.nodes) && typeof raw.id === 'string') throw new RecipeError('This is a Puddle project, not a recipe. Use Open project file to open it.');
     throw new RecipeError('This isn’t a Puddle recipe.');
   }
   const version = raw.puddleRecipe;

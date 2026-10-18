@@ -52,14 +52,14 @@ test('a gallery recipe and a matching file make a runnable project, and it expor
   await expect(cell(page, 3, 0)).toHaveText('Manchester');
   await expect(page.getByTestId('attachment-banner')).toHaveCount(0);
 
-  await projectMenu(page, 'Export recipe');
-  const dialog = page.getByRole('dialog', { name: 'Export recipe' });
+  await projectMenu(page, 'Share as recipe');
+  const dialog = page.getByRole('dialog', { name: 'Share as recipe' });
   await expect(dialog.getByLabel('Name', { exact: true })).toHaveValue('Tidy a contact list');
   await dialog.getByLabel('Name', { exact: true }).fill('Our contacts');
   await dialog.getByLabel('Description').fill('How we tidy the contact list.');
   await expectAccessible(page, 'the export recipe dialog');
   const download = page.waitForEvent('download');
-  await dialog.getByRole('button', { name: 'Export recipe' }).click();
+  await dialog.getByRole('button', { name: 'Share as recipe' }).click();
   const file = await download;
   expect(file.suggestedFilename()).toBe('our-contacts.puddle-recipe.json');
   const text = Buffer.concat(await (await file.createReadStream()).toArray()).toString('utf8');
@@ -145,7 +145,7 @@ test('templates export and import as single-node recipes', async ({ page }) => {
   await expect(detail.getByRole('listbox', { name: 'Applied steps' }).getByRole('option')).toHaveText([/Changed name to upper case/]);
 
   const download = page.waitForEvent('download');
-  await detail.getByRole('button', { name: 'Export' }).click();
+  await detail.getByRole('button', { name: 'Save to file' }).click();
   const file = await download;
   expect(file.suggestedFilename()).toBe('shout-names.puddle-recipe.json');
   const exported = JSON.parse(Buffer.concat(await (await file.createReadStream()).toArray()).toString('utf8'));

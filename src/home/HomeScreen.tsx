@@ -24,7 +24,7 @@ export function HomeScreen() {
   return (
     <div className="grid h-full grid-rows-[auto_minmax(0,1fr)] bg-surface-canvas text-body text-ink" data-testid="home">
       <Toolbar>
-        <Button variant="ghost" icon="export" onClick={() => importInput.current?.click()}>Import project</Button>
+        <Button variant="ghost" icon="export" onClick={() => importInput.current?.click()}>Open project file</Button>
         <Button variant="ghost" icon="template" onClick={() => recipeInput.current?.click()}>Open recipe</Button>
         {PROVIDER_IDS.map((id) => (
           <Button key={id} variant="ghost" icon="refresh" onClick={() => openSyncDialog({ kind: 'open', provider: id })}>

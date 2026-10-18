@@ -194,7 +194,7 @@ test('rules, outputs and export', async ({ page }) => {
   await expect(page.getByTestId('export-log')).toContainText('Exported anyway past');
   await shotPanel(page, 'export-output-settings', page.getByTestId('output-settings'));
 
-  await page.getByRole('button', { name: 'Export quality report' }).click();
+  await page.getByRole('button', { name: 'Write quality report' }).click();
   await shot(page, 'export-report-dialog', page.getByRole('dialog'));
 });
 

@@ -8,7 +8,7 @@ A project is your flow: its sources (how to read them, not their data), nodes, s
 
 ![The projects home screen with samples and the recipe gallery](_static/screenshots/projects-home.png)
 
-The project menu also renames the open project, and exports and imports projects and recipes.
+The project menu also renames the open project, saves and opens project files, and shares and opens recipes. In Puddle, *export* only ever means data leaving it, from an Output node.
 
 ![The project menu](_static/screenshots/projects-menu.png)
 
@@ -18,7 +18,7 @@ Every change you make can be undone: **Undo** and **Redo** in the toolbar, or Ct
 
 - **In a project**, undo covers everything you change: adding sources and nodes, wiring, moving and grouping nodes, steps and their settings, read options, rules, the query designer, notes, renaming, and the column mapping for a recipe. One action is one undo step, so several files chosen or dropped together come off with one undo. The keys work from the canvas and from a field you've just changed, such as a drop-down or a switch; in a text box you're still typing in, they undo the typing first.
 - **On the projects screen**, undo brings back a deleted project (with its saved file access and its sync), and undoes renaming or duplicating one.
-- **In the templates library**, the undo and redo buttons beside **Import template** (or the keys) undo adding, importing, renaming and deleting templates.
+- **In the templates library**, the undo and redo buttons beside **Open template file** (or the keys) undo adding, importing, renaming and deleting templates.
 
 A few things aren't undo steps, because they record what happened rather than change your work: exports (the export history), which file a source is attached to, and moving around the canvas or changing what the results show. Undoing never takes a source back to a file it no longer reads. When sync brings in a newer version of the open project from another browser, that is an undo step too, so undo returns to the version you had.
 
@@ -26,7 +26,7 @@ The undo history lasts while the tab is open. Projects themselves are saved as y
 
 ## Moving projects between browsers
 
-Projects live in this browser's storage. To move one, or keep a backup, choose **Export project**: it downloads a `.puddle.json` file with the steps, notes and settings (and any pasted rows), but no file data. **Import project** opens one again.
+Projects live in this browser's storage. To move one, or keep a backup, choose **Save project file**: it downloads a `.puddle.json` file with the steps, notes and settings (and any pasted rows), but no file data. **Open project file** opens one again.
 
 To have a project follow you from browser to browser automatically, sync it:
 
@@ -52,13 +52,13 @@ A template is a Transform node's steps, saved to use again in any project. Selec
 
 ![Saving a Transform's steps as a template](_static/screenshots/templates-save.png)
 
-To use one, choose **From template** in **Add**. The library shows each template's steps and the columns it expects. When the input calls a column something else, choose which column to use instead; steps whose columns are missing are turned off rather than failing. Templates can be exported and imported as files too.
+To use one, choose **From template** in **Add**. The library shows each template's steps and the columns it expects. When the input calls a column something else, choose which column to use instead; steps whose columns are missing are turned off rather than failing. A template can also be saved to a file (**Save to file**) and opened again (**Open template file**).
 
 ![The templates library, with a template's steps and expected columns](_static/screenshots/templates-library.png)
 
 ## Recipes
 
-A recipe is a whole pipeline with no data in it: sources (as the columns they expect), steps, rules and outputs. Share one with a colleague, or keep one for a job you do every month. **Export recipe** in the project menu saves the open project as a `.puddle-recipe.json`, leaving out rows, file names, pasted data and anything else private.
+A recipe is a whole pipeline with no data in it: sources (as the columns they expect), steps, rules and outputs. Share one with a colleague, or keep one for a job you do every month. **Share as recipe** in the project menu saves the open project as a `.puddle-recipe.json`, leaving out rows, file names, pasted data and anything else private.
 
 The recipe gallery on the home screen has a few to start from.
 

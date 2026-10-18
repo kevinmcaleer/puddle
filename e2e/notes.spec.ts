@@ -86,7 +86,7 @@ test('project notes are written in Markdown, render safely, undo as one step and
   // Export, then import in a clean browser.
   const download = page.waitForEvent('download');
   await page.getByTestId('project-menu').click();
-  await page.getByRole('menuitem', { name: 'Export project' }).click();
+  await page.getByRole('menuitem', { name: 'Save project file' }).click();
   const path = await (await download).path();
   const clean = await browser.newContext();
   const other = await clean.newPage();
