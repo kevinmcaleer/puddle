@@ -1,0 +1,27 @@
+Table users [owner: "data-team", sla_hours: "24", pii: "true", brand_color: #3498DB] {
+  id int [pk, masking: "partial"]
+  email varchar [classification: "confidential"]
+  name varchar
+}
+
+TableGroup g1 [team: "growth"] {
+  users
+}
+
+Note reminder [author: "docs"] {
+  'Remember to review this schema'
+}
+
+Metadata Table users {
+  owner: 'scott'
+  note: 'scott is the owner'
+}
+
+Metadata Column users.id {
+  pii: 'true'
+  masking: 'full'
+}
+
+Metadata TableGroup g1 {
+  team: 'platform'
+}

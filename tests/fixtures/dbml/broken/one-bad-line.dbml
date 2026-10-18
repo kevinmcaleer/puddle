@@ -1,0 +1,11 @@
+Table users {
+  id integer [pk]
+  name varchar [nonsense, not null]
+  email
+  age int
+}
+
+Table orders {
+  id integer [pk]
+  user_id integer [ref: > users.id]
+}

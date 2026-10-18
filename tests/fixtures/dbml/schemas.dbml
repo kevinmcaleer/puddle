@@ -1,0 +1,21 @@
+// table belonged to default "public" schema
+Table table_name {
+  column_name column_type [note: 'settings go here']
+}
+
+// table belonged to a schema
+Table core.user {
+  id integer [pk]
+}
+
+Table core.users {
+  id integer [pk]
+}
+
+Table blogging.posts {
+  id integer [pk]
+  user_id integer [ref: > core.users.id]
+}
+
+// or this
+Ref: blogging.posts.user_id > core.users.id
