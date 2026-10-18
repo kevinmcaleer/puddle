@@ -1,0 +1,8 @@
+This is not DBML
+Table users {
+  id integer
+}
+Ref users.id > other
+Table orders {
+  id integer [default: what]
+}

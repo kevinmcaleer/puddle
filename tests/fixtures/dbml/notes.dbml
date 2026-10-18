@@ -1,0 +1,76 @@
+Table users {
+  id int [pk]
+  name varchar
+
+  Note: 'This is a note of this table'
+}
+
+Table accounts {
+  id int [pk]
+
+  Note {
+  'This is a note of this table'
+  }
+}
+
+Table orders {
+  status varchar [
+  note: '''
+  💸 1 = processing,
+  ✔️ 2 = shipped,
+  ❌ 3 = cancelled,
+  😔 4 = refunded
+  ''']
+}
+
+Table merchants {
+  id int
+}
+
+Table countries {
+  id int
+}
+
+TableGroup e_commerce [note: 'Contains tables that are related to e-commerce system'] {
+  merchants
+  countries
+}
+
+TableGroup e_commerce2 {
+  merchants
+  countries
+
+  // or
+  Note: 'Contains tables that are related to e-commerce system'
+}
+
+Note single_line_note {
+  'This is a single line note'
+}
+
+Note multiple_lines_note {
+'''
+  This is a multiple lines note
+  This string can spans over multiple lines.
+'''
+}
+
+Note reminder [color: #F4D03F] {
+  'This is a reminder'
+}
+
+Note no_color [color: none] {
+  'This note has no background color'
+}
+
+/*
+  This is a
+  Multi-lines
+  comment
+*/
+Note continued {
+  '''
+  One line \
+  continued, with a \\ and a \' in it
+  '''
+}

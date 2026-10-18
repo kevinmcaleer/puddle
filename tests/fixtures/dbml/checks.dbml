@@ -1,0 +1,10 @@
+Table users {
+  id integer
+  wealth integer
+  debt integer
+
+  checks {
+    `debt + wealth >= 0` [name: 'chk_positive_money']
+    `id > 0`
+  }
+}

@@ -1,0 +1,64 @@
+Table users {
+  id integer [ref: < posts.user_id, ref: < reviews.user_id] // one to many
+}
+
+Table posts {
+  id integer [primary key]
+  user_id integer [ref: > users.id] // many-to-one
+  editor_id int [ref: >? users.id]   // post may have no editor
+}
+
+Table reviews {
+  user_id integer
+}
+
+Table user_infos {
+  user_id integer [ref: - users.id]
+}
+
+Table authors {
+  id integer [pk]
+}
+
+Table books {
+  id integer [pk]
+}
+
+Table merchants {
+  id integer
+  country_code varchar
+}
+
+Table merchant_periods {
+  merchant_id integer
+  country_code varchar
+}
+
+Table products {
+  id integer [pk]
+  merchant_id integer
+}
+
+// Long form
+Ref name_optional {
+  posts.user_id ?> users.id
+}
+
+// Short form
+Ref posts_users: posts.user_id > users.id
+
+Ref: authors.id <> books.id
+
+Ref: merchant_periods.(merchant_id, country_code) > merchants.(id, country_code)
+
+// short form
+Ref: products.merchant_id > merchants.id [delete: cascade, update: no action]
+
+// long form
+Ref {
+  products.merchant_id > merchants.id [delete: set null, update: set default, color: #79AD51]
+}
+
+Ref: posts.user_id > users.id [inactive]
+Ref: posts.user_id > users.id [delete: restrict, inactive]
+Ref: users.id-user_infos.user_id

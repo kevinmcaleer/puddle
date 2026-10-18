@@ -1,0 +1,8 @@
+Table users {
+  id integer [pk]
+
+Table orders {
+  id integer [pk]
+}
+
+Ref: orders.id > users.id
