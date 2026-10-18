@@ -1,6 +1,6 @@
 // Node groups, as in Blender: nodes gathered into a group that the canvas can collapse to one card showing only the
 // wires into it and the results out of it. Pure edits; what runs is the same whether a group is open or not.
-import { hasOutput, nodeById } from './graph';
+import { hasOutput, inputEdges, nodeById, outputEdges } from './graph';
 import { newId } from './ids';
 import type { NodeGroup, Project } from './schema';
 
@@ -35,6 +35,44 @@ export function makeGroup(project: Project, ids: string[], id = newId('g')): Pro
   const position = { x: Math.min(...nodes.map((n) => n.position.x)), y: Math.min(...nodes.map((n) => n.position.y)) };
   const group: NodeGroup = { id, name: nextGroupName(project), nodeIds: nodes.map((n) => n.id), collapsed: true, position };
   return { ...project, groups: [...project.groups, group] };
+}
+
+/**
+ * The chain round a Transform node: the run of Transform nodes wired one after another through it, each with one
+ * input and one output, stopping at a branch, a join, a source or a node in a group. In order, upstream first; just
+ * the node itself when nothing is in line with it, and nothing when it is not a Transform.
+ */
+export function chainAround(project: Project, nodeId: string): string[] {
+  const node = nodeById(project, nodeId);
+  if (node?.type !== 'transform') return [];
+  const loose = (id: string) => {
+    const n = nodeById(project, id);
+    return n?.type === 'transform' && !groupOf(project, id) ? n : undefined;
+  };
+  const chain = [nodeId];
+  for (let ins = inputEdges(project, nodeId); ins.length === 1; ) {
+    const up = loose(ins[0]!.from.nodeId);
+    if (!up || outputEdges(project, up.id).length !== 1 || chain.includes(up.id)) break;
+    chain.unshift(up.id);
+    ins = inputEdges(project, up.id);
+  }
+  for (let outs = outputEdges(project, nodeId); outs.length === 1; ) {
+    const down = loose(outs[0]!.to.nodeId);
+    if (!down || inputEdges(project, down.id).length !== 1 || chain.includes(down.id)) break;
+    chain.push(down.id);
+    outs = outputEdges(project, down.id);
+  }
+  return chain;
+}
+
+/** Put nodes into the group another node is in (after it), so a node split or restored out of it stays bundled. */
+export function joinGroupOf(project: Project, nodeId: string, ids: string[]): Project {
+  const group = groupOf(project, nodeId);
+  if (!group || !ids.length) return project;
+  const fresh = ids.filter((id) => !group.nodeIds.includes(id));
+  const at = group.nodeIds.indexOf(nodeId) + 1;
+  const nodeIds = [...group.nodeIds.slice(0, at), ...fresh, ...group.nodeIds.slice(at)];
+  return { ...project, groups: project.groups.map((g) => (g.id === group.id ? { ...g, nodeIds } : g)) };
 }
 
 /** Undo a group: its nodes stay where they are, wired as they were. */

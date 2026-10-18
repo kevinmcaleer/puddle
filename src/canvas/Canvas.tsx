@@ -16,6 +16,7 @@ import {
 import '@xyflow/react/dist/base.css';
 import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent, type FocusEvent } from 'react';
 import { addFiles, addNodeAfterSelection, wireNodes } from '../app/actions';
+import { openTemplateDialog } from '../templates/actions';
 import { droppedFiles } from '../sources/handles';
 import { FilesNotKeptBanner, ReconnectBanner } from '../sources/ReconnectBanner';
 import { useSession } from '../app/session';
@@ -24,6 +25,8 @@ import { JOIN_TYPES, ruleRefs } from '../compiler';
 import {
   canGroup,
   canMakeGroup,
+  canUngroup,
+  chainAround,
   groupById,
   groupNodes,
   groupOf,
@@ -34,6 +37,7 @@ import {
   moveGroup,
   moveNodes,
   newId,
+  nodeById,
   parsePort,
   removeNodes,
   renameGroup,
@@ -41,6 +45,7 @@ import {
   setCollapsed,
   setGroupCollapsed,
   ungroup,
+  ungroupNode,
   upstreamIds,
   useProject,
   useProjectStore,
@@ -141,13 +146,15 @@ function detailFor(node: GraphNode, sources: ReturnType<typeof useProject>['sour
 }
 
 /**
- * Shown when several nodes are selected: group them (as in Blender, collapsible to one card), merge a line of
- * Transforms into one node, join two, look up from one into the other, append them, or query them.
+ * Shown when several nodes are selected: group them (as in Blender, collapsible to one card), group the whole chain
+ * of Transforms they are in, join two, look up from one into the other, append them, or query them. Merging a
+ * group's nodes into one is on the group's own menu: a group is the one way to bundle nodes.
  */
 function GroupBar({ ids, onGrouped }: { ids: string[]; onGrouped: (groupId: string) => void }) {
   const project = useProject();
   const group = canMakeGroup(project, ids);
-  const merge = canGroup(project, ids);
+  const chain = chainAround(project, ids[0]!);
+  const chainOk = chain.length > ids.length && ids.every((id) => chain.includes(id));
   const combinable = ids.every((id) => project.nodes.some((n) => n.id === id && hasOutput(n)));
   return (
     <div className="absolute bottom-4 left-1/2 z-panel -translate-x-1/2" data-testid="group-bar">
@@ -156,18 +163,11 @@ function GroupBar({ ids, onGrouped }: { ids: string[]; onGrouped: (groupId: stri
         <Button size="sm" variant="primary" icon="group" disabled={!group.ok} title={withShortcut('Group these nodes', 'group')} onClick={() => onGrouped(groupSelected(ids))}>
           Group
         </Button>
-        <Button
-          size="sm"
-          variant="secondary"
-          disabled={!merge.ok}
-          title={merge.ok ? 'Put their steps in one Transform node' : merge.reason}
-          onClick={() => {
-            useProjectStore.getState().apply((p) => groupNodes(p, ids));
-            if (merge.ok) useSession.getState().select(merge.chain[0]!);
-          }}
-        >
-          Merge into one node
-        </Button>
+        {chainOk && (
+          <Button size="sm" variant="secondary" icon="group" title={`Group the ${chain.length} Transform nodes wired in a line through these`} onClick={() => onGrouped(groupSelected(chain))}>
+            Group the chain
+          </Button>
+        )}
         {combinable && ids.length === 2 && (
           <Button size="sm" variant="secondary" icon="join" onClick={() => addNodeAfterSelection('join')}>
             Join these two
@@ -194,8 +194,9 @@ function GroupBar({ ids, onGrouped }: { ids: string[]; onGrouped: (groupId: stri
 }
 
 /**
- * The canvas's right-click menu on a node, a group's card or an open group's frame: group the selection, or open,
- * close, rename or ungroup the group.
+ * The canvas's right-click menu on a node, a group's card or an open group's frame: group the selection or the chain
+ * of Transforms through the node; open, close, rename or ungroup the group; and, for a group that is a line of
+ * Transforms, merge its nodes into one, split them back, or save their steps as a template.
  */
 function NodeMenu({ at, onClose, onRename, onGrouped }: { at: { x: number; y: number; flowId: string }; onClose: () => void; onRename: (groupId: string) => void; onGrouped: (groupId: string) => void }) {
   const project = useProject();
@@ -210,6 +211,9 @@ function NodeMenu({ at, onClose, onRename, onGrouped }: { at: { x: number; y: nu
     const check = canMakeGroup(project, ids);
     // A lone node already in a group has nothing to group with; the group's own items follow.
     if (check.ok || !group) items.push({ label: ids.length > 1 ? `Group ${ids.length} nodes` : 'Group', icon: 'group', shortcut: shortcutText('group'), disabled: !check.ok, onSelect: () => onGrouped(groupSelected(ids)) });
+    // The run of Transforms wired one after another through this node, as one group.
+    const chain = group ? [] : chainAround(project, at.flowId);
+    if (chain.length > 1) items.push({ label: 'Group the chain', icon: 'group', hint: `${chain.length} nodes`, onSelect: () => onGrouped(groupSelected(chain)) });
   }
   if (group) {
     items.push(
@@ -219,6 +223,21 @@ function NodeMenu({ at, onClose, onRename, onGrouped }: { at: { x: number; y: nu
       { label: 'Rename group…', group: 'Group', onSelect: () => onRename(group.id) },
       { label: 'Ungroup', group: 'Group', icon: 'ungroup', onSelect: () => apply((p) => ungroup(p, group.id)) },
     );
+    // A group that is a line of Transforms can run as one node and come apart again; its steps make a template.
+    const merge = canGroup(project, group.nodeIds);
+    const only = group.nodeIds.length === 1 ? nodeById(project, group.nodeIds[0]!) : undefined;
+    const chain = merge.ok ? merge.chain : only?.type === 'transform' && only.steps.length ? [only.id] : [];
+    if (merge.ok)
+      items.push({
+        label: 'Merge into one node',
+        group: 'Steps',
+        onSelect: () => {
+          apply((p) => groupNodes(p, group.nodeIds));
+          useSession.getState().select(merge.chain[0]!);
+        },
+      });
+    if (only && canUngroup(only)) items.push({ label: 'Split into the original nodes', group: 'Steps', onSelect: () => apply((p) => ungroupNode(p, only.id)) });
+    if (chain.length) items.push({ label: 'Save as template…', group: 'Steps', icon: 'template', onSelect: () => openTemplateDialog({ kind: 'save', nodeIds: chain }) });
   }
   if (!items.length) return null;
   return <ContextMenu x={at.x} y={at.y} label={group ? `Actions for ${group.name}` : 'Node actions'} items={items} onClose={onClose} />;

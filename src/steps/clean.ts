@@ -25,7 +25,7 @@ const numberLocales = Object.entries(PARSE_LOCALES).map(([value, l]) => ({ value
 defineStepForm({
   type: 'parseNumbers',
   title: 'Parse numbers',
-  group: 'Clean',
+  group: 'Change type',
   fields: [
     { ...columnsOnly, hint: 'Currency symbols, spaces and thousands separators are dropped.' },
     {

@@ -27,7 +27,7 @@ defineStepForm({
 defineStepForm({
   type: 'changeType',
   title: 'Change type',
-  group: 'Columns',
+  group: 'Change type',
   fields: [
     { key: 'columns', label: 'Columns', kind: 'columns' },
     { key: 'to', label: 'New type', kind: 'select', options: Object.keys(COLUMN_TYPES).map((t) => ({ value: t, label: t.charAt(0).toUpperCase() + t.slice(1) })) },
@@ -196,6 +196,7 @@ defineStepForm({
   type: 'addIndex',
   title: 'Add index column',
   group: 'Columns',
+  newColumn: true,
   fields: [
     { key: 'name', label: 'Name', kind: 'text', mono: true },
     { key: 'start', label: 'Start at', kind: 'number' },
@@ -207,6 +208,7 @@ defineStepForm({
   type: 'duplicateColumn',
   title: 'Duplicate column',
   group: 'Columns',
+  newColumn: true,
   fields: [
     { key: 'column', label: 'Column', kind: 'column' },
     { key: 'into', label: 'New column', kind: 'text', mono: true },
@@ -221,6 +223,7 @@ defineStepForm({
   type: 'addColumn',
   title: 'Add column from expression',
   group: 'Columns',
+  newColumn: true,
   fields: [
     { key: 'name', label: 'Name', kind: 'text', mono: true },
     { key: 'expression', label: 'Expression', kind: 'expression', hint: 'A DuckDB SQL expression, such as price * quantity.' },

@@ -33,6 +33,7 @@ export function ColumnMenu({ request, available, onClose }: { request: ColumnMen
   const ctx: ColumnMenuContext = { columns: request.columns, available, locale: project.settings.locale, detectDates: detectOnViewed(viewed), readPivotValues: readOnViewed(viewed), cell: request.cell };
   const entry = (a: ColumnAction): MenuItem => ({
     label: a.label,
+    hint: a.hint,
     group: a.submenu ? undefined : a.group,
     onSelect: () => {
       if ('replace' in a) return setReplacing(a.replace);

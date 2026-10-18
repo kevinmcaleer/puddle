@@ -334,7 +334,7 @@ export function AppShell() {
                 { label: 'SQL', icon: 'code', hint: 'Write a query', group: 'Nodes', onSelect: () => addNodeAfterSelection('sql') },
                 { label: 'Output', icon: 'output', shortcut: shortcutText('add-output'), group: 'Nodes', onSelect: () => addNodeAfterSelection('output') },
                 // Every step, each making a node of its own after the selected node (T opens the menu with its search focused).
-                ...STEP_GROUPS.flatMap((g) => stepForms().filter((f) => f.group === g).map((f) => ({ label: f.title, group: `${g} steps`, onSelect: () => void addStepFromMenu(f) }))),
+                ...STEP_GROUPS.flatMap((g) => stepForms().filter((f) => f.group === g).map((f) => ({ label: f.title, group: `${g} steps`, hint: f.newColumn ? 'New column' : undefined, onSelect: () => void addStepFromMenu(f) }))),
               ], hasSelection),
             ]}
           />

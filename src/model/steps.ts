@@ -1,5 +1,6 @@
 // Pure edits to a transform node's steps, and grouping nodes into one or splitting one into two.
 import { inputEdges, nodeById, outputEdges } from './graph';
+import { joinGroupOf } from './groups';
 import { newId } from './ids';
 import type { GraphNode, Project, Step, TransformNode } from './schema';
 
@@ -150,7 +151,8 @@ export function ungroupNode(project: Project, nodeId: string): Project {
   const inner = parts.slice(1).map((p, i) => ({ id: p.edgeId!, from: { nodeId: parts[i]!.node.id }, to: { nodeId: p.node.id, port: 0 as const } }));
   const nodes = project.nodes.flatMap((n) => (n.id === nodeId ? parts.map((p) => p.node) : [n]));
   const edges = [...project.edges.map((e) => (outs.includes(e) ? { ...e, from: { nodeId: lastId } } : e)), ...inner];
-  return { ...project, nodes, edges };
+  // Restored nodes join the group the merged node was in, so a group stays the bundle whether merged or split.
+  return joinGroupOf({ ...project, nodes, edges }, nodeId, parts.slice(1).map((p) => p.node.id));
 }
 
 /** Split a transform node before step `at`: steps from there on move to a new node wired after it. */
@@ -165,11 +167,15 @@ export function splitNode(project: Project, nodeId: string, at: number, newNodeI
     : { id: newNodeId, type: 'transform', name: `${node.name} (2)`, position: { x: node.position.x + 296, y: node.position.y }, rules: [], steps: moving };
   const edgeId = origin?.edgeId ?? newId('e');
   const outs = outputEdges(project, nodeId);
-  return {
-    ...project,
-    nodes: project.nodes.flatMap((n) => (n.id === nodeId ? [{ ...node, steps: node.steps.slice(0, at) }, created] : [n])),
-    edges: [...project.edges.map((e) => (outs.includes(e) ? { ...e, from: { nodeId: created.id } } : e)), { id: edgeId, from: { nodeId }, to: { nodeId: created.id, port: 0 } }],
-  };
+  return joinGroupOf(
+    {
+      ...project,
+      nodes: project.nodes.flatMap((n) => (n.id === nodeId ? [{ ...node, steps: node.steps.slice(0, at) }, created] : [n])),
+      edges: [...project.edges.map((e) => (outs.includes(e) ? { ...e, from: { nodeId: created.id } } : e)), { id: edgeId, from: { nodeId }, to: { nodeId: created.id, port: 0 } }],
+    },
+    nodeId,
+    [created.id],
+  );
 }
 
 /** Viewing a node that is grouped views the group; comparing one ends the comparison. */
