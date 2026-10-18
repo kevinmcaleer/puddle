@@ -20,7 +20,7 @@ test('a pipeline is built, run and exported with the keyboard alone', async ({ p
 
   // T opens the Add menu's search; Enter adds the step as a Transform after it, selected and in the inspector.
   await addStepWithT(page, 'Trim whitespace');
-  await expect(node(page, 'Transform 1')).toHaveAttribute('aria-label', /^Transform 1, Transform, 1 step/);
+  await expect(node(page, 'Transform 1').locator('xpath=..')).toHaveAttribute('aria-label', /^Transform 1, Transform, 1 step/);
   await page.keyboard.press('f');
   await page.keyboard.press('Enter');
   await expect(page.getByTestId('inspector')).toBeFocused();

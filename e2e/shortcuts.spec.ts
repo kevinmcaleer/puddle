@@ -139,7 +139,10 @@ test('a step search opened before the new node is drawn keeps the focus', async 
   await addOrders(page);
   // Nodes can't take the focus while hidden: this holds the new node back the way a slow first draw does.
   const hidden = await page.addStyleTag({ content: '.react-flow__node { visibility: hidden !important; }' });
-  await addStepWithT(page, 'Trim whitespace');
+  await page.keyboard.press('t');
+  await page.getByLabel('Search steps and nodes').fill('Trim whitespace');
+  await page.getByLabel('Search steps and nodes').press('Enter');
+  await expect(page.getByLabel('Node name')).toHaveValue('Transform 1');
   await page.keyboard.press('/');
   const search = page.getByLabel('Search steps');
   await expect(search).toBeFocused();

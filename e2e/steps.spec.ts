@@ -60,11 +60,11 @@ test('a step renamed by hand keeps its name; nodes take a name and notes', async
   await addStep(page, 'Remove columns');
   const settings = page.getByTestId('step-settings');
   await settings.getByRole('button', { name: 'email', exact: true }).click();
-  await expect(steps(page)).toHaveText([/Removed email/]);
+  await expect(steps(page)).toHaveText([/Trimmed name/, /Removed email/]);
   await settings.getByLabel('Label').fill('Drop contact details');
   await settings.getByLabel('Label').press('Enter');
   await settings.getByRole('button', { name: 'joined', exact: true }).click();
-  await expect(steps(page)).toHaveText([/Drop contact details/]);
+  await expect(steps(page)).toHaveText([/Trimmed name/, /Drop contact details/]);
 
   await page.getByLabel('Node name').fill('Tidy customers');
   await page.getByLabel('Node name').press('Enter');

@@ -184,16 +184,15 @@ export function searchAddStep() {
 }
 
 /**
- * A step picked from the toolbar's Add menu. It goes after the selected node (or the viewed one): in a new Transform
- * between it and what it fed, or into it when it is a Transform and the project stacks steps (see placeStepAt). With
- * no node to go after, it starts a Transform of its own, unwired. The step's defaults read the columns arriving there.
+ * A step picked from the toolbar's Add menu. It goes after the selected node: in a new Transform between it and what
+ * it fed, or into it when it is a Transform and the project stacks steps (see placeStepAt). With nothing selected, it
+ * starts a Transform of its own, unwired. The step's defaults read the columns arriving there.
  */
 export async function addStepFromMenu(form: StepForm) {
   const { history, apply } = useProjectStore.getState();
   const project = history.present;
   const session = useSession.getState();
-  const targetId = session.selectedNodeId ?? project.view.viewedNodeId;
-  const node = targetId ? nodeById(project, targetId) : undefined;
+  const node = session.selectedNodeId ? nodeById(project, session.selectedNodeId) : undefined;
   if (!node) {
     const step = newStep(form.type, { selected: [], available: [], locale: project.settings.locale });
     const id = newId('n');

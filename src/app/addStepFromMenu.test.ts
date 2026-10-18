@@ -54,7 +54,8 @@ describe('a step from the Add menu', () => {
     expect(transforms()[0]!.steps.map((s) => s.type)).toEqual(['trimWhitespace', 'removeBlankRows']);
   });
 
-  it('with nothing selected, starts an unwired Transform', async () => {
+  it('with nothing selected, starts an unwired Transform, whatever is viewed', async () => {
+    useProjectStore.getState().setView({ viewedNodeId: 'in' });
     await addStepFromMenu(trim);
     const [t] = transforms();
     expect(t?.steps).toHaveLength(1);
