@@ -51,7 +51,6 @@ import { PROVIDER_IDS, PROVIDERS, useSync } from '../sync';
 import { openSyncDialog } from '../sync/dialogs';
 import { SyncConflictBanner } from '../sync/SyncDialogs';
 import { useSession } from './session';
-import { THEME_ICON, useTheme } from './theme';
 
 function EngineBadge({ status }: { status: EngineStatus }) {
   if (status.state === 'loading') return <StatusBadge status="pending">Starting DuckDB</StatusBadge>;
@@ -147,13 +146,12 @@ function ResultsTitle() {
   );
 }
 
-/** Help: the user guide, its taxi tutorial, the guided tour (from the start, or from where it was left), the keyboard shortcuts and the theme. */
+/** Help: the user guide, its taxi tutorial, the guided tour (from the start, or from where it was left) and the keyboard shortcuts. */
 function HelpMenu() {
   // Read when the menu opens, so it knows how far the tour got.
   const [progress, setProgress] = useState(readProgress);
   const running = useTour((s) => s.projectId != null);
   const resume = !running && canResume(progress) ? progress.stop : undefined;
-  const theme = useTheme();
   return (
     <Menu
       label={<span className="sr-only">Help</span>}
@@ -165,14 +163,11 @@ function HelpMenu() {
         ...(resume != null ? [{ label: 'Resume the tour', icon: 'info' as const, hint: `Stop ${resume + 1} of ${TOUR_STOPS.length}`, onSelect: () => startTourSafely(resume) }] : []),
         { label: 'Take the tour', icon: 'info', onSelect: () => startTourSafely() },
         { label: 'Keyboard shortcuts', icon: 'keyboard', shortcut: shortcutText('help'), onSelect: () => useSession.getState().setShortcutsOpen(true) },
-        ...THEMES.map((t) => ({ label: THEME_NAME[t], icon: THEME_ICON[t], group: 'Theme', checked: theme.preference === t, onSelect: () => theme.setPreference(t) })),
       ]}
     />
   );
 }
 
-const THEMES = ['system', 'light', 'dark'] as const;
-const THEME_NAME = { system: 'Match the system', light: 'Light', dark: 'Dark' } as const;
 
 /** The strip's sync badge: nothing for a project that doesn't sync. */
 function useSyncBadge() {

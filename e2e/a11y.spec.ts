@@ -77,7 +77,7 @@ for (const theme of ['light', 'dark'] as const) {
       await page.keyboard.press('i');
       await expect(page.getByTestId('inspector')).not.toBeAttached();
       await page.getByTestId('help-menu').click();
-      await expect(page.getByRole('group', { name: 'Theme' })).toBeVisible();
+      await expect(page.getByRole('menuitem', { name: 'Keyboard shortcuts' })).toBeVisible();
       await expectAccessible(page, 'the Help menu');
       await page.keyboard.press('Escape');
       await page.keyboard.press('i');
