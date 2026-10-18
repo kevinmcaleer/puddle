@@ -8,6 +8,8 @@ import { dateText, readDateFormat } from './dateRead';
 import { compileQuery, queryProblems } from './query';
 import { compileQuerySql, querySqlProblem } from './querySql';
 import { compileSqlNode, sqlNodeProblem } from './sqlNode';
+import { compileSchemaTable, failingRows, failureCounts, heldTableRows, LOAD_FAILURES, loadChecks, projectSchema, tableFor, type LoadCheck, type TableInput } from './schemaTable';
+import { foreignKey, schemaDdl } from './ddl/duckdb';
 import { knownSchemas, type SchemaBook } from './schemaBook';
 import { sourceRelation } from './sources';
 import { cteName, ident, num, str } from './sql';
@@ -43,7 +45,7 @@ export interface CompileOptions {
 }
 
 /** Node kinds that compile from their inputs' columns, so those must be described first (see SchemaCache.prepare). */
-export const needsInputSchemas = (node: GraphNode) => node.type === 'join' || node.type === 'append' || node.type === 'lookup' || node.type === 'query';
+export const needsInputSchemas = (node: GraphNode) => node.type === 'join' || node.type === 'append' || node.type === 'lookup' || node.type === 'query' || node.type === 'table';
 
 /** One wired input of a node: its port, the node feeding it, and that node's CTE. */
 interface WiredInput {
@@ -216,12 +218,89 @@ function build(project: Project, target: Target, book: SchemaBook, options: Comp
         out.set(n.id, name);
         break;
       }
+      case 'table': {
+        const { table, schema, input } = schemaTableParts(project, n, out, book);
+        const name = cteName(n.id);
+        ctes.push(`${name} AS (${compileSchemaTable(schema, table, n.tableSpec, input)})`);
+        out.set(n.id, name);
+        break;
+      }
       case 'output':
         out.set(n.id, inputCte(project, n, out));
         break;
     }
   }
   return { node, ctes, out, order };
+}
+
+/** A Schema table node's table, the schema it is in, and the load wired into it, if any. */
+function schemaTableParts(project: Project, n: Extract<GraphNode, { type: 'table' }>, out: Map<string, string>, book: SchemaBook) {
+  const schema = projectSchema(project.schema.dbml);
+  let table;
+  try {
+    table = tableFor(schema, n.tableSpec, n.name);
+  } catch (e) {
+    throw new CompileError((e as Error).message, n.id);
+  }
+  const wired = wiredInputs(project, n, out)[0];
+  const input: TableInput | undefined = wired && { cte: wired.cte, columns: inputColumns(project, n, wired, book) };
+  return { schema, table, input };
+}
+
+/** Parent tables being read for a foreign key check, so a loop of refs between table nodes stops. */
+const readingParents = new Set<string>();
+
+/**
+ * The checks a Schema table node's load must pass, as one statement counting the loaded rows that fail each
+ * (`f<i>` for `checks[i]`), or, with `failing`, listing them. Undefined when nothing is wired in.
+ */
+export function compileLoadCheck(project: Project, nodeId: string, options: CompileOptions & { failing?: boolean } = {}): { sql: string; checks: LoadCheck[] } | undefined {
+  const { node, ctes, out } = build(project, { nodeId }, options.schemas ?? knownSchemas, options);
+  if (node.type !== 'table') throw new CompileError(`${node.name} isn’t a schema table.`, node.id);
+  const { schema, table, input } = schemaTableParts(project, node, out, options.schemas ?? knownSchemas);
+  if (!input) return undefined;
+  const parentRows = (parent: Parameters<typeof heldTableRows>[1]) => {
+    const nodes = project.nodes.filter((x) => x.id !== node.id && x.type === 'table' && x.tableSpec.schema === parent.schema && x.tableSpec.table === parent.name);
+    if (!nodes.length || readingParents.has(node.id)) return `(${heldTableRows(schema, parent, true)})`;
+    readingParents.add(node.id);
+    try {
+      return `(${nodes.map((x) => compile(project, { nodeId: x.id }, options).sql).map((q) => `SELECT * FROM (${q})`).join(' UNION ALL ')})`;
+    } catch (e) {
+      throw new CompileError(`${table.name} refers to ${parent.name}, whose node can’t run, so the load can’t be checked. ${e instanceof Error ? e.message : String(e)}`, node.id);
+    } finally {
+      readingParents.delete(node.id);
+    }
+  };
+  const load = loadChecks(schema, table, node.tableSpec, input, parentRows);
+  const body = options.failing ? failingRows(load.checks) : failureCounts(load.checks);
+  return { sql: `WITH ${[...ctes, ...load.ctes].join(',\n  ')}\n${body}`, checks: load.checks };
+}
+
+const keyingParents = new Set<string>();
+
+/** The keys of the Schema table nodes a table node's foreign keys point at (not itself, and stopping at a loop). */
+function parentKeys(project: Project, node: Extract<GraphNode, { type: 'table' }>): string[] {
+  if (keyingParents.has(node.id)) return [];
+  const schema = projectSchema(project.schema.dbml);
+  const parents = new Set<string>();
+  for (const ref of schema.refs) {
+    const fk = foreignKey(ref);
+    if (fk && fk.child.schema === node.tableSpec.schema && fk.child.table === node.tableSpec.table) parents.add(`${fk.parent.schema}.${fk.parent.table}`);
+  }
+  const ids = project.nodes.filter((x) => x.id !== node.id && x.type === 'table' && parents.has(`${x.tableSpec.schema}.${x.tableSpec.table}`)).map((x) => x.id);
+  keyingParents.add(node.id);
+  try {
+    return ids.map((id) => upstreamKey(project, { nodeId: id }));
+  } finally {
+    keyingParents.delete(node.id);
+  }
+}
+
+/** The DDL of a project's schema, once per version of its DBML: what Schema table nodes' rows are built from. */
+let ddlKey: { dbml: string; key: string } | undefined;
+export function schemaDdlKey(dbml: string): string {
+  if (ddlKey?.dbml !== dbml) ddlKey = { dbml, key: hashValue(schemaDdl(projectSchema(dbml)).statements) };
+  return ddlKey.key;
 }
 
 /**
@@ -232,6 +311,11 @@ function build(project: Project, target: Target, book: SchemaBook, options: Comp
 export function compile(project: Project, target: Target, options: CompileOptions = {}): Compiled {
   const { node, ctes, out, order } = build(project, target, options.schemas ?? knownSchemas, options);
   let output = out.get(target.nodeId)!;
+  if (target.failingRuleId === LOAD_FAILURES) {
+    const check = compileLoadCheck(project, target.nodeId, { ...options, failing: true });
+    if (!check) throw new CompileError(`Nothing is loaded into ${node.name}, so no rows fail.`, node.id);
+    return { sql: check.sql, output: ident(`n_${node.id}_failing`), nodeIds: order };
+  }
   if (target.failingRuleId) {
     const rule = node.rules.find((r) => r.id === target.failingRuleId);
     if (!rule) throw new CompileError(`${node.name} has no such rule.`, node.id);
@@ -322,6 +406,9 @@ export function upstreamKey(project: Project, target: Target): string {
       if (n.type === 'query') return { id: n.id, type: n.type, inputs, query: { ...n.querySpec, tables: undefined }, ...(n.querySpec.sql != null ? { labels: inputEdges(project, n.id).map((e) => nodeById(project, e.from.nodeId)?.name) } : {}) };
       // The query reads its inputs by their node names, so those matter here.
       if (n.type === 'sql') return { id: n.id, type: n.type, inputs, sql: n.sqlSpec, labels: inputEdges(project, n.id).map((e) => nodeById(project, e.from.nodeId)?.name) };
+      // A schema table's rows follow the DBML (its DuckDB table is rebuilt from it); a load is checked against the
+      // nodes of the tables its foreign keys point at, so those count too.
+      if (n.type === 'table') return { id: n.id, type: n.type, inputs, table: n.tableSpec, ddl: schemaDdlKey(project.schema.dbml), parents: inputs.length ? parentKeys(project, n) : [] };
       return { id: n.id, type: n.type, inputs };
     })
     .sort((a, b) => (a.id < b.id ? -1 : 1));

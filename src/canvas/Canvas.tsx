@@ -14,12 +14,13 @@ import {
 } from '@xyflow/react';
 import '@xyflow/react/dist/base.css';
 import { useCallback, useEffect, useMemo, useState, type DragEvent, type FocusEvent } from 'react';
-import { addFiles, addNodeAfterSelection, wireNodes } from '../app/actions';
+import { addFiles, addNodeAfterSelection, loadIntoSchemaTable, wireNodes } from '../app/actions';
 import { droppedFiles } from '../sources/handles';
 import { FilesNotKeptBanner, ReconnectBanner } from '../sources/ReconnectBanner';
 import { useSession } from '../app/session';
 import { useFlowStore } from '../flow/status';
-import { JOIN_TYPES, ruleRefs } from '../compiler';
+import { JOIN_TYPES, projectSchema, ruleRefs } from '../compiler';
+import { qualified } from '../schema';
 import {
   canGroup,
   canMakeGroup,
@@ -33,6 +34,7 @@ import {
   moveGroup,
   moveNodes,
   newId,
+  nodeById,
   parsePort,
   removeNodes,
   renameGroup,
@@ -209,6 +211,11 @@ function NodeMenu({ at, onClose, onRename, onGrouped }: { at: { x: number; y: nu
     // A lone node already in a group has nothing to group with; the group's own items follow.
     if (check.ok || !group) items.push({ label: ids.length > 1 ? `Group ${ids.length} nodes` : 'Group', icon: 'group', shortcut: shortcutText('group'), disabled: !check.ok, onSelect: () => onGrouped(groupSelected(ids)) });
   }
+  // Any node with rows can be landed in a table designed in the schema: a Schema table node wired from it checks them.
+  const from = !groupId ? nodeById(project, at.flowId) : undefined;
+  if (from && hasOutput(from) && from.type !== 'table')
+    for (const t of projectSchema(project.schema.dbml).tables)
+      items.push({ label: `Load into ${qualified(t.schema, t.name)}`, icon: 'schema', group: 'Load into schema table', onSelect: () => loadIntoSchemaTable(from.id, t.schema, t.name) });
   if (group) {
     items.push(
       group.collapsed

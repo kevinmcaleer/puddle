@@ -291,7 +291,22 @@ export const DEFAULT_SQL_SPEC = { query: 'SELECT *\nFROM input1' } as const sati
 
 export const SqlNodeZ = z.object({ ...NodeBase, type: z.literal('sql'), sqlSpec: SqlSpecZ.default(DEFAULT_SQL_SPEC) });
 
-export const NodeZ = z.discriminatedUnion('type', [SourceNodeZ, TransformNodeZ, JoinNodeZ, AppendNodeZ, LookupNodeZ, QueryNodeZ, SqlNodeZ, OutputNodeZ]);
+/**
+ * A table of the project's schema (its DBML), created in DuckDB with its keys and constraints. Its rows are the table's
+ * records, its `[example]` records when `examples` is on, and the rows of the node wired into it (if any), cast to the
+ * designed types; a loaded row that breaks a constraint stops the node, naming what broke. `mapping` gives, for a
+ * table column, the input column it is loaded from when the names differ ('' leaves it to its default).
+ */
+export const TableSpecZ = z.object({
+  schema: z.string().default('public'),
+  table: z.string(),
+  examples: z.boolean().default(true),
+  mapping: z.record(z.string(), z.string()).default({}),
+});
+
+export const SchemaTableNodeZ = z.object({ ...NodeBase, type: z.literal('table'), tableSpec: TableSpecZ });
+
+export const NodeZ = z.discriminatedUnion('type', [SourceNodeZ, TransformNodeZ, JoinNodeZ, AppendNodeZ, LookupNodeZ, QueryNodeZ, SqlNodeZ, SchemaTableNodeZ, OutputNodeZ]);
 
 /** Named input ports: Join's left and right, Lookup's main and lookup. Nodes with one input, and the numbered inputs of Append and Query, use an index. */
 export const NAMED_PORTS = ['left', 'right', 'main', 'lookup'] as const;
@@ -420,6 +435,8 @@ export type QuerySpec = z.infer<typeof QuerySpecZ>;
 export type QueryNode = z.infer<typeof QueryNodeZ>;
 export type SqlSpec = z.infer<typeof SqlSpecZ>;
 export type SqlNode = z.infer<typeof SqlNodeZ>;
+export type TableSpec = z.infer<typeof TableSpecZ>;
+export type SchemaTableNode = z.infer<typeof SchemaTableNodeZ>;
 export type Port = z.infer<typeof PortZ>;
 export type GraphNode = z.infer<typeof NodeZ>;
 export type NodeType = GraphNode['type'];

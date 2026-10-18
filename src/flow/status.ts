@@ -1,7 +1,7 @@
 import { create } from 'zustand';
-import { compile, CompileError, compileCount, SchemaCache, UnwiredError, upstreamKey } from '../compiler';
+import { compile, CompileError, compileCount, compileLoadCheck, describeFailure, SchemaCache, UnwiredError, upstreamKey } from '../compiler';
 import { EngineError, tableRows, toEngineError, type EngineClient } from '../engine';
-import { inputEdges, topoSort, type ColumnSchema, type Port, type Project } from '../model';
+import { inputEdges, topoSort, type ColumnSchema, type GraphNode, type Port, type Project } from '../model';
 
 /**
  * What the canvas knows about each node's output:
@@ -11,13 +11,15 @@ import { inputEdges, topoSort, type ColumnSchema, type Port, type Project } from
  *   inputs whose wires carry the cause, when it's one input of several (a join key missing on one side);
  * - blocked: something upstream is broken, so this node dims;
  * - detached: a source whose file needs choosing again after the project was reopened.
+ * A Schema table node whose load breaks its table's constraints is an error listing each kind of failure in `failures`,
+ * so nothing downstream reads rows the table wouldn't take.
  */
 export type NodeStatus =
   | { state: 'pending' }
   | { state: 'detached' }
   | { state: 'ok'; columns: ColumnSchema[]; rows?: number }
   | { state: 'unwired' }
-  | { state: 'error'; message: string; ports?: Port[]; /** Stop was pressed before it finished; Run again retries. */ stopped?: boolean }
+  | { state: 'error'; message: string; ports?: Port[]; /** Stop was pressed before it finished; Run again retries. */ stopped?: boolean; failures?: string[] }
   | { state: 'blocked' };
 
 interface Entry {
@@ -81,8 +83,29 @@ export function invalidateCaches() {
 
 let generation = 0;
 
+/** A status a node has before it is compiled (a Schema table whose table is still being built), or undefined. */
+export type NodeGate = (node: GraphNode) => NodeStatus | undefined;
+
+/**
+ * What a Schema table node's load breaks: one line per kind of failure ("3 rows have no email"), empty when every row
+ * fits (or nothing is loaded). The other table nodes its foreign keys may read are described first.
+ */
+export async function loadFailures(engine: EngineClient, project: Project, nodeId: string, cache: SchemaCache = schemaCacheFor(engine)): Promise<string[]> {
+  for (const n of project.nodes) if (n.type === 'table' && n.id !== nodeId) await cache.prepare(project, { nodeId: n.id });
+  const check = compileLoadCheck(project, nodeId, { schemas: cache.book });
+  if (!check?.checks.length) return [];
+  const row = tableRows((await engine.query(check.sql, { label: 'Checking the load' })).table)[0] ?? {};
+  return check.checks.flatMap((c, i) => {
+    const n = Number(row[`f${i}`] ?? 0);
+    return n ? [describeFailure(c, n)] : [];
+  });
+}
+
+/** "customers can’t take some of the rows loaded into it: 1 row has no name; …". */
+export const loadMessage = (name: string, failures: string[]) => `${name} can’t take some of the rows loaded into it: ${failures.join('; ')}.`;
+
 /** Re-evaluate every node whose upstream changed. Nodes whose key is unchanged keep their status. */
-export async function evaluateFlow(engine: EngineClient, project: Project, isDetached: (sourceId: string) => boolean = () => false): Promise<void> {
+export async function evaluateFlow(engine: EngineClient, project: Project, isDetached: (sourceId: string) => boolean = () => false, gate: NodeGate = () => undefined): Promise<void> {
   const gen = ++generation;
   const cache = schemaCacheFor(engine);
   let order: string[];
@@ -103,10 +126,20 @@ export async function evaluateFlow(engine: EngineClient, project: Project, isDet
       next[id] = { key, status: { state: 'detached' } };
       continue;
     }
+    const gated = node && gate(node);
+    if (gated) {
+      next[id] = { key, status: gated };
+      continue;
+    }
     const kept = prev[id];
     // A kept status must not outlive a detached input: re-check once the file is chosen again.
     if (kept && kept.key === key && kept.status.state !== 'pending' && kept.status.state !== 'detached' && kept.status.state !== 'blocked') {
       next[id] = kept;
+      continue;
+    }
+    // Waiting on a table being built upstream: wait too.
+    if (inputs.includes('pending')) {
+      next[id] = { key, status: { state: 'pending' } };
       continue;
     }
     if (inputs.some((s) => s === 'error' || s === 'blocked' || s === 'unwired' || s === 'detached')) {
@@ -132,6 +165,15 @@ export async function evaluateFlow(engine: EngineClient, project: Project, isDet
     try {
       const columns = await cache.get(project, { nodeId: id });
       if (gen !== generation) return;
+      if (node?.type === 'table' && inputs.length) {
+        const failures = await loadFailures(engine, project, id, cache);
+        if (gen !== generation) return;
+        if (failures.length) {
+          next[id] = { key, status: { state: 'error', message: loadMessage(node.name, failures), failures } };
+          publish();
+          continue;
+        }
+      }
       next[id] = { key, status: { state: 'ok', columns } };
       void countRows(engine, project, id).then(
         (rows) => {

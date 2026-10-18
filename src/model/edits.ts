@@ -2,11 +2,11 @@
 import { freePort, hasOutput, nodeById, removeNode } from './graph';
 import { newId } from './ids';
 import { viewWithout } from './view';
-import { DEFAULT_APPEND_SPEC, DEFAULT_JOIN_SPEC, DEFAULT_LOOKUP_SPEC, DEFAULT_QUERY_SPEC, DEFAULT_SQL_SPEC, type GraphNode, type NodeType, type ParseOptions, type Project, type Source } from './schema';
+import { DEFAULT_APPEND_SPEC, DEFAULT_JOIN_SPEC, DEFAULT_LOOKUP_SPEC, DEFAULT_QUERY_SPEC, DEFAULT_SQL_SPEC, type GraphNode, type NodeType, type ParseOptions, type Project, type Source, type TableSpec } from './schema';
 
 type Position = { x: number; y: number };
 
-const KIND_NAME: Record<NodeType, string> = { source: 'Source', transform: 'Transform', join: 'Join', append: 'Append', lookup: 'Lookup', query: 'Query', sql: 'SQL', output: 'Output' };
+const KIND_NAME: Record<NodeType, string> = { source: 'Source', transform: 'Transform', join: 'Join', append: 'Append', lookup: 'Lookup', query: 'Query', sql: 'SQL', table: 'Table', output: 'Output' };
 
 /** "Transform 3": the next free number for a node type. */
 export function nextNodeName(project: Project, type: NodeType): string {
@@ -38,6 +38,8 @@ function newNode(type: AddableNodeType, base: { id: string; name: string; positi
       return { ...base, type, querySpec: { ...DEFAULT_QUERY_SPEC, tables: [], joins: [], fields: [] } };
     case 'sql':
       return { ...base, type, sqlSpec: { ...DEFAULT_SQL_SPEC } };
+    case 'table':
+      return { ...base, type, tableSpec: { schema: 'public', table: '', examples: true, mapping: {} } };
     case 'output':
       return { ...base, type, outputSpec: { format: 'csv', options: {} } };
   }
@@ -51,6 +53,28 @@ export function setRunnerPath(project: Project, sourceId: string, path: string):
 
 export function setSqlQuery(project: Project, nodeId: string, query: string): Project {
   return { ...project, nodes: project.nodes.map((n) => (n.id === nodeId && n.type === 'sql' ? { ...n, sqlSpec: { ...n.sqlSpec, query } } : n)) };
+}
+
+/**
+ * Point a Schema table node at a table of the schema, or change how rows load into it. A node still called by its
+ * default name ("Table 2") takes the table's name when it is given one.
+ */
+export function setTableSpec(project: Project, nodeId: string, patch: Partial<TableSpec>): Project {
+  const used = new Set(project.nodes.filter((n) => n.id !== nodeId).map((n) => n.name));
+  const named = (name: string) => {
+    for (let i = 1; ; i++) if (!used.has(i === 1 ? name : `${name} ${i}`)) return i === 1 ? name : `${name} ${i}`;
+  };
+  return {
+    ...project,
+    nodes: project.nodes.map((n) => {
+      if (n.id !== nodeId || n.type !== 'table') return n;
+      const tableSpec = { ...n.tableSpec, ...patch };
+      // A different table has different columns: the old mapping means nothing to it.
+      if (patch.table != null && patch.table !== n.tableSpec.table && !patch.mapping) tableSpec.mapping = {};
+      const rename = patch.table && /^Table \d+$/.test(n.name);
+      return { ...n, tableSpec, ...(rename ? { name: named(patch.table!) } : {}) };
+    }),
+  };
 }
 
 /**

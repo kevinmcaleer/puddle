@@ -6,7 +6,7 @@
 .puddle-canvas .react-flow__node:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; border-radius: var(--radius-md); }
 .puddle-canvas .react-flow__handle.ui-port { width: var(--size-handle); height: var(--size-handle); min-width: 0; min-height: 0; background: var(--surface-raised); border: 2px solid var(--wire); border-radius: var(--radius-full); }
 .puddle-canvas .react-flow__handle.ui-port.is-broken { border-color: var(--fail); background: var(--fail); }
-.puddle-canvas .ui-node[data-kind="source"] .react-flow__handle.ui-port { border-color: var(--node-source); }
+.puddle-canvas .ui-node[data-kind="source"] .react-flow__handle.ui-port, .puddle-canvas .ui-node[data-kind="table"] .react-flow__handle.ui-port { border-color: var(--node-source); }
 .puddle-canvas .ui-node.is-selected .react-flow__handle.ui-port { border-color: var(--brand); background: var(--brand); }
 .puddle-canvas .react-flow__connection-path { stroke: var(--wire-active); stroke-width: 2.25; fill: none; }
 .puddle-canvas .react-flow__edge.selected .ui-wire { stroke: var(--brand); stroke-width: 2.75; }

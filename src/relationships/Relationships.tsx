@@ -9,7 +9,7 @@ import { nodeById, useProject, useProjectStore, type Project } from '../model';
 import { Banner, Button, columnKind, cx, Dialog, Field, Icon, NODE_KIND, Select, TypeTag } from '../ui';
 import { toDbml } from './dbml';
 import { relate } from './relate';
-import { cardinality, describeCardinality, findRelationships, keyColumns, keyEnds, relationshipTables, type End, type Relationship, type RelTable, type Uniqueness } from './model';
+import { cardinality, declaredKeys, describeCardinality, findRelationships, keyColumns, keyEnds, relationshipTables, type End, type Relationship, type RelTable, type Uniqueness } from './model';
 import '../query/query.css';
 import './relationships.css';
 
@@ -176,7 +176,7 @@ function RelationshipPane({ tables, relationships, unique, selected, onSelect }:
 
   const drawn = lines.flatMap((l) => {
     const r = relationships.find((x) => x.key === l.key);
-    return r ? [{ ...l, r, check: r.via.every((v) => v.kind === 'rule') }] : [];
+    return r ? [{ ...l, r, check: r.via.every((v) => v.kind === 'rule' || v.kind === 'schema') }] : [];
   });
   const mark = (c: 'one' | 'many' | undefined) => (c === 'one' ? '1' : c === 'many' ? '∞' : '');
 
@@ -282,7 +282,7 @@ function RelationshipPane({ tables, relationships, unique, selected, onSelect }:
   );
 }
 
-const VIA_ICON = { join: 'join', lookup: 'join', query: 'query', rule: 'check' } as const;
+const VIA_ICON = { join: 'join', lookup: 'join', query: 'query', rule: 'check', schema: 'schema' } as const;
 
 /** Open the node that states a relationship: a Query in its designer, anything else selected in the inspector. */
 function openVia(project: Project, nodeId: string) {
@@ -373,7 +373,11 @@ export function Relationships() {
   };
   const relationships = findRelationships(project, columnsOf);
   const tables = relationshipTables(project, relationships, columnsOf);
-  const unique = useUniqueness(project, tables, relationships);
+  const checked = useUniqueness(project, tables, relationships);
+  // A schema table's declared keys are unique by design: its load is refused otherwise.
+  const declared = declaredKeys(project);
+  const unique: Uniqueness = { ...checked };
+  for (const [id, cols] of Object.entries(declared)) unique[id] = { ...checked[id], ...cols };
   const [selected, setSelected] = useState<string | null>(null);
   const [message, setMessage] = useState<{ tone: 'info' | 'fail'; text: string } | null>(null);
   const dbml = () => toDbml(project, tables, relationships, unique);
