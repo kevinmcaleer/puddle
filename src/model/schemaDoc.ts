@@ -1,8 +1,9 @@
 import type { Position, Project, SchemaView } from './schema';
+import { syncSchemaRules } from './schemaRules';
 
-/** Replace the project's DBML. */
+/** Replace the project's DBML; rules derived from it follow. */
 export function setSchemaDbml(p: Project, dbml: string): Project {
-  return p.schema.dbml === dbml ? p : { ...p, schema: { ...p.schema, dbml } };
+  return p.schema.dbml === dbml ? p : syncSchemaRules({ ...p, schema: { ...p.schema, dbml } });
 }
 
 /** Move diagram elements, by key; the others keep their places. */
@@ -67,5 +68,5 @@ export function editSchema(p: Project, dbml: string, also: SchemaEditAlso = {}):
       views = views.map((v) => (v === open ? { ...v, tables: [...v.tables, ...added], positions: { ...v.positions, ...places } } : v));
     } else positions = { ...positions, ...places };
   }
-  return { ...p, nodes, schema: { ...p.schema, dbml, positions, views } };
+  return syncSchemaRules({ ...p, nodes, schema: { ...p.schema, dbml, positions, views } });
 }

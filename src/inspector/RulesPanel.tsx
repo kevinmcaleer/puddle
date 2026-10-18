@@ -9,7 +9,9 @@ import { useFlowStore, useNodeStatus } from '../flow/status';
 import { addRule, dismissSuggestion, newId, nodeById, removeRule, updateRule, useProject, useProjectStore, type GraphNode, type Project, type Rule } from '../model';
 import { QualityReportButton } from '../report';
 import { newRule, ruleErrors, ruleForm, ruleForms, ruleLabel, showFailing, useSuggestions, type Suggestion } from '../rules';
+import { qualified } from '../schema/model';
 import { FormFields, type OtherNode } from '../steps/StepForm';
+import { SchemaCheckPanel } from './SchemaCheckPanel';
 import { Button, Field, fullCount, Menu, RuleRow, Section, Select, Switch, useDisplayFormat } from '../ui';
 
 const apply = (edit: Parameters<ReturnType<typeof useProjectStore.getState>['apply']>[0]) => useProjectStore.getState().apply(edit);
@@ -56,7 +58,12 @@ function RuleSettings({ node, rule }: { node: GraphNode; rule: Rule }) {
         />
       </Field>
       <Switch id="rule-enabled" label="Enabled" checked={rule.enabled} onChange={(enabled) => update({ enabled })} />
-      {form && (
+      {rule.fromSchema && (
+        <p className="text-label text-ink-muted" data-testid="rule-from-schema">
+          From {qualified(rule.fromSchema.schema, rule.fromSchema.table)} in the schema. Change the DBML to change it, or use Add as rules to edit them yourself.
+        </p>
+      )}
+      {form && !rule.fromSchema && (
         <FormFields
           testId="rule-form"
           fields={form.fields}
@@ -67,11 +74,13 @@ function RuleSettings({ node, rule }: { node: GraphNode; rule: Rule }) {
           onChange={(params) => update({ params, label: ruleLabel({ type: rule.type, params }, namesIn(project)) })}
         />
       )}
-      <div>
-        <Button size="sm" variant="ghost" icon="cross" onClick={() => apply((p) => removeRule(p, node.id, rule.id))}>
-          Delete rule
-        </Button>
-      </div>
+      {!rule.fromSchema && (
+        <div>
+          <Button size="sm" variant="ghost" icon="cross" onClick={() => apply((p) => removeRule(p, node.id, rule.id))}>
+            Delete rule
+          </Button>
+        </div>
+      )}
     </div>
   );
 }
@@ -116,6 +125,7 @@ export function RulesPanel({ node }: { node: GraphNode }) {
   }));
   return (
     <Section title="Rules" count={node.rules.length} action={<Menu label="Add rule" button={{ variant: 'ghost', size: 'sm', icon: 'plus' }} items={items} />}>
+      <SchemaCheckPanel node={node} />
       {onSample && (
         <p className="pb-2 text-label text-ink-muted" data-testid="rules-sample-note">
           Checked on the sample, so counts are of sampled rows. Exports check these rules on the full data first.
@@ -135,13 +145,14 @@ export function RulesPanel({ node }: { node: GraphNode }) {
             const table = ruleScope(r) === 'table';
             const custom = r.type === 'expression' && typeof r.params.expression === 'string' && r.params.expression.trim();
             return (
-              <div key={r.id} data-testid={`rule-${r.type}`}>
+              <div key={r.id} data-testid={`rule-${r.type}`} data-from-schema={r.fromSchema ? '' : undefined}>
                 <RuleRow
                   // A rule naming another node shows that node's name as it is now.
                   name={custom ? 'Custom expression' : ruleRefs(r).length ? ruleLabel(r, names) : r.label}
                   expr={custom || undefined}
                   metric={table && res?.state === 'ok' ? `${fullCount(res.total, display)} ${res.total === 1 ? 'row' : 'rows'}` : undefined}
                   noFailingRows={table ? 'This rule is about the whole table, so there are no failing rows to show.' : undefined}
+                  source={r.fromSchema ? `From the schema: ${qualified(r.fromSchema.schema, r.fromSchema.table)}` : undefined}
                   severity={r.severity}
                   disabled={!r.enabled}
                   pending={!res || res.state === 'pending'}
