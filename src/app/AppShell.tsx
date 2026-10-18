@@ -342,7 +342,7 @@ export function AppShell() {
               // Every table designed in the Schema view, as a node holding its rows (the selected node loads into it).
               ...schemaTables.map((t) => ({ label: t.name, icon: 'schema' as const, hint: t.schema === 'public' ? 'Schema table' : `Schema table in ${t.schema}`, group: 'Schema tables', onSelect: () => addSchemaTable(t.schema, t.name) })),
               // Every step, each making a node of its own after the selected node (T opens the menu with its search focused).
-              ...STEP_GROUPS.flatMap((g) => stepForms().filter((f) => f.group === g).map((f) => ({ label: f.title, group: `${g} steps`, onSelect: () => void addStepFromMenu(f) }))),
+              ...STEP_GROUPS.flatMap((g) => stepForms().filter((f) => f.group === g).map((f) => ({ label: f.title, group: `${g} steps`, hint: f.newColumn ? 'New column' : undefined, onSelect: () => void addStepFromMenu(f) }))),
             ]}
           />
           <Button variant="ghost" icon="undo" iconOnly aria-label="Undo" title={withShortcut('Undo', 'undo')} disabled={!canUndo} onClick={undo} />

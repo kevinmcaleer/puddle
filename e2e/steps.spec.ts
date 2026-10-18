@@ -75,30 +75,51 @@ test('a step renamed by hand keeps its name; nodes take a name and notes', async
   await expect(page.getByLabel('Node notes')).toHaveValue('Contact details are not shared.');
 });
 
-test('nodes in a line merge into one and split back; a node splits at a step', async ({ page }) => {
+test('a group of nodes in a line merges into one node and splits back; a node splits at a step', async ({ page }) => {
   await transform(page);
   // From the Add menu, the next step is a node of its own after Transform 1.
   await addStepNode(page, 'Remove columns', 'Transform 2');
   await expect(page.getByTestId('wire-Transform 1->Transform 2')).toBeAttached();
   await page.getByTestId('step-settings').getByRole('button', { name: 'joined', exact: true }).click();
 
-  // A source can't be merged into a Transform, and says so.
-  await node(page, 'customers.csv').click({ modifiers: ['Shift'] });
-  await expect(page.getByRole('button', { name: 'Merge into one node' })).toBeDisabled();
-  await expect(page.getByRole('button', { name: 'Merge into one node' })).toHaveAttribute('title', 'Only Transform nodes can be merged.');
+  // Merging is on a group's menu: a group is the one way to bundle nodes. A source in the group can't merge, so
+  // the group's menu doesn't offer it.
+  await node(page, 'customers.csv').click();
+  await node(page, 'Transform 1').click({ modifiers: ['Shift'] });
+  await expect(page.getByRole('button', { name: 'Merge into one node' })).toHaveCount(0);
+  await page.keyboard.press('g');
+  const mixed = page.getByTestId('group-Group 1');
+  await expect(mixed).toBeVisible();
+  await mixed.click({ button: 'right' });
+  await expect(page.getByTestId('context-menu').getByRole('menuitem', { name: 'Ungroup' })).toBeVisible();
+  await expect(page.getByTestId('context-menu').getByRole('menuitem', { name: 'Merge into one node' })).toHaveCount(0);
+  await page.keyboard.press('Escape');
+  await page.getByRole('button', { name: 'Undo' }).click();
+  await expect(mixed).toHaveCount(0);
 
-  await node(page, 'Transform 1').click();
-  await node(page, 'Transform 2').click({ modifiers: ['Shift'] });
-  await page.getByRole('button', { name: 'Merge into one node' }).click();
-  await expect(node(page, 'Transform 2')).toHaveCount(0);
+  // Group the chain, from a node's menu, takes the whole line of Transforms; merged, they run as one node.
+  await node(page, 'Transform 1').click({ button: 'right' });
+  await page.getByTestId('context-menu').getByRole('menuitem', { name: 'Group the chain' }).click();
+  const card = page.getByTestId('group-Group 1');
+  await expect(card).toBeVisible();
+  await card.click({ button: 'right' });
+  await page.getByTestId('context-menu').getByRole('menuitem', { name: 'Merge into one node' }).click();
+  await expect(card).toHaveAttribute('data-outputs', 'Transform 1');
   await expect(steps(page)).toHaveText([/Trimmed name/, /Removed joined/]);
   await expect(page.getByTestId('wire-customers.csv->Transform 1')).toBeAttached();
 
-  await page.getByRole('button', { name: 'Split into the original nodes' }).click();
+  // Split from the same menu: the nodes come back, still in the group.
+  await card.click({ button: 'right' });
+  await page.getByTestId('context-menu').getByRole('menuitem', { name: 'Split into the original nodes' }).click();
+  await expect(card).toHaveAttribute('data-outputs', 'Transform 2');
+  await card.dblclick();
   await expect(node(page, 'Transform 2')).toBeVisible();
   await expect(page.getByTestId('wire-Transform 1->Transform 2')).toBeAttached();
   await page.getByRole('button', { name: 'Undo' }).click();
+  await page.getByRole('button', { name: 'Undo' }).click();
   await expect(node(page, 'Transform 2')).toHaveCount(0);
+  await card.dblclick();
+  await expect(node(page, 'Transform 1')).toBeVisible();
 
   // Splitting at the second step gives back the node it came from.
   await node(page, 'Transform 1').click();

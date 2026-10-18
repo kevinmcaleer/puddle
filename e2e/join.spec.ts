@@ -196,7 +196,12 @@ test('grouping the nodes before a join and ungrouping them keep it working', asy
   await expectOnCanvas(page, 'Trim');
   await node(page, 'Upper').click();
   await node(page, 'Trim').click({ modifiers: ['Shift'] });
-  await page.getByRole('button', { name: 'Merge into one node' }).click();
+  // Merging is on the group's menu; the group is opened first so its nodes and wires stay in view.
+  await page.keyboard.press('g');
+  await page.getByTestId('group-Group 1').dblclick();
+  await expect(page.getByTestId('frame-Group 1')).toBeVisible();
+  await node(page, 'Upper').click({ button: 'right' });
+  await page.getByTestId('context-menu').getByRole('menuitem', { name: 'Merge into one node' }).click();
   await expect(node(page, 'Trim')).not.toBeAttached();
   await expect(page.getByTestId('wire-Upper->Join 1')).toHaveAttribute('data-port', 'right');
   await expect(node(page, 'Join 1')).toHaveAttribute('data-status', 'ok');

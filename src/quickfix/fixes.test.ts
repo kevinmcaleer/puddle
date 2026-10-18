@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { stepDef } from '../compiler';
+import { STEP_GROUPS, stepForm } from '../steps';
 import { decimalFor, QUICK_FIXES, type FixContext } from './fixes';
 
 const ctx = (over: Partial<FixContext> = {}): FixContext => ({
@@ -22,6 +23,13 @@ describe('quick fixes', () => {
       expect(step.params.columns, fix.id).toEqual(['name', 'city']);
       expect(step.label, fix.id).toMatch(/name, city/);
     }
+  });
+
+  it('each carries its step’s Add menu group, and the chips come in the menu’s group order', () => {
+    for (const fix of QUICK_FIXES) expect(fix.group, fix.id).toBe(stepForm(fix.id)!.group);
+    const order = QUICK_FIXES.map((f) => STEP_GROUPS.indexOf(f.group));
+    expect(order).toEqual([...order].sort((a, b) => a - b));
+    expect(QUICK_FIXES.map((f) => f.id)).toEqual(['trimWhitespace', 'collapseSpaces', 'emptyToNull', 'removeNonPrinting', 'parseNumbers', 'parseDates', 'duplicateRows', 'changeCase']);
   });
 
   it('case uses the option picked', async () => {

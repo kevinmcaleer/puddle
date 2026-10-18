@@ -16,7 +16,7 @@ const firstHasTime = (ctx: DefaultsContext, columns: string[]) => columnKind(ctx
 defineStepForm({
   type: 'parseDates',
   title: 'Parse dates',
-  group: 'Dates',
+  group: 'Change type',
   fields: [
     { key: 'columns', label: 'Columns', kind: 'columns' },
     {
@@ -46,6 +46,7 @@ defineStepForm({
   type: 'extractDatePart',
   title: 'Extract date part',
   group: 'Dates',
+  newColumn: true,
   fields: [
     dateColumns,
     { key: 'part', label: 'Part', kind: 'select', options: options(DATE_PARTS), hint: 'Days of the week count from Monday as 1.' },
@@ -94,6 +95,7 @@ defineStepForm({
   type: 'dateDifference',
   title: 'Time between dates',
   group: 'Dates',
+  newColumn: true,
   fields: [
     { key: 'start', label: 'From', kind: 'column', expects: 'date' },
     { key: 'end', label: 'To', kind: 'column', expects: 'date' },

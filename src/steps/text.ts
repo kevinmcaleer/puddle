@@ -75,6 +75,7 @@ defineStepForm({
   type: 'textLength',
   title: 'Text length',
   group: 'Text',
+  newColumn: true,
   fields: [
     { key: 'column', label: 'Column', kind: 'column' },
     { key: 'into', label: 'New column', kind: 'text', mono: true },

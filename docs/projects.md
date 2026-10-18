@@ -4,9 +4,9 @@ A project is your flow: its sources (how to read them, not their data), nodes, s
 
 ## The projects list
 
-**All projects**, in the project menu (click the project's name in the toolbar), opens the home screen: your projects, newest first, with the samples and the recipe gallery below. **New project** starts an empty one, and each project's **...** menu renames, duplicates or deletes it. Undo on this screen brings back a project deleted by mistake (see [Undo and redo](#undo-and-redo)).
+**All projects**, in the project menu (click the project's name in the toolbar), opens the home screen: your projects, newest first, with the samples and the library (your templates and the recipes) below. **New project** starts an empty one, and each project's **...** menu renames, duplicates or deletes it. Undo on this screen brings back a project deleted by mistake (see [Undo and redo](#undo-and-redo)).
 
-![The projects home screen with samples and the recipe gallery](_static/screenshots/projects-home.png)
+![The projects home screen with samples and the library](_static/screenshots/projects-home.png)
 
 The project menu also renames the open project, and exports and imports projects and recipes.
 
@@ -46,23 +46,27 @@ The **Notes** tab in the inspector holds the project's notes: Markdown you write
 
 ![Writing the project's notes](_static/screenshots/projects-notes.png)
 
-## Templates
+## The library
 
-A template is a Transform node's steps, saved to use again in any project. Select a Transform and choose **Save as template** in the inspector. The template remembers which columns its steps read.
+The library holds two kinds of saved work, neither with any data in it. A **template** is a run of steps, saved from a Transform node or a group of them. A **recipe** is a template of a whole flow: its sources (as the columns they expect), steps, rules and outputs. The home screen lists your templates and the built-in recipes together.
 
-![Saving a Transform's steps as a template](_static/screenshots/templates-save.png)
+### Templates
 
-To use one, choose **From template** in **Add**. The library shows each template's steps and the columns it expects. When the input calls a column something else, choose which column to use instead; steps whose columns are missing are turned off rather than failing. Templates can be exported and imported as files too.
+To save a template, right-click a Transform and choose **Group the chain**, then right-click the group and choose **Save as template**; a single Transform has **Save as template** in the inspector, which takes the chain it is in. Pick the steps to keep. The template remembers which columns its steps read.
+
+![Saving a group's steps as a template](_static/screenshots/templates-save.png)
+
+To use one, select the node it should follow and choose **From template** in **Add**. The library shows each template's steps and the columns it expects. When the input calls a column something else, choose which column to use instead; steps whose columns are missing are turned off rather than failing. The template comes in as a chain of one-step Transform nodes, wired after the selected node and gathered into a group named after the template, just as if you had added the steps yourself (with **Add each step as a new node** off, it comes in as one Transform). Templates can be exported and imported as files too.
 
 ![The templates library, with a template's steps and expected columns](_static/screenshots/templates-library.png)
 
-## Recipes
+### Recipes
 
-A recipe is a whole pipeline with no data in it: sources (as the columns they expect), steps, rules and outputs. Share one with a colleague, or keep one for a job you do every month. **Export recipe** in the project menu saves the open project as a `.puddle-recipe.json`, leaving out rows, file names, pasted data and anything else private.
+A recipe is a template of a whole pipeline. Share one with a colleague, or keep one for a job you do every month. **Export recipe** in the project menu saves the open project as a `.puddle-recipe.json`, leaving out rows, file names, pasted data and anything else private.
 
-The recipe gallery on the home screen has a few to start from.
+The library on the home screen has a few recipes to start from.
 
-![The recipe gallery](_static/screenshots/recipes-gallery.png)
+![The library on the home screen, with its recipes](_static/screenshots/recipes-gallery.png)
 
 **Use recipe** (or **Open recipe** for a file) makes a new project from it, and asks you to attach a file for each source. Choose a file with the columns it expects and the project runs; if the columns are named differently, Puddle asks which to use.
 

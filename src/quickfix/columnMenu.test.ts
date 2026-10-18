@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { stepDef } from '../compiler';
 import '../steps';
-import { holdsReplacement, replacementProblem } from '../steps';
+import { holdsReplacement, replacementProblem, STEP_GROUPS, stepForm } from '../steps';
 import { columnActions, shown, type ColumnMenuContext } from './columnMenu';
 
 const ctx = (over: Partial<ColumnMenuContext> = {}): ColumnMenuContext => ({
@@ -35,6 +35,25 @@ describe('the column menu', () => {
       const step = await a.step(ctx());
       expect(stepDef(step.type)!.params.safeParse(step.params).success, a.label).toBe(true);
     }
+  });
+
+  // Principle 17: one grouping. A submenu is named after the group the Add menu files the step under, and the
+  // submenus come in the Add menu's order; a step that adds a column says so.
+  it('files every submenu entry under its step’s Add menu group, in the menu’s order, marking steps that add a column', async () => {
+    const entries = columnActions(ctx()).filter((a) => a.submenu);
+    expect(entries.length).toBeGreaterThan(10);
+    for (const a of entries) {
+      if (!('step' in a)) throw new Error(`${a.label} opens a dialog`);
+      const step = await a.step(ctx());
+      const form = stepForm(step.type)!;
+      expect(a.submenu, a.label).toBe(form.group);
+      expect(a.hint, a.label).toBe(form.newColumn ? 'New column' : undefined);
+    }
+    const submenus = [...new Set(entries.map((a) => a.submenu!))];
+    expect(submenus).toEqual(STEP_GROUPS.filter((g) => submenus.includes(g)));
+    expect(submenus).toEqual(['Clean', 'Change type', 'Columns', 'Rows', 'Text']);
+    expect(action(ctx(), 'Duplicate column')).toMatchObject({ submenu: 'Columns', hint: 'New column' });
+    expect(action(ctx(), 'Fill down').submenu).toBe('Rows');
   });
 
   it('a cell adds this value’s group first: replace it, or keep or remove the rows that have it', async () => {
