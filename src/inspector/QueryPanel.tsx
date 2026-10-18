@@ -29,6 +29,7 @@ export function QueryPanel({ node }: { node: QueryNode }) {
             Open query designer
           </Button>
         )}
+        {node.querySpec.sql != null && <p className="text-label text-ink-muted" data-testid="query-runs-sql">Runs as SQL written in the designer’s SQL view.</p>}
       </div>
       <Section title="Tables" count={tables.length}>
         {tables.length ? (
@@ -69,7 +70,7 @@ export function QueryPanel({ node }: { node: QueryNode }) {
           <p className="text-ink-muted">In the designer, drag a field of one table onto the matching field of another, such as a customer’s id onto the order’s customer id, or press Enter on a field.</p>
         )}
       </Section>
-      {!designing && fields.length > 0 && (
+      {!designing && fields.length > 0 && node.querySpec.sql == null && (
         <Section title="Fields" count={fields.length}>
           <p className="text-ink-muted">{fields.map((f) => (f.column === '*' ? `${label(f.port)}.*` : f.alias?.trim() || f.column)).join(', ')}</p>
         </Section>

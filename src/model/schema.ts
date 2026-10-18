@@ -269,6 +269,11 @@ export const QuerySpecZ = z.object({
   totals: z.boolean().default(false),
   /** How many "or" rows the grid has below Criteria: each row's conditions are ANDed, and the rows ORed. */
   orRows: z.number().int().nonnegative().default(0),
+  /**
+   * SQL written in the SQL view that the grid can't show: while it's here the Query runs it as written, reading its
+   * tables by name, and the design above waits, unchanged, until the SQL is discarded.
+   */
+  sql: z.string().optional(),
 });
 
 export const DEFAULT_QUERY_SPEC = { tables: [], joins: [], fields: [], distinct: false, totals: false, orRows: 0 } as const satisfies z.input<typeof QuerySpecZ>;

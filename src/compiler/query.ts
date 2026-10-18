@@ -404,10 +404,16 @@ export function criteriaClauses(spec: QuerySpec, sqlOf: (f: QueryField, c: Query
 }
 
 /** The query as one SELECT over its tables' CTEs. Assumes queryProblems found nothing. */
-export function compileQuery(spec: QuerySpec, tables: Array<QueryTable & { cte: string }>): string {
+export const compileQuery = (spec: QuerySpec, tables: Array<QueryTable & { cte: string }>): string => queryClauses(spec, tables).map((c) => c.join(' ')).join(' ');
+
+/**
+ * The query's clauses, each as its parts: SELECT, FROM with a part per join, then WHERE, GROUP BY, HAVING and ORDER
+ * BY when it has them. Assumes queryProblems found nothing.
+ */
+export function queryClauses(spec: QuerySpec, tables: Array<QueryTable & { cte: string }>): string[][] {
   const plan = joinPlan(spec, tables.map((t) => t.port))!;
   const cte = (port: number) => tables.find((t) => t.port === port)!.cte;
-  const from = [`${cte(plan.first)} AS ${tableAlias(plan.first)}`];
+  const from = [`FROM ${cte(plan.first)} AS ${tableAlias(plan.first)}`];
   for (const s of plan.steps) {
     const rel = `${cte(s.port)} AS ${tableAlias(s.port)}`;
     if (s.kind === 'CROSS') from.push(`CROSS JOIN ${rel}`);
@@ -422,11 +428,11 @@ export function compileQuery(spec: QuerySpec, tables: Array<QueryTable & { cte: 
   const order = single.filter((f) => f.sort !== 'none').map((f) => `${fieldTerm(spec, f)} ${f.sort === 'asc' ? 'ASC' : 'DESC'}`);
   const columns = queryColumns(spec, tables).map((c) => c.sql);
   return [
-    `SELECT ${spec.distinct ? 'DISTINCT ' : ''}${columns.join(', ')}`,
-    `FROM ${from.join(' ')}`,
-    ...(where.length ? [`WHERE ${where.join(' AND ')}`] : []),
-    ...(group.length ? [`GROUP BY ${group.join(', ')}`] : []),
-    ...(having.length ? [`HAVING ${having.join(' AND ')}`] : []),
-    ...(order.length ? [`ORDER BY ${order.join(', ')}`] : []),
-  ].join(' ');
+    [`SELECT ${spec.distinct ? 'DISTINCT ' : ''}${columns.join(', ')}`],
+    from,
+    ...(where.length ? [[`WHERE ${where.join(' AND ')}`]] : []),
+    ...(group.length ? [[`GROUP BY ${group.join(', ')}`]] : []),
+    ...(having.length ? [[`HAVING ${having.join(' AND ')}`]] : []),
+    ...(order.length ? [[`ORDER BY ${order.join(', ')}`]] : []),
+  ];
 }
