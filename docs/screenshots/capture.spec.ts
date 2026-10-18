@@ -360,7 +360,7 @@ test('projects, templates and recipes', async ({ page }) => {
   await shot(page, 'recipes-gallery', page.getByTestId('recipe-gallery'));
   await page.getByTestId('recipe-gallery').getByRole('listitem', { name: 'Tidy a contact list' }).getByRole('button', { name: 'Use recipe' }).click();
   await expect(page.getByTestId('recipe-attach')).toBeVisible();
-  const reconnect = page.getByRole('status').filter({ hasText: 'Files aren’t kept in this browser' });
+  const reconnect = page.getByRole('status').filter({ hasText: 'Files from last time' });
   if (await reconnect.isVisible()) await reconnect.getByRole('button', { name: 'Dismiss' }).click();
   await shot(page, 'recipes-attach');
 });
