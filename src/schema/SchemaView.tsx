@@ -13,9 +13,10 @@ import { addTable } from './edit';
 import { ExportImageDialog } from './ExportImageDialog';
 import { ExportMermaidDialog } from './ExportMermaidDialog';
 import { ExportSqlDialog } from './ExportSqlDialog';
+import { ImportSqlDialog } from './ImportSqlDialog';
 import { layoutDiagram } from './diagram/geometry';
 import { SchemaViews } from './SchemaViews';
-import { currentView, hideFromSchemaView, moveInSchemaView, setSchemaZoom, viewPositions, viewTables } from './views';
+import { currentView, hideFromSchemaView, openSchemaView, moveInSchemaView, setSchemaZoom, viewPositions, viewTables } from './views';
 import './schema.css';
 
 const apply = (edit: (p: Project) => Project) => useProjectStore.getState().apply(edit);
@@ -60,6 +61,9 @@ export function SchemaView() {
   const [caret, setCaret] = useState<number | null>(null);
   const [selected, setSelected] = useState<string[]>([]);
   const [exporting, setExporting] = useState<'sql' | 'image' | 'mermaid' | null>(null);
+  const [importing, setImporting] = useState(false);
+  // Tables to select on the diagram once they are drawn (those just imported).
+  const [choose, setChoose] = useState<string[]>();
   const view = currentView(project.schema);
   const only = useMemo(() => viewTables(view), [view]);
 
@@ -143,6 +147,9 @@ export function SchemaView() {
         >
           Add all tables
         </Button>
+        <Button size="sm" variant="ghost" icon="database" onClick={() => setImporting(true)}>
+          Import SQL
+        </Button>
         <Menu
           label="Export"
           button={{ size: 'sm', variant: 'ghost', icon: 'export', disabled: !schema.tables.length }}
@@ -217,6 +224,7 @@ export function SchemaView() {
                 onViewChange={(zoom) => useProjectStore.getState().amend((p) => setSchemaZoom(p, zoom))}
                 onSelectionChange={setSelected}
                 onHide={view && ((ids) => apply((p) => hideFromSchemaView(p, view.id, ids)))}
+                choose={choose}
               />
             ) : (
               <div className="puddle-schema__empty">
@@ -229,6 +237,18 @@ export function SchemaView() {
           </div>
         </section>
       </div>
+      {importing && (
+        <ImportSqlDialog
+          dbml={dbml}
+          schema={schema}
+          onClose={() => setImporting(false)}
+          onImport={(next, tables) => {
+            typing.settle();
+            apply((p) => setSchemaDbml(openSchemaView(p, undefined), next));
+            setChoose(tables);
+          }}
+        />
+      )}
       {exporting === 'sql' && <ExportSqlDialog schema={schema} onClose={() => setExporting(null)} />}
       {exporting === 'mermaid' && <ExportMermaidDialog schema={schema} detail={view?.detail ?? project.schema.detail} only={only} onClose={() => setExporting(null)} />}
       {exporting === 'image' && (
