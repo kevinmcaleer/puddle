@@ -51,6 +51,8 @@ import { PROVIDER_IDS, PROVIDERS, useSync } from '../sync';
 import { openSyncDialog } from '../sync/dialogs';
 import { SyncConflictBanner } from '../sync/SyncDialogs';
 import { useSession } from './session';
+import { showView } from './views';
+import { ViewSwitcher } from './ViewSwitcher';
 
 function EngineBadge({ status }: { status: EngineStatus }) {
   if (status.state === 'loading') return <StatusBadge status="pending">Starting DuckDB</StatusBadge>;
@@ -275,6 +277,9 @@ export function AppShell() {
     'open-node': () => openSelected(focusInspector),
     connect: startWiring,
     cancel: cancelWiring,
+    'show-canvas': () => showView(project, 'canvas'),
+    'show-relationships': () => showView(project, 'relationships'),
+    'show-designer': () => showView(project, 'designer'),
   };
   useShortcuts(actions, (text) => void addPastedText(text));
 
@@ -373,8 +378,11 @@ export function AppShell() {
         />
 
         <div className={inspectorOpen ? 'grid min-h-0 grid-cols-[minmax(0,1fr)_var(--size-inspector)]' : 'grid min-h-0 grid-cols-[minmax(0,1fr)]'}>
-          <main ref={canvas} tabIndex={-1} className="min-h-0 focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-brand" aria-label="Canvas">
-            {relationshipsOpen ? <Relationships /> : designing?.type === 'query' ? <QueryDesigner node={designing} /> : <Canvas onAddSource={chooseFiles} onLayout={layoutFlow} />}
+          <main ref={canvas} tabIndex={-1} className="grid min-h-0 grid-rows-[auto_minmax(0,1fr)] focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-brand" aria-label="Canvas">
+            <ViewSwitcher />
+            <div className="min-h-0">
+              {relationshipsOpen ? <Relationships /> : designing?.type === 'query' ? <QueryDesigner node={designing} /> : <Canvas onAddSource={chooseFiles} onLayout={layoutFlow} />}
+            </div>
           </main>
 
           {inspectorOpen && (
