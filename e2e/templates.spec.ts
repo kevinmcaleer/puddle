@@ -1,5 +1,5 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
-import { addFiles, addStep, addStepNode, cell, fixture, node, openApp } from './helpers/app';
+import { addFiles, addStepNode, cell, fixture, node, openApp } from './helpers/app';
 
 const steps = (page: Page) => page.getByRole('listbox', { name: 'Applied steps' }).getByRole('option');
 
@@ -34,17 +34,25 @@ const storedTemplates = (page: Page) =>
       }),
   );
 
-test('a node saved as a template goes into another project, with a missing column mapped or left off', async ({ page }) => {
+test('a chain of nodes grouped and saved as a template goes into another project as a chain, with a missing column mapped or left off', async ({ page }) => {
   await openApp(page);
   await addFiles(page, [fixture('customers.csv')]);
   await node(page, 'customers.csv').click();
   await addStepNode(page, 'Trim whitespace');
-  await addStep(page, 'Change case');
-  await expect(steps(page)).toHaveText([/Trimmed name/, /Changed name to title case/]);
+  await addStepNode(page, 'Change case', 'Transform 2');
+  await expect(steps(page)).toHaveText([/Changed name to title case/]);
 
-  // Save as template: the steps, and the input columns they read.
-  await page.getByRole('button', { name: 'Save as template' }).click();
+  // Group the chain gathers the line of Transforms; the group's menu saves their steps as a template.
+  await node(page, 'Transform 1').click({ button: 'right' });
+  await page.getByTestId('context-menu').getByRole('menuitem', { name: 'Group the chain' }).click();
+  const card = page.getByTestId('group-Group 1');
+  await expect(card).toBeVisible();
+  await card.click({ button: 'right' });
+  await page.getByTestId('context-menu').getByRole('menuitem', { name: 'Save as template…' }).click();
   const save = page.getByRole('dialog', { name: 'Save as template' });
+  await expect(save.getByLabel('Name', { exact: true })).toHaveValue('Group 1');
+  await expect(save.getByRole('switch', { name: /^Transform 1: Trimmed name/ })).toBeChecked();
+  await expect(save.getByRole('switch', { name: /^Transform 2: Changed name to title case/ })).toBeChecked();
   await expect(save.getByTestId('template-expected')).toHaveText('Abcname');
   await save.getByLabel('Name', { exact: true }).fill('Tidy names');
   await save.getByLabel('Description').fill('Trims and title-cases names.');
@@ -68,18 +76,22 @@ test('a node saved as a template goes into another project, with a missing colum
   await library.getByLabel('Use for name').selectOption('full_name');
   await library.getByRole('button', { name: 'Insert template' }).click();
 
-  await expect(node(page, 'Tidy names')).toHaveAttribute('data-status', 'ok');
-  await expect(steps(page)).toHaveText([/Trimmed full_name/, /Changed full_name to title case/]);
-  await steps(page).nth(1).click();
-  await expect(page.getByTestId('results-title')).toHaveText('Tidy names · step 2');
+  // It comes in as a chain of one-step nodes in a group named after the template, the last node selected.
+  const inserted = page.getByTestId('group-Tidy names');
+  await expect(inserted).toHaveAttribute('data-status', 'ok');
+  await expect(inserted).toHaveAttribute('data-outputs', 'Transform 2');
+  await expect(page.getByTestId('wire-contacts.csv->Transform 1')).toBeAttached();
+  await expect(steps(page)).toHaveText([/Changed full_name to title case/]);
+  await expect(page.getByTestId('results-title')).toHaveText('Transform 2');
   await expect(cell(page, 1, 0)).toHaveText('Ada Lovelace');
   await expect(cell(page, 1, 1)).toHaveText('Grace Hopper');
 
-  // Inserting was one undo step: the node and its wire go together.
+  // Inserting was one undo step: the nodes, their wires and the group go together.
   await page.getByRole('button', { name: 'Undo' }).click();
-  await expect(node(page, 'Tidy names')).toHaveCount(0);
+  await expect(inserted).toHaveCount(0);
+  await expect(node(page, 'Transform 1')).toHaveCount(0);
   await page.getByRole('button', { name: 'Redo' }).click();
-  await expect(node(page, 'Tidy names')).toHaveAttribute('data-status', 'ok');
+  await expect(inserted).toHaveAttribute('data-status', 'ok');
 
   // Left unmapped, the steps arrive turned off and say why.
   await node(page, 'contacts.csv').click();
@@ -87,7 +99,7 @@ test('a node saved as a template goes into another project, with a missing colum
   await templateList(library).getByRole('option', { name: 'Tidy names' }).click();
   await expect(library.getByLabel('Use for name')).toHaveValue('');
   await library.getByRole('button', { name: 'Insert template' }).click();
-  await expect(node(page, 'Tidy names 2')).toHaveAttribute('data-status', 'ok');
+  await expect(page.getByTestId('group-Tidy names 2')).toHaveAttribute('data-status', 'ok');
   await expect(page.getByTestId('canvas-notice')).toContainText('2 of 2 steps arrived turned off');
   await expect(steps(page).nth(0)).toHaveAttribute('aria-disabled', 'true');
   // Playwright won't click an aria-disabled option; Enter selects it as a click would.

@@ -2,7 +2,7 @@
 import { parseLocale } from '../compiler';
 import type { Detection } from '../dates';
 import type { ColumnSchema, Step } from '../model';
-import { newStep, relabel } from '../steps';
+import { newStep, relabel, STEP_GROUPS, stepForm, type StepGroup } from '../steps';
 
 export interface FixContext {
   /** Columns selected in the results table; every fix acts on all of them in one step. */
@@ -14,9 +14,12 @@ export interface FixContext {
 }
 
 export interface QuickFixDef {
+  /** The step type the fix adds. */
   id: string;
   /** The chip's label: short. */
   label: string;
+  /** The step's group, the same one the column menu and the Add menu file it under. */
+  group: StepGroup;
   /** Options shown as a menu from the chip, e.g. Case. */
   options?: { id: string; label: string }[];
   build: (ctx: FixContext, option?: string) => Step | Promise<Step>;
@@ -39,9 +42,16 @@ export const make = (type: string, ctx: FixContext, params: Record<string, unkno
   return relabel({ ...step, params: { ...step.params, ...params } });
 };
 
-const onColumns = (type: string, label: string): QuickFixDef => ({ id: type, label, build: (ctx) => make(type, ctx, { columns: ctx.columns }) });
+/** The group of the step a fix adds: one grouping, shared with the column menu and the Add menu. */
+const groupOf = (type: string): StepGroup => {
+  const form = stepForm(type);
+  if (!form) throw new Error(`Quick fix ${type} has no step form.`);
+  return form.group;
+};
 
-export const QUICK_FIXES: QuickFixDef[] = [
+const onColumns = (type: string, label: string): Omit<QuickFixDef, 'group'> => ({ id: type, label, build: (ctx) => make(type, ctx, { columns: ctx.columns }) });
+
+const FIXES: Omit<QuickFixDef, 'group'>[] = [
   onColumns('trimWhitespace', 'Trim'),
   {
     id: 'changeCase',
@@ -73,3 +83,6 @@ export const QUICK_FIXES: QuickFixDef[] = [
     build: (ctx) => make('duplicateRows', ctx, { columns: ctx.columns, keep: 'first' }),
   },
 ];
+
+/** The quick fixes in the order the chips show them: by their step's group, as the menus list the groups. */
+export const QUICK_FIXES: QuickFixDef[] = FIXES.map((f) => ({ ...f, group: groupOf(f.id) })).sort((a, b) => STEP_GROUPS.indexOf(a.group) - STEP_GROUPS.indexOf(b.group));

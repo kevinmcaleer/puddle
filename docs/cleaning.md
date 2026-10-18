@@ -2,11 +2,11 @@
 
 Cleaning in Puddle is a chain of steps, each in a Transform node wired after the one before. Each step does one thing, such as trimming spaces or parsing dates, and the steps run in order along the wires. Nothing changes your file: the steps are a recipe that DuckDB runs each time you look at the data.
 
-There are three ways to add a step: the quick-fix bar, which covers the common fixes in one click; the column menu, which opens when you right-click a column in the results; and the **Add** menu in the toolbar, which has every step. Each gives the step a Transform node of its own after the node you are looking at, so the canvas reads like Power Query's applied steps laid out left to right. A Transform can also hold several steps: **Add step** in the inspector adds to the node you have open.
+There are three ways to add a step: the quick-fix bar, which covers the common fixes in one click; the column menu, which opens when you right-click a column in the results; and the **Add** menu in the toolbar, which has every step. All three file the steps under the same groups (Clean, Change type, Columns, Rows, Text, Dates, Numbers, Reshape and Advanced), so a step is found under one name wherever it is offered. Each gives the step a Transform node of its own after the node you are looking at, so the canvas reads like Power Query's applied steps laid out left to right. A Transform can also hold several steps: **Add step** in the inspector adds to the node you have open.
 
 ## Quick fixes
 
-Select one or more column headers in the results table, and the quick-fix bar appears above it. Click a header to select it, Ctrl+click (Command+click on a Mac) to add another, or Shift+click to select a range.
+Select one or more column headers in the results table, and the quick-fix bar appears above it. Click a header to select it, Ctrl+click (Command+click on a Mac) to add another, or Shift+click to select a range. The chips sit in the order of the step groups, Clean first, then Change type, Rows and Text; hover one to see its group.
 
 ![The contact list with name and city selected, and the quick-fix bar above the results](_static/screenshots/quickfix-selected.png)
 
@@ -15,13 +15,13 @@ Select one or more column headers in the results table, and the quick-fix bar ap
 | Fix | What it adds |
 | --- | --- |
 | Trim | Removes spaces from both ends of each value. |
-| Case | UPPER CASE, lower case, Title Case or Sentence case. |
 | Collapse spaces | Turns runs of spaces inside a value into one. |
 | Empty to null | Treats empty text as a missing value. |
+| Non-printing | Removes invisible characters. |
 | Parse numbers | Reads text such as `£1,234.50` as a number. |
 | Parse dates | Reads text as dates, detecting every format the column uses. |
-| Non-printing | Removes invisible characters. |
 | Remove duplicates | Removes rows that repeat in the selected columns. |
+| Case | UPPER CASE, lower case, Title Case or Sentence case. |
 
 ![The Case menu: UPPER CASE, lower case, Title Case and Sentence case](_static/screenshots/quickfix-case-menu.png)
 
@@ -57,14 +57,15 @@ Right-click a column header in the results table, or click the arrow at the righ
 
 ![The column menu for the city column](_static/screenshots/column-menu.png)
 
-The top of the menu has the steps you reach for most: **Replace values**, **Remove matching rows**, **Keep matching rows**, **Remove empty rows**, **Remove duplicates**, **Keep duplicates** and the two sorts, then submenus for the rest (below). Under them, **Summarise** has **Group by this column** (or these columns) and, for one column, **Pivot into columns**; both open the pivot editor, where you choose what to summarise and how (see {doc}`reshaping`). **Keep duplicates** shows only the rows whose value in the selected columns appears more than once, every copy of them, so you can look at the repeats before deciding what to do. The submenus hold:
+The top of the menu has the steps you reach for most: **Replace values**, **Remove matching rows**, **Keep matching rows**, **Remove empty rows**, **Remove duplicates**, **Keep duplicates** and the two sorts, then a submenu for each step group the rest fall in, named as the **Add** menu names them (below). Under them, **Summarise** has **Group by this column** (or these columns) and, for one column, **Pivot into columns**; both open the pivot editor, where you choose what to summarise and how (see {doc}`reshaping`). **Keep duplicates** shows only the rows whose value in the selected columns appears more than once, every copy of them, so you can look at the repeats before deciding what to do. The submenus hold:
 
 | Submenu | What's in it |
 | --- | --- |
-| Clean | Trim, Collapse spaces, Remove non-printing characters, Empty text to null, Fill down, Fill up. |
-| Text | UPPER CASE, lower case, Title Case, Find and replace, Split column. |
+| Clean | Trim, Collapse spaces, Remove non-printing characters, Empty text to null. |
 | Change type | Parse numbers, Parse dates, To text, To whole number, To decimal number. |
-| Columns | Rename, Duplicate column, Move to the front, Remove column, Remove other columns. |
+| Columns | Rename, Duplicate column (marked New column), Split column, Move to the front, Remove column, Remove other columns. |
+| Rows | Fill down, Fill up. |
+| Text | UPPER CASE, lower case, Title Case, Find and replace. |
 
 ![The Text submenu open beside the column menu](_static/screenshots/column-menu-submenu.png)
 
@@ -84,16 +85,16 @@ A number or date column can't hold a word such as `empty`. Turn on **Change to t
 
 ### Each step as a new node
 
-**Add each step as a new node** is on for a new project: every step you add from the Add menu or the results table (by the column menu or a quick fix) gets a Transform node of its own, wired after the one you're viewing, the way Power Query lists its applied steps. Turn it off, at the bottom of the column menu or in the project settings, to stack those steps into the Transform you're viewing instead. Viewing an earlier step of a Transform always adds the step in place, after the one you're viewing. A stacked Transform's card lists its steps on the canvas, and [Merging Transform nodes](#merging-transform-nodes) turns a line of one-step nodes into one and back.
+**Add each step as a new node** is on for a new project: every step you add from the Add menu or the results table (by the column menu or a quick fix) gets a Transform node of its own, wired after the one you're viewing, the way Power Query lists its applied steps. Turn it off, at the bottom of the column menu or in the project settings, to stack those steps into the Transform you're viewing instead. Viewing an earlier step of a Transform always adds the step in place, after the one you're viewing. A stacked Transform's card lists its steps on the canvas, and a group of one-step nodes can [merge into one node](#merging-a-group-into-one-node) and come apart again.
 
 ## The Add menu
 
-**Add** in the toolbar lists every step after the sources and the other nodes, grouped as Clean, Columns, Rows, Text, Dates, Numbers, Reshape and Advanced. Type to search it, or press T on the canvas to open it with the search focused. A new step starts on the columns selected in the results, and goes after the selected node. **Add step** in the inspector lists the same steps and adds to the open node (/ opens it with its search focused).
+**Add** in the toolbar lists every step after the sources and the other nodes, grouped as Clean, Change type, Columns, Rows, Text, Dates, Numbers, Reshape and Advanced. Steps that add a column rather than changing one, such as Duplicate column, Text length and Time between dates, are marked **New column**. Type to search it (a group's name finds its steps), or press T on the canvas to open it with the search focused. A new step starts on the columns selected in the results, and goes after the selected node. **Add step** in the inspector lists the same steps, in the same groups, and adds to the open node (/ opens it with its search focused).
 
 ![The Add menu with its search box](_static/screenshots/steps-add-menu.png)
 
 The {doc}`step-reference` describes them all.
 
-## Merging Transform nodes
+## Merging a group into one node
 
-Several Transform nodes in a line can become one: select them, then choose **Merge into one node** on the selection bar. The merged node runs their steps in order, and **Split into the original nodes** in the inspector puts them back. To tidy the canvas without changing any nodes, group them instead (see [Groups](canvas.md#groups)).
+A group is the way to bundle nodes (see [Groups](canvas.md#groups)): right-click a Transform and choose **Group the chain** to gather the line of Transforms it is in. A group that is a line of Transforms can also run as one node: right-click the group and choose **Merge into one node**. The merged node runs their steps in order, and **Split into the original nodes**, on the group's menu or in the inspector, puts them back, still in the group. Either way the data that comes out is the same; merging only changes how many nodes the canvas shows. The group's menu also saves the steps as a template (see [Templates](projects.md#templates)).

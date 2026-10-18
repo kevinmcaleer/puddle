@@ -48,10 +48,13 @@ type FieldKind =
   /** A column of the node picked in the field named by `node`. */
   | { key: string; label: string; kind: 'nodeColumn'; node: string; hint?: string };
 
-export type StepGroup = 'Clean' | 'Columns' | 'Rows' | 'Text' | 'Dates' | 'Numbers' | 'Reshape' | 'Advanced';
+export type StepGroup = 'Clean' | 'Change type' | 'Columns' | 'Rows' | 'Text' | 'Dates' | 'Numbers' | 'Reshape' | 'Advanced';
 
-/** The groups in the order the step menus list them. */
-export const STEP_GROUPS: StepGroup[] = ['Clean', 'Columns', 'Rows', 'Text', 'Dates', 'Numbers', 'Reshape', 'Advanced'];
+/**
+ * The groups in the order the step menus list them. The quick-fix bar, the column menu and the Add menu share this
+ * one grouping: a step sits under the same name wherever it is offered.
+ */
+export const STEP_GROUPS: StepGroup[] = ['Clean', 'Change type', 'Columns', 'Rows', 'Text', 'Dates', 'Numbers', 'Reshape', 'Advanced'];
 
 export interface DefaultsContext {
   /** Columns selected in the results table. */
@@ -75,6 +78,8 @@ export interface StepForm {
   type: string;
   title: string;
   group: StepGroup;
+  /** The step adds a column rather than changing one; the menus mark it "New column". */
+  newColumn?: true;
   fields: FieldSpec[];
   defaults: (ctx: DefaultsContext) => Record<string, unknown>;
   /** Read the step input's first row before choosing defaults (promote headers). */

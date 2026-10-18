@@ -334,8 +334,13 @@ test('projects, templates and recipes', async ({ page }) => {
 
   await node(page, 'contacts.csv').click();
   await addStepNode(page, 'Trim whitespace');
-  await addStep(page, 'Change case');
-  await page.getByRole('button', { name: 'Save as template' }).click();
+  await addStepNode(page, 'Change case', 'Transform 2');
+  await node(page, 'Transform 1').click({ button: 'right' });
+  await page.getByTestId('context-menu').getByRole('menuitem', { name: 'Group the chain' }).click();
+  await expect(page.getByTestId('group-Group 1')).toBeVisible();
+  await page.getByTestId('group-Group 1').click({ button: 'right' });
+  await shot(page, 'groups-menu', page.getByTestId('context-menu'));
+  await page.getByTestId('context-menu').getByRole('menuitem', { name: 'Save as template…' }).click();
   const save = page.getByRole('dialog', { name: 'Save as template' });
   await save.getByLabel('Name', { exact: true }).fill('Tidy names');
   await save.getByLabel('Description').fill('Trims and title-cases names.');

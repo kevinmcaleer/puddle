@@ -98,7 +98,7 @@ export function Menu({
   }
 
   const q = query.trim().toLowerCase();
-  const shown = q ? items.filter((i) => `${i.label} ${i.hint ?? ''}`.toLowerCase().includes(q)) : items;
+  const shown = q ? items.filter((i) => `${i.label} ${i.hint ?? ''} ${i.group ?? ''}`.toLowerCase().includes(q)) : items;
   const pick = (item: MenuItem) => {
     setOpen(false);
     // Focus goes back to the menu's button before the item runs, so a dialog the item opens returns focus there.

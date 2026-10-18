@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
 import { useFlowStore } from '../flow/status';
 import { useStepColumns } from '../inspector/useStepColumns';
-import { inputEdges, nodeById, useProject, type TransformNode } from '../model';
+import { groupOf, inputEdges, nodeById, useProject, type Step, type TransformNode } from '../model';
 import { Banner, Button, Dialog, Field, StepList, Switch, TextInput } from '../ui';
 import { insertFeed, insertTemplateAfter, openTemplateDialog, saveAsTemplate, useTemplateDialog } from './actions';
 import { editTemplate, refreshTemplates, removeTemplate, templateOperations, useTemplates } from './library';
@@ -20,17 +20,24 @@ const onEnter = (then: () => void) => (e: KeyboardEvent) => {
   then();
 };
 
-/** Save a Transform node's steps, all of them or some, as a template. */
-function SaveDialog({ node }: { node: TransformNode }) {
+/**
+ * Save the steps of a chain of Transform nodes (one node, or a line of them, in order), all of them or some, as a
+ * template. A chain that is a group is named after the group.
+ */
+function SaveDialog({ nodes }: { nodes: TransformNode[] }) {
   const project = useProject();
-  const [name, setName] = useState(node.name);
+  const head = nodes[0]!;
+  const group = nodes.length > 1 ? groupOf(project, head.id) : undefined;
+  const [name, setName] = useState(group?.name ?? head.name);
   const [description, setDescription] = useState('');
-  const [picked, setPicked] = useState(() => new Set(node.steps.filter((s) => !notTemplatable(s)).map((s) => s.id)));
-  const steps = node.steps.filter((s) => picked.has(s.id));
-  const first = node.steps.findIndex((s) => picked.has(s.id));
+  // Every step along the chain, with the node it comes from, so the list reads in the order the data runs.
+  const all = nodes.flatMap((n) => n.steps.map((step) => ({ node: n, step })));
+  const [picked, setPicked] = useState(() => new Set(all.filter((s) => !notTemplatable(s.step)).map((s) => s.step.id)));
+  const steps: Step[] = all.filter((s) => picked.has(s.step.id)).map((s) => s.step);
+  const firstPicked = all.find((s) => picked.has(s.step.id)) ?? all[0];
   // The columns arriving at the first picked step are what the template's steps start from.
-  const input = useStepColumns(project, node.id, Math.max(0, first));
-  const wired = inputEdges(project, node.id).length > 0;
+  const input = useStepColumns(project, firstPicked?.node.id ?? head.id, firstPicked ? firstPicked.node.steps.findIndex((s) => s.id === firstPicked.step.id) : 0);
+  const wired = inputEdges(project, head.id).length > 0;
   const expected = expectedColumns(steps, input);
   const ready = steps.length > 0 && input.length > 0 && name.trim() !== '';
   return (
@@ -45,7 +52,9 @@ function SaveDialog({ node }: { node: TransformNode }) {
       }}
       className="w-[560px] max-w-[calc(100vw-32px)]"
     >
-      <p className="text-label text-ink-muted">A template keeps the steps and the columns they expect, never data or sources. Every project in this browser can use it.</p>
+      <p className="text-label text-ink-muted">
+        A template keeps {nodes.length > 1 ? `the steps of these ${nodes.length} nodes` : 'the steps'} and the columns they expect, never data or sources. Every project in this browser can use it. To keep a whole flow, with its sources, export a recipe instead.
+      </p>
       <Field label="Name" htmlFor="template-name">
         <TextInput id="template-name" value={name} autoFocus onChange={(e) => setName(e.target.value)} />
       </Field>
@@ -54,12 +63,13 @@ function SaveDialog({ node }: { node: TransformNode }) {
       </Field>
       <div className="flex flex-col gap-1" role="group" aria-label="Steps">
         <span className="ui-eyebrow">Steps</span>
-        {node.steps.map((s) => {
+        {all.map(({ node, step: s }) => {
           const reason = notTemplatable(s);
+          const label = nodes.length > 1 ? `${node.name}: ${s.label}` : s.label;
           return (
             <div key={s.id} title={reason}>
               <Switch
-                label={reason ? `${s.label} (can’t go in a template)` : s.label}
+                label={reason ? `${label} (can’t go in a template)` : label}
                 checked={picked.has(s.id)}
                 onChange={(on) => {
                   if (reason) return;
@@ -213,7 +223,7 @@ function LibraryDialog() {
       {unreadable > 0 && <Banner tone="warn">{unreadable === 1 ? 'One template' : `${unreadable} templates`} can’t be read here: saved by a newer Puddle, or damaged.</Banner>}
       <div className="flex max-h-[40vh] flex-col gap-1 overflow-auto" role="listbox" aria-label="Templates library">
         {!templates.length ? (
-          <p className="text-ink-muted">No templates yet. Select a Transform node and choose Save as template in the inspector.</p>
+          <p className="text-ink-muted">No templates yet. Select a Transform node, or a group of them, and choose Save as template. A whole flow, sources and all, is a recipe: see Export recipe in the project menu.</p>
         ) : !shown.length ? (
           <p className="text-ink-muted">No templates match.</p>
         ) : (
@@ -275,6 +285,6 @@ export function TemplateDialogs() {
   const project = useProject();
   if (!dialog) return null;
   if (dialog.kind === 'library') return <LibraryDialog />;
-  const node = nodeById(project, dialog.nodeId);
-  return node?.type === 'transform' ? <SaveDialog key={node.id} node={node} /> : null;
+  const nodes = dialog.nodeIds.map((id) => nodeById(project, id)).filter((n): n is TransformNode => n?.type === 'transform');
+  return nodes.length ? <SaveDialog key={nodes.map((n) => n.id).join()} nodes={nodes} /> : null;
 }
