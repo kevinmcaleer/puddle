@@ -20,6 +20,7 @@ canvas
 cleaning
 combining
 query-designer
+relationships
 reshaping
 quality-rules
 exporting

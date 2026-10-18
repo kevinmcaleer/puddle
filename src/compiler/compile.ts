@@ -279,6 +279,16 @@ export function compileTypeSniff(project: Project, target: Target, columns: stri
   return `SELECT ${parts.join(', ')} FROM (${compile(project, target).sql})`;
 }
 
+/**
+ * Whether each of a node's columns has no repeated values, in one row: `u<i>` is true when column i has no value
+ * twice. Empty values don't count, so a key with gaps can still be the "one" end of a relationship.
+ */
+export function compileKeyCheck(project: Project, nodeId: string, columns: string[], options: CompileOptions = {}): string {
+  if (!columns.length) throw new RangeError('No columns to check.');
+  const parts = columns.map((c, i) => `count(${ident(c)}) = count(DISTINCT ${ident(c)}) AS ${ident(`u${i}`)}`);
+  return `SELECT ${parts.join(', ')} FROM (${compile(project, { nodeId }, options).sql})`;
+}
+
 /** The target's full row count. */
 export function compileCount(project: Project, target: Target): string {
   return `SELECT COUNT(*) AS n FROM (${compile(project, target).sql})`;

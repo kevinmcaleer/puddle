@@ -153,9 +153,9 @@ export function groupSelection() {
   select(null);
 }
 
-/** Move the selection along the wires (the arrow keys). Selecting doesn't view; V does. Not while the Query designer covers the canvas. */
+/** Move the selection along the wires (the arrow keys). Selecting doesn't view; V does. Not while the Query designer or the relationships view covers the canvas. */
 export function selectNeighbour(direction: Direction) {
-  if (useSession.getState().designerNodeId) return;
+  if (useSession.getState().designerNodeId || useSession.getState().relationshipsOpen) return;
   const project = useProjectStore.getState().history.present;
   const next = neighbour(project, useSession.getState().selectedNodeId, direction);
   if (!next) return;
