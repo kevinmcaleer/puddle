@@ -1,8 +1,8 @@
 # Cleaning data
 
-Cleaning in Puddle is a list of steps in a Transform node. Each step does one thing, such as trimming spaces or parsing dates, and the steps run in order. Nothing changes your file: the steps are a recipe that DuckDB runs each time you look at the data.
+Cleaning in Puddle is a chain of steps, each in a Transform node wired after the one before. Each step does one thing, such as trimming spaces or parsing dates, and the steps run in order along the wires. Nothing changes your file: the steps are a recipe that DuckDB runs each time you look at the data.
 
-There are three ways to add steps: the quick-fix bar, which covers the common fixes in one click; the column menu, which opens when you right-click a column in the results; and the **Add step** menu, which has every step.
+There are three ways to add a step: the quick-fix bar, which covers the common fixes in one click; the column menu, which opens when you right-click a column in the results; and the **Add** menu in the toolbar, which has every step. Each gives the step a Transform node of its own after the node you are looking at, so the canvas reads like Power Query's applied steps laid out left to right. A Transform can also hold several steps: **Add step** in the inspector adds to the node you have open.
 
 ## Quick fixes
 
@@ -27,11 +27,11 @@ Select one or more column headers in the results table, and the quick-fix bar ap
 
 A fix lands where you're looking. On a source, it adds a Transform node after the source. On a Transform, it adds the step after the one you're viewing, so you can fix things in the order you find them.
 
-![After three fixes: a Transform node with three steps, and tidy names and cities](_static/screenshots/quickfix-applied.png)
+![After three fixes: three Transform nodes in a line, and tidy names and cities](_static/screenshots/quickfix-applied.png)
 
 ## Steps in the inspector
 
-Select a Transform node to see its **Applied steps** in the inspector. Each is labelled by what it did, such as "Trimmed name, city". Select a step to change its settings below the list.
+Select a Transform node to see its **Applied steps** in the inspector. Each is labelled by what it did, such as "Trimmed name, city". A node with one step shows that step's settings straight away; with several, select a step to change its settings below the list.
 
 ![A Transform's applied steps, with the selected step's settings below](_static/screenshots/steps-settings.png)
 
@@ -84,13 +84,13 @@ A number or date column can't hold a word such as `empty`. Turn on **Change to t
 
 ### Each step as a new node
 
-Turn on **Add each step as a new node**, at the bottom of the column menu or in the project settings, to give each step you add from the results table (by the column menu or a quick fix) a Transform node of its own, wired after the one you're viewing. The canvas then shows every step as its own node, the way Power Query lists its applied steps. Viewing an earlier step of a Transform still adds the step in place, after the one you're viewing.
+**Add each step as a new node** is on for a new project: every step you add from the Add menu or the results table (by the column menu or a quick fix) gets a Transform node of its own, wired after the one you're viewing, the way Power Query lists its applied steps. Turn it off, at the bottom of the column menu or in the project settings, to stack those steps into the Transform you're viewing instead. Viewing an earlier step of a Transform always adds the step in place, after the one you're viewing. A stacked Transform's card lists its steps on the canvas, and [Merging Transform nodes](#merging-transform-nodes) turns a line of one-step nodes into one and back.
 
-## The Add step menu
+## The Add menu
 
-**Add step**, above the step list, has every step, grouped as Clean, Columns, Rows, Text, Dates, Numbers, Reshape and Advanced. Type to search it. A new step starts on the columns selected in the results.
+**Add** in the toolbar lists every step after the sources and the other nodes, grouped as Clean, Columns, Rows, Text, Dates, Numbers, Reshape and Advanced. Type to search it, or press T on the canvas to open it with the search focused. A new step starts on the columns selected in the results, and goes after the selected node. **Add step** in the inspector lists the same steps and adds to the open node (/ opens it with its search focused).
 
-![The Add step menu with its search box](_static/screenshots/steps-add-menu.png)
+![The Add menu with its search box](_static/screenshots/steps-add-menu.png)
 
 The {doc}`step-reference` describes them all.
 

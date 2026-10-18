@@ -50,6 +50,9 @@ type FieldKind =
 
 export type StepGroup = 'Clean' | 'Columns' | 'Rows' | 'Text' | 'Dates' | 'Numbers' | 'Reshape' | 'Advanced';
 
+/** The groups in the order the step menus list them. */
+export const STEP_GROUPS: StepGroup[] = ['Clean', 'Columns', 'Rows', 'Text', 'Dates', 'Numbers', 'Reshape', 'Advanced'];
+
 export interface DefaultsContext {
   /** Columns selected in the results table. */
   selected: string[];

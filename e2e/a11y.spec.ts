@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import { expectAccessible } from './helpers/axe';
-import { addFiles, addStep, expectRows, fixture, node, openApp } from './helpers/app';
+import { addFiles, addStep, addStepNode, expectRows, fixture, node, openApp } from './helpers/app';
 
 const projectMenu = async (page: Page, item: string) => {
   await page.getByTestId('project-menu').click();
@@ -11,10 +11,8 @@ const projectMenu = async (page: Page, item: string) => {
 async function smallFlow(page: Page) {
   await addFiles(page, [fixture('customers.csv')]);
   await expect(node(page, 'customers.csv')).toHaveAttribute('data-status', 'ok', { timeout: 20_000 });
-  await page.getByRole('button', { name: 'Add', exact: true }).click();
-  await page.getByRole('menuitem', { name: /^Transform/ }).click();
-  await page.getByRole('button', { name: 'Add step' }).click();
-  await page.getByRole('menuitem', { name: /^Trim/ }).click();
+  await node(page, 'customers.csv').click();
+  await addStepNode(page, 'Trim whitespace');
   await page.getByRole('button', { name: 'Add', exact: true }).click();
   await page.getByRole('menuitem', { name: /^Output/ }).click();
   await expect(node(page, 'Output 1')).toHaveAttribute('data-status', 'ok', { timeout: 20_000 });

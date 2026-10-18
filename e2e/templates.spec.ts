@@ -1,5 +1,5 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
-import { addFiles, addStep, cell, fixture, node, openApp } from './helpers/app';
+import { addFiles, addStep, addStepNode, cell, fixture, node, openApp } from './helpers/app';
 
 const steps = (page: Page) => page.getByRole('listbox', { name: 'Applied steps' }).getByRole('option');
 
@@ -38,11 +38,7 @@ test('a node saved as a template goes into another project, with a missing colum
   await openApp(page);
   await addFiles(page, [fixture('customers.csv')]);
   await node(page, 'customers.csv').click();
-  await page.getByRole('button', { name: 'Add', exact: true }).click();
-  await page.getByRole('menuitem', { name: 'Transform' }).click();
-  await expect(node(page, 'Transform 1')).toHaveAttribute('data-status', 'ok');
-  await node(page, 'Transform 1').click();
-  await addStep(page, 'Trim whitespace');
+  await addStepNode(page, 'Trim whitespace');
   await addStep(page, 'Change case');
   await expect(steps(page)).toHaveText([/Trimmed name/, /Changed name to title case/]);
 
@@ -114,12 +110,7 @@ test('templates are renamed, described and deleted from the library', async ({ p
   await openApp(page);
   await addFiles(page, [fixture('customers.csv')]);
   await node(page, 'customers.csv').click();
-  await page.getByRole('button', { name: 'Add', exact: true }).click();
-  await page.getByRole('menuitem', { name: 'Transform' }).click();
-  await expect(node(page, 'Transform 1')).toHaveAttribute('data-status', 'ok');
-  await node(page, 'Transform 1').click();
-  await expect(page.getByRole('button', { name: 'Save as template' })).toBeDisabled();
-  await addStep(page, 'Trim whitespace');
+  await addStepNode(page, 'Trim whitespace');
   await page.getByRole('button', { name: 'Save as template' }).click();
   await page.getByRole('dialog', { name: 'Save as template' }).getByRole('button', { name: 'Save template' }).click();
 

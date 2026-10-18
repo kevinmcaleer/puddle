@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { addFiles, expectRows, fixture, node, openApp } from './helpers/app';
+import { addFiles, addStepNode, expectRows, fixture, node, openApp } from './helpers/app';
 
 const title = (page: Page) => page.getByTestId('results-title');
 
@@ -163,8 +163,7 @@ async function compareWide(page: Page) {
   await addFiles(page, [wide()]);
   await expect(node(page, 'wide.csv')).toHaveAttribute('data-status', 'ok');
   await node(page, 'wide.csv').click();
-  await page.getByRole('button', { name: 'Add', exact: true }).click();
-  await page.getByRole('menuitem', { name: 'Transform' }).click();
+  await addStepNode(page, 'Remove blank rows');
   await expect(node(page, 'Transform 1')).toHaveAttribute('data-status', 'ok');
   await node(page, 'wide.csv').click();
   await page.getByTestId('pin-toggle').click();

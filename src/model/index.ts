@@ -11,7 +11,7 @@ export { setAppendSpec, swapAppendInputs } from './append';
 export { setLookupSpec, swapLookupInputs } from './lookup';
 export { addQueryField, addQueryJoin, addQueryOrRow, addQueryTable, criteriaCell, moveQueryField, moveQueryTable, removeQueryField, removeQueryJoin, removeQueryOrRow, removeQueryTable, setQueryCriteria, setQueryDesign, setQueryJoinKind, setQuerySpec, setQuerySql, updateQueryField } from './query';
 export { useProject, useProjectStore, type ProjectState } from './store';
-export { placeStep, type Placed } from './quickfix';
+export { placeStep, placeStepAt, type Placed, type StepTarget } from './quickfix';
 export { addRule, dismissSuggestion, removeRule, updateRule } from './rules';
 export { logExport, setOutputFormat, setOutputSpec } from './exports';
 export { carryPin, viewWithout } from './view';

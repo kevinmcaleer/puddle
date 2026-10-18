@@ -21,14 +21,12 @@ import {
   type Step,
   type TransformNode,
 } from '../model';
-import { fieldErrors, labelFor, stepForms, type StepGroup } from '../steps';
+import { fieldErrors, labelFor, STEP_GROUPS, stepForms } from '../steps';
 import { CommitInput, StepForm } from '../steps/StepForm';
 import { Banner, Button, Field, Menu, Section, StepList, Switch, type MenuItem } from '../ui';
 import { openTemplateDialog } from '../templates/actions';
 import { buildStep } from './addStep';
 import { useStepColumns, useStepErrors } from './useStepColumns';
-
-const GROUPS: StepGroup[] = ['Clean', 'Columns', 'Rows', 'Text', 'Dates', 'Numbers', 'Reshape', 'Advanced'];
 
 const apply = (edit: Parameters<ReturnType<typeof useProjectStore.getState>['apply']>[0]) => useProjectStore.getState().apply(edit);
 
@@ -42,7 +40,7 @@ function viewStep(nodeId: string, index: number, step: Step | undefined) {
 function AddStepMenu({ node, after }: { node: TransformNode; after: number }) {
   const project = useProject();
   const available = useStepColumns(project, node.id, after + 1);
-  const items: MenuItem[] = GROUPS.flatMap((g) =>
+  const items: MenuItem[] = STEP_GROUPS.flatMap((g) =>
     stepForms()
       .filter((f) => f.group === g)
       .map((f) => ({
@@ -61,7 +59,7 @@ function AddStepMenu({ node, after }: { node: TransformNode; after: number }) {
   return (
     <Menu
       label="Add step"
-      button={{ variant: 'ghost', size: 'sm', icon: 'plus', title: withShortcut('Add step', 'add-step') }}
+      button={{ variant: 'ghost', size: 'sm', icon: 'plus', title: withShortcut('Add a step to this node', 'add-step') }}
       items={items}
       search="Search steps"
       open={open || pending}
@@ -162,7 +160,9 @@ export function TransformPanel({ node }: { node: TransformNode }) {
   const project = useProject();
   const status = useNodeStatus(node.id);
   const selectedStepId = useSession((s) => s.selectedStepId);
-  const selected = node.steps.findIndex((s) => s.id === selectedStepId);
+  // A node with one step shows that step's settings straight away; with several, the one picked in the list.
+  const picked = node.steps.findIndex((s) => s.id === selectedStepId);
+  const selected = picked < 0 && node.steps.length === 1 ? 0 : picked;
   const viewed = project.view.viewedNodeId === node.id ? project.view.viewedStepIndex : undefined;
   const errors = useStepErrors(project, node.id, status.state === 'error', node.steps.length);
 

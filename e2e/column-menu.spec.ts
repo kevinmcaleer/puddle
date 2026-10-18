@@ -19,6 +19,11 @@ test('the column menu replaces values, removes matching rows and can add each st
   await addFiles(page, [fixture('messy.csv')]);
   await expectRows(page, 5);
 
+  // Each step as a node is the default; off, steps stack into the viewed Transform.
+  await rightClick(page, 2);
+  await expect(menu(page).getByRole('menuitemcheckbox', { name: 'Add each step as a new node' })).toHaveAttribute('aria-checked', 'true');
+  await menu(page).getByRole('menuitemcheckbox', { name: 'Add each step as a new node' }).click();
+
   // Replace values from a header: empty cities become the word "empty".
   await rightClick(page, 2);
   await expect(menu(page)).toHaveAccessibleName('Actions for city');
@@ -37,8 +42,9 @@ test('the column menu replaces values, removes matching rows and can add each st
   await expect(steps(page).nth(1)).toHaveText(/Removed rows where city is Paris/);
   await expectRows(page, 3);
 
-  // With each step as a node, the next one goes in a Transform of its own after this one.
+  // Back to each step as a node, the next one goes in a Transform of its own after this one.
   await rightClick(page, 1);
+  await expect(menu(page).getByRole('menuitemcheckbox', { name: 'Add each step as a new node' })).toHaveAttribute('aria-checked', 'false');
   await menu(page).getByRole('menuitemcheckbox', { name: 'Add each step as a new node' }).click();
   await rightClick(page, 1);
   await expect(menu(page).getByRole('menuitemcheckbox', { name: 'Add each step as a new node' })).toHaveAttribute('aria-checked', 'true');

@@ -121,7 +121,7 @@ function ProjectSettings() {
             onCommit={(v) => set({ defaultDateFormats: parseNullStrings(v) })}
           />
         </Field>
-        <Field hint="Steps added from the results table (quick fixes and the column menu) each go in a new Transform node, so every step shows on the canvas.">
+        <Field hint="Steps added from the Add menu and the results table (quick fixes and the column menu) each go in a new Transform node, so every step shows on the canvas. Off, they stack into the Transform being viewed.">
           <Switch label="Add each step as a new node" checked={settings.stepsAsNodes} onChange={(on) => set({ stepsAsNodes: on })} />
         </Field>
         <Field label="Run on a schedule" htmlFor="set-schedule" hint="Cron syntax for puddle-run on your own machine, e.g. 0 3 * * * for 03:00 every day. Empty: never.">

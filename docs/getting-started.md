@@ -47,7 +47,7 @@ With the contact list sample open:
 
 1. Select the `name` column's header in the results, then Ctrl+click `city`.
 2. Choose **Trim** on the quick-fix bar. Puddle adds a Transform node after the source with one step, "Trimmed name, city".
-3. With the same columns selected, choose **Case**, then **Title Case**.
+3. With the same columns selected, choose **Case**, then **Title Case**. That is a second Transform, wired after the first.
 4. Click `name`, then Shift+click `signed_up` to select every column, and choose **Remove duplicates**.
 
-Every click added a step you can see, change, turn off or delete in the inspector. Carry on with {doc}`cleaning`.
+Every click added a step, each a node on the canvas, that you can see, change, turn off or delete in the inspector. Carry on with {doc}`cleaning`.

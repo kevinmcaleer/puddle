@@ -1,23 +1,19 @@
 import { expect, test, type Page } from '@playwright/test';
-import { addFiles, addStep, cell, expectRows, fixture, node, openApp } from './helpers/app';
+import { addFiles, addStep, addStepNode, cell, expectRows, fixture, node, openApp } from './helpers/app';
 
 const steps = (page: Page) => page.getByRole('listbox', { name: 'Applied steps' }).getByRole('option');
 const settings = (page: Page) => page.getByTestId('step-settings');
 
-async function transformAfter(page: Page, source: string) {
+/** A step from the Add menu, as a Transform after `source`. */
+async function stepAfter(page: Page, source: string, title: string) {
   await node(page, source).click();
-  await page.getByRole('button', { name: 'Add', exact: true }).click();
-  await page.getByRole('menuitem', { name: 'Transform' }).click();
-  await expect(node(page, 'Transform 1')).toHaveAttribute('data-status', 'ok');
-  await node(page, 'Transform 1').click();
+  await addStepNode(page, title);
 }
 
 test('filter, sort and fill down', async ({ page }) => {
   await openApp(page);
   await addFiles(page, [fixture('gaps.csv')]);
-  await transformAfter(page, 'gaps.csv');
-
-  await addStep(page, 'Fill down or up');
+  await stepAfter(page, 'gaps.csv', 'Fill down or up');
   await settings(page).getByRole('button', { name: 'region', exact: true }).click();
   await expect(steps(page)).toHaveText([/Filled region down/]);
   await expect(cell(page, 0, 2)).toHaveText('North');
@@ -46,9 +42,7 @@ test('remove title rows, then use the first row as headers', async ({ page }) =>
   await expect(node(page, 'title-rows.csv')).toHaveAttribute('data-status', /ok|error/, { timeout: 20_000 });
   await node(page, 'title-rows.csv').click();
   await page.getByText('First row is the header').click();
-  await transformAfter(page, 'title-rows.csv');
-
-  await addStep(page, 'Remove top or bottom rows');
+  await stepAfter(page, 'title-rows.csv', 'Remove top or bottom rows');
   await settings(page).getByLabel('Rows').fill('2');
   await settings(page).getByLabel('Rows').press('Enter');
   await expect(steps(page)).toHaveText([/Removed top 2 rows/]);

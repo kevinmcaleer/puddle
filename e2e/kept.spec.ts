@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { addFiles, fixture, node, openApp } from './helpers/app';
+import { addFiles, addStepNode, fixture, node, openApp } from './helpers/app';
 
 type Engine = { query(sql: string): Promise<{ table: { toArray(): Array<{ toJSON(): Record<string, unknown> }> } }> };
 type Puddle = { engine: Engine; kept: { setState(s: { limit: number }): void } };
@@ -20,10 +20,8 @@ test.beforeEach(async ({ page }) => {
   await openApp(page);
   await addFiles(page, [fixture('orders.tsv')]);
   await node(page, 'orders.tsv').click();
-  await page.getByRole('button', { name: 'Add', exact: true }).click();
-  await page.getByRole('menuitem', { name: 'Transform' }).click();
+  await addStepNode(page, 'Remove blank rows');
   await expect(node(page, 'Transform 1')).toHaveAttribute('data-status', 'ok', { timeout: 20_000 });
-  await node(page, 'Transform 1').click();
 });
 
 test('keeping a result builds a table, shows its memory, rebuilds on change and drops when turned off', async ({ page }) => {

@@ -1,11 +1,11 @@
 import { expect, test } from '@playwright/test';
-import { addFiles, expectRows, fixture, node, openApp, saved } from './helpers/app';
+import { addFiles, addStepWithT, expectRows, fixture, node, openApp, saved } from './helpers/app';
 
 test('nodes group into one card with their inputs and outputs, open and close, and ungroup', async ({ page }) => {
   await openApp(page);
   await addFiles(page, [fixture('messy.csv')]);
   await expectRows(page, 5);
-  await page.keyboard.press('t');
+  await addStepWithT(page, 'Trim whitespace');
   await expect(node(page, 'Transform 1')).toHaveAttribute('data-status', 'ok');
   await page.keyboard.press('o');
   await expect(node(page, 'Output 1')).toHaveAttribute('data-status', 'ok');
