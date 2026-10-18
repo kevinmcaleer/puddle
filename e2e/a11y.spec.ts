@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { expect, test, type Page } from '@playwright/test';
 import { expectAccessible } from './helpers/axe';
 import { addFiles, addStep, addStepNode, expectRows, fixture, node, openApp } from './helpers/app';
@@ -146,6 +147,13 @@ for (const theme of ['light', 'dark'] as const) {
       await page.keyboard.type('\nTable broken {\n  oops');
       await expect(page.getByTestId('schema-errors')).toBeVisible();
       await expectAccessible(page, 'the Schema view, with a mistake listed');
+
+      // A group, an enum, a composite ref and a sticky note, with a column's popover showing.
+      await page.getByRole('combobox', { name: 'DBML' }).fill(readFileSync('tests/fixtures/dbml/diagram.dbml', 'utf8'));
+      await expect(page.getByTestId('schema-group-billing')).toBeVisible();
+      await page.getByTestId('schema-col-jobs-status').hover();
+      await expect(page.getByTestId('schema-popover')).toBeVisible();
+      await expectAccessible(page, 'the schema diagram with a group, an enum, a composite ref, a note and a popover');
     });
   });
 }

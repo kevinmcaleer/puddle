@@ -151,7 +151,13 @@ export function SchemaView() {
         />
         <section className="puddle-schema__pane" aria-label="Diagram">
           {schema.tables.length ? (
-            <SchemaDiagram schema={schema} positions={project.schema.positions} current={current} onMove={(moves: Record<string, Point>) => apply((p) => moveSchemaElements(p, moves))} onPick={pick} />
+            <SchemaDiagram
+              schema={schema}
+              positions={project.schema.positions}
+              current={current}
+              onMove={(moves: Record<string, Point>) => apply((p) => moveSchemaElements(p, moves))}
+              onPick={pick}
+            />
           ) : (
             <div className="puddle-schema__empty">
               <p>Write a Table in the editor to see it here, or insert the example.</p>
