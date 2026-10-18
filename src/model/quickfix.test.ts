@@ -84,6 +84,19 @@ describe('placing a step at a node (the Add menu)', () => {
     expect(into).toMatchObject({ nodeId: 't', stepIndex: 1 });
   });
 
+  it('puts the new node in line after the last node of a chain, and below the line when it is squeezed in', () => {
+    const at = (p: Project, id: string) => p.nodes.find((n) => n.id === id)!.position;
+    // Transform t feeds the Output, so a node after t is inserted before it.
+    const inserted = placeStepAt(base(), { nodeId: 't' }, fix, 'new')!;
+    expect(at(inserted.project, 'new')).toEqual({ x: at(inserted.project, 't').x + 296, y: at(inserted.project, 't').y + 120 });
+    const beforeOut = placeStepAt(base(), { nodeId: 'out' }, fix, 'new')!;
+    expect(at(beforeOut.project, 'new').y).toBe(at(beforeOut.project, 'out').y + 120);
+    // Nothing after the Output's removal: the new node continues the line.
+    const open = { ...base(), nodes: base().nodes.filter((n) => n.id !== 'out'), edges: base().edges.filter((e) => e.to.nodeId !== 'out') };
+    const inLine = placeStepAt(open, { nodeId: 't' }, fix, 'new')!;
+    expect(at(inLine.project, 'new')).toEqual({ x: at(inLine.project, 't').x + 296, y: at(inLine.project, 't').y });
+  });
+
   it('does nothing for a node that is not there', () => {
     expect(placeStepAt(base(), { nodeId: 'gone' }, fix)).toBeUndefined();
   });

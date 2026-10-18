@@ -44,10 +44,13 @@ export function placeStepAt(project: Project, at: StepTarget, step: Step, newNod
     return { project: addStep(project, node.id, step, index), nodeId: node.id, stepIndex: index };
   }
 
-  const position = { x: node.position.x + (node.type === 'output' ? -296 : 296), y: node.position.y + 120 };
+  // The new node goes in line after `node`, like any node added from the Add menu; one squeezed in between `node`
+  // and what it already fed, or before an Output, drops below the line so it's seen to be inserted.
+  const outs = node.type === 'output' ? [] : outputEdges(project, node.id);
+  const below = node.type === 'output' || outs.length > 0;
+  const position = { x: node.position.x + (node.type === 'output' ? -296 : 296), y: node.position.y + (below ? 120 : 0) };
   // A Source, a Join or a Transform: Node → new Transform → everything it fed.
   if (node.type !== 'output') {
-    const outs = outputEdges(project, node.id);
     const added = addNode(project, 'transform', position, node.id, newNodeId);
     const rewired = { ...added, edges: added.edges.map((e) => (outs.some((o) => o.id === e.id) ? { ...e, from: { nodeId: newNodeId } } : e)) };
     return { project: addStep(rewired, newNodeId, step), nodeId: newNodeId, stepIndex: 0 };

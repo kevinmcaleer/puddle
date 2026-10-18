@@ -50,12 +50,15 @@ async function addRule(page: Page, title: string) {
   await page.getByRole('menuitem', { name: title, exact: true }).click();
 }
 
-/** Add a node (or a step, which makes a Transform of its own) after the selected one from the Add menu, and select it. */
-async function addNode(page: Page, item: string | RegExp, made: string) {
+/**
+ * Add a node (or a step, which makes a Transform of its own) after the selected one from the Add menu, and select it.
+ * A step that needs a column before it can run (a pivot with nothing in Rows or Values) starts in `error`.
+ */
+async function addNode(page: Page, item: string | RegExp, made: string, status: 'ok' | 'error' = 'ok') {
   await page.getByRole('button', { name: 'Add', exact: true }).click();
   await page.getByRole('menuitem', { name: item }).click();
   await bringIntoView(page, made);
-  await expect(node(page, made)).toHaveAttribute('data-status', 'ok', SLOW);
+  await expect(node(page, made)).toHaveAttribute('data-status', status, SLOW);
   await node(page, made).click();
 }
 
@@ -172,7 +175,7 @@ test('tutorial: New York taxi trips', async ({ page }) => {
   await shotPanel(page, 'tutorial-lookup', lookup);
 
   // Summarise: the average fare by the hour a trip started, a column per borough.
-  await addNode(page, /^Pivot or group by/, 'Transform 2');
+  await addNode(page, /^Pivot or group by/, 'Transform 2', 'error');
   await page.setViewportSize({ width: 1440, height: 1200 });
   const editor = page.getByTestId('pivot-editor');
   const zone = (name: string) => editor.getByRole('group', { name, exact: true });
