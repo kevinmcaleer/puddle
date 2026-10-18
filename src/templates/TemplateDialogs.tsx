@@ -175,7 +175,7 @@ function LibraryDialog() {
     <Dialog
       title="Templates"
       confirm="Insert template"
-      confirmDisabled={!chosen || reading}
+      confirmDisabled={!chosen || reading || !feed}
       onClose={close}
       onConfirm={() => {
         if (!chosen) return;
@@ -254,7 +254,7 @@ function LibraryDialog() {
             <StepList steps={chosen.steps.map((s) => ({ label: s.label, disabled: !s.enabled }))} onAdd={false} />
           </div>
           {!feed ? (
-            <Banner>No node is selected, so it goes on the canvas unwired, with its steps as they were saved.</Banner>
+            <Banner>Select the node it should follow on the canvas first, then insert it there. Templates can still be renamed, saved to a file or deleted here.</Banner>
           ) : reading ? (
             <p className="text-label text-ink-muted">Reading the columns of {feedNode?.name}…</p>
           ) : !actual ? (

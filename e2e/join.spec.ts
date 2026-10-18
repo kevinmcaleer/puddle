@@ -110,11 +110,16 @@ test('unwiring either input marks the join unwired, and undo wires it back', asy
 test('a wire dragged onto the right input goes there, and a taken input is refused with a reason', async ({ page }) => {
   await openApp(page);
   await addFiles(page, [fixture('shop-orders.csv'), fixture('shop-customers.csv')]);
-  // Both sources in place before deselecting, so the Join starts with no wires.
+  // A Join always arrives wired after the selected node; taking that wire away leaves it with no wires to drag onto.
   await expect(node(page, 'shop-customers.csv')).toHaveAttribute('data-status', 'ok');
-  await page.getByTestId('canvas').click({ position: { x: 20, y: 20 } });
+  await node(page, 'shop-customers.csv').click();
   await page.getByRole('button', { name: 'Add', exact: true }).click();
   await page.getByRole('menuitem', { name: /Join/ }).click();
+  await expect(page.getByTestId('wire-shop-customers.csv->Join 1')).toBeAttached();
+  await page.getByTestId('canvas').click({ position: { x: 20, y: 20 } });
+  await page.getByTestId('wire-shop-customers.csv->Join 1').click({ force: true });
+  await page.keyboard.press('Delete');
+  await expect(page.getByTestId('wire-shop-customers.csv->Join 1')).not.toBeAttached();
   await expect(node(page, 'Join 1')).toHaveAttribute('data-status', 'unwired');
 
   const drag = async (from: string, port: string) => {

@@ -6,7 +6,7 @@ The canvas is where your flow lives. Data runs left to right along wires: source
 
 ## Kinds of node
 
-**Add** in the toolbar adds a source, a node after the selected one, or a step, which goes in a Transform node of its own after the selected node.
+**Add** in the toolbar adds a source, a node after the selected one, or a step, which goes in a Transform node of its own after the selected node. New nodes always arrive wired, so with nothing selected the nodes and steps wait, marked **Select a node first**; sources can be added at any time.
 
 ![The Add menu: sources, then the nodes From template, Join, Append, Lookup, Query and Output, then every step](_static/screenshots/canvas-add-node-menu.png)
 

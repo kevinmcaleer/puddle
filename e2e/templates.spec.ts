@@ -100,7 +100,8 @@ test('a node saved as a template goes into another project, with a missing colum
   library = await openLibrary(page);
   await expect(templateList(library).getByRole('option')).toHaveText([/Tidy names.*Trims and title-cases names\..*2 steps · expects name/]);
   await templateList(library).getByRole('option').click();
-  await expect(library.getByText('No node is selected, so it goes on the canvas unwired')).toBeVisible();
+  await expect(library.getByText('Select the node it should follow on the canvas first')).toBeVisible();
+  await expect(library.getByRole('button', { name: 'Insert template' })).toBeDisabled();
   const stored = JSON.stringify(await storedTemplates(page));
   expect(stored).toContain('"expectedColumns":[{"name":"name","type":"VARCHAR"}]');
   for (const value of ['Lovelace', 'hopper', 'example.com']) expect(stored).not.toContain(value);

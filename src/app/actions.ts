@@ -2,18 +2,21 @@ import { autoLayout } from '../canvas/layout';
 import { neighbour, type Direction } from '../canvas/navigate';
 import { suggestJoinKey, suggestLookupColumns } from '../compiler';
 import { useFlowStore } from '../flow/status';
-import { addNode, addStep, canConnect, canMakeGroup, connect, disconnect, freePort, groupOf, inputEdges, makeGroup, setGroupCollapsed, moveQueryTable, newId, nodeById, setJoinSpec, setLookupSpec, useProjectStore, type AddableNodeType, type ColumnSchema, type Port, type Project, type Source, type SourceFormat } from '../model';
+import { addNode, canConnect, canMakeGroup, connect, disconnect, freePort, groupOf, inputEdges, makeGroup, setGroupCollapsed, moveQueryTable, newId, nodeById, setJoinSpec, setLookupSpec, useProjectStore, type AddableNodeType, type ColumnSchema, type Port, type Project, type Source, type SourceFormat } from '../model';
 import { useEngineStore } from './engine';
 import { buildStep } from '../inspector/addStep';
 import { addStepAt } from '../quickfix/place';
 import { addClipboardSource, addFileSource } from '../sources/add';
-import { newStep, type StepForm } from '../steps';
+import type { StepForm } from '../steps';
 import { pickFiles, type PickedFile } from '../sources/handles';
 import { tableToCsv, type HtmlTable } from '../sources/html';
 import type { FeedSpec, ReadOptions } from '../sources/odata';
 import { addODataSource, addUrlSource, addWebTableSource } from '../sources/url';
 import { viewHere, viewNode } from '../results/pin';
 import { useSession } from './session';
+
+/** Why the Add menu's nodes and steps wait for a selection (principle 2: a new node always reads from one before it). */
+export const SELECT_FIRST = 'Select the node it should follow first, so the new node is wired after it.';
 
 const report = (e: unknown) => useSession.getState().notify({ tone: 'fail', text: e instanceof Error ? e.message : String(e) });
 
@@ -124,6 +127,8 @@ export function addNodeAfterSelection(type: AddableNodeType) {
   const { apply, history } = useProjectStore.getState();
   const { selectedNodeId: selected, selectedNodeIds } = useSession.getState();
   const after = selected ? nodeById(history.present, selected) : undefined;
+  // Principle 2 (data runs left to right): a node always arrives reading from the one before it, never unwired.
+  if (!after) return useSession.getState().notify({ tone: 'info', text: SELECT_FIRST });
   const several = selectedNodeIds.length > 1 && (type === 'join' || type === 'append' || type === 'lookup' || type === 'query' || type === 'sql');
   const feeds = several ? (type === 'join' || type === 'lookup' ? selectedNodeIds.slice(0, 2) : selectedNodeIds) : after?.id;
   const position = positionAfter(history.present, Array.isArray(feeds) ? feeds : after ? [after.id] : []);
@@ -189,23 +194,15 @@ export function searchAddStep() {
 
 /**
  * A step picked from the toolbar's Add menu. It goes after the selected node: in a new Transform between it and what
- * it fed, or into it when it is a Transform and the project stacks steps (see placeStepAt). With nothing selected, it
- * starts a Transform of its own, unwired. The step's defaults read the columns arriving there.
+ * it fed, or into it when it is a Transform and the project stacks steps (see placeStepAt). With nothing selected,
+ * nothing is added and the notice asks for the node to follow. The step's defaults read the columns arriving there.
  */
 export async function addStepFromMenu(form: StepForm) {
-  const { history, apply } = useProjectStore.getState();
+  const { history } = useProjectStore.getState();
   const project = history.present;
   const session = useSession.getState();
   const node = session.selectedNodeId ? nodeById(project, session.selectedNodeId) : undefined;
-  if (!node) {
-    const step = newStep(form.type, { selected: [], available: [], locale: project.settings.locale });
-    const id = newId('n');
-    apply((p) => addStep(addNode(p, 'transform', positionAfter(p, []), undefined, id), id, step));
-    useProjectStore.getState().setView({ viewedNodeId: id, viewedStepIndex: 0 });
-    session.select(id);
-    session.selectStep(step.id);
-    return;
-  }
+  if (!node) return session.notify({ tone: 'info', text: SELECT_FIRST });
   const viewedHere = project.view.viewedNodeId === node.id ? project.view.viewedStepIndex : undefined;
   const after = node.type === 'transform' ? (viewedHere ?? node.steps.length - 1) : undefined;
   const selected = project.view.viewedNodeId === node.id ? session.selectedColumns : [];
