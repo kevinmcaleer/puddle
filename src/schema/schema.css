@@ -115,3 +115,11 @@
 .puddle-schema-sql:focus-visible { outline: 2px solid var(--brand); outline-offset: 1px; }
 .puddle-schema-sql__notes { margin: 0; padding-left: var(--space-4); }
 .puddle-schema-import { min-height: calc(var(--size-row) * 8); max-height: 40vh; resize: vertical; font: 12px/18px var(--font-mono); white-space: pre; }
+
+/* A table's data sample, in its popover: the results grid's look, small. */
+.puddle-schema-sample { padding: 0 var(--space-3) var(--space-2); max-width: 100%; overflow: hidden; }
+.puddle-schema-sample table { border-collapse: collapse; font: 11px/16px var(--font-mono); width: 100%; table-layout: fixed; }
+.puddle-schema-sample th, .puddle-schema-sample td { padding: 1px var(--space-1); border: 1px solid var(--line); text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.puddle-schema-sample th { background: var(--surface-sunken); color: var(--ink-muted); font-weight: 600; }
+.puddle-schema-sample td.is-null { color: var(--ink-subtle); font-style: italic; }
+.puddle-schema-sample__note { margin: var(--space-1) var(--space-3) var(--space-2); color: var(--ink-muted); font-size: 11px; }

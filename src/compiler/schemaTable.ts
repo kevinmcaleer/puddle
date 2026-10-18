@@ -187,3 +187,6 @@ export function failingRows(checks: LoadCheck[]): string {
 export function describeFailure(check: Pick<LoadCheck, 'says'>, n: number): string {
   return `${num(n)} ${n === 1 ? 'row has' : 'rows have'} ${check.says}`;
 }
+
+/** The first rows of a query with every column as text, for a table's data sample. */
+export const textSample = (sql: string, columns: string[], limit: number) => `SELECT ${columns.map((c) => `CAST(${ident(c)} AS VARCHAR) AS ${ident(c)}`).join(', ')} FROM (${sql}) LIMIT ${num(limit)}`;
