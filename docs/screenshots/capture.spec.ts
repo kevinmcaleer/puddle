@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { addFiles, addStep, cell, expectRows, fixture, fixtureText, node } from '../../e2e/helpers/app';
+import { addFiles, addStep, addStepNode, addStepWithT, cell, expectRows, fixture, fixtureText, node } from '../../e2e/helpers/app';
 import { annotate, openSample, projectMenu, selectColumnsAt, settings, shot, shotPanel, start, steps } from './helpers';
 
 // Each test captures the pictures for one page of the docs. Pictures are named <page>-<what>.png.
@@ -84,17 +84,21 @@ test('quick fixes and steps', async ({ page }) => {
   await fixes.getByRole('button', { name: 'Case' }).click();
   await shot(page, 'quickfix-case-menu', page.getByRole('menu'));
   await page.getByRole('menuitem', { name: 'Title Case' }).click();
-  await expect(steps(page)).toHaveCount(3);
+  // Each fix is a Transform of its own, wired after the one before.
+  await expect(node(page, 'Transform 3')).toBeVisible();
+  await expect(steps(page)).toHaveCount(1);
   await expect(cell(page, 0, 0)).toHaveText('Alice Patel');
+  await page.getByRole('button', { name: 'Auto layout' }).click();
   await shot(page, 'quickfix-applied');
 
-  await page.getByRole('button', { name: 'Add step' }).click();
+  await page.getByRole('button', { name: 'Add', exact: true }).click();
   await shot(page, 'steps-add-menu', page.getByRole('menu'));
   await page.keyboard.press('Escape');
+  // Add step in the inspector adds to the node being looked at.
   await addStep(page, 'Remove duplicates');
   await shotPanel(page, 'steps-settings', page.getByTestId('inspector'));
   await steps(page).nth(0).click();
-  await expect(page.getByTestId('results-title')).toHaveText('Transform 1 · step 1');
+  await expect(page.getByTestId('results-title')).toHaveText('Transform 3 · step 1');
   await shot(page, 'steps-view-earlier');
 });
 
@@ -135,7 +139,7 @@ test('groups', async ({ page }) => {
   await start(page);
   await openSample(page, 'contacts');
   await node(page, 'contacts.csv').click();
-  await page.keyboard.press('t');
+  await addStepWithT(page, 'Trim whitespace');
   await expect(node(page, 'Transform 1')).toHaveAttribute('data-status', 'ok');
   await page.keyboard.press('o');
   await expect(node(page, 'Output 1')).toHaveAttribute('data-status', 'ok');
@@ -278,10 +282,7 @@ test('reshaping', async ({ page }) => {
   await start(page);
   await openSample(page, 'monthly');
   await node(page, 'monthly-sales.csv').click();
-  await page.getByRole('button', { name: 'Add', exact: true }).click();
-  await page.getByRole('menuitem', { name: 'Transform' }).click();
-  await node(page, 'Transform 1').click();
-  await addStep(page, 'Unpivot columns');
+  await addStepNode(page, 'Unpivot columns');
   for (const m of ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec']) {
     await settings(page).getByRole('button', { name: `${m}_2024`, exact: true }).click();
   }
@@ -295,10 +296,7 @@ test('reshaping', async ({ page }) => {
   await addFiles(page, [fixture('sales.csv')]);
   await expect(node(page, 'sales.csv')).toHaveAttribute('data-status', 'ok', { timeout: 20_000 });
   await node(page, 'sales.csv').click();
-  await page.getByRole('button', { name: 'Add', exact: true }).click();
-  await page.getByRole('menuitem', { name: 'Transform' }).click();
-  await node(page, 'Transform 1').click();
-  await addStep(page, 'Pivot or group by');
+  await addStepNode(page, 'Pivot or group by');
   const editor = page.getByTestId('pivot-editor');
   for (const [field, zone] of [['region', 'Rows'], ['month', 'Columns'], ['revenue', 'Values']] as const) {
     await editor.evaluate((el) => el.scrollIntoView({ block: 'center' }));
@@ -320,10 +318,7 @@ test('projects, templates and recipes', async ({ page }) => {
   await shot(page, 'projects-notes');
 
   await node(page, 'contacts.csv').click();
-  await page.getByRole('button', { name: 'Add', exact: true }).click();
-  await page.getByRole('menuitem', { name: 'Transform' }).click();
-  await node(page, 'Transform 1').click();
-  await addStep(page, 'Trim whitespace');
+  await addStepNode(page, 'Trim whitespace');
   await addStep(page, 'Change case');
   await page.getByRole('button', { name: 'Save as template' }).click();
   const save = page.getByRole('dialog', { name: 'Save as template' });

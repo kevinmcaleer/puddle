@@ -28,6 +28,8 @@ interface SessionState {
   shortcutsOpen: boolean;
   /** The inspector's Add step menu should open with its search focused (the shortcut asked while it may not be showing). */
   addStepPending: boolean;
+  /** The toolbar's Add menu should open with its search focused (a shortcut asked for a step after the selected node). */
+  addMenuPending: boolean;
   /** Wiring from the keyboard (C): the node a wire starts from, until another node is chosen or Escape cancels. */
   connectFrom: string | null;
   select: (id: string | null) => void;
@@ -46,6 +48,8 @@ interface SessionState {
   setShortcutsOpen: (open: boolean) => void;
   requestAddStep: () => void;
   clearAddStep: () => void;
+  requestAddMenu: () => void;
+  clearAddMenu: () => void;
   setConnectFrom: (id: string | null) => void;
 }
 
@@ -62,6 +66,7 @@ export const useSession = create<SessionState>((set) => ({
   consoleOpen: false,
   shortcutsOpen: false,
   addStepPending: false,
+  addMenuPending: false,
   connectFrom: null,
   // Picking a node shows it in the inspector's Node tab.
   select: (id) => set((s) => ({ selectedNodeId: id, selectedNodeIds: id ? [id] : [], selectedStepId: null, inspectorTab: id ? 'node' : s.inspectorTab })),
@@ -83,5 +88,7 @@ export const useSession = create<SessionState>((set) => ({
   setShortcutsOpen: (shortcutsOpen) => set({ shortcutsOpen }),
   requestAddStep: () => set({ addStepPending: true, inspectorOpen: true, inspectorTab: 'node' }),
   clearAddStep: () => set({ addStepPending: false }),
+  requestAddMenu: () => set({ addMenuPending: true }),
+  clearAddMenu: () => set({ addMenuPending: false }),
   setConnectFrom: (connectFrom) => set({ connectFrom }),
 }));

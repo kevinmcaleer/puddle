@@ -12,7 +12,7 @@ import { isExcelSource, useExcelReads } from '../sources/excel';
 import { isXmlSource, useXmlReads } from '../sources/xml';
 import { urlProblem, useUrlFetches } from '../sources/url';
 import { NodeCard } from '../ui';
-import { cardKind } from './kind';
+import { cardHeading, cardKind } from './kind';
 import { portBroken, portName, portsHeight, portTop } from './ports';
 
 /** `refIn` and `refOut`: a rule's dashed reference ends or starts here (see RefEdge). */
@@ -24,6 +24,7 @@ export function PuddleNode({ data, selected }: NodeProps<PuddleFlowNode>) {
   const { node, viewed, detail } = data;
   const status = useNodeStatus(node.id);
   const steps = node.type === 'transform' ? node.steps.map((s) => ({ label: s.label, disabled: !s.enabled })) : undefined;
+  const heading = cardHeading(node, detail);
   const ok = status.state === 'ok' ? status : null;
   const project = useProject();
   const ports = inputPorts(project, node);
@@ -66,8 +67,8 @@ export function PuddleNode({ data, selected }: NodeProps<PuddleFlowNode>) {
     <div data-testid={`node-${node.name}`} data-status={status.state} data-rules={rule?.status} data-export={node.type === 'output' && ok ? (blocked ? 'blocked' : 'ready') : undefined} data-fetch={fetch?.state} data-sheet={excel?.state} data-xml={xml?.state}>
       <NodeCard
         kind={cardKind(node.type)}
-        name={node.name}
-        detail={detail}
+        name={heading.name}
+        detail={heading.detail}
         steps={steps}
         expanded={node.collapsed === false}
         rows={ok?.rows}

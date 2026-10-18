@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { fixture, node, openApp } from './helpers/app';
+import { addStepWithT, fixture, node, openApp } from './helpers/app';
 
 /** The node is selected on the canvas (the inspector shows it). */
 const isSelected = (page: Page, name: string) => expect(node(page, name).locator('.ui-node')).toHaveClass(/is-selected/);
@@ -48,8 +48,8 @@ test('building a flow from the keyboard: add, layout, move along the wires, view
   await addOrders(page);
   await isSelected(page, 'shop-orders.csv');
 
-  // T and O add after the selected node, and select what they add.
-  await page.keyboard.press('t');
+  // T (a step from the Add menu) and O add after the selected node, and select what they add.
+  await addStepWithT(page, 'Trim whitespace');
   await expect(node(page, 'Transform 1')).toHaveAttribute('data-status', 'ok');
   await expect(page.getByTestId('wire-shop-orders.csv->Transform 1')).toBeAttached();
   await isSelected(page, 'Transform 1');
@@ -105,24 +105,31 @@ test('building a flow from the keyboard: add, layout, move along the wires, view
   expect((await store(page)).positions).toEqual(laidOut);
 });
 
-test('/ opens the Add step menu with its search focused, and Enter adds the first match', async ({ page }) => {
+test('/ opens a step search with its search focused, and Enter adds the first match', async ({ page }) => {
   await openApp(page);
   await addOrders(page);
+  // On a source, / opens the Add menu: the step becomes a Transform after it.
   await page.keyboard.press('/');
-  await expect(page.getByTestId('canvas-notice')).toContainText('Select a Transform node to add a step to it.');
-  await page.keyboard.press('t');
+  const add = page.getByLabel('Search steps and nodes');
+  await expect(add).toBeFocused();
+  await add.fill('trim');
+  await expect(page.getByRole('menuitem')).toHaveCount(1);
+  // Typing in the search runs no shortcuts (t, o, l are in "trim" and "total").
+  await add.press('Enter');
+  await expect(page.getByRole('menu')).not.toBeAttached();
   await isSelected(page, 'Transform 1');
+  await expect(page.getByTestId('inspector').locator('.ui-step')).toHaveCount(1);
+  expect((await store(page)).nodes).toEqual(['shop-orders.csv', 'Transform 1']);
+
+  // On a Transform, / opens the inspector's Add step menu, which adds to that node.
   await page.keyboard.press('/');
   const search = page.getByLabel('Search steps');
   await expect(search).toBeFocused();
-  await search.fill('trim');
-  await expect(page.getByRole('menuitem')).toHaveCount(1);
-  // Typing in the search runs no shortcuts (t, o, l are in "trim" and "total").
+  await search.fill('case');
   await search.press('Enter');
-  await expect(page.getByRole('menu')).not.toBeAttached();
-  await expect(page.getByTestId('inspector').locator('.ui-step')).toHaveCount(1);
+  await expect(page.getByTestId('inspector').locator('.ui-step')).toHaveCount(2);
   expect((await store(page)).nodes).toEqual(['shop-orders.csv', 'Transform 1']);
-  await expect(page.getByRole('button', { name: 'Add step' })).toHaveAttribute('title', 'Add step (/)');
+  await expect(page.getByRole('button', { name: 'Add step' })).toHaveAttribute('title', 'Add a step to this node (/)');
 });
 
 // Regression (WebKit): a node added with T takes the focus once React Flow has drawn it, which in WebKit could be after
@@ -132,7 +139,7 @@ test('a step search opened before the new node is drawn keeps the focus', async 
   await addOrders(page);
   // Nodes can't take the focus while hidden: this holds the new node back the way a slow first draw does.
   const hidden = await page.addStyleTag({ content: '.react-flow__node { visibility: hidden !important; }' });
-  await page.keyboard.press('t');
+  await addStepWithT(page, 'Trim whitespace');
   await page.keyboard.press('/');
   const search = page.getByLabel('Search steps');
   await expect(search).toBeFocused();
@@ -140,9 +147,9 @@ test('a step search opened before the new node is drawn keeps the focus', async 
   // A few frames for the node to be drawn, while it would still be trying to take the focus.
   await page.evaluate(() => new Promise<void>((done) => { let n = 0; const tick = () => (++n < 5 ? requestAnimationFrame(tick) : done()); requestAnimationFrame(tick); }));
   await expect(search).toBeFocused();
-  await search.fill('trim');
+  await search.fill('case');
   await search.press('Enter');
-  await expect(page.getByTestId('inspector').locator('.ui-step')).toHaveCount(1);
+  await expect(page.getByTestId('inspector').locator('.ui-step')).toHaveCount(2);
 });
 
 test('G groups the selected nodes into one card; with too few selected it says how', async ({ page }) => {
@@ -150,13 +157,10 @@ test('G groups the selected nodes into one card; with too few selected it says h
   await addOrders(page);
   await page.keyboard.press('g');
   await expect(page.getByTestId('canvas-notice')).toContainText('Select two or more nodes to group them');
-  // Each Transform gets a step (through the Add step search) on the way.
+  // Each Transform is a step from the Add menu's search (T), after the one before.
   for (const name of ['Transform 1', 'Transform 2']) {
-    await page.keyboard.press('t');
+    await addStepWithT(page, 'Trim whitespace', name);
     await isSelected(page, name);
-    await page.keyboard.press('/');
-    await page.getByLabel('Search steps').fill('trim');
-    await page.getByLabel('Search steps').press('Enter');
     await expect(page.getByTestId('inspector').locator('.ui-step')).toHaveCount(1);
     await page.getByRole('main', { name: 'Canvas' }).focus();
   }
@@ -221,7 +225,7 @@ test('E exports the viewed Output and Shift+E exports all', async ({ page }) => 
 test('no shortcut fires while typing in a text field', async ({ page }) => {
   await openApp(page);
   await addOrders(page);
-  await page.keyboard.press('t');
+  await addStepWithT(page, 'Trim whitespace');
   await isSelected(page, 'Transform 1');
   const before = await store(page);
 

@@ -1,5 +1,5 @@
 import { expect, test, type Download, type Page } from '@playwright/test';
-import { fixture, node, openApp } from './helpers/app';
+import { addStepWithT, fixture, node, openApp } from './helpers/app';
 
 const focusedNode = (page: Page) => page.locator('.react-flow__node:focus');
 const textOf = async (file: Download) => Buffer.concat(await (await file.createReadStream()).toArray()).toString('utf8');
@@ -18,18 +18,19 @@ test('a pipeline is built, run and exported with the keyboard alone', async ({ p
   // The new source is selected and has the keyboard, and says what it is.
   await expect(focusedNode(page)).toHaveAttribute('aria-label', /^customers\.csv, Source, CSV, 4 rows, 4 columns/);
 
-  // T adds a Transform after it; Enter opens it in the inspector.
-  await page.keyboard.press('t');
-  await expect(focusedNode(page)).toHaveAttribute('aria-label', /^Transform 1, Transform, 0 steps/);
+  // T opens the Add menu's search; Enter adds the step as a Transform after it, selected and in the inspector.
+  await addStepWithT(page, 'Trim whitespace');
+  await expect(node(page, 'Transform 1')).toHaveAttribute('aria-label', /^Transform 1, Transform, 1 step/);
+  await page.keyboard.press('f');
   await page.keyboard.press('Enter');
   await expect(page.getByTestId('inspector')).toBeFocused();
 
-  // / searches the Add step menu; Enter adds the match.
+  // / searches the inspector's Add step menu; Enter adds the match to this node.
   await page.keyboard.press('/');
   await expect(page.getByLabel('Search steps')).toBeFocused();
-  await page.keyboard.type('trim');
+  await page.keyboard.type('case');
   await page.keyboard.press('Enter');
-  await expect(page.getByTestId('inspector').locator('.ui-step')).toHaveCount(1);
+  await expect(page.getByTestId('inspector').locator('.ui-step')).toHaveCount(2);
   // Focus went back to the menu's button.
   await expect(page.getByRole('button', { name: 'Add step' })).toBeFocused();
 
@@ -59,8 +60,9 @@ test('a pipeline is built, run and exported with the keyboard alone', async ({ p
 test('wires are drawn and taken away from the keyboard, and Tab moves between nodes', async ({ page }) => {
   await openApp(page);
   await addWithA(page, 'customers.csv');
-  await page.keyboard.press('t');
+  await addStepWithT(page, 'Trim whitespace');
   await expect(page.getByTestId('wire-customers.csv->Transform 1')).toBeAttached();
+  await page.keyboard.press('f');
   await expect(page.locator('.react-flow__edge').first()).toHaveAttribute('aria-label', 'Wire from customers.csv into Transform 1');
 
   // C on the source, then Enter on the Transform it already feeds, takes the wire away.
@@ -111,13 +113,14 @@ test('the query designer joins tables and moves fields without dragging', async 
 
   // Add node › Query from the toolbar's menu, by keyboard: the designer opens on the selected source.
   await page.getByRole('button', { name: 'Add', exact: true }).press('Enter');
+  const search = page.getByLabel('Search steps and nodes');
+  await expect(search).toBeFocused();
+  // Down from the search moves along the items; End lands on the last step. Typing narrows them instead.
+  await page.keyboard.press('ArrowDown');
   await expect(page.getByRole('menuitem').first()).toBeFocused();
-  // End lands on Output, the last node; Query sits two above it, past SQL.
-  await page.keyboard.press('End');
-  await page.keyboard.press('ArrowUp');
-  await page.keyboard.press('ArrowUp');
-  await expect(page.getByRole('menuitem', { name: /Query/ })).toBeFocused();
-  await page.keyboard.press('Enter');
+  await search.fill('query');
+  await expect(page.getByRole('menuitem').first()).toHaveText(/Query/);
+  await search.press('Enter');
   await expect(page.getByTestId('query-designer')).toBeVisible();
 
   // Add table › shop-orders.csv.
@@ -196,7 +199,7 @@ test('a node that breaks is announced, and with reduced motion nothing animates'
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await openApp(page);
   await addWithA(page, 'customers.csv');
-  await page.keyboard.press('t');
+  await addStepWithT(page, 'Trim whitespace');
   await expect(node(page, 'Transform 1')).toHaveAttribute('data-status', 'ok');
   // A step that removes a column that doesn't exist breaks Transform 1.
   await page.evaluate(() => {

@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { addFiles, addStep, cell, fixture, node, openApp, saved } from './helpers/app';
+import { addFiles, addStepNode, cell, fixture, node, openApp, saved } from './helpers/app';
 
 // The browser's own locale is fixed for every test (playwright.config.ts); these tests also pick locales themselves.
 
@@ -8,13 +8,10 @@ const settings = (page: Page) => page.getByTestId('step-settings');
 const formats = (page: Page) => page.getByTestId('date-formats');
 const chip = (page: Page, name: string) => settings(page).getByRole('button', { name, exact: true });
 
-/** A Transform after `file`'s source, selected and viewed. */
-async function transformOf(page: Page, file: string) {
+/** `file` added and its source selected, for a step from the Add menu to go after. */
+async function sourceOf(page: Page, file: string) {
   await addFiles(page, [fixture(file)]);
   await node(page, file).click();
-  await page.getByRole('button', { name: 'Add', exact: true }).click();
-  await page.getByRole('menuitem', { name: 'Transform' }).click();
-  await node(page, 'Transform 1').click();
 }
 
 /** Pick exactly these columns in the step's Columns field. */
@@ -42,8 +39,8 @@ async function selectColumn(page: Page, x: number) {
 
 test('a German parse numbers step reads 1.234,56 as 1234.56, and the display locale changes only how it looks', async ({ page }) => {
   await openApp(page);
-  await transformOf(page, 'locales.csv');
-  await addStep(page, 'Parse numbers');
+  await sourceOf(page, 'locales.csv');
+  await addStepNode(page, 'Parse numbers');
   await onlyColumns(page, ['de_number'], ['de_number', 'us_number', 'de_date', 'de_short', 'fr_date', 'es_date']);
   // The project's locale (English (UK)) is where a new step starts.
   await expect(settings(page).getByLabel('Locale')).toHaveValue('en-GB');
@@ -71,7 +68,7 @@ test('a German parse numbers step reads 1.234,56 as 1234.56, and the display loc
 
   // What the values are hasn't changed, nor has the project: the display locale is this device's alone.
   await expect(cell(page, 0, 0)).toHaveText('1234.56');
-  expect((await saved(page))?.settings).toEqual({ sampleThresholdRows: 5_000_000, locale: 'en-GB', defaultDateFormats: [], stepsAsNodes: false });
+  expect((await saved(page))?.settings).toEqual({ sampleThresholdRows: 5_000_000, locale: 'en-GB', defaultDateFormats: [], stepsAsNodes: true });
 
   // It's remembered on this device.
   await page.reload();
@@ -82,8 +79,8 @@ test('a German parse numbers step reads 1.234,56 as 1234.56, and the display loc
 
 test('a parse dates step reads month names in its locale', async ({ page }) => {
   await openApp(page);
-  await transformOf(page, 'locales.csv');
-  await addStep(page, 'Parse dates');
+  await sourceOf(page, 'locales.csv');
+  await addStepNode(page, 'Parse dates');
   await onlyColumns(page, ['de_date'], ['de_number', 'us_number', 'de_date', 'de_short', 'fr_date', 'es_date']);
   await expect(formats(page).getByText('No format reads de_date')).toBeVisible();
   await settings(page).getByLabel('Locale').selectOption({ label: 'German (day first)' });
@@ -95,8 +92,8 @@ test('a parse dates step reads month names in its locale', async ({ page }) => {
 
 test('dates that read either way follow the parse dates step’s locale', async ({ page }) => {
   await openApp(page);
-  await transformOf(page, 'dates.csv');
-  await addStep(page, 'Parse dates');
+  await sourceOf(page, 'dates.csv');
+  await addStepNode(page, 'Parse dates');
   await onlyColumns(page, ['ambiguous'], ['uk', 'us', 'ambiguous', 'mixed', 'textual']);
   // Wait for the column's detection: its banner pushes the formats down, and a click as it lands (Firefox in CI) can
   // hit the banner's swap button instead of Remove.

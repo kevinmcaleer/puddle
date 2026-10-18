@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { addFiles, addStep, cell, fixture, node, openApp } from './helpers/app';
+import { addFiles, addStep, addStepNode, cell, fixture, node, openApp } from './helpers/app';
 
 const steps = (page: Page) => page.getByRole('listbox', { name: 'Applied steps' }).getByRole('option');
 const settings = (page: Page) => page.getByTestId('step-settings');
@@ -16,10 +16,7 @@ test.beforeEach(async ({ page }) => {
   await openApp(page);
   await addFiles(page, [fixture('orders.tsv')]);
   await node(page, 'orders.tsv').click();
-  await page.getByRole('button', { name: 'Add', exact: true }).click();
-  await page.getByRole('menuitem', { name: 'Transform' }).click();
-  await node(page, 'Transform 1').click();
-  await addStep(page, 'Custom SQL');
+  await addStepNode(page, 'Custom SQL');
 });
 
 test('a grouped query runs as a step, and the next step sees its columns', async ({ page }) => {

@@ -38,10 +38,17 @@ describe('project files', () => {
     expect(p.settings.locale).toBe('en-GB');
   });
 
-  it('keeps opening format 1 files (fixture)', () => {
+  it('keeps opening format 1 files (fixture), which take to adding each step as a node', () => {
     const p = readProjectFile(fixture('v1.puddle.json'));
-    expect(p.settings).toEqual({ sampleThresholdRows: 1_000_000, locale: 'en-GB', defaultDateFormats: ['%d/%m/%Y'], stepsAsNodes: false });
+    expect(p.formatVersion).toBe(FORMAT_VERSION);
+    // Format 1 files always carried stepsAsNodes: false, the old default, so it is dropped for the new one.
+    expect(p.settings).toEqual({ sampleThresholdRows: 1_000_000, locale: 'en-GB', defaultDateFormats: ['%d/%m/%Y'], stepsAsNodes: true });
     expect(p.nodes.map((n) => n.id)).toEqual(['nCust', 'nPaste', 'nOut']);
+  });
+
+  it('keeps a format 2 file’s choice to stack steps', () => {
+    const p = { ...createProject('Stacked'), settings: { ...createProject().settings, stepsAsNodes: false } };
+    expect(readProjectFile(writeProjectFile(p)).settings.stepsAsNodes).toBe(false);
   });
 
   it('runs each migration in order up to the current version', () => {

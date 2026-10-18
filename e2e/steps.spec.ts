@@ -1,23 +1,20 @@
 import { expect, test, type Page } from '@playwright/test';
-import { addFiles, addStep, cell, fixture, node, openApp } from './helpers/app';
+import { addFiles, addStep, addStepNode, cell, fixture, node, openApp } from './helpers/app';
 
 const steps = (page: Page) => page.getByRole('listbox', { name: 'Applied steps' }).getByRole('option');
 
-/** customers.csv wired into Transform 1, with Transform 1 selected. */
+/** customers.csv wired into Transform 1, a Trim whitespace step from the Add menu, with Transform 1 selected. */
 async function transform(page: Page) {
   await openApp(page);
   await addFiles(page, [fixture('customers.csv')]);
   await node(page, 'customers.csv').click();
-  await page.getByRole('button', { name: 'Add', exact: true }).click();
-  await page.getByRole('menuitem', { name: 'Transform' }).click();
+  await addStepNode(page, 'Trim whitespace');
   await expect(node(page, 'Transform 1')).toHaveAttribute('data-status', 'ok');
-  await node(page, 'Transform 1').click();
 }
 
 test('steps are added, edited, viewed, reordered, turned off and deleted', async ({ page }) => {
   await transform(page);
-  await addStep(page, 'Trim whitespace');
-  // With no columns selected in the table, it starts on the first text column.
+  // With no columns selected in the table, it starts on the first text column; its settings show straight away.
   await expect(steps(page)).toHaveText([/Trimmed name/]);
   const settings = page.getByTestId('step-settings');
   await settings.getByRole('button', { name: 'name', exact: true }).click();
@@ -80,11 +77,9 @@ test('a step renamed by hand keeps its name; nodes take a name and notes', async
 
 test('nodes in a line merge into one and split back; a node splits at a step', async ({ page }) => {
   await transform(page);
-  await addStep(page, 'Trim whitespace');
-  await page.getByRole('button', { name: 'Add', exact: true }).click();
-  await page.getByRole('menuitem', { name: 'Transform' }).click();
-  await node(page, 'Transform 2').click();
-  await addStep(page, 'Remove columns');
+  // From the Add menu, the next step is a node of its own after Transform 1.
+  await addStepNode(page, 'Remove columns', 'Transform 2');
+  await expect(page.getByTestId('wire-Transform 1->Transform 2')).toBeAttached();
   await page.getByTestId('step-settings').getByRole('button', { name: 'joined', exact: true }).click();
 
   // A source can't be merged into a Transform, and says so.

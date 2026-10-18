@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { addFiles, cell, fixture, node, openApp } from './helpers/app';
+import { addFiles, addStepNode, cell, fixture, node, openApp } from './helpers/app';
 
 const steps = (page: Page) => page.getByRole('listbox', { name: 'Applied steps' }).getByRole('option');
 const settings = (page: Page) => page.getByTestId('step-settings');
@@ -9,11 +9,7 @@ test.beforeEach(async ({ page }) => {
   await openApp(page);
   await addFiles(page, [fixture('dates.csv')]);
   await node(page, 'dates.csv').click();
-  await page.getByRole('button', { name: 'Add', exact: true }).click();
-  await page.getByRole('menuitem', { name: 'Transform' }).click();
-  await node(page, 'Transform 1').click();
-  await page.getByRole('button', { name: 'Add step' }).click();
-  await page.getByRole('menuitem', { name: /^Parse dates/ }).click();
+  await addStepNode(page, 'Parse dates');
 });
 
 /** Parse `column` instead of the default, uk (the first text column). */

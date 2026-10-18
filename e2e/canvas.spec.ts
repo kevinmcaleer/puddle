@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { addFiles, fixture, node, openApp } from './helpers/app';
+import { addFiles, addStepNode, fixture, node, openApp } from './helpers/app';
 
 async function dragWire(page: import('@playwright/test').Page, from: string, to: string) {
   const out = node(page, from).locator('.react-flow__handle.source');
@@ -17,8 +17,7 @@ test('nodes are added after the selection, wired, and laid out', async ({ page }
   await openApp(page);
   await addFiles(page, [fixture('customers.csv')]);
   await node(page, 'customers.csv').click();
-  await page.getByRole('button', { name: 'Add', exact: true }).click();
-  await page.getByRole('menuitem', { name: 'Transform' }).click();
+  await addStepNode(page, 'Trim whitespace');
   await expect(node(page, 'Transform 1')).toHaveAttribute('data-status', 'ok');
   await expect(page.getByTestId('wire-customers.csv->Transform 1')).toBeAttached();
 
@@ -43,8 +42,7 @@ test('the minimap appears only once a node runs off the visible canvas, and the 
   await expect(minimap).toHaveCount(0);
   await addFiles(page, [fixture('customers.csv')]);
   await node(page, 'customers.csv').click();
-  await page.getByRole('button', { name: 'Add', exact: true }).click();
-  await page.getByRole('menuitem', { name: 'Transform' }).click();
+  await addStepNode(page, 'Trim whitespace');
   await expect(node(page, 'Transform 1')).toHaveAttribute('data-status', 'ok');
   await expect(minimap).toHaveCount(0);
 
@@ -77,8 +75,8 @@ test('dragging a wire connects nodes, and a wire that would make a loop is refus
   await expect(page.getByTestId('inspector-source')).toBeVisible();
   await page.getByTestId('canvas').click({ position: { x: 20, y: 20 } });
   await expect(page.getByTestId('inspector-source')).toHaveCount(0);
-  await page.getByRole('button', { name: 'Add', exact: true }).click();
-  await page.getByRole('menuitem', { name: 'Transform' }).click();
+  // With nothing selected, a step from the Add menu starts a Transform of its own, unwired.
+  await addStepNode(page, 'Remove blank rows');
   await expect(node(page, 'Transform 1')).toHaveAttribute('data-status', 'unwired');
 
   await dragWire(page, 'customers.csv', 'Transform 1');
@@ -86,8 +84,7 @@ test('dragging a wire connects nodes, and a wire that would make a loop is refus
   await expect(node(page, 'Transform 1')).toHaveAttribute('data-status', 'ok');
 
   await page.getByTestId('canvas').click({ position: { x: 20, y: 20 } });
-  await page.getByRole('button', { name: 'Add', exact: true }).click();
-  await page.getByRole('menuitem', { name: 'Transform' }).click();
+  await addStepNode(page, 'Remove blank rows', 'Transform 2');
   await dragWire(page, 'Transform 1', 'Transform 2');
   await expect(page.getByTestId('wire-Transform 1->Transform 2')).toBeAttached();
   // Regression (Firefox in CI): once wired, Transform 2 reads its input and its counts line grows the node, which
@@ -119,8 +116,7 @@ test('a broken source breaks its node and dims everything downstream', async ({ 
   await openApp(page);
   await addFiles(page, [fixture('customers.csv')]);
   await node(page, 'customers.csv').click();
-  await page.getByRole('button', { name: 'Add', exact: true }).click();
-  await page.getByRole('menuitem', { name: 'Transform' }).click();
+  await addStepNode(page, 'Trim whitespace');
   await page.getByRole('button', { name: 'Add', exact: true }).click();
   await page.getByRole('menuitem', { name: 'Output' }).click();
   await expect(node(page, 'Output 1')).toHaveAttribute('data-status', 'ok');
@@ -195,8 +191,7 @@ test('nodes stay visible while the flow updates around them', async ({ page }) =
     new MutationObserver(check).observe(document.body, { subtree: true, attributes: true, attributeFilter: ['style'] });
   });
   await node(page, 'customers.csv').click();
-  await page.getByRole('button', { name: 'Add', exact: true }).click();
-  await page.getByRole('menuitem', { name: 'Transform' }).click();
+  await addStepNode(page, 'Trim whitespace');
   await expect(node(page, 'Transform 1')).toHaveAttribute('data-status', 'ok');
   await page.getByRole('button', { name: 'Add', exact: true }).click();
   await page.getByRole('menuitem', { name: 'Output' }).click();

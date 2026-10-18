@@ -50,7 +50,7 @@ async function addRule(page: Page, title: string) {
   await page.getByRole('menuitem', { name: title, exact: true }).click();
 }
 
-/** Add a node after the selected one from the Add menu, and select it. */
+/** Add a node (or a step, which makes a Transform of its own) after the selected one from the Add menu, and select it. */
 async function addNode(page: Page, item: string | RegExp, made: string) {
   await page.getByRole('button', { name: 'Add', exact: true }).click();
   await page.getByRole('menuitem', { name: item }).click();
@@ -111,8 +111,7 @@ test('tutorial: New York taxi trips', async ({ page }) => {
 
   // Clean: how long each trip took, the hour it started, and only the trips that make sense.
   await node(page, TRIPS).click();
-  await addNode(page, 'Transform', 'Transform 1');
-  await addStep(page, 'Time between dates');
+  await addNode(page, /^Time between dates/, 'Transform 1');
   await settings(page).getByLabel('In', { exact: true }).selectOption('minutes');
   await settings(page).getByLabel('New column').fill('trip_minutes');
   await settings(page).getByLabel('New column').press('Enter');
@@ -173,9 +172,8 @@ test('tutorial: New York taxi trips', async ({ page }) => {
   await shotPanel(page, 'tutorial-lookup', lookup);
 
   // Summarise: the average fare by the hour a trip started, a column per borough.
-  await addNode(page, 'Transform', 'Transform 2');
+  await addNode(page, /^Pivot or group by/, 'Transform 2');
   await page.setViewportSize({ width: 1440, height: 1200 });
-  await addStep(page, 'Pivot or group by');
   const editor = page.getByTestId('pivot-editor');
   const zone = (name: string) => editor.getByRole('group', { name, exact: true });
   for (const [field, to] of [['tpep_pickup_datetime_hour', 'Rows'], ['Borough', 'Columns'], ['fare_amount', 'Values']] as const) {
