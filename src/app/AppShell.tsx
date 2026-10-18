@@ -1,5 +1,5 @@
 import { ReactFlowProvider } from '@xyflow/react';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Canvas } from '../canvas/Canvas';
 import { useFlowEvaluation } from '../flow/useFlowEvaluation';
 import { Inspector } from '../inspector/Inspector';
@@ -15,6 +15,7 @@ import { SampleBanner } from '../results/SampleBanner';
 import { describeProfile } from '../results/profile';
 import { exportAll, ExportBlockedBanner, ExportButton, exportViewed } from '../export';
 import { QueryDesigner } from '../query/QueryDesigner';
+import { Relationships } from '../relationships/Relationships';
 import { compareWith, offeredNode, togglePin, viewHere } from '../results/pin';
 import { ResultsTable } from '../results/ResultsTable';
 import { useResultsStore } from '../results/state';
@@ -237,6 +238,9 @@ export function AppShell() {
   const consoleOpen = useSession((s) => s.consoleOpen);
   const designerId = useSession((s) => s.designerNodeId);
   const designing = designerId ? nodeById(project, designerId) : undefined;
+  const relationshipsOpen = useSession((s) => s.relationshipsOpen);
+  // The relationships view belongs to the project it was opened on.
+  useEffect(() => () => useSession.getState().setRelationshipsOpen(false), [project.id]);
   const fileInput = useRef<HTMLInputElement>(null);
   const canvas = useRef<HTMLElement>(null);
   const inspector = useRef<HTMLElement>(null);
@@ -287,6 +291,7 @@ export function AppShell() {
           project={project.name}
           projectMenu={[
             { label: 'Rename', icon: 'text', onSelect: () => openProjectDialog({ kind: 'rename', id: project.id, name: project.name }) },
+            { label: 'Relationships', icon: 'relationships', hint: 'Tables and keys, DBML', onSelect: () => session().setRelationshipsOpen(true) },
             { label: 'Export project', icon: 'export', hint: '.puddle.json', onSelect: exportProject },
             { label: 'Import project', icon: 'source', onSelect: () => importInput.current?.click() },
             { label: 'Export recipe', icon: 'template', hint: 'Steps, no data', onSelect: () => openExportRecipe() },
@@ -373,7 +378,7 @@ export function AppShell() {
 
         <div className={inspectorOpen ? 'grid min-h-0 grid-cols-[minmax(0,1fr)_var(--size-inspector)]' : 'grid min-h-0 grid-cols-[minmax(0,1fr)]'}>
           <main ref={canvas} tabIndex={-1} className="min-h-0 focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-brand" aria-label="Canvas">
-            {designing?.type === 'query' ? <QueryDesigner node={designing} /> : <Canvas onAddSource={chooseFiles} onLayout={layoutFlow} />}
+            {relationshipsOpen ? <Relationships /> : designing?.type === 'query' ? <QueryDesigner node={designing} /> : <Canvas onAddSource={chooseFiles} onLayout={layoutFlow} />}
           </main>
 
           {inspectorOpen && (

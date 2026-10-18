@@ -62,6 +62,7 @@ A Docker image (nginx serving the static build) behind a Cloudflare Tunnel at pu
 | `src/pwa/` | The service worker (precached app, engine and extensions for offline use), its precache list and the web app manifest |
 | `src/export/` | Exports from Output nodes: the quality gate, `COPY ... TO` into DuckDB's in-memory file system (Excel workbooks instead go through the Excel worker), download or clipboard, and the export log |
 | `src/query/` | The query designer, in place of the canvas for a Query node: its tables and the join lines dragged between their fields, and the grid of fields with names, sorting, criteria (with "or" rows) and Show, and its Totals row for grouping and summarising |
+| `src/relationships/` | The relationships view (project menu › Relationships), in place of the canvas: every source as a table, lines between the columns the project's Joins, Lookups, Query join lines and "exists in" rules match (drawn on the table each column comes from), one or many at each end as DuckDB finds them, a dragged relationship kept as a rule, and the tables and relationships written as DBML |
 | `src/inspector/` | The right-hand panel, in Node, Project and Notes tabs: source read options, applied steps, step settings, rules and node notes; project and display settings |
 | `src/notes/` | The project notes (the inspector's Notes tab): Markdown written and previewed, rendered with raw HTML off and links in a new tab |
 | `src/results/` | The results table on Glide Data Grid: paging, headers with type and quality |

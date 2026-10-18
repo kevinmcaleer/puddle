@@ -273,6 +273,18 @@ test('query designer', async ({ page }) => {
   await shot(page, 'query-designer');
 });
 
+test('relationships', async ({ page }) => {
+  await start(page);
+  await combine(page, ['shop-orders.csv', 'shop-customers.csv'], /Join/, 'selection');
+  await page.getByTestId('group-bar').getByRole('button', { name: 'Join these two' }).click();
+  await expect(node(page, 'Join 1')).toHaveAttribute('data-status', 'ok');
+  await projectMenu(page, 'Relationships');
+  const view = page.getByTestId('relationships');
+  await view.getByTestId('rel-field-shop-orders.csv-status').dragTo(view.getByTestId('rel-field-shop-customers.csv-status'));
+  await expect(view.getByTestId('relationship-cardinality')).toHaveText(['many to many', 'many to many']);
+  await shot(page, 'relationships');
+});
+
 test('reshaping', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 1100 });
   await start(page);

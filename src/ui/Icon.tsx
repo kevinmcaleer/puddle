@@ -2,7 +2,7 @@ import type { LucideIcon } from 'lucide-react';
 import {
   ArrowLeft, Blend, Calendar, ClipboardPaste, CaseSensitive, Check, ChevronDown, ChevronRight, ChevronUp, CircleHelp, Clock, Code, Columns2, Download, Ellipsis, Eye,
   Database, File, Globe, FileText, GripVertical, Info, Keyboard, LayoutTemplate, Link, ListPlus, Monitor, Moon, PanelBottomClose, PanelBottomOpen, PanelRightClose, PanelRightOpen, Pin, Plus, Redo2, RefreshCw,
-  Group, Search, ShieldCheck, Sigma, SlidersHorizontal, Sun, TableProperties, TriangleAlert, Type, Undo2, Ungroup, Workflow, X,
+  Group, Network, Search, ShieldCheck, Sigma, SlidersHorizontal, Sun, TableProperties, TriangleAlert, Type, Undo2, Ungroup, Workflow, X,
 } from 'lucide-react';
 import { cx } from './cx';
 
@@ -58,6 +58,7 @@ const LUCIDE = {
   totals: Sigma,
   group: Group,
   ungroup: Ungroup,
+  relationships: Network,
 } satisfies Record<string, LucideIcon>;
 
 export type IconName = keyof typeof LUCIDE | 'trim';
