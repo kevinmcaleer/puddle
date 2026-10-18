@@ -39,7 +39,8 @@ test('the schema diagram draws groups, enums, composite refs and notes, highligh
 
   // The search box centres the table typed.
   await page.getByTestId('schema-search').fill('users');
-  const pane = page.getByRole('region', { name: 'Diagram' });
+  // The drawing area, below the views strip.
+  const pane = page.getByTestId('schema-diagram');
   await expect(page.getByTestId('schema-table-users')).toHaveClass(/is-found/);
   await expect
     .poll(async () => {

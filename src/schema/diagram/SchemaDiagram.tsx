@@ -34,6 +34,16 @@ export interface SchemaDiagramProps {
    * and adding tables and notes. Each change is made on the DBML text. Without it the diagram only moves things.
    */
   onEdit?: DiagramEdit;
+  /** Only these tables, by diagram id (a view); every table when absent. Sticky notes show only with every table. */
+  only?: Set<string>;
+  /** Where the diagram opens panned and zoomed to; fitted or at 100% when absent. */
+  initialView?: View;
+  /** The pan and zoom, a moment after they stop changing. */
+  onViewChange?: (view: View) => void;
+  /** The tables selected with Shift+click changed, by diagram id. */
+  onSelectionChange?: (ids: string[]) => void;
+  /** In a view: take these tables (by diagram id) out of it. Adds "Hide from view" to the table menu. */
+  onHide?: (ids: string[]) => void;
 }
 
 /** What the popover shows, and where: next to a table or a column's row. */
@@ -137,11 +147,11 @@ const Detail = ({ term, children }: { term: string; children: ReactNode }) => (
  * links to the columns that use them, group frames and sticky notes. Pans and zooms with the wheel, a trackpad, the
  * toolbar or the keyboard; a search box finds a table and centres it.
  */
-export function SchemaDiagram({ schema, positions, detail = 'full', current, onMove, onPick, onEdit }: SchemaDiagramProps) {
+export function SchemaDiagram({ schema, positions, detail = 'full', current, onMove, onPick, onEdit, only, initialView, onViewChange, onSelectionChange, onHide }: SchemaDiagramProps) {
   const [moving, setMoving] = useState<Record<string, Point>>();
   const shown = useMemo(() => (moving ? { ...positions, ...moving } : positions), [positions, moving]);
-  const diagram = useMemo(() => layoutDiagram(schema, shown, { detail }), [schema, shown, detail]);
-  const [view, setView] = useState<View>(START);
+  const diagram = useMemo(() => layoutDiagram(schema, shown, { detail, only }), [schema, shown, detail, only]);
+  const [view, setView] = useState<View>(initialView ?? START);
   const viewRef = useRef(view);
   useEffect(() => {
     viewRef.current = view;
@@ -162,6 +172,17 @@ export function SchemaDiagram({ schema, positions, detail = 'full', current, onM
   const [linking, setLinking] = useState<{ from: Point; to: Point } | null>(null);
   const [refAsk, setRefAsk] = useState<{ from: ColumnRef; to: ColumnRef; at: PaneSpot } | null>(null);
   const [selected, setSelected] = useState<string[]>([]);
+  const heard = useRef({ onSelectionChange, onViewChange });
+  useEffect(() => {
+    heard.current = { onSelectionChange, onViewChange };
+  });
+  useEffect(() => heard.current.onSelectionChange?.(selected), [selected]);
+  // The pan and zoom are kept once they settle, not on every frame of a drag or a pinch.
+  useEffect(() => {
+    if (view === START) return;
+    const t = setTimeout(() => heard.current.onViewChange?.(view), 400);
+    return () => clearTimeout(t);
+  }, [view]);
 
   const refColumns = useMemo(() => {
     const set = new Set<string>();
@@ -198,7 +219,7 @@ export function SchemaDiagram({ schema, positions, detail = 'full', current, onM
   }, [diagram]);
   useEffect(() => {
     const el = frame.current;
-    if (!el || typeof ResizeObserver === 'undefined') return;
+    if (initialView || !el || typeof ResizeObserver === 'undefined') return;
     const ro = new ResizeObserver(() => {
       ro.disconnect();
       const b = bounds.current;
@@ -374,7 +395,7 @@ export function SchemaDiagram({ schema, positions, detail = 'full', current, onM
     if (!onEdit) return;
     setPop(null);
     const t = box.table;
-    const items = column ? columnMenu(t, column, onEdit, askAt(el, tableRef(t))) : tableMenu(schema, t, onEdit, askAt(el, tableRef(t)), selection());
+    const items = column ? columnMenu(t, column, onEdit, askAt(el, tableRef(t))) : tableMenu(schema, t, onEdit, askAt(el, tableRef(t)), selection(), onHide && (() => onHide([...new Set([box.id, ...selected])])));
     setMenu({ x, y, label: column ? `Actions for ${box.label}.${column}` : `Actions for ${box.label}`, items });
   };
   /** The menu key, or Shift+F10, opens an element's menu where it is. */
@@ -741,9 +762,11 @@ export function SchemaDiagram({ schema, positions, detail = 'full', current, onM
             <Button size="sm" variant="ghost" icon="plus" onClick={() => addElement('table')} data-testid="schema-add-table">
               Table
             </Button>
-            <Button size="sm" variant="ghost" icon="notes" onClick={() => addElement('note')} data-testid="schema-add-note">
-              Note
-            </Button>
+            {!only && (
+              <Button size="sm" variant="ghost" icon="notes" onClick={() => addElement('note')} data-testid="schema-add-note">
+                Note
+              </Button>
+            )}
           </>
         )}
         {diagram.tables.length > 0 && (
@@ -752,9 +775,9 @@ export function SchemaDiagram({ schema, positions, detail = 'full', current, onM
             variant="ghost"
             icon="layout"
             onClick={() => {
-              const places = autoArrange(schema, { detail });
+              const places = autoArrange(schema, { detail, only });
               onMove(places);
-              setView(fitted(layoutDiagram(schema, { ...positions, ...places }, { detail }).bounds));
+              setView(fitted(layoutDiagram(schema, { ...positions, ...places }, { detail, only }).bounds));
             }}
           >
             Auto-arrange

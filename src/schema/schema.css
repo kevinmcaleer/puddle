@@ -7,7 +7,11 @@
 .puddle-schema__errors li { display: flex; align-items: baseline; gap: var(--space-2); }
 .puddle-schema__divider { width: var(--space-1); cursor: col-resize; background: var(--line); touch-action: none; }
 .puddle-schema__divider:hover, .puddle-schema__divider:focus-visible { background: var(--brand); outline: none; }
-.puddle-schema__pane { position: relative; min-width: 0; min-height: 0; overflow: hidden; background-color: var(--surface-canvas); background-image: radial-gradient(var(--canvas-dot) 1px, transparent 1px); background-size: var(--space-4) var(--space-4); }
+.puddle-schema__pane { position: relative; display: flex; flex-direction: column; min-width: 0; min-height: 0; overflow: hidden; background-color: var(--surface-canvas); background-image: radial-gradient(var(--canvas-dot) 1px, transparent 1px); background-size: var(--space-4) var(--space-4); }
+.puddle-schema__stage { position: relative; flex: 1; min-height: 0; }
+.puddle-schema-views { display: flex; align-items: center; gap: var(--space-2); padding: var(--space-2) var(--space-3); border-bottom: 1px solid var(--line); background: var(--surface-panel); overflow-x: auto; }
+.puddle-schema-views .ui-tabs { flex: none; }
+.puddle-schema-detail { display: inline-flex; gap: 2px; flex: none; }
 .puddle-schema__empty { position: absolute; inset: 0; display: grid; place-items: center; color: var(--ink-muted); pointer-events: none; }
 
 /* The editor: a transparent textarea over a coloured copy of its text, line numbers to the left. */
