@@ -98,8 +98,8 @@ test('projects can be created, renamed, duplicated and deleted from the home scr
   await expect(page.getByTestId('project-name')).toHaveText('Customers');
   await expect(node(page, 'customers.csv')).toBeVisible();
 
-  // Reloading from the home screen stays on the home screen.
-  await projectMenu(page, 'All projects');
+  // The wordmark goes home too, the way a site's logo does; reloading from the home screen stays there.
+  await page.getByTestId('home-button').click();
   await expect(page.getByTestId('home')).toBeVisible();
   await page.reload();
   await expect(page.getByTestId('home')).toBeVisible();

@@ -45,3 +45,19 @@
     scroll-behavior: auto !important;
   }
 }
+
+/* The wordmark as the way to the projects screen (Toolbar's onHome). */
+.ui-wordmark--home {
+  padding: 0 var(--space-1);
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  cursor: pointer;
+}
+.ui-wordmark--home:hover {
+  background: var(--surface-hover);
+}
+.ui-wordmark--home:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
+}

@@ -35,7 +35,7 @@ Samples are ordinary projects: change them as much as you like, and delete them 
 
 ![The main screen with its five areas numbered](_static/screenshots/screen-annotated.png)
 
-1. **The toolbar.** The project's name and menu, **Add** (sources and nodes), undo and redo, **Help** and the inspector toggle.
+1. **The toolbar.** The Puddle wordmark, which goes back to all your projects; the project's name and menu, **Add** (sources and nodes), undo and redo, **Help** and the inspector toggle.
 2. **The canvas.** Your flow: sources on the left feed transforms, joins and other nodes, which feed outputs on the right. See {doc}`canvas`.
 3. **The inspector.** Its **Node** tab has everything about the selected node: a source's read options, a transform's steps and their settings, rules, and notes. The **Project** tab holds the project's settings, and the **Notes** tab the project's notes.
 4. **The results.** The data at the node you're viewing, with each column's type and a bar showing how much of it is missing or unusual. Selecting columns here brings up the quick-fix bar.

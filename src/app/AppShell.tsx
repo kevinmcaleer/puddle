@@ -220,8 +220,8 @@ function Strip() {
 
 /**
  * The fixed layout every feature lives in: toolbar on top, canvas in the centre, inspector docked right,
- * results docked below the canvas, status strip underneath. The toolbar keeps to seven controls: the wordmark,
- * the project menu, Add, undo, redo, Help and the inspector toggle; the rest lives in menus or on the canvas.
+ * results docked below the canvas, status strip underneath. The toolbar keeps to seven controls: the wordmark
+ * (the way back to every project), the project menu, Add, undo, redo, Help and the inspector toggle; the rest lives in menus or on the canvas.
  */
 export function AppShell() {
   const project = useProject();
@@ -283,6 +283,7 @@ export function AppShell() {
       <div className="grid h-full min-w-[960px] grid-rows-[auto_auto_minmax(0,1fr)_auto_auto] bg-surface-panel text-body text-ink">
         <h1 className="sr-only">{project.name}</h1>
         <Toolbar
+          onHome={() => void goHome()}
           project={project.name}
           projectMenu={[
             { label: 'Rename', icon: 'text', onSelect: () => openProjectDialog({ kind: 'rename', id: project.id, name: project.name }) },

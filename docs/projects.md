@@ -4,7 +4,7 @@ A project is your flow: its sources (how to read them, not their data), nodes, s
 
 ## The projects list
 
-**All projects**, in the project menu (click the project's name in the toolbar), opens the home screen: your projects, newest first, with the samples and the recipe gallery below. **New project** starts an empty one, and each project's **...** menu renames, duplicates or deletes it. Undo on this screen brings back a project deleted by mistake (see [Undo and redo](#undo-and-redo)).
+The **Puddle** wordmark at the left of the toolbar, or **All projects** in the project menu (click the project's name), opens the home screen: your projects, newest first, with the samples and the recipe gallery below. **New project** starts an empty one, and each project's **...** menu renames, duplicates or deletes it. Undo on this screen brings back a project deleted by mistake (see [Undo and redo](#undo-and-redo)).
 
 ![The projects home screen with samples and the recipe gallery](_static/screenshots/projects-home.png)
 
