@@ -450,8 +450,7 @@ export function SchemaDiagram({ schema, positions, detail = 'full', current, onM
         transform={`translate(${box.x},${box.y})`}
         tabIndex={0}
         role="group"
-        aria-label={`Table ${label}, ${t.columns.length} columns. Arrow keys move it, Enter shows it in the DBML.${onEdit ? ' F2 renames it; the menu key opens its actions.' : ''}`}
-        aria-selected={onEdit ? selected.includes(box.id) : undefined}
+        aria-label={`Table ${label}, ${t.columns.length} columns${selected.includes(box.id) ? ', selected' : ''}. Arrow keys move it, Enter shows it in the DBML.${onEdit ? ' F2 renames it; the menu key opens its actions.' : ''}`}
         aria-describedby={pop?.table === box.id ? popId : undefined}
         data-testid={`schema-table-${label}`}
         onPointerDown={(e) => startMove([{ id: box.id, x: box.x, y: box.y }], e)}
