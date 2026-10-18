@@ -22,3 +22,21 @@ Drag a field into the grid, or double-click it, to add it to the result. For eac
 | Criteria | A condition on the field, such as "More than 5". Criteria on one row must all hold; each further "or" row is an alternative. |
 
 **Totals** adds a Total row for grouping and summarising, as in Access: each field is Group by, or a summary such as Sum, Average, Min, Max, Count, Count distinct, First, Last, StDev or Var. Where filters on a field before grouping, and Expression takes a calculation over the others. **Unique values** removes repeated rows from the result.
+
+## SQL view
+
+As in Access, the designer turns the query into SQL and back again. Choose **SQL** at the top of the designer to see the design written as a DuckDB query, and **Design** to return to the grid.
+
+![The SQL view: the same query as SQL, joined on customer_id with a criterion and a sort](_static/screenshots/query-sql-view.png)
+
+You can edit the SQL. Press Ctrl+Enter, or click away, and the design follows: tables, join lines, fields, names, sorting, criteria and totals all fill in from the SQL. Tables are read by their node's name (in double quotes when it has spaces or dots), or as input1, input2 by number. Each table can have a short name of its own, such as `FROM orders o`, and a column only needs its table when two tables have it.
+
+The grid can show:
+
+- `SELECT` of fields, `*`, `DISTINCT`, and new names with `AS`
+- `JOIN`, `LEFT JOIN`, `RIGHT JOIN`, `FULL JOIN` and `CROSS JOIN`, on fields that are equal
+- `WHERE` and `HAVING` conditions such as `total > 5`, `name ILIKE '%ada%'`, joined with `AND` and `OR`; a condition on a field the query doesn't show goes on a hidden field, as in Access
+- `GROUP BY` with `sum`, `avg`, `min`, `max`, `count`, `count(DISTINCT ...)`, `first`, `last`, `stddev` and `variance`, and other calculations over them as an Expression
+- `ORDER BY`
+
+Some SQL has no place in the grid: `LIMIT`, `UNION`, subqueries, `CASE` and the like. Puddle says why, and keeps your SQL: the query runs it as written, and **Design** is unavailable until you choose **Back to the design**, which discards the SQL and brings back the design as it was.

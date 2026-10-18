@@ -271,6 +271,9 @@ test('query designer', async ({ page }) => {
   await page.getByLabel('Criteria value for total').press('Enter');
   await expect(page.getByTestId('results-title')).toHaveText('Query 1');
   await shot(page, 'query-designer');
+  await designer.getByRole('tab', { name: 'SQL' }).click();
+  await expect(designer.getByLabel('SQL', { exact: true })).toHaveValue(/WHERE t2.total > 5/);
+  await shot(page, 'query-sql-view');
 });
 
 test('reshaping', async ({ page }) => {

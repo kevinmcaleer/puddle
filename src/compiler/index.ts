@@ -29,6 +29,7 @@ export { compileLookup, lookupColumns, suggestLookupColumns, lookupProblems, typ
 export { KeptBook, keptTable, keptTableName, knownKept, type KeptTable } from './keptBook';
 export { appendColumns, appendProblems, compileAppend, type AppendColumn, type AppendInput, type AppendProblem } from './append';
 export { compileQuery, CRITERIA_OPS, criteriaClauses, criteriaPlace, criteriaRows, crossJoinedTables, defaultNames, fieldTerm, fieldTotal, joinPlan, QUERY_JOIN_TYPES, queryColumns, queryProblems, resultType, tableAlias, TOTALS, totalsProblems, type QueryColumn, type QueryJoinStep, type QueryProblem, type QueryTable } from './query';
+export { compileQuerySql, designSql, querySqlNames, querySqlProblem, readQuerySql, type QuerySqlReading } from './querySql';
 export { knownSchemas, SchemaBook } from './schemaBook';
 export { cleanCustomSql, customSqlProblem, INPUT_NAME, lexSql, SqlRefusal, type SqlToken, type SqlTokenKind } from './customSql';
 export { compileConsole, CONSOLE_ROW_LIMIT, consoleProblem } from './console';

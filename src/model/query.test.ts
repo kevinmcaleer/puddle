@@ -3,7 +3,7 @@ import { addNode } from './edits';
 import { GraphError, inputPorts } from './graph';
 import { initHistory, pushHistory, redo, undo } from './history';
 import { parseProject } from './project';
-import { addQueryField, addQueryJoin, addQueryOrRow, addQueryTable, criteriaCell, moveQueryField, moveQueryTable, removeQueryField, removeQueryJoin, removeQueryOrRow, removeQueryTable, setQueryCriteria, setQueryJoinKind, setQuerySpec, updateQueryField } from './query';
+import { addQueryField, addQueryJoin, addQueryOrRow, addQueryTable, criteriaCell, moveQueryField, moveQueryTable, removeQueryField, removeQueryJoin, removeQueryOrRow, removeQueryTable, setQueryCriteria, setQueryDesign, setQueryJoinKind, setQuerySpec, setQuerySql, updateQueryField } from './query';
 import type { Project, QueryNode } from './schema';
 
 const base = () =>
@@ -238,5 +238,30 @@ describe('or rows', () => {
     expect(spec(h.present).orRows).toBe(0);
     h = undo(h);
     expect(cells(h.present, 1)).toEqual([undefined, { op: '>', value: '10' }]);
+  });
+});
+
+describe('query SQL kept from the SQL view', () => {
+  it('keeps SQL the grid can’t show beside the design, and discarding it leaves the design as it was', () => {
+    const p = addQueryField(twoTables(), 'q', { port: 0, column: 'name' }, undefined, 'f1');
+    const kept = setQuerySql(p, 'q', 'SELECT name FROM input1 LIMIT 5');
+    expect(spec(kept).sql).toBe('SELECT name FROM input1 LIMIT 5');
+    expect(spec(kept).fields).toEqual(spec(p).fields);
+    expect(setQuerySql(kept, 'q', 'SELECT name FROM input1 LIMIT 5')).toBe(kept);
+    const back = setQuerySql(kept, 'q', undefined);
+    expect(spec(back)).toEqual(spec(p));
+    expect('sql' in spec(back)).toBe(false);
+    // It's saved with the project.
+    expect((parseProject(JSON.parse(JSON.stringify(kept))).nodes.find((n) => n.id === 'q') as QueryNode).querySpec.sql).toBe('SELECT name FROM input1 LIMIT 5');
+  });
+
+  it('a design read from SQL takes the place of the design and of any SQL kept, as one undo step', () => {
+    const kept = setQuerySql(twoTables(), 'q', 'SELECT 1');
+    const design = { ...spec(kept), fields: [{ id: 'f9', port: 1, column: 'total', show: true, sort: 'none' as const }] };
+    let h = initHistory(kept);
+    h = pushHistory(h, setQueryDesign(h.present, 'q', design));
+    expect(spec(h.present)).toEqual({ ...spec(twoTables()), fields: design.fields });
+    h = undo(h);
+    expect(spec(h.present).sql).toBe('SELECT 1');
   });
 });
