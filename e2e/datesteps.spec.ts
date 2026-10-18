@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { addFiles, addStep, cell, fixture, node, openApp } from './helpers/app';
+import { addFiles, addStep, addStepNode, cell, fixture, node, openApp } from './helpers/app';
 
 const steps = (page: Page) => page.getByRole('listbox', { name: 'Applied steps' }).getByRole('option');
 const settings = (page: Page) => page.getByTestId('step-settings');
@@ -14,13 +14,10 @@ test.beforeEach(async ({ page }) => {
   await openApp(page);
   await addFiles(page, [fixture('periods.csv')]);
   await node(page, 'periods.csv').click();
-  await page.getByRole('button', { name: 'Add', exact: true }).click();
-  await page.getByRole('menuitem', { name: 'Transform' }).click();
-  await node(page, 'Transform 1').click();
 });
 
 test('format dates as text with a live example, then parse them back', async ({ page }) => {
-  await addStep(page, 'Format dates as text');
+  await addStepNode(page, 'Format dates as text');
   // Starts on the first date column, and shows what the format makes before it runs.
   await expect(chip(page, 'start')).toHaveAttribute('aria-pressed', 'true');
   await expect(settings(page).getByText('Friday 1 March 2024 at 14:05:09 becomes 01/03/2024')).toBeVisible();
@@ -39,10 +36,13 @@ test('format dates as text with a live example, then parse them back', async ({ 
 });
 
 test('extract a part, add time and truncate, with text columns pointed at parse dates', async ({ page }) => {
-  await addStep(page, 'Extract date part');
+  await addStepNode(page, 'Extract date part');
   await expect(settings(page).getByTestId('expected-type')).toHaveText('Date or date and time columns');
   await chip(page, 'label').click();
   await expect(settings(page).getByText('label is text. Add a Parse dates step before this one to read it as dates.')).toBeVisible();
+  // Regression (Firefox in CI): the step then fails to run, and the banner saying so lands above the form a moment
+  // later, moving the chips down under a click already aimed. Wait for the step to have failed first.
+  await expect(node(page, 'Transform 1')).toHaveAttribute('data-status', 'error');
   await chip(page, 'label').click();
   await expect(settings(page).getByText(/is text\./)).toHaveCount(0);
   await settings(page).getByLabel('Part', { exact: true }).selectOption('weekdayName');
@@ -67,7 +67,7 @@ test('extract a part, add time and truncate, with text columns pointed at parse 
 });
 
 test('time between two dates in a chosen unit', async ({ page }) => {
-  await addStep(page, 'Time between dates');
+  await addStepNode(page, 'Time between dates');
   await expect(settings(page).locator('#step-start').getByRole('button', { name: 'start', exact: true })).toHaveAttribute('aria-pressed', 'true');
   await settings(page).locator('#step-end').getByRole('button', { name: 'stamp', exact: true }).click();
   await settings(page).getByLabel('In', { exact: true }).selectOption('hours');

@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { addFiles, addStep, cell, fixture, node, openApp } from './helpers/app';
+import { addFiles, addStep, addStepNode, cell, fixture, node, openApp } from './helpers/app';
 
 const steps = (page: Page) => page.getByRole('listbox', { name: 'Applied steps' }).getByRole('option');
 const settings = (page: Page) => page.getByTestId('step-settings');
@@ -14,19 +14,16 @@ test.beforeEach(async ({ page }) => {
   await openApp(page);
   await addFiles(page, [fixture('numbers.csv')]);
   await node(page, 'numbers.csv').click();
-  await page.getByRole('button', { name: 'Add', exact: true }).click();
-  await page.getByRole('menuitem', { name: 'Transform' }).click();
-  await node(page, 'Transform 1').click();
 });
 
-test('the Numbers group is in the Add step menu', async ({ page }) => {
-  await page.getByRole('button', { name: 'Add step' }).click();
+test('the Numbers group is in the Add menu', async ({ page }) => {
+  await page.getByRole('button', { name: 'Add', exact: true }).click();
   for (const title of ['Round', 'Absolute value', 'Bucket', 'Standardise', 'Convert units']) await expect(page.getByRole('menuitem', { name: new RegExp(`^${title}`) })).toBeVisible();
   await page.keyboard.press('Escape');
 });
 
 test('round to places and up, leaving empty values empty', async ({ page }) => {
-  await addStep(page, 'Round');
+  await addStepNode(page, 'Round');
   await expect(settings(page).getByTestId('expected-type')).toContainText('Number columns');
   await expect(settings(page).getByTestId('expected-type').locator('.ui-type')).toHaveText(['123', '1.5']);
   await chip(page, 'price').click();
@@ -44,7 +41,7 @@ test('round to places and up, leaving empty values empty', async ({ page }) => {
 });
 
 test('bucket by custom edges with the labels shown first, then convert units', async ({ page }) => {
-  await addStep(page, 'Bucket');
+  await addStepNode(page, 'Bucket');
   await chip(page, 'amount').click();
   await settings(page).getByLabel('Buckets', { exact: true }).selectOption('edges');
   await commit(page, 'Edges', '10, 0');
@@ -70,7 +67,7 @@ test('bucket by custom edges with the labels shown first, then convert units', a
 });
 
 test('a number step given text points at parse numbers', async ({ page }) => {
-  await addStep(page, 'Change type');
+  await addStepNode(page, 'Change type');
   await chip(page, 'price').click();
   await settings(page).getByLabel('New type', { exact: true }).selectOption('text');
   await addStep(page, 'Standardise');

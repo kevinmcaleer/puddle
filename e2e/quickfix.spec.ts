@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { addFiles, cell, expectRows, fixture, node, openApp } from './helpers/app';
+import { addFiles, cell, expectRows, fixture, node, openApp, stackSteps } from './helpers/app';
 
 const steps = (page: Page) => page.getByRole('listbox', { name: 'Applied steps' }).getByRole('option');
 const fixes = (page: Page) => page.getByRole('toolbar', { name: 'Quick fixes' });
@@ -24,7 +24,7 @@ test.beforeEach(async ({ page }) => {
   await expectRows(page, 5);
 });
 
-test('a fix on a viewed source adds one step for every selected column, in a new Transform', async ({ page }) => {
+test('a fix on a viewed source adds one step for every selected column, in a new Transform, and the next fix in a Transform of its own', async ({ page }) => {
   await expect(fixes(page)).toHaveCount(0);
   await selectColumns(page, 1, 2);
   await expect(page.getByTestId('quick-fixes')).toHaveAttribute('data-columns', 'name,city');
@@ -36,19 +36,28 @@ test('a fix on a viewed source adds one step for every selected column, in a new
   await expect(page.getByTestId('results-title')).toHaveText('Transform 1 · step 1');
   await expect(cell(page, 2, 1)).toHaveText('new york');
 
-  // The next fix lands on the same node, after the viewed step.
+  // Each step is a node of its own: the next fix lands in a new Transform after this one.
   await selectColumns(page, 1, 2);
   await fixes(page).getByRole('button', { name: 'Case' }).click();
   await page.getByRole('menuitem', { name: 'Title Case' }).click();
-  await expect(steps(page)).toHaveText([/Trimmed name, city/, /Changed name, city to title case/]);
+  await expect(node(page, 'Transform 2')).toBeVisible();
+  await expect(page.getByTestId('wire-Transform 1->Transform 2')).toBeAttached();
+  await expect(steps(page)).toHaveText([/Changed name, city to title case/]);
+  await expect(page.getByTestId('results-title')).toHaveText('Transform 2 · step 1');
   await expect(cell(page, 2, 0)).toHaveText('London');
 
+  // With the setting off, a fix lands on the viewed node, after the viewed step.
+  await stackSteps(page);
   await selectColumns(page, 1);
   await fixes(page).getByRole('button', { name: 'Collapse spaces' }).click();
+  await expect(node(page, 'Transform 3')).toHaveCount(0);
+  await expect(steps(page)).toHaveText([/Changed name, city to title case/, /Collapsed spaces in name/]);
   await expect(cell(page, 1, 0)).toHaveText('Ada Lovelace');
 });
 
 test('parse numbers, parse dates, strip non-printing characters, empty to null and remove duplicates', async ({ page }) => {
+  // Stacked into one Transform, so the step list shows them all.
+  await stackSteps(page);
   await selectColumns(page, 3);
   await fixes(page).getByRole('button', { name: 'Parse numbers' }).click();
   await expect(steps(page)).toHaveText([/Parsed numbers in price/]);

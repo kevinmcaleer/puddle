@@ -36,7 +36,7 @@ import { openODataDialog } from '../sources/odataDialog';
 import { cardKind } from '../canvas/kind';
 import { Button, Menu, ResultsBar, StatusBadge, StatusStrip, Toolbar, useDisplayFormat, type NodeKind } from '../ui';
 import { ActivityControl } from './ActivityControl';
-import { addFiles, addNodeAfterSelection, cancelWiring, chooseFiles as pickSourceFiles, addPastedText, groupSelection, layoutFlow, openSelected, pasteFromClipboard, searchAddStep, selectNeighbour, startWiring, viewSelected } from './actions';
+import { addFiles, addNodeAfterSelection, addStepFromMenu, cancelWiring, chooseFiles as pickSourceFiles, addPastedText, groupSelection, layoutFlow, openSelected, pasteFromClipboard, searchAddStep, selectNeighbour, startWiring, viewSelected } from './actions';
 import { useEngineStore, type EngineStatus } from './engine';
 import { ResultsPanel } from './ResultsPanel';
 import { Console } from '../console/Console';
@@ -46,6 +46,7 @@ import { TemplateDialogs } from '../templates/TemplateDialogs';
 import { openExportRecipe, openRecipeFile } from '../recipes/actions';
 import { RecipeAttachBanner, RecipeDialogs } from '../recipes/RecipeDialogs';
 import { shortcutText, withShortcut, type GlobalShortcutId } from './shortcuts';
+import { STEP_GROUPS, stepForms } from '../steps';
 import { useShortcuts } from './useShortcuts';
 import { PROVIDER_IDS, PROVIDERS, useSync } from '../sync';
 import { openSyncDialog } from '../sync/dialogs';
@@ -253,6 +254,8 @@ export function AppShell() {
 
   const importInput = useRef<HTMLInputElement>(null);
   const recipeInput = useRef<HTMLInputElement>(null);
+  const [addMenuOpen, setAddMenuOpen] = useState(false);
+  const addMenuPending = useSession((s) => s.addMenuPending);
   const chooseFiles = () => void pickSourceFiles(() => fileInput.current?.click());
 
   const session = useSession.getState;
@@ -262,7 +265,7 @@ export function AppShell() {
     redo,
     'toggle-inspector': () => session().setInspectorOpen(!session().inspectorOpen),
     'add-source': chooseFiles,
-    'add-transform': () => addNodeAfterSelection('transform'),
+    'add-transform': () => session().requestAddMenu(),
     'add-output': () => addNodeAfterSelection('output'),
     layout: () => project.nodes.length > 0 && layoutFlow(),
     group: groupSelection,
@@ -304,13 +307,19 @@ export function AppShell() {
           <Menu
             label="Add"
             button={{ variant: 'primary', icon: 'plus', ...{ 'data-tour': 'add-node' } }}
+            search="Search steps and nodes"
+            scroll
+            open={addMenuOpen || addMenuPending}
+            onOpenChange={(next) => {
+              setAddMenuOpen(next);
+              if (!next) session().clearAddMenu();
+            }}
             items={[
               { label: 'Choose files', icon: 'source', hint: 'CSV, TSV, JSON, Parquet', shortcut: shortcutText('add-source'), group: 'Sources', onSelect: chooseFiles },
               { label: 'From URL', icon: 'link', hint: 'https address', group: 'Sources', onSelect: () => openUrlDialog() },
               { label: 'From web page', icon: 'web', hint: 'Its tables', group: 'Sources', onSelect: () => openWebPageDialog() },
               { label: 'From OData feed', icon: 'database', hint: 'Its entity sets', group: 'Sources', onSelect: () => openODataDialog() },
               { label: 'Paste from clipboard', icon: 'paste', group: 'Sources', onSelect: () => void pasteFromClipboard() },
-              { label: 'Transform', icon: 'transform', shortcut: shortcutText('add-transform'), group: 'Nodes', onSelect: () => addNodeAfterSelection('transform') },
               { label: 'From template', icon: 'template', hint: 'Saved steps', group: 'Nodes', onSelect: openTemplates },
               { label: 'Join', icon: 'join', hint: 'Two inputs', group: 'Nodes', onSelect: () => addNodeAfterSelection('join') },
               { label: 'Append', icon: 'append', hint: 'Stack rows', group: 'Nodes', onSelect: () => addNodeAfterSelection('append') },
@@ -318,6 +327,8 @@ export function AppShell() {
               { label: 'Query', icon: 'query', hint: 'Design with tables', group: 'Nodes', onSelect: () => addNodeAfterSelection('query') },
               { label: 'SQL', icon: 'code', hint: 'Write a query', group: 'Nodes', onSelect: () => addNodeAfterSelection('sql') },
               { label: 'Output', icon: 'output', shortcut: shortcutText('add-output'), group: 'Nodes', onSelect: () => addNodeAfterSelection('output') },
+              // Every step, each making a node of its own after the selected node (T opens the menu with its search focused).
+              ...STEP_GROUPS.flatMap((g) => stepForms().filter((f) => f.group === g).map((f) => ({ label: f.title, group: `${g} steps`, onSelect: () => void addStepFromMenu(f) }))),
             ]}
           />
           <Button variant="ghost" icon="undo" iconOnly aria-label="Undo" title={withShortcut('Undo', 'undo')} disabled={!canUndo} onClick={undo} />

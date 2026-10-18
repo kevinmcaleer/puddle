@@ -47,6 +47,7 @@ describe('template migrations', () => {
         const nodes = (p.nodes as { steps: { label: string }[] }[]).map((n) => ({ ...n, steps: n.steps.map((s) => ({ ...s, label: `${s.label} (upgraded)` })) }));
         return MIGRATIONS[0]!({ ...p, nodes });
       },
+      1: MIGRATIONS[1]!,
     };
     const t = migrateTemplate(fixture('unversioned.template.json'), migrations);
     expect(seen).toEqual(['Tidy contact names']);

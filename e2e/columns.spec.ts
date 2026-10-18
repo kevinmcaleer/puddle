@@ -1,15 +1,8 @@
 import { expect, test, type Page } from '@playwright/test';
-import { addFiles, addStep, cell, fixture, node, openApp } from './helpers/app';
+import { addFiles, addStep, addStepNode, cell, fixture, node, openApp } from './helpers/app';
 
 const steps = (page: Page) => page.getByRole('listbox', { name: 'Applied steps' }).getByRole('option');
 const settings = (page: Page) => page.getByTestId('step-settings');
-
-async function transform(page: Page, name = 'Transform 1') {
-  await page.getByRole('button', { name: 'Add', exact: true }).click();
-  await page.getByRole('menuitem', { name: 'Transform' }).click();
-  await expect(node(page, name)).toHaveAttribute('data-status', 'ok');
-  await node(page, name).click();
-}
 
 test.beforeEach(async ({ page }) => {
   await openApp(page);
@@ -18,8 +11,7 @@ test.beforeEach(async ({ page }) => {
 });
 
 test('a column from an expression, with column suggestions as you type', async ({ page }) => {
-  await transform(page);
-  await addStep(page, 'Add column from expression');
+  await addStepNode(page, 'Add column from expression');
   await settings(page).getByLabel('Name').fill('domain');
   await settings(page).getByLabel('Name').press('Enter');
   const expr = settings(page).getByRole('combobox');
@@ -42,8 +34,7 @@ test('a column from an expression, with column suggestions as you type', async (
 });
 
 test('split by delimiter and change type', async ({ page }) => {
-  await transform(page);
-  await addStep(page, 'Split by delimiter');
+  await addStepNode(page, 'Split by delimiter');
   await settings(page).getByRole('button', { name: 'email', exact: true }).click();
   await settings(page).getByLabel('Delimiter', { exact: true }).selectOption({ label: 'Custom' });
   await settings(page).getByLabel('Custom delimiter').fill('@');
@@ -62,8 +53,7 @@ test('split by delimiter and change type', async ({ page }) => {
 });
 
 test('split by delimiter with Power Query’s options: left-most and into rows', async ({ page }) => {
-  await transform(page);
-  await addStep(page, 'Split by delimiter');
+  await addStepNode(page, 'Split by delimiter');
   await settings(page).getByRole('button', { name: 'email', exact: true }).click();
   await settings(page).getByLabel('Delimiter', { exact: true }).selectOption({ label: 'Custom' });
   await settings(page).getByLabel('Custom delimiter').fill('.');
@@ -88,8 +78,7 @@ test('split by delimiter with Power Query’s options: left-most and into rows',
 });
 
 test('split by number of characters and by character transition', async ({ page }) => {
-  await transform(page);
-  await addStep(page, 'Split by number of characters');
+  await addStepNode(page, 'Split by number of characters');
   await settings(page).getByRole('button', { name: 'joined', exact: true }).click();
   await settings(page).getByLabel('Number of characters').fill('4');
   await settings(page).getByLabel('Number of characters').press('Enter');
@@ -111,9 +100,8 @@ test('split by number of characters and by character transition', async ({ page 
 });
 
 test('removing a column the next node relies on breaks the wire between them', async ({ page }) => {
-  await transform(page);
-  await transform(page, 'Transform 2');
-  await addStep(page, 'Duplicate column');
+  await addStepNode(page, 'Trim whitespace');
+  await addStepNode(page, 'Duplicate column', 'Transform 2');
   await settings(page).getByRole('button', { name: 'email', exact: true }).click();
   await expect(node(page, 'Transform 2')).toHaveAttribute('data-status', 'ok');
 

@@ -6,14 +6,14 @@ The canvas is where your flow lives. Data runs left to right along wires: source
 
 ## Kinds of node
 
-**Add** in the toolbar adds a source, or a node after the selected one.
+**Add** in the toolbar adds a source, a node after the selected one, or a step, which goes in a Transform node of its own after the selected node.
 
-![The Add menu: sources, then the nodes Transform, From template, Join, Append, Lookup, Query and Output](_static/screenshots/canvas-add-node-menu.png)
+![The Add menu: sources, then the nodes From template, Join, Append, Lookup, Query and Output, then every step](_static/screenshots/canvas-add-node-menu.png)
 
 | Node | What it does | More |
 | --- | --- | --- |
 | Source | Reads a file, a web address or pasted rows. | {doc}`sources` |
-| Transform | A list of cleaning steps, applied in order. | {doc}`cleaning` |
+| Transform | A cleaning step, or a list of them, applied in order. Any step in the Add menu makes one. | {doc}`cleaning` |
 | From template | A Transform with steps you saved earlier. | {doc}`projects` |
 | Join | Combines two inputs side by side on matching keys. | {doc}`combining` |
 | Append | Stacks the rows of two or more inputs. | {doc}`combining` |
@@ -34,7 +34,7 @@ The canvas is where your flow lives. Data runs left to right along wires: source
 
 ## Using the keyboard
 
-Arrow keys move between connected nodes, Enter opens the selected node, T adds a Transform after it, O an Output, and G groups the selected nodes. C starts wiring the selected node: move to another node and press Enter to wire or unwire them. **?** lists every shortcut (see {doc}`settings`).
+Arrow keys move between connected nodes, Enter opens the selected node, T opens the Add menu to add a step after it, O adds an Output, and G groups the selected nodes. C starts wiring the selected node: move to another node and press Enter to wire or unwire them. **?** lists every shortcut (see {doc}`settings`).
 
 ## Groups
 

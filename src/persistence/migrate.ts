@@ -16,6 +16,13 @@ export type Migration = (project: Record<string, unknown>) => Record<string, unk
  */
 export const MIGRATIONS: Record<number, Migration> = {
   0: (p) => ({ ...p, formatVersion: 1 }),
+  // Format 2 adds each step as a node by default. Format 1 files always carried the old default (false), so the
+  // setting is dropped and takes the new default; anyone who wants stacked steps turns it off in the project settings.
+  1: (p) => {
+    if (!isObject(p.settings)) return { ...p, formatVersion: 2 };
+    const { stepsAsNodes: _, ...settings } = p.settings;
+    return { ...p, settings, formatVersion: 2 };
+  },
 };
 
 const isObject = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v);

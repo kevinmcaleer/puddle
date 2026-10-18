@@ -1,6 +1,6 @@
 # Step reference
 
-Every step a Transform node can hold, as the **Add step** menu groups them. Each step works on the columns you pick in its settings (it starts with the columns selected in the results), and is labelled in the step list by what it did, such as "Trimmed name, city".
+Every step a Transform node can hold, as the **Add** menu groups them. Each step works on the columns you pick in its settings (it starts with the columns selected in the results), and is labelled in the step list by what it did, such as "Trimmed name, city".
 
 ## Clean
 

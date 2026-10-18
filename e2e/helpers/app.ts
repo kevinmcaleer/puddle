@@ -19,6 +19,37 @@ export async function addStep(page: Page, title: string) {
 export const fixtureText = (name: string) => readFileSync(fixture(name), 'utf8');
 
 /**
+ * Add a step from the toolbar's Add menu: a Transform node of its own after the selected node (`name` is what it is
+ * called), selected and shown in the inspector once it is in.
+ */
+export async function addStepNode(page: Page, title: string, name = 'Transform 1') {
+  await page.getByRole('button', { name: 'Add', exact: true }).click();
+  await page.getByRole('menuitem', { name: new RegExp(`^${title}`) }).click();
+  await expect(node(page, name)).toBeVisible();
+  await expect(page.getByLabel('Node name')).toHaveValue(name);
+}
+
+/** Turn off the project setting that gives each new step a node of its own, so steps stack into the viewed Transform. */
+export async function stackSteps(page: Page) {
+  await page.getByRole('tab', { name: 'Project' }).click();
+  const setting = page.getByRole('switch', { name: 'Add each step as a new node' });
+  await expect(setting).toHaveAttribute('aria-checked', 'true');
+  await setting.click();
+  await expect(setting).toHaveAttribute('aria-checked', 'false');
+}
+
+/** T opens the Add menu with its search focused; typing a step's title and Enter adds it as a node after the selected one. */
+export async function addStepWithT(page: Page, title: string, name = 'Transform 1') {
+  await page.keyboard.press('t');
+  const search = page.getByLabel('Search steps and nodes');
+  await expect(search).toBeFocused();
+  await search.fill(title);
+  await search.press('Enter');
+  await expect(node(page, name)).toBeVisible();
+  await expect(page.getByLabel('Node name')).toHaveValue(name);
+}
+
+/**
  * With E2E_BROWSER_LOGS set (CI does), print the page's errors, warnings and failed requests, including the engine
  * worker's, into the test output: the job log then says why a browser misbehaved without the trace.
  */
