@@ -1,7 +1,7 @@
 // One run of a project: place its sources, check the quality gate, write every Output node's file, and leave a run
 // log and a quality report beside the outputs. The same compiler the browser uses; DuckDB's native build runs it.
-// Only pure modules are imported here (model, compiler, the gate), so the bundle never touches the browser engine.
-import { existsSync, mkdtempSync, mkdirSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+// Only pure modules are imported here (model, compiler, the gate, the XML reader), so the bundle never touches the browser engine.
+import { existsSync, mkdtempSync, mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { compileExport, compileRules, exportFileName, fullData, SchemaCache, sourceFileName, str } from '../compiler';
@@ -11,6 +11,7 @@ import { nodeById, topoSort, upstreamIds, type OutputNode, type Project } from '
 import { qualityMarkdown } from './report';
 import { placeSources, type SourcePlace } from './sources';
 import type { RunnerDb } from './db';
+import { tableToCsv, xmlToTable } from '../xml';
 
 export const RUN_LOG_SCHEMA = 'puddle-run/1';
 
@@ -61,6 +62,11 @@ export const projectSlug = (name: string) =>
     .trim()
     .replace(/[\s_-]+/g, '-') || 'project';
 
+const fetchOrThrow = (fetchText: RunOptions['fetchText'], address: string) => {
+  if (!fetchText) throw new Error('no way to fetch it');
+  return fetchText(address);
+};
+
 /** Put each source where the compiled SQL reads it: a link to the file, the pasted text, or the fetched address. */
 async function stage(places: SourcePlace[], stageDir: string, fetchText: RunOptions['fetchText']): Promise<Map<string, string>> {
   const problems = new Map<string, string>();
@@ -72,11 +78,14 @@ async function stage(places: SourcePlace[], stageDir: string, fetchText: RunOpti
     }
     const target = join(stageDir, sourceFileName(source));
     try {
-      if (source.kind === 'clipboard') writeFileSync(target, source.clipboard!.text);
-      else if (source.kind === 'url') {
-        if (!fetchText) throw new Error('no way to fetch it');
-        writeFileSync(target, await fetchText(p.path));
-      } else symlinkSync(p.path, target);
+      if (source.format === 'xml') {
+        // DuckDB reads the CSV Puddle writes from the XML's records, as in the browser.
+        const xml = source.kind === 'clipboard' ? source.clipboard!.text : source.kind === 'url' ? await fetchOrThrow(fetchText, p.path) : new Uint8Array(readFileSync(p.path));
+        const o = source.parseOptions;
+        writeFileSync(target, tableToCsv(await xmlToTable(xml, { record: o.record, expand: o.expand })));
+      } else if (source.kind === 'clipboard') writeFileSync(target, source.clipboard!.text);
+      else if (source.kind === 'url') writeFileSync(target, await fetchOrThrow(fetchText, p.path));
+      else symlinkSync(p.path, target);
     } catch (e) {
       problems.set(source.id, `couldn’t be read: ${e instanceof Error ? e.message : String(e)}`);
     }

@@ -44,7 +44,7 @@ async function offerStoredHandles(project: Project, detached: string[]) {
 export async function attachProject(project: Project): Promise<void> {
   const next: Record<string, Attachment> = {};
   for (const s of project.sources) next[s.id] = s.kind === 'clipboard' || sourceFile(s.id) || (s.kind === 'url' && urlFetched(s.id)) ? 'attached' : 'detached';
-  const clipboard = project.sources.filter((s) => s.kind === 'clipboard' && s.clipboard);
+  const clipboard = project.sources.filter((s) => s.kind === 'clipboard' && s.clipboard && s.format !== 'xml');
   if (clipboard.length) {
     const engine = await whenEngine();
     for (const s of clipboard) await engine.registerText(sourceFileName(s), s.clipboard!.text);
@@ -65,8 +65,8 @@ export async function reattachFile(source: Source, file: File, handle?: FileHand
   const hash = await headHash(file);
   const same = source.file?.headHash === hash;
   const engine = await whenEngine();
-  // Excel is read again by SheetJS once the file is remembered (see ./excel).
-  if (format !== 'xlsx') await engine.registerFile(sourceFileName(source), file);
+  // Excel and XML are read again once the file is remembered (see ./excel and ./xml).
+  if (format !== 'xlsx' && format !== 'xml') await engine.registerFile(sourceFileName(source), file);
   rememberFile(source.id, file);
   keepHandle(source.id, handle);
   settleSource(source.id);

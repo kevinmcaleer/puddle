@@ -121,6 +121,19 @@ describe('puddle-run', () => {
     }
   });
 
+  it('reads an XML source into rows, with the record and expanded element chosen in the browser', async () => {
+    writeFileSync(join(folder, 'books.xml'), readFileSync(join(__dirname, '../fixtures/books.xml')));
+    const books = { ...src({ id: 'b', format: 'xml' }), name: 'books.xml', parseOptions: { expand: 'author' }, file: { originalName: 'books.xml', size: 1, lastModified: 0, headHash: 'h' } };
+    const p = flow({ sources: [books], nodes: [{ id: 'b', type: 'source', sourceId: 'b' }, { id: 'out', type: 'output', outputSpec: { format: 'csv', options: {} } }], wires: [['b', 'out', 0]] });
+    p.name = 'Books';
+    const outDir = join(folder, 'out-xml');
+    const { log } = await runProject(p, { folder, outDir, db, now: () => new Date('2026-10-17T03:00:00Z') });
+    expect(log.outputs[0]).toMatchObject({ status: 'written', rows: 4 });
+    const csv = readFileSync(join(outDir, 'out.csv'), 'utf8').trim().split('\n');
+    expect(csv[0]).toBe('id,format,title,published,price,price.currency,author,stock');
+    expect(csv[3]).toBe('bk102,,Good Omens,1990-05-10,9.5,GBP,Neil Gaiman,0');
+  });
+
   it('reads the command line and lists a folder’s project files', () => {
     expect(parseArgs(['run', 'a.puddle.json', '--out', '/tmp/x'])).toEqual({ command: 'run', target: 'a.puddle.json', out: '/tmp/x', poll: undefined });
     expect(parseArgs(['watch', '/projects', '--poll', '5'])).toMatchObject({ command: 'watch', target: '/projects', poll: 5 });

@@ -6,7 +6,7 @@ import { Banner, Button, Dialog, Field, Select, TextInput } from '../ui';
 import { openAddress, UrlSourceError, type UrlErrorKind } from './url';
 import { openUrlDialog, useUrlDialog } from './urlDialog';
 
-const FORMATS: SourceFormat[] = ['csv', 'tsv', 'json', 'ndjson', 'parquet'];
+const FORMATS: SourceFormat[] = ['csv', 'tsv', 'json', 'ndjson', 'parquet', 'xml'];
 const FORMAT_OPTIONS = [{ value: '', label: 'Detect from the address' }, ...FORMATS.map((f) => ({ value: f, label: formatLabel(f) }))];
 
 /** Why a blocked address can't be read, with the way round it: download the file and add it as a file. */
@@ -37,7 +37,7 @@ function UrlForm({ onChooseFile }: { onChooseFile: () => void }) {
 
   return (
     <Dialog title="Add source from a web address" confirm={busy ? 'Reading…' : 'Add source'} onClose={close} onConfirm={submit}>
-      <Field label="Address" htmlFor="url-address" hint="An https address of a CSV, TSV, JSON, NDJSON or Parquet file.">
+      <Field label="Address" htmlFor="url-address" hint="An https address of a CSV, TSV, JSON, NDJSON, Parquet or XML file.">
         <TextInput
           id="url-address"
           mono

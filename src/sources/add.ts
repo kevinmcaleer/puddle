@@ -36,8 +36,8 @@ export async function addFileSource(file: File, position = { x: 80, y: 80 }, han
     parseOptions: {},
     detectedSchema: [],
   };
-  // Excel is read by SheetJS into a table (see ./excel), not by DuckDB from the file.
-  if (format !== 'xlsx') await engine.registerFile(sourceFileName(source), file);
+  // Excel is read by SheetJS into a table (see ./excel), and XML into rows (see ./xml), not by DuckDB from the file.
+  if (format !== 'xlsx' && format !== 'xml') await engine.registerFile(sourceFileName(source), file);
   files.set(source.id, file);
   markAttached(source.id);
   useProjectStore.getState().apply((p) => addSource(p, source, position));
@@ -49,16 +49,18 @@ export async function addFileSource(file: File, position = { x: 80, y: 80 }, han
 export async function addClipboardSource(text: string, position = { x: 80, y: 80 }, name = 'Pasted data'): Promise<Source> {
   if (!text.trim()) throw new SourceError('The clipboard is empty. Copy some rows from a spreadsheet or a file, then paste again.');
   const engine = engineOrThrow();
+  const format = formatFromText(text);
   const source: Source = {
     id: newId('s'),
     name,
     kind: 'clipboard',
-    format: formatFromText(text),
+    format,
     clipboard: { text },
     parseOptions: {},
     detectedSchema: [],
   };
-  await engine.registerText(sourceFileName(source), text);
+  // Pasted XML is read into rows by ./xml.
+  if (format !== 'xml') await engine.registerText(sourceFileName(source), text);
   markAttached(source.id);
   useProjectStore.getState().apply((p) => addSource(p, source, position));
   return source;

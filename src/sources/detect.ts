@@ -18,9 +18,10 @@ const BY_EXTENSION: Record<string, SourceFormat> = {
   parquet: 'parquet',
   pq: 'parquet',
   xlsx: 'xlsx',
+  xml: 'xml',
 };
 
-export const ACCEPT = '.csv,.txt,.tsv,.tab,.json,.ndjson,.jsonl,.parquet,.pq,.xlsx';
+export const ACCEPT = '.csv,.txt,.tsv,.tab,.json,.ndjson,.jsonl,.parquet,.pq,.xlsx,.xml';
 
 const extensionOf = (name: string) => /\.([^.]+)$/.exec(name)?.[1]?.toLowerCase() ?? '';
 
@@ -33,13 +34,14 @@ export function formatFromName(name: string): SourceFormat {
   if (format) return format;
   const ext = extensionOf(name);
   if (ext === 'xls') throw new SourceError(`${name} is in the old Excel format (.xls), which Puddle doesn’t read. Open it in Excel and save it as .xlsx or CSV, then add that.`);
-  throw new SourceError(`${name} isn't a format Puddle reads. Add a CSV, TSV, JSON, NDJSON, Parquet or Excel (.xlsx) file.`);
+  throw new SourceError(`${name} isn't a format Puddle reads. Add a CSV, TSV, JSON, NDJSON, Parquet, Excel (.xlsx) or XML file.`);
 }
 
-/** Guess the format of pasted text: JSON, NDJSON, tab-separated (spreadsheets paste as TSV) or CSV. */
+/** Guess the format of pasted text: XML, JSON, NDJSON, tab-separated (spreadsheets paste as TSV) or CSV. */
 export function formatFromText(text: string): SourceFormat {
   const t = text.trimStart();
   const firstLine = t.split(/\r?\n/, 1)[0] ?? '';
+  if (/^<[?!a-zA-Z_]/.test(t)) return 'xml';
   if (t.startsWith('[')) return 'json';
   if (t.startsWith('{')) return /^\{.*\}\s*$/.test(firstLine) && t.includes('\n') ? 'ndjson' : 'json';
   if (firstLine.includes('\t')) return 'tsv';

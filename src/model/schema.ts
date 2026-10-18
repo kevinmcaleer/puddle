@@ -5,7 +5,7 @@ export const FORMAT_VERSION = 1;
 
 export const ColumnSchemaZ = z.object({ name: z.string(), type: z.string() });
 
-export const SourceFormatZ = z.enum(['csv', 'tsv', 'json', 'ndjson', 'parquet', 'xlsx']);
+export const SourceFormatZ = z.enum(['csv', 'tsv', 'json', 'ndjson', 'parquet', 'xlsx', 'xml']);
 
 export const ParseOptionsZ = z
   .object({
@@ -18,6 +18,10 @@ export const ParseOptionsZ = z
     headerRow: z.number().int().nonnegative(),
     /** Excel: an A1 cell range to read, such as B3:F200. */
     range: z.string(),
+    /** XML: the repeating element read as records, as a path of local names from the root ("catalog/book"). */
+    record: z.string(),
+    /** XML: a repeating element inside each record, as a path from it ("author"), given a row each. */
+    expand: z.string(),
   })
   .partial();
 
