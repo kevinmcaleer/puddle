@@ -1,6 +1,6 @@
 # Relationships
 
-**Relationships**, in the project menu, shows how the project's tables relate, as in Microsoft Access's Relationships window: each table with its columns and their types, and a line between the columns that match. **Back to canvas** returns.
+**Relationships**, a tab above the canvas (or press 2, or choose it in the project menu), shows how the project's tables relate, as in Microsoft Access's Relationships window: each table with its columns and their types, and a line between the columns that match. **Canvas** (or 1, or **Back to canvas**) returns.
 
 ![The relationships view: orders and customers, related on customer_id by a Join and on status by a rule](_static/screenshots/relationships.png)
 

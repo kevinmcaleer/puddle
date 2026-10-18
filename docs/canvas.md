@@ -1,6 +1,6 @@
 # The canvas
 
-The canvas is where your flow lives. Data runs left to right along wires: sources feed transforms and other nodes, and those feed outputs. Every node shows its row and column counts, and a badge when one of its rules fails.
+The canvas is where your flow lives. Tabs above it switch to the {doc}`relationships` view and, once the project has a Query node, the {doc}`query designer <query-designer>`. Data runs left to right along wires: sources feed transforms and other nodes, and those feed outputs. Every node shows its row and column counts, and a badge when one of its rules fails.
 
 ![A flow on the canvas: two sources wired into a Join node](_static/screenshots/combine-join.png)
 
