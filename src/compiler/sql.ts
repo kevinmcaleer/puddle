@@ -41,3 +41,21 @@ export const setExtensionRepository = (url: string) => [`SET custom_extension_re
 
 /** Turn off DuckDB optimizers by name, for the rest of the connection (see EngineClient's plan-copy retry). */
 export const disableOptimizers = (names: string[]) => `SET disabled_optimizers = ${str(names.join(','))}`;
+
+/** The databases a schema is exported for as DDL. DuckDB is also the engine the rest of this file quotes for. */
+export const DDL_DIALECTS = ['postgres', 'mysql', 'sqlserver', 'sqlite', 'duckdb'] as const;
+export type DdlDialect = (typeof DDL_DIALECTS)[number];
+
+/** Quote an identifier for another database: backticks in MySQL, brackets in SQL Server, double quotes elsewhere. */
+export function identIn(dialect: DdlDialect, name: string): string {
+  if (dialect === 'mysql') return '`' + name.replace(/`/g, '``') + '`';
+  if (dialect === 'sqlserver') return '[' + name.replace(/]/g, ']]') + ']';
+  return ident(name);
+}
+
+/** Quote a string literal for another database: MySQL also reads backslashes as escapes; SQL Server needs N for Unicode. */
+export function strIn(dialect: DdlDialect, value: string): string {
+  if (dialect === 'mysql') return str(value.replace(/\\/g, '\\\\'));
+  if (dialect === 'sqlserver' && [...value].some((c) => c.charCodeAt(0) > 127)) return 'N' + str(value);
+  return str(value);
+}
