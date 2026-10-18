@@ -155,10 +155,20 @@ describe('connecting to a service', () => {
     await expect(connect('https://open.example/nothing', { fetchImpl: impl })).rejects.toMatchObject({ kind: 'format', message: expect.stringContaining('There’s no OData service at this address (open.example)') });
   });
 
-  it('says when the service blocks other sites, without trying anywhere else', async () => {
-    const { impl, calls } = fakeFetch({ [`${TRIPPIN}/$metadata`]: undefined });
+  it('says when the service blocks other sites, once every address has been tried', async () => {
+    const { impl, calls } = fakeFetch({ [`${TRIPPIN}/$metadata`]: undefined, [TRIPPIN]: undefined, 'https://services.odata.org/$metadata': undefined, 'https://services.odata.org/': undefined });
     await expect(connect(TRIPPIN, { fetchImpl: impl })).rejects.toMatchObject({ kind: 'cors', message: CORS_MESSAGE });
-    expect(calls).toHaveLength(1);
+    // Nothing but the service's own addresses: no server of Puddle's own.
+    expect(calls.every((c) => c.href.startsWith('https://services.odata.org/'))).toBe(true);
+  });
+
+  it('isn’t put off by an entity set’s address whose /$metadata answers without CORS headers', async () => {
+    // Regression: an error page without CORS headers looks to the browser just like a service that blocks other
+    // sites, so the guess at People/$metadata used to stop the search before the service's own $metadata.
+    const { impl } = fakeFetch({ ...trippin(), [`${TRIPPIN}/People/$metadata`]: undefined });
+    const c = await connect(`${TRIPPIN}/People`, { fetchImpl: impl });
+    expect(c.entitySet).toBe('People');
+    expect(c.service.root.href).toBe(TRIPPIN);
   });
 
   it('says so when offline, rather than blaming the service', async () => {
