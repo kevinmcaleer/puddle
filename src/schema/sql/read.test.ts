@@ -1,6 +1,8 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { DbmlSchemaZ, findTable, parseDbml, withoutRanges, writeDbml, type DbmlSchema } from '..';
+import { DDL_DIALECTS } from '../../compiler/sql';
+import { exportSql } from '../../compiler/ddl/export';
 import { importSql, skippedText } from '.';
 
 const fixture = (name: string) => readFileSync(`tests/fixtures/sql/${name}`, 'utf8');
@@ -520,5 +522,21 @@ describe('importSql schemas, enums and notes', () => {
   it('reads comments on tables and columns', () => {
     const { schema } = importSql("CREATE TABLE t (a int);\nCOMMENT ON TABLE t IS 'Things';\nCOMMENT ON COLUMN t.a IS 'The a';\nCOMMENT ON EXTENSION x IS 'skipped';", 'postgres');
     expect([schema.tables[0]!.note, schema.tables[0]!.columns[0]!.note]).toEqual(['Things', 'The a']);
+  });
+});
+
+describe('importSql reads what Export SQL writes', () => {
+  const shop = parseDbml(readFileSync('tests/fixtures/dbml/shop.dbml', 'utf8')).schema;
+  it.each(DDL_DIALECTS)('%s: the same tables, keys and refs come back', (dialect) => {
+    const { sql } = exportSql(shop, dialect);
+    const back = importSql(sql, dialect);
+    expect(back.warnings).toEqual([]);
+    const names = (s: DbmlSchema) => s.tables.map((t) => `${t.schema}.${t.name}`).sort();
+    expect(names(back.schema)).toEqual(names(shop));
+    for (const t of shop.tables) {
+      const got = findTable(back.schema, t)!;
+      expect(got.columns.map((c) => c.name)).toEqual(t.columns.map((c) => c.name));
+    }
+    expect(back.schema.refs).toHaveLength(shop.refs.length);
   });
 });
