@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { flow, src, step } from '../../tests/helpers/projects';
 import { removeNodes } from './edits';
-import { canMakeGroup, groupOf, groupPorts, makeGroup, moveGroup, renameGroup, setGroupCollapsed, ungroup } from './groups';
+import { canMakeGroup, chainAround, groupOf, groupPorts, makeGroup, moveGroup, renameGroup, setGroupCollapsed, ungroup } from './groups';
 import { parseProject } from './project';
 import type { Project } from './schema';
-import { groupNodes } from './steps';
+import { groupNodes, splitNode, ungroupNode } from './steps';
 
 // in → a → b → out, with a second source side wired into b.
 const base = (): Project => {
@@ -121,6 +121,56 @@ describe('node groups', () => {
       wires: [['in', 't1'], ['t1', 't2']],
     });
     expect(groupNodes(makeGroup(chain, ['in', 't2'], 'g1'), ['t1', 't2']).groups[0]!.nodeIds).toEqual(['in']);
+  });
+
+  // in → t1 → t2 → t3 → out, with t3 also feeding a second output: a chain of three Transforms.
+  const line = (): Project =>
+    flow({
+      sources: [src({ id: 'cust', format: 'csv' })],
+      nodes: [
+        { id: 'in', type: 'source', sourceId: 'cust' },
+        { id: 't1', type: 'transform', steps: [step('s1', 'trimWhitespace', { columns: ['name'] })] },
+        { id: 't2', type: 'transform', steps: [step('s2', 'trimWhitespace', { columns: ['city'] })] },
+        { id: 't3', type: 'transform', steps: [step('s3', 'removeBlankRows', { columns: ['name'] })] },
+        { id: 'out', type: 'output' },
+        { id: 'out2', type: 'output' },
+      ],
+      wires: [['in', 't1'], ['t1', 't2'], ['t2', 't3'], ['t3', 'out'], ['t3', 'out2']],
+    });
+
+  it('the chain round a node is the run of Transforms wired one after another through it, in order', () => {
+    expect(chainAround(line(), 't2')).toEqual(['t1', 't2', 't3']);
+    expect(chainAround(line(), 't1')).toEqual(['t1', 't2', 't3']);
+    expect(chainAround(line(), 't3')).toEqual(['t1', 't2', 't3']);
+    // Not a Transform: no chain. A source or an output is never part of one.
+    expect(chainAround(line(), 'in')).toEqual([]);
+    expect(chainAround(line(), 'out')).toEqual([]);
+  });
+
+  it('the chain stops at a branch, a node already in a group, and a node with more than one input', () => {
+    // t1 branches to t2 and a second output: the chain from t2 cannot reach back through it.
+    const branched = flow({
+      sources: [src({ id: 'cust', format: 'csv' })],
+      nodes: line().nodes.map((n) => ({ ...n })) as never,
+      wires: [['in', 't1'], ['t1', 't2'], ['t1', 'out2'], ['t2', 't3'], ['t3', 'out']],
+    });
+    expect(chainAround(branched, 't2')).toEqual(['t2', 't3']);
+    expect(chainAround(branched, 't1')).toEqual(['t1']);
+    expect(chainAround(makeGroup(line(), ['t3', 'out'], 'g1'), 't1')).toEqual(['t1', 't2']);
+    // The join b takes two inputs, so a's chain is a alone.
+    expect(chainAround(base(), 'a')).toEqual(['a']);
+  });
+
+  it('a group stays the bundle when its nodes are merged into one and split again', () => {
+    let p = makeGroup(line(), ['t1', 't2', 't3'], 'g1');
+    p = groupNodes(p, ['t1', 't2', 't3']);
+    expect(p.nodes.map((n) => n.id)).toEqual(['in', 't1', 'out', 'out2']);
+    expect(p.groups[0]!.nodeIds).toEqual(['t1']);
+    const back = ungroupNode(p, 't1');
+    expect(back.groups[0]!.nodeIds).toEqual(['t1', 't2', 't3']);
+    expect(back.nodes.map((n) => n.id).sort()).toEqual(line().nodes.map((n) => n.id).sort());
+    // Splitting a grouped node by hand keeps the new node in the group too (t2 comes back holding the rest).
+    expect(splitNode(p, 't1', 1).groups[0]!.nodeIds).toEqual(['t1', 't2']);
   });
 
   it('a project file naming nodes that are gone opens with them left out', () => {

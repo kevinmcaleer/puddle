@@ -48,11 +48,13 @@ test('the column menu replaces values, removes matching rows and can add each st
   await menu(page).getByRole('menuitemcheckbox', { name: 'Add each step as a new node' }).click();
   await rightClick(page, 1);
   await expect(menu(page).getByRole('menuitemcheckbox', { name: 'Add each step as a new node' })).toHaveAttribute('aria-checked', 'true');
-  await menu(page).getByRole('menuitem', { name: 'Text' }).hover();
-  await menu(page).getByRole('menu', { name: 'Text' }).getByRole('menuitem', { name: 'UPPER CASE' }).click();
+  // The submenus are the Add menu's groups: Change type holds the parsing and conversion steps.
+  await expect(menu(page).getByRole('menuitem', { name: /^(Clean|Change type|Columns|Rows|Text)$/ })).toHaveText(['Clean', 'Change type', 'Columns', 'Rows', 'Text']);
+  await menu(page).getByRole('menuitem', { name: 'Change type' }).hover();
+  await menu(page).getByRole('menu', { name: 'Change type' }).getByRole('menuitem', { name: 'To text' }).click();
   await expect(node(page, 'Transform 2')).toBeVisible();
   await expect(page.getByTestId('wire-Transform 1->Transform 2')).toBeAttached();
-  await expect(steps(page)).toHaveText([/Changed name to upper case/]);
+  await expect(steps(page)).toHaveText([/Changed name to text/]);
   await expect(page.getByTestId('results-title')).toHaveText('Transform 2 · step 1');
 });
 

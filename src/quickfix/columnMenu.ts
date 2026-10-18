@@ -1,6 +1,7 @@
 // The column menu: what a right click on a column header or a cell in the results table offers, as in Power Query.
 import type { PivotValuesRead } from '../flow/pivot';
 import type { Step } from '../model';
+import { STEP_GROUPS, stepForm, type StepGroup } from '../steps';
 import { make, QUICK_FIXES, type FixContext } from './fixes';
 
 export interface ColumnMenuContext extends FixContext {
@@ -16,11 +17,26 @@ async function pivotOn(c: ColumnMenuContext, column: string): Promise<Step> {
   return make('pivot', c, { rows: [], column, pivotValues: read?.values ?? [], moreValues: read?.more ?? false, values: [{ column, agg: 'count' }] });
 }
 
-/** One entry of the column menu, in a group or a group's submenu: it adds a step, or opens the Replace values dialog. */
-export type ColumnAction = { label: string; group: string; submenu?: string } & ({ step: (ctx: ColumnMenuContext) => Step | Promise<Step> } | { replace: { find: string | null } });
+/**
+ * One entry of the column menu, in a group or a group's submenu: it adds a step, or opens the Replace values dialog.
+ * A submenu is named after the step's group, the same name the quick-fix bar and the Add menu use for it.
+ */
+export type ColumnAction = { label: string; group: string; submenu?: string; hint?: string } & ({ step: (ctx: ColumnMenuContext) => Step | Promise<Step> } | { replace: { find: string | null } });
 
 const fix = (id: string, option?: string) => (ctx: ColumnMenuContext) => QUICK_FIXES.find((f) => f.id === id)!.build(ctx, option);
 const onColumns = (type: string, extra: Record<string, unknown> = {}) => (ctx: ColumnMenuContext) => make(type, ctx, { columns: ctx.columns, ...extra });
+
+type StepAction = Extract<ColumnAction, { step: unknown }>;
+
+/** An entry in the submenu of the step's group, marked "New column" when the step adds one. */
+function inGroup(type: string, group: string, label: string, step: StepAction['step']): StepAction {
+  const form = stepForm(type);
+  if (!form) throw new Error(`Column menu entry ${label} has no step form for ${type}.`);
+  return { label, group, submenu: form.group, step, ...(form.newColumn ? { hint: 'New column' } : {}) };
+}
+
+/** Submenu entries in the order the menus list their groups, so the column menu reads like the Add menu. */
+const byGroup = (actions: StepAction[]) => [...actions].sort((a, b) => STEP_GROUPS.indexOf(a.submenu as StepGroup) - STEP_GROUPS.indexOf(b.submenu as StepGroup));
 
 /** A value as a menu label shows it: quoted, and cut short when long. */
 export const shown = (value: string) => `“${value.length > 24 ? `${value.slice(0, 23)}…` : value}”`;
@@ -60,30 +76,34 @@ export function columnActions(ctx: ColumnMenuContext): ColumnAction[] {
     { label: 'Sort ascending', group: g, step: (c) => make('sortRows', c, { keys: c.columns.map((column) => ({ column, descending: false })) }) },
     { label: 'Sort descending', group: g, step: (c) => make('sortRows', c, { keys: c.columns.map((column) => ({ column, descending: true })) }) },
 
-    { label: 'Trim', group: g, submenu: 'Clean', step: fix('trimWhitespace') },
-    { label: 'Collapse spaces', group: g, submenu: 'Clean', step: fix('collapseSpaces') },
-    { label: 'Remove non-printing characters', group: g, submenu: 'Clean', step: fix('removeNonPrinting') },
-    { label: 'Empty text to null', group: g, submenu: 'Clean', step: fix('emptyToNull') },
-    { label: 'Fill down', group: g, submenu: 'Clean', step: onColumns('fillRows', { direction: 'down' }) },
-    { label: 'Fill up', group: g, submenu: 'Clean', step: onColumns('fillRows', { direction: 'up' }) },
+    // The rest, each under its step's group.
+    ...byGroup([
+      inGroup('trimWhitespace', g, 'Trim', fix('trimWhitespace')),
+      inGroup('collapseSpaces', g, 'Collapse spaces', fix('collapseSpaces')),
+      inGroup('removeNonPrinting', g, 'Remove non-printing characters', fix('removeNonPrinting')),
+      inGroup('emptyToNull', g, 'Empty text to null', fix('emptyToNull')),
 
-    { label: 'UPPER CASE', group: g, submenu: 'Text', step: fix('changeCase', 'upper') },
-    { label: 'lower case', group: g, submenu: 'Text', step: fix('changeCase', 'lower') },
-    { label: 'Title Case', group: g, submenu: 'Text', step: fix('changeCase', 'title') },
-    { label: 'Find and replace…', group: g, submenu: 'Text', step: onColumns('findReplace') },
-    ...(one ? [{ label: 'Split column…', group: g, submenu: 'Text', step: (c: ColumnMenuContext) => make('splitByDelimiter', c, {}) }] : []),
+      inGroup('parseNumbers', g, 'Parse numbers', fix('parseNumbers')),
+      inGroup('parseDates', g, 'Parse dates', fix('parseDates')),
+      inGroup('changeType', g, 'To text', onColumns('changeType', { to: 'text' })),
+      inGroup('changeType', g, 'To whole number', onColumns('changeType', { to: 'integer' })),
+      inGroup('changeType', g, 'To decimal number', onColumns('changeType', { to: 'decimal' })),
 
-    { label: 'Parse numbers', group: g, submenu: 'Change type', step: fix('parseNumbers') },
-    { label: 'Parse dates', group: g, submenu: 'Change type', step: fix('parseDates') },
-    { label: 'To text', group: g, submenu: 'Change type', step: onColumns('changeType', { to: 'text' }) },
-    { label: 'To whole number', group: g, submenu: 'Change type', step: onColumns('changeType', { to: 'integer' }) },
-    { label: 'To decimal number', group: g, submenu: 'Change type', step: onColumns('changeType', { to: 'decimal' }) },
+      inGroup('renameColumns', g, one ? 'Rename…' : 'Rename columns…', (c) => make('renameColumns', c, { renames: c.columns.map((from) => ({ from, to: from })) })),
+      ...(one ? [inGroup('duplicateColumn', g, 'Duplicate column', (c) => make('duplicateColumn', c, {}))] : []),
+      ...(one ? [inGroup('splitByDelimiter', g, 'Split column…', (c) => make('splitByDelimiter', c, {}))] : []),
+      inGroup('reorderColumns', g, 'Move to the front', onColumns('reorderColumns')),
+      inGroup('removeColumns', g, one ? 'Remove column' : 'Remove columns', onColumns('removeColumns')),
+      inGroup('removeColumns', g, 'Remove other columns', (c) => make('removeColumns', c, { columns: c.available.map((a) => a.name).filter((n) => !c.columns.includes(n)) })),
 
-    { label: one ? 'Rename…' : 'Rename columns…', group: g, submenu: 'Columns', step: (c) => make('renameColumns', c, { renames: c.columns.map((from) => ({ from, to: from })) }) },
-    ...(one ? [{ label: 'Duplicate column', group: g, submenu: 'Columns', step: (c: ColumnMenuContext) => make('duplicateColumn', c, {}) }] : []),
-    { label: 'Move to the front', group: g, submenu: 'Columns', step: onColumns('reorderColumns') },
-    { label: one ? 'Remove column' : 'Remove columns', group: g, submenu: 'Columns', step: onColumns('removeColumns') },
-    { label: 'Remove other columns', group: g, submenu: 'Columns', step: (c) => make('removeColumns', c, { columns: c.available.map((a) => a.name).filter((n) => !c.columns.includes(n)) }) },
+      inGroup('fillRows', g, 'Fill down', onColumns('fillRows', { direction: 'down' })),
+      inGroup('fillRows', g, 'Fill up', onColumns('fillRows', { direction: 'up' })),
+
+      inGroup('changeCase', g, 'UPPER CASE', fix('changeCase', 'upper')),
+      inGroup('changeCase', g, 'lower case', fix('changeCase', 'lower')),
+      inGroup('changeCase', g, 'Title Case', fix('changeCase', 'title')),
+      inGroup('findReplace', g, 'Find and replace…', onColumns('findReplace')),
+    ]),
 
     // Fields go in Values from the editor, which opens on the new step, each with its own aggregate.
     { label: one ? 'Group by this column…' : 'Group by these columns…', group: 'Summarise', step: (c) => make('pivot', c, { rows: c.columns, column: '', values: [] }) },

@@ -11,6 +11,8 @@ import { StatusBadge, type Status } from './StatusBadge';
 export interface QuickFix {
   label: string;
   icon?: IconName;
+  /** The group the fix's step belongs to, shown on the chip's tooltip; it is the group the menus file it under. */
+  group?: string;
   /** Choices shown in a menu from the chip, e.g. the cases for Case. */
   options?: { id: string; label: string }[];
 }
@@ -23,7 +25,7 @@ export function QuickFixBar({ fixes, onFix }: { fixes: Array<string | QuickFix>;
   const shown = all.length > MAX_CHIPS ? all.slice(0, MAX_CHIPS - 1) : all;
   const more = all.slice(shown.length);
   const chip = (o: QuickFix, p?: { 'aria-haspopup': 'menu'; 'aria-expanded': boolean; onClick: () => void }) => (
-    <button key={o.label} type="button" className="ui-chip" {...(p ?? { onClick: () => onFix?.(o) })}>
+    <button key={o.label} type="button" className="ui-chip" title={o.group ? `${o.label} (${o.group})` : undefined} {...(p ?? { onClick: () => onFix?.(o) })}>
       {o.icon && <Icon name={o.icon} size={14} />}
       {o.label}
       {p && <Icon name="chevron-down" size={14} />}
