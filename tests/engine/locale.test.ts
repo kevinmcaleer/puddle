@@ -84,18 +84,18 @@ describe('date detection with a locale', () => {
 
   it('finds formats with the locale’s month names, showing the values as written', async () => {
     const de = await detect('de_date', 'de-DE');
-    expect(de.best).toBe('%d. %B %Y');
+    expect(de.formats?.[0]).toBe('%d. %B %Y');
     expect(de.ranked[0]).toMatchObject({ matched: 3, total: 3 });
     expect(de.ranked[0]!.example).toMatch(/Dezember|MÄRZ|Oktober/);
-    expect((await detect('es_date', 'es-ES')).best).toBe('%d de %B de %Y');
-    expect((await detect('de_date')).best).toBeUndefined();
+    expect((await detect('es_date', 'es-ES')).formats?.[0]).toBe('%d de %B de %Y');
+    expect((await detect('de_date')).formats).toBeUndefined();
   });
 
   it('settles an unclear day and month order by the locale, and says so', async () => {
     const uk = await detect('ambiguous', 'en-GB', dates);
-    expect(uk.best).toBe('%d/%m/%Y');
+    expect(uk.formats?.[0]).toBe('%d/%m/%Y');
     expect(uk.ambiguous).toMatchObject({ dayFirst: '%d/%m/%Y', monthFirst: '%m/%d/%Y', byLocale: 'en-GB' });
-    expect((await detect('ambiguous', 'en-US', dates)).best).toBe('%m/%d/%Y');
-    expect((await detect('ambiguous', 'de-DE', dates)).best).toBe('%d/%m/%Y');
+    expect((await detect('ambiguous', 'en-US', dates)).formats?.[0]).toBe('%m/%d/%Y');
+    expect((await detect('ambiguous', 'de-DE', dates)).formats?.[0]).toBe('%d/%m/%Y');
   });
 });

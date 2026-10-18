@@ -2,10 +2,18 @@ import { hashValue, type Source } from '../model';
 import { CompileError } from './errors';
 import { bool, ident, str, strList } from './sql';
 
-const EXT: Record<Source['format'], string> = { csv: 'csv', tsv: 'tsv', json: 'json', ndjson: 'ndjson', parquet: 'parquet', xlsx: 'xlsx' };
+const EXT: Record<Source['format'], string> = { csv: 'csv', tsv: 'tsv', json: 'json', ndjson: 'ndjson', parquet: 'parquet', xlsx: 'xlsx', xml: 'csv' };
 
-/** The name a source's file is registered under in DuckDB's virtual file system. */
+/**
+ * The name a source's file is registered under in DuckDB's virtual file system. XML is registered as the CSV its
+ * records were read into, under a name that follows the file and the read options (as sourceTableName does for
+ * Excel), so rows read with other options are never mistaken for them.
+ */
 export function sourceFileName(source: Source): string {
+  if (source.format === 'xml') {
+    const o = source.parseOptions;
+    return `src_${source.id}_${hashValue([source.file?.headHash ?? source.url?.headHash ?? null, o.record ?? null, o.expand ?? null]).slice(0, 12)}.csv`;
+  }
   return `src_${source.id}.${EXT[source.format]}`;
 }
 
@@ -57,6 +65,9 @@ export function sourceRelation(source: Source): string {
       return `read_parquet(${file})`;
     case 'xlsx':
       return ident(sourceTableName(source));
+    case 'xml':
+      // Written by Puddle from the XML (see src/xml), always with a header row, commas and double quotes.
+      return `read_csv(${file}, header = true, delim = ',', quote = '"', escape = '"', null_padding = true)`;
     default:
       throw new CompileError(`Unsupported source format: ${String((source as Source).format)}.`);
   }

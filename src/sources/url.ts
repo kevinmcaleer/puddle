@@ -12,6 +12,7 @@ import type { HtmlTable } from './html';
 import { fetchTable, tableFetched } from './webpage';
 import { fetchFeed, type FeedSpec, type ReadOptions } from './odata';
 import { rememberSignIn, signInFor } from './odataSignIn';
+import { rememberXml } from './xml';
 
 /**
  * Sources read from a web address (plan D8). The browser fetches the file itself, so the server must allow
@@ -60,6 +61,10 @@ const BY_CONTENT_TYPE: Record<string, SourceFormat> = {
   'application/vnd.apache.parquet': 'parquet',
   'application/x-parquet': 'parquet',
   'application/parquet': 'parquet',
+  'application/xml': 'xml',
+  'text/xml': 'xml',
+  'application/atom+xml': 'xml',
+  'application/rss+xml': 'xml',
 };
 
 /** The format a Content-Type names, ignoring parameters such as charset. */
@@ -182,8 +187,9 @@ export function addressOf(source: Source): URL | string {
   return sampleAddress(sample, base);
 }
 
-/** Hand what was fetched to DuckDB under the source's file name, replacing what was there. */
+/** Hand what was fetched to DuckDB under the source's file name, replacing what was there. XML is read into rows first (./xml). */
 async function register(source: Source, fetched: Fetched) {
+  if (source.format === 'xml') return void rememberXml(source.id, fetched.data!);
   const engine = await whenEngine();
   const name = sourceFileName(source);
   await engine.dropFile(name).catch(() => undefined);

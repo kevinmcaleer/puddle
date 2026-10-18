@@ -12,7 +12,7 @@ Choose files
 : Pick one or more files from your computer (shortcut: A). You can also drop files straight onto the canvas.
 
 From URL
-: Read a CSV, TSV, JSON, NDJSON or Parquet file from an https address. Puddle fetches it again each time the project opens, and **Refresh** in the inspector fetches it on demand. The site must allow browsers to read it (CORS).
+: Read a CSV, TSV, JSON, NDJSON, Parquet or XML file from an https address. Puddle fetches it again each time the project opens, and **Refresh** in the inspector fetches it on demand. The site must allow browsers to read it (CORS).
 
 From web page
 : Read a table from a web page, such as a list on Wikipedia. See [Tables on a web page](#tables-on-a-web-page).
@@ -21,7 +21,7 @@ From OData feed
 : Read an entity set from an OData service, such as SAP, Dynamics or SharePoint lists. See [OData feeds](#odata-feeds).
 
 Paste from clipboard
-: Paste rows copied from a spreadsheet or a web page as a new source (shortcut: Ctrl+V on the canvas). Pasted rows are the one kind of data a project keeps, because there is no file to read them from again.
+: Paste rows copied from a spreadsheet or a web page, or XML text, as a new source (shortcut: Ctrl+V on the canvas). Pasted rows are the one kind of data a project keeps, because there is no file to read them from again.
 
 Puddle reads these formats:
 
@@ -31,6 +31,7 @@ Puddle reads these formats:
 | Excel | `.xlsx` | Choose the sheet, the header row and an optional cell range. |
 | JSON and NDJSON | `.json`, `.ndjson`, `.jsonl` | An array of objects, or one object per line. |
 | Parquet | `.parquet`, `.pq` | Read directly, with its column types. |
+| XML | `.xml` | The repeating element is read as rows. See [XML](#xml). |
 
 ## Tables on a web page
 
@@ -97,13 +98,34 @@ Like a file from a web address, the feed is read again each time the project ope
 
 `puddle-run` reads OData feeds itself (with no CORS limits, since it runs outside a browser), except those that need a sign-in, which it can't give yet; its `check` says so.
 
+## XML
+
+An XML file holds its records as an element repeated under one parent, such as each `<book>` in a `<catalog>` or each `<entry>` in an Atom feed. Puddle finds the repeating elements and reads the likeliest one as rows, one row per element. Attributes and child elements become columns:
+
+```xml
+<book id="bk102">
+  <title>Good Omens</title>
+  <price currency="GBP">9.50</price>
+  <author>Terry Pratchett</author>
+  <author>Neil Gaiman</author>
+</book>
+```
+
+gives the columns *id*, *title*, *price*, *price.currency* and *author*. A nested element is named by its path, such as *address.city*. Namespace prefixes are dropped. Values are typed the way a CSV's are, so *9.50* is a number and dates are dates, and text keeps its spaces for the cleaning steps.
+
+An element that repeats inside a record, like the two authors above, stays in one column as a JSON list: `["Terry Pratchett","Neil Gaiman"]`. To give each one a row of its own instead, with the record's other values repeated, choose it under **A row for each** in the inspector.
+
+The inspector lists every repeating element under **Record element**, with how many there are, so you can read another one as the rows (each author, say).
+
+XML can come from a file, from a web address (Puddle recognises `.xml` addresses and servers that say they send XML, including Atom and RSS feeds), or pasted as text. Puddle reads it in your browser, a piece at a time, so a large file doesn't have to fit in memory as a document; the rows it finds do. `puddle-run` reads XML sources the same way.
+
 ## Read options
 
 Select a source to see how it is read in the inspector. For a CSV file that is the delimiter, whether the first row is the header, the encoding, the quote character and which values count as empty (such as `NA` or `n/a`). Change any of them and every node after the source updates.
 
 ![A CSV source selected, with its read options in the inspector](_static/screenshots/screen-overview.png)
 
-An Excel source shows the workbook's sheets with their sizes, the header row it detected (often below a title or a few blank rows), and the cell range being read.
+An Excel source shows the workbook's sheets with their sizes, the header row it detected (often below a title or a few blank rows), and the cell range being read. An XML source shows its record element and what gets a row of its own (see [XML](#xml)).
 
 A file source also has **Path to this file** under *On the runner*: where `puddle-run` finds the file when it runs the project outside the browser (see {doc}`self-hosting`). Left empty, the runner looks for the file by name beside the project file or in a `sources/` folder there.
 

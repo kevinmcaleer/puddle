@@ -20,6 +20,7 @@ import { ResultsTable } from '../results/ResultsTable';
 import { useResultsStore } from '../results/state';
 import { ACCEPT } from '../sources/detect';
 import { useExcelSources } from '../sources/excel';
+import { useXmlSources } from '../sources/xml';
 import { SamplesDialog } from '../samples/SamplePicker';
 import { openUserGuide, startTaxiTutorial } from '../samples/open';
 import { Tour } from '../tour/Tour';
@@ -243,6 +244,7 @@ export function AppShell() {
   const focusInspector = () => requestAnimationFrame(() => inspector.current?.focus());
   const hasOutput = project.nodes.some((n) => n.type === 'output');
   useExcelSources();
+  useXmlSources();
   useFlowEvaluation();
 
   const importInput = useRef<HTMLInputElement>(null);

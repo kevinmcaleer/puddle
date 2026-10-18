@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- A small library catalogue, for the XML source tests. -->
+<catalog xmlns:p="urn:puddle:pricing">
+  <book id="bk101" format="paperback">
+    <title>  Emma </title>
+    <published>1815-12-23</published>
+    <price p:currency="GBP">8.99</price>
+    <author>Jane Austen</author>
+    <stock>12</stock>
+  </book>
+  <book id="bk102">
+    <title>Good Omens</title>
+    <published>1990-05-10</published>
+    <price p:currency="GBP">9.50</price>
+    <author>Terry Pratchett</author>
+    <author>Neil Gaiman</author>
+    <stock>0</stock>
+  </book>
+  <book id="bk103" format="hardback">
+    <title>Dracula &amp; other stories</title>
+    <published>1897-05-26</published>
+    <price p:currency="USD">12.00</price>
+    <author>Bram Stoker</author>
+    <stock>3</stock>
+  </book>
+  <shop>
+    <name>Main street</name>
+  </shop>
+</catalog>

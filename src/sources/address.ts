@@ -20,7 +20,7 @@ const LOCAL_HOSTS = new Set(['localhost', '127.0.0.1', '[::1]']);
 /** Check a typed or pasted address: https only (plain http is mixed content), no credentials, no fragment. */
 export function parseAddress(input: string): URL {
   const text = input.trim();
-  if (!text) throw new UrlSourceError('Paste the address of a CSV, TSV, JSON, NDJSON or Parquet file.', 'address');
+  if (!text) throw new UrlSourceError('Paste the address of a CSV, TSV, JSON, NDJSON, Parquet or XML file.', 'address');
   let url: URL;
   try {
     url = new URL(text);

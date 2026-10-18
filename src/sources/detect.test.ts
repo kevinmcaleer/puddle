@@ -15,6 +15,7 @@ describe('format from a file name', () => {
     ['data.pq', 'parquet'],
     ['book.xlsx', 'xlsx'],
     ['BOOK.XLSX', 'xlsx'],
+    ['books.xml', 'xml'],
   ])('%s is %s', (name, format) => {
     expect(formatFromName(name)).toBe(format);
   });
@@ -25,7 +26,7 @@ describe('format from a file name', () => {
   });
 
   it('refuses unknown formats with what it can read', () => {
-    expect(() => formatFromName('photo.png')).toThrow(/CSV, TSV, JSON, NDJSON, Parquet or Excel \(\.xlsx\) file/);
+    expect(() => formatFromName('photo.png')).toThrow(/CSV, TSV, JSON, NDJSON, Parquet, Excel \(\.xlsx\) or XML file/);
     expect(() => formatFromName('README')).toThrow(SourceError);
   });
 
@@ -42,6 +43,10 @@ describe('format from pasted text', () => {
     ['{"a":1}', 'json'],
     ['{"a":1}\n{"a":2}', 'ndjson'],
     ['{\n  "a": 1\n}', 'json'],
+    ['<?xml version="1.0"?><a/>', 'xml'],
+    ['\n  <rows><r a="1"/></rows>', 'xml'],
+    ['<!-- note --><a/>', 'xml'],
+    ['< 5,b\n1,2', 'csv'],
   ])('%j is %s', (text, format) => {
     expect(formatFromText(text)).toBe(format);
   });

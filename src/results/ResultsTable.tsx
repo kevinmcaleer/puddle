@@ -21,6 +21,8 @@ import { UrlProblemBanner } from '../sources/UrlPanel';
 import { attachmentOf } from '../sources/attachments';
 import { isExcelSource } from '../sources/excel';
 import { ExcelProblemBanner } from '../sources/ExcelPanel';
+import { isXmlSource } from '../sources/xml';
+import { XmlProblemBanner } from '../sources/XmlPanel';
 import { parseProfile, parseTypeSniff, qualityOf, type ColumnProfile } from './profile';
 import { cardKind } from '../canvas/kind';
 import { closeCompare, comparedNode } from './pin';
@@ -453,6 +455,12 @@ function NodeResult({ engine, project, target, ...pane }: { engine: EngineClient
   if (status.state === 'detached') {
     const node = project.nodes.find((n) => n.id === nodeId);
     const source = node?.type === 'source' ? project.sources.find((x) => x.id === node.sourceId) : undefined;
+    if (source && isXmlSource(source) && attachmentOf(source.id) !== 'detached')
+      return (
+        <div className="p-4" data-testid="results-xml">
+          <XmlProblemBanner source={source} />
+        </div>
+      );
     if (source?.kind === 'url')
       return (
         <div className="p-4" data-testid="results-url">
