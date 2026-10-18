@@ -136,7 +136,7 @@ export const RuleZ = z.object({
   params: z.record(z.string(), z.unknown()).default({}),
 });
 
-const PositionZ = z.object({ x: z.number(), y: z.number() });
+export const PositionZ = z.object({ x: z.number(), y: z.number() });
 
 const NodeBase = {
   id: z.string().min(1),

@@ -83,6 +83,7 @@ const ISOLATED = [
   'src/persistence/db.test.ts',
   'src/persistence/workspace.test.ts',
   'src/samples/samples.test.ts',
+  'src/schema/docs.search.test.ts',
   'src/sources/handles.test.ts',
   'src/sources/html.test.ts',
   'src/sources/odata.test.ts',

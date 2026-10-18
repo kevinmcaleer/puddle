@@ -123,3 +123,7 @@
 .puddle-schema-sample th { background: var(--surface-sunken); color: var(--ink-muted); font-weight: 600; }
 .puddle-schema-sample td.is-null { color: var(--ink-subtle); font-style: italic; }
 .puddle-schema-sample__note { margin: var(--space-1) var(--space-3) var(--space-2); color: var(--ink-muted); font-size: 11px; }
+
+/* Diagrams drawn out of sight, to be pictured for the docs export. */
+.puddle-schema-offstage { position: fixed; left: -10000px; top: 0; pointer-events: none; }
+.puddle-schema-offstage__pane { position: relative; width: 1200px; height: 800px; }
