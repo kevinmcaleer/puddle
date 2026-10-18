@@ -30,7 +30,7 @@ export function SharedSchema({ encoded, embed, onOpen, onLeave }: { encoded: str
     );
   if (!payload || !schema) return <main className="flex h-dvh items-center justify-center text-ink-muted" data-testid="shared-schema">Reading the schema…</main>;
 
-  const doc = { dbml: payload.dbml, positions: payload.positions ?? {}, detail: payload.detail ?? 'full', views: payload.views ?? [] };
+  const doc = { dbml: payload.dbml, positions: payload.positions ?? {}, detail: payload.detail ?? 'full', views: payload.views ?? [], versions: [] };
   const view = doc.views.find((v) => v.id === viewId);
   const diagram = (
     <div className="puddle-schema__pane h-full">

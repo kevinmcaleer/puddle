@@ -31,7 +31,8 @@ export function dbmlString(text: string, indent = ''): string {
   return `'''\n${body}\n${indent}'''`;
 }
 
-const defaultValue = (d: Default) => (d.kind === 'string' ? dbmlString(d.value) : d.kind === 'expression' ? `\`${d.value}\`` : d.value);
+/** A default as DBML writes it: quoted, in backticks or bare. */
+export const defaultValue = (d: Default) => (d.kind === 'string' ? dbmlString(d.value) : d.kind === 'expression' ? `\`${d.value}\`` : d.value);
 
 export const writeEndpoint = (e: Endpoint) => `${tableName(e.schema, e.table)}.${e.columns.length === 1 ? dbmlName(e.columns[0]!) : `(${e.columns.map(dbmlName).join(', ')})`}`;
 
