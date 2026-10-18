@@ -1,6 +1,6 @@
 # Step reference
 
-Every step a Transform node can hold, as the **Add** menu groups them. Each step works on the columns you pick in its settings (it starts with the columns selected in the results), and is labelled in the step list by what it did, such as "Trimmed name, city".
+Every step a Transform node can hold, as the **Add** menu groups them. The same groups name the column menu's submenus, and the quick-fix bar's chips sit in the same order, so a step is found under one name wherever it is offered. Each step works on the columns you pick in its settings (it starts with the columns selected in the results), and is labelled in the step list by what it did, such as "Trimmed name, city". Steps marked **New column** in the menus add a column rather than changing one.
 
 ## Clean
 
@@ -11,7 +11,14 @@ Every step a Transform node can hold, as the **Add** menu groups them. Each step
 | Remove non-printing characters | Removes invisible characters, such as the zero-width spaces and control characters left by copying from a web page. |
 | Empty text to empty value | Treats empty text (and text that is only spaces) as a missing value. |
 | Replace values | Replaces whole values that match: a value you type, empty values, or blank text, with another value or with an empty value. A number or date column can be changed to text so a word such as `empty` fits. For text inside a value, use Find and replace. |
+
+## Change type
+
+| Step | What it does |
+| --- | --- |
 | Parse numbers | Reads text such as `£1,234.50`, `$99`, `(12.00)` or `€ 7,5` as numbers, with the decimal mark of the project's locale or one you choose. |
+| Parse dates | Reads text as dates, even when one column mixes several formats. Puddle finds the formats the column uses, tries them in order, and settles day and month order from the values themselves, or asks. Values no format reads become empty, or stop the step with an error. See [How dates are read](#how-dates-are-read). |
+| Change type | Converts columns to text, integer, decimal, boolean, date or timestamp. Values that don't convert become empty, or stop the step with an error. |
 
 ## Columns
 
@@ -20,15 +27,14 @@ Every step a Transform node can hold, as the **Add** menu groups them. Each step
 | Rename columns | Gives columns new names. |
 | Remove columns | Drops the columns you pick. |
 | Move columns to the front | Moves the columns you pick to the start, in the order you pick them. |
-| Change type | Converts columns to text, integer, decimal, boolean, date or timestamp. Values that don't convert become empty, or stop the step with an error. |
 | Split by delimiter | Splits a column at a delimiter (a comma, a space, a tab or any text you type) into columns or into rows, at each occurrence, the left-most or the right-most. |
 | Split by number of characters | Splits a column every so many characters, or once from the left or right, into columns or rows. |
 | Split by position | Splits a column after the character counts you list. |
 | Split by character transition | Splits a column where lower case changes to upper case (or back), or digits change to other characters (or back). |
 | Merge columns | Joins columns into one with a separator, skipping empty values. |
-| Add index column | Numbers the rows, from 1 or a number you choose. |
-| Duplicate column | Copies a column under a new name. |
-| Add column from expression | Adds a column calculated from the others with a DuckDB SQL expression, such as `price * quantity`. |
+| Add index column | Adds a new column numbering the rows, from 1 or a number you choose. |
+| Duplicate column | Adds a new column: a copy of a column under a new name. |
+| Add column from expression | Adds a new column calculated from the others with a DuckDB SQL expression, such as `price * quantity`. |
 
 ## Rows
 
@@ -50,16 +56,15 @@ Every step a Transform node can hold, as the **Add** menu groups them. Each step
 | Find and replace | Replaces text, optionally matching case or using a regular expression. Leave the replacement empty to remove what was found. |
 | Extract text | Takes part of each value into a new column: the first or last characters, the text between two delimiters, or a regular expression group. |
 | Pad text | Pads values to a length with a character at the start or end, such as leading zeros on codes. |
-| Text length | Adds a column with each value's length. |
+| Text length | Adds a new column with each value's length. |
 
 ## Dates
 
 | Step | What it does |
 | --- | --- |
-| Parse dates | Reads text as dates, even when one column mixes several formats. Puddle finds the formats the column uses, tries them in order, and settles day and month order from the values themselves, or asks. Values no format reads become empty, or stop the step with an error. See [How dates are read](#how-dates-are-read). |
-| Extract date part | Takes the year, quarter, month (number or name), week of the year, day of the month, day of the week (number or name) or hour from a date, into a new column or in place of the date. |
+| Extract date part | Adds a new column with the year, quarter, month (number or name), week of the year, day of the month, day of the week (number or name) or hour of a date, or puts it in place of the date. |
 | Add or subtract time | Moves dates by a number of years, quarters, months, weeks, days, hours, minutes or seconds, the same for every row or taken from a column. |
-| Time between dates | The whole number of years, months, days or other units between two date columns, in a new column. |
+| Time between dates | Adds a new column with the whole number of years, months, days or other units between two date columns. |
 | Truncate dates | Rounds dates down to the start of their year, quarter, month, week (from Monday), day or hour. |
 | Format dates as text | Writes dates as text in a format you choose, such as `%d/%m/%Y`. |
 

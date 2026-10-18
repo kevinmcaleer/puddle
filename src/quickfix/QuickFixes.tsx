@@ -29,7 +29,7 @@ export function QuickFixes() {
   return (
     <div data-testid="quick-fixes" data-columns={columns.join(',')}>
       <QuickFixBar
-        fixes={QUICK_FIXES.map((f) => ({ label: f.label, options: f.options }))}
+        fixes={QUICK_FIXES.map((f) => ({ label: f.label, group: f.group, options: f.options }))}
         onFix={(fix, option) => void runFix(QUICK_FIXES.find((f) => f.label === fix.label)!.id, option, ctx)}
       />
     </div>

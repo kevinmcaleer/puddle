@@ -10,6 +10,7 @@ import { readTransposeRows } from '../flow/transpose';
 import {
   addStep,
   canUngroup,
+  chainAround,
   moveStep,
   removeStep,
   renameNode,
@@ -45,7 +46,8 @@ function AddStepMenu({ node, after }: { node: TransformNode; after: number }) {
       .filter((f) => f.group === g)
       .map((f) => ({
         label: f.title,
-        hint: g,
+        group: g,
+        hint: f.newColumn ? 'New column' : undefined,
         onSelect: async () => {
           const step = await buildStep(f, useEngineStore.getState().engine, project, node.id, after, available, useSession.getState().selectedColumns);
           apply((p) => addStep(p, node.id, step, after + 1));
@@ -172,7 +174,7 @@ export function TransformPanel({ node }: { node: TransformNode }) {
         <Field label="Node name" htmlFor="node-name">
           <CommitInput key={node.name} id="node-name" value={node.name} onCommit={(v) => apply((p) => renameNode(p, node.id, v))} />
         </Field>
-        <Button size="sm" variant="ghost" icon="template" disabled={!node.steps.length} title={node.steps.length ? 'Keep these steps to reuse in any project' : 'Add a step first'} onClick={() => openTemplateDialog({ kind: 'save', nodeId: node.id })}>
+        <Button size="sm" variant="ghost" icon="template" disabled={!node.steps.length} title={node.steps.length ? 'Keep these steps to reuse in any project' : 'Add a step first'} onClick={() => openTemplateDialog({ kind: 'save', nodeIds: chainAround(project, node.id) })}>
           Save as template
         </Button>
         {canUngroup(node) && (

@@ -34,6 +34,7 @@ export function ColumnMenu({ request, available, onClose }: { request: ColumnMen
   const asNodes = project.settings.stepsAsNodes;
   const entry = (a: ColumnAction): MenuItem => ({
     label: a.label,
+    hint: a.hint,
     group: a.submenu ? undefined : a.group,
     onSelect: () => {
       if ('replace' in a) return setReplacing(a.replace);
