@@ -6,7 +6,8 @@ import { addNode, canConnect, canMakeGroup, connect, disconnect, freePort, group
 import { addClipboardSource, addFileSource } from '../sources/add';
 import { pickFiles, type PickedFile } from '../sources/handles';
 import { tableToCsv, type HtmlTable } from '../sources/html';
-import { addUrlSource, addWebTableSource } from '../sources/url';
+import type { FeedSpec, ReadOptions } from '../sources/odata';
+import { addODataSource, addUrlSource, addWebTableSource } from '../sources/url';
 import { useSession } from './session';
 
 const report = (e: unknown) => useSession.getState().notify({ tone: 'fail', text: e instanceof Error ? e.message : String(e) });
@@ -67,6 +68,11 @@ export async function addUrl(address: string, format?: SourceFormat) {
 /** Add a table found on a web page; the page is fetched again whenever the project opens. */
 export async function addWebTable(address: URL, table: HtmlTable) {
   selectSource(await addWebTableSource(address, table, { position: nextSourcePosition() }));
+}
+
+/** Add an entity set of an OData service; the feed is read again whenever the project opens. */
+export async function addOData(root: URL, spec: FeedSpec, opts: ReadOptions = {}) {
+  selectSource(await addODataSource(root, spec, { ...opts, position: nextSourcePosition() }));
 }
 
 /** Add a table copied from a web page and pasted in: kept in the project as CSV, like other pasted rows. */

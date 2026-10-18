@@ -16,7 +16,7 @@ export const ENCODINGS = [
   { value: 'latin-1', label: 'Latin-1' },
 ];
 
-export const hasParseOptions = (source: Source) => source.format === 'csv' || source.format === 'tsv';
+export const hasParseOptions = (source: Source) => (source.format === 'csv' || source.format === 'tsv') && !source.url?.odata;
 
 /** The delimiter select's value for a source. */
 export function delimiterValue(source: Source): string {

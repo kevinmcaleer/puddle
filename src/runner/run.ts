@@ -9,6 +9,7 @@ import { describeBlock, exportGate, type BlockingRule } from '../flow/gate';
 import type { RuleResult } from '../flow/ruleResult';
 import { nodeById, topoSort, upstreamIds, type OutputNode, type Project } from '../model';
 import { qualityMarkdown } from './report';
+import { readFeed } from '../sources/odata';
 import { placeSources, type SourcePlace } from './sources';
 import type { RunnerDb } from './db';
 import { tableToCsv, xmlToTable } from '../xml';
@@ -50,6 +51,8 @@ export interface RunOptions {
   db: RunnerDb;
   now?: () => Date;
   fetchText?: (href: string) => Promise<string>;
+  /** How OData feeds are fetched, page by page; the global fetch when not given. */
+  fetchImpl?: typeof fetch;
   log?: (line: string) => void;
 }
 
@@ -68,7 +71,7 @@ const fetchOrThrow = (fetchText: RunOptions['fetchText'], address: string) => {
 };
 
 /** Put each source where the compiled SQL reads it: a link to the file, the pasted text, or the fetched address. */
-async function stage(places: SourcePlace[], stageDir: string, fetchText: RunOptions['fetchText']): Promise<Map<string, string>> {
+async function stage(places: SourcePlace[], stageDir: string, { fetchText, fetchImpl }: Pick<RunOptions, 'fetchText' | 'fetchImpl'>): Promise<Map<string, string>> {
   const problems = new Map<string, string>();
   for (const p of places) {
     const { source } = p;
@@ -84,6 +87,7 @@ async function stage(places: SourcePlace[], stageDir: string, fetchText: RunOpti
         const o = source.parseOptions;
         writeFileSync(target, tableToCsv(await xmlToTable(xml, { record: o.record, expand: o.expand })));
       } else if (source.kind === 'clipboard') writeFileSync(target, source.clipboard!.text);
+      else if (source.url?.odata) writeFileSync(target, (await readFeed(new URL(p.path), source.url.odata, { fetchImpl })).csv);
       else if (source.kind === 'url') writeFileSync(target, await fetchOrThrow(fetchText, p.path));
       else symlinkSync(p.path, target);
     } catch (e) {
@@ -140,7 +144,7 @@ export async function runProject(project: Project, opts: RunOptions): Promise<{ 
   let rules: RunLog['rules'] = {};
   const places = placeSources(full, opts.folder, existsSync);
   try {
-    const problems = await stage(places, stageDir, opts.fetchText);
+    const problems = await stage(places, stageDir, opts);
     // The compiled SQL reads `src_<id>.csv` by bare name; DuckDB looks for it here.
     await opts.db.query(`SET file_search_path = ${str(stageDir)}`);
     for (const [id, why] of problems) say(`Source ${full.sources.find((s) => s.id === id)?.name ?? id} ${why}.`);

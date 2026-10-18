@@ -58,6 +58,27 @@ export const SourceZ = z.object({
        * page is fetched and that table read as CSV, rather than the address read as a file.
        */
       table: z.object({ index: z.number().int().nonnegative(), label: z.string() }).optional(),
+      /**
+       * An entity set of an OData service (Add source › From OData feed): `href` is the service's root, and the set
+       * is read page by page as JSON, then handed to DuckDB as CSV with the column types its $metadata declares.
+       */
+      odata: z
+        .object({
+          entitySet: z.string().min(1),
+          /** The protocol version the service speaks: 2 (also 1 and 3, JSON with `d`) or 4. */
+          version: z.union([z.literal(2), z.literal(4)]),
+          /** $select: the columns to read, in this order. Empty or absent reads them all. */
+          select: z.array(z.string()).optional(),
+          /** $filter, as typed: an OData filter expression. */
+          filter: z.string().optional(),
+          /** $top: read at most this many rows. */
+          top: z.number().int().positive().optional(),
+          /** The columns as DuckDB types, from $metadata. Absent when the service has none, and DuckDB types them. */
+          columns: z.array(ColumnSchemaZ).optional(),
+          /** How the service is signed in to. The user name, password or token are kept in this tab only, never here. */
+          auth: z.enum(['basic', 'bearer']).optional(),
+        })
+        .optional(),
     })
     .optional(),
   clipboard: z.object({ text: z.string() }).optional(),

@@ -1,12 +1,12 @@
 # Sources
 
-A source is data read into Puddle: a file on your computer, a file at a web address, a table on a web page, or rows pasted from the clipboard. Each source is a node on the canvas, and its data stays where it is. Puddle reads it in place each time and never copies it anywhere.
+A source is data read into Puddle: a file on your computer, a file at a web address, a table on a web page, an OData feed, or rows pasted from the clipboard. Each source is a node on the canvas, and its data stays where it is. Puddle reads it in place each time and never copies it anywhere.
 
 ## Adding a source
 
-**Add** in the toolbar offers four ways in under **Sources**; an empty project also has an **Add source** button on the canvas.
+**Add** in the toolbar offers five ways in under **Sources**; an empty project also has an **Add source** button on the canvas.
 
-![The Add menu's Sources group: Choose files, From URL, From web page and Paste from clipboard](_static/screenshots/sources-menu.png)
+![The Add menu's Sources group: Choose files, From URL, From web page, From OData feed and Paste from clipboard](_static/screenshots/sources-menu.png)
 
 Choose files
 : Pick one or more files from your computer (shortcut: A). You can also drop files straight onto the canvas.
@@ -16,6 +16,9 @@ From URL
 
 From web page
 : Read a table from a web page, such as a list on Wikipedia. See [Tables on a web page](#tables-on-a-web-page).
+
+From OData feed
+: Read an entity set from an OData service, such as SAP, Dynamics or SharePoint lists. See [OData feeds](#odata-feeds).
 
 Paste from clipboard
 : Paste rows copied from a spreadsheet or a web page, or XML text, as a new source (shortcut: Ctrl+V on the canvas). Pasted rows are the one kind of data a project keeps, because there is no file to read them from again.
@@ -48,6 +51,52 @@ The source keeps the page's address and which table it reads. Like a file from a
 Puddle reads the page straight from your browser, so the site has to allow it, and most sites don't (CORS). Wikipedia's pages are read through Wikipedia's own API, which does allow it, so any Wikipedia article works. For any other site that refuses, Puddle says so and offers **Paste instead**: select the table on the page in your browser, copy it, and paste it into the box. The table's HTML comes with it, so its columns stay intact, and it's added like other pasted rows, kept in the project. Pasting the page's HTML source works too.
 
 `puddle-run` can't read a table on a web page yet; its `check` says so.
+
+## OData feeds
+
+**From OData feed** reads an entity set from an OData service, the way Power Query's *OData Feed* does. Paste the service's address and choose **Connect**: Puddle reads the service's `$metadata` (or, if it has none, its service document) and lists its entity sets, with their columns. Pick one and choose **Add source**. Puddle reads every page of it, following the service's next links, so a service that pages its results by a few hundred rows still comes in whole.
+
+![From OData feed connected to TripPin: the People entity set chosen, with its columns](_static/screenshots/sources-odata.png)
+
+For example, to try it on Microsoft's sample service: paste `https://services.odata.org/TripPinRESTierService`, choose **Connect**, and add **People**. The address of one entity set works too, as copied from a browser's address bar; Puddle finds the service above it and fills in any query options the address carries.
+
+Three optional fields narrow what's read, and the service does the work, so less comes over the network:
+
+Columns
+: `$select`: column names separated by commas, such as `UserName, FirstName, Age`. Empty reads every column.
+
+Filter
+: `$filter`, written in OData's own filter language, such as `Age gt 30` or `startswith(LastName,'W')`. If the service can't read it, Puddle shows the service's own message.
+
+Rows
+: `$top`: read at most this many rows.
+
+The columns come in with the types `$metadata` gives them:
+
+| OData type | Read as |
+| --- | --- |
+| `Edm.String`, `Edm.Guid`, enums | Text (a Guid as DuckDB's `UUID`) |
+| `Edm.Int16`, `Edm.Int32`, `Edm.Int64`, `Edm.Byte`, `Edm.SByte` | Whole numbers |
+| `Edm.Decimal`, `Edm.Double`, `Edm.Single` | Decimals, with the precision and scale `$metadata` gives where it gives them |
+| `Edm.Boolean` | True or false |
+| `Edm.Date` | A date |
+| `Edm.DateTime`, `Edm.DateTimeOffset` | A timestamp; one with an offset is converted to UTC |
+| `Edm.TimeOfDay`, `Edm.Time` | A time of day |
+| Complex types, collections, geography, `Edm.Duration`, `Edm.Binary` | Their text, as JSON for structured values; use a step to pull out what you need |
+
+Both versions of OData that services still speak are read: version 4, and versions 2 and 3 (the JSON with `d` that older SAP and SharePoint services send). Navigation properties (links to other entity sets) are left out; add the other entity set as its own source and join the two.
+
+### Signing in
+
+If the service needs a sign-in, choose **Basic** (a user name and password) or **Bearer token** under **Sign-in** before you connect. The sign-in is kept in this browser tab only: it is never saved in the project, its `.puddle.json` file, a recipe or a sync. Reopen the project in a new tab and the source asks for it again in the inspector, under **Sign in and read**.
+
+### Services that block other sites
+
+Puddle reads the feed straight from your browser, with no server of its own in between, so the service has to allow other sites to read it (CORS). Some public services do; many company services don't, and then Puddle says that the service blocked it. A service that needs a sign-in must also allow the Authorization header. Ask the service's owner to allow Puddle's address, or export the data from the service as a file and add that instead.
+
+Like a file from a web address, the feed is read again each time the project opens, and **Refresh** reads it on demand; if its rows changed, Puddle says so.
+
+`puddle-run` reads OData feeds itself (with no CORS limits, since it runs outside a browser), except those that need a sign-in, which it can't give yet; its `check` says so.
 
 ## XML
 

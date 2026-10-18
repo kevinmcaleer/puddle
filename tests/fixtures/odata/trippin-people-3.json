@@ -1,0 +1,48 @@
+{
+  "@odata.context": "https://services.odata.org/TripPinRESTierService/$metadata#People",
+  "value": [
+    {
+      "@odata.etag": "W/\"08D1694BD49A0F11\"",
+      "UserName": "elainestewart",
+      "FirstName": "Elaine",
+      "LastName": "Stewart",
+      "MiddleName": null,
+      "Gender": "Female",
+      "Age": 25,
+      "Emails": [
+        "Elaine@example.com",
+        "Elaine@contoso.com"
+      ],
+      "AddressInfo": [],
+      "HomeAddress": null,
+      "FavoriteFeature": "Feature1",
+      "Features": []
+    },
+    {
+      "@odata.etag": "W/\"08D1694BD49A0F11\"",
+      "UserName": "salliesampson",
+      "FirstName": "Sallie",
+      "LastName": "Sampson",
+      "MiddleName": "",
+      "Gender": "Female",
+      "Age": 44,
+      "Emails": [
+        "Sallie@example.com",
+        "Sallie@contoso.com"
+      ],
+      "AddressInfo": [
+        {
+          "Address": "87 Polk St. Suite 5",
+          "City": {
+            "Name": "San Francisco",
+            "CountryRegion": "United States",
+            "Region": "CA"
+          }
+        }
+      ],
+      "HomeAddress": null,
+      "FavoriteFeature": "Feature1",
+      "Features": []
+    }
+  ]
+}

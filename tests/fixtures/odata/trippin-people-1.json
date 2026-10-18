@@ -1,0 +1,112 @@
+{
+  "@odata.context": "https://services.odata.org/TripPinRESTierService/$metadata#People",
+  "value": [
+    {
+      "@odata.etag": "W/\"08D1694BD49A0F11\"",
+      "UserName": "russellwhyte",
+      "FirstName": "Russell",
+      "LastName": "Whyte",
+      "MiddleName": null,
+      "Gender": "Male",
+      "Age": 22,
+      "Emails": [
+        "Russell@example.com",
+        "Russell@contoso.com"
+      ],
+      "AddressInfo": [
+        {
+          "Address": "187 Suffolk Ln.",
+          "City": {
+            "Name": "Boise",
+            "CountryRegion": "United States",
+            "Region": "ID"
+          }
+        }
+      ],
+      "HomeAddress": null,
+      "FavoriteFeature": "Feature1",
+      "Features": [
+        "Feature1",
+        "Feature2"
+      ]
+    },
+    {
+      "@odata.etag": "W/\"08D1694BD49A0F11\"",
+      "UserName": "scottketchum",
+      "FirstName": "Scott",
+      "LastName": "Ketchum",
+      "MiddleName": null,
+      "Gender": "Male",
+      "Age": null,
+      "Emails": [
+        "Scott@example.com"
+      ],
+      "AddressInfo": [
+        {
+          "Address": "2817 Milton Dr.",
+          "City": {
+            "Name": "Albuquerque",
+            "CountryRegion": "United States",
+            "Region": "NM"
+          }
+        }
+      ],
+      "HomeAddress": null,
+      "FavoriteFeature": "Feature1",
+      "Features": []
+    },
+    {
+      "@odata.etag": "W/\"08D1694BD49A0F11\"",
+      "UserName": "ronaldmundy",
+      "FirstName": "Ronald",
+      "LastName": "Mundy",
+      "MiddleName": null,
+      "Gender": "Male",
+      "Age": null,
+      "Emails": [
+        "Ronald@example.com",
+        "Ronald@contoso.com"
+      ],
+      "AddressInfo": [
+        {
+          "Address": "187 Suffolk Ln.",
+          "City": {
+            "Name": "Boise",
+            "CountryRegion": "United States",
+            "Region": "ID"
+          }
+        }
+      ],
+      "HomeAddress": null,
+      "FavoriteFeature": "Feature1",
+      "Features": []
+    },
+    {
+      "@odata.etag": "W/\"08D1694BD49A0F11\"",
+      "UserName": "javieralfred",
+      "FirstName": "Javier",
+      "LastName": "Alfred",
+      "MiddleName": null,
+      "Gender": "Male",
+      "Age": 31,
+      "Emails": [
+        "Javier@example.com",
+        "Javier@contoso.com"
+      ],
+      "AddressInfo": [
+        {
+          "Address": "89 Jefferson Way Suite 2",
+          "City": {
+            "Name": "Portland",
+            "CountryRegion": "United States",
+            "Region": "WA"
+          }
+        }
+      ],
+      "HomeAddress": null,
+      "FavoriteFeature": "Feature1",
+      "Features": []
+    }
+  ],
+  "@odata.nextLink": "https://services.odata.org/TripPinRESTierService/People?%24skiptoken=4"
+}

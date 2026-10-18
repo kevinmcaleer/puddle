@@ -1,0 +1,30 @@
+{
+  "@odata.context": "https://services.odata.org/TripPinRESTierService/$metadata",
+  "value": [
+    {
+      "name": "People",
+      "kind": "EntitySet",
+      "url": "People"
+    },
+    {
+      "name": "Airlines",
+      "kind": "EntitySet",
+      "url": "Airlines"
+    },
+    {
+      "name": "Airports",
+      "kind": "EntitySet",
+      "url": "Airports"
+    },
+    {
+      "name": "Me",
+      "kind": "Singleton",
+      "url": "Me"
+    },
+    {
+      "name": "GetPersonWithMostFriends",
+      "kind": "FunctionImport",
+      "url": "GetPersonWithMostFriends"
+    }
+  ]
+}

@@ -35,7 +35,7 @@ export async function runOnce(path: string, out?: string): Promise<boolean> {
   say(`Running ${project.name} (${basename(file)}) into ${outDir}`);
   const db = await openDb();
   try {
-    const { log } = await runProject(project, { folder, outDir, db, fetchText, log: say });
+    const { log } = await runProject(project, { folder, outDir, db, fetchText, fetchImpl: fetch, log: say });
     say(`Finished ${project.name} in ${log.durationMs} ms: ${log.outputs.map((o) => `${o.nodeName} ${o.status}`).join(', ') || 'no Output nodes'}`);
     return runSucceeded(log);
   } finally {

@@ -85,6 +85,7 @@ const ISOLATED = [
   'src/samples/samples.test.ts',
   'src/sources/handles.test.ts',
   'src/sources/html.test.ts',
+  'src/sources/odata.test.ts',
   'src/sources/webpage.test.ts',
   'src/sync/controller.test.ts',
   'src/templates/library.test.ts',
