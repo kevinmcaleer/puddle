@@ -1,0 +1,42 @@
+// Everything the diagram draws: a group, an enum, a composite ref, an optional side, colours and a sticky note.
+Enum job_status {
+  created
+  running
+  done [note: 'Finished without errors']
+}
+
+Table merchants [headercolor: #E74C3C] {
+  id integer [pk]
+  country_code varchar(2) [pk]
+  name varchar [not null, unique]
+  Note: 'Shops that sell through us'
+}
+
+Table merchant_periods {
+  merchant_id integer [not null]
+  country_code varchar(2) [not null]
+  starts date [default: `now()`]
+}
+
+Table jobs {
+  id integer [pk, increment]
+  merchant_id integer [ref: >? merchants.id]
+  status job_status [not null, default: 'created', note: 'Where the job is up to']
+  retries integer [check: `retries >= 0`]
+}
+
+Table users {
+  id integer [pk]
+}
+
+Ref: merchant_periods.(merchant_id, country_code) > merchants.(id, country_code)
+Ref audit: jobs.id - users.id [color: #8E44AD, inactive]
+
+TableGroup billing [color: #3498DB] {
+  merchants
+  merchant_periods
+}
+
+Note planning [color: #F4D03F] {
+  'Jobs run every hour; a failed job is retried three times before it stops.'
+}

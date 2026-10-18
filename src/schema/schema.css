@@ -7,7 +7,7 @@
 .puddle-schema__errors li { display: flex; align-items: baseline; gap: var(--space-2); }
 .puddle-schema__divider { width: var(--space-1); cursor: col-resize; background: var(--line); touch-action: none; }
 .puddle-schema__divider:hover, .puddle-schema__divider:focus-visible { background: var(--brand); outline: none; }
-.puddle-schema__pane { position: relative; min-width: 0; min-height: 0; overflow: auto; background-color: var(--surface-canvas); background-image: radial-gradient(var(--canvas-dot) 1px, transparent 1px); background-size: var(--space-4) var(--space-4); }
+.puddle-schema__pane { position: relative; min-width: 0; min-height: 0; overflow: hidden; background-color: var(--surface-canvas); background-image: radial-gradient(var(--canvas-dot) 1px, transparent 1px); background-size: var(--space-4) var(--space-4); }
 .puddle-schema__empty { position: absolute; inset: 0; display: grid; place-items: center; color: var(--ink-muted); pointer-events: none; }
 
 /* The editor: a transparent textarea over a coloured copy of its text, line numbers to the left. */
@@ -37,24 +37,65 @@
 .puddle-dbml__option { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); padding: var(--space-1) var(--space-2); cursor: pointer; }
 .puddle-dbml__option.is-active, .puddle-dbml__option:hover { background: var(--surface-hover); }
 
-/* The diagram. */
-.puddle-schema-svg { display: block; overflow: visible; font-family: var(--font-mono); font-size: 12px; }
-.puddle-schema-table { cursor: grab; outline: none; }
-.puddle-schema-table.is-moving { cursor: grabbing; }
-.puddle-schema-table__box { fill: var(--surface-raised); stroke: var(--line); }
-.puddle-schema-table__head { fill: var(--node-source-tint); }
-.puddle-schema-table__name { fill: var(--ink); font-weight: 600; }
-.puddle-schema-table.is-current .puddle-schema-table__box, .puddle-schema-table:focus-visible .puddle-schema-table__box { stroke: var(--brand); stroke-width: 2; }
+/* The diagram: pans and zooms inside the pane, its tools floating over the top right. */
+.puddle-schema-canvas { position: absolute; inset: 0; overflow: hidden; }
+.puddle-schema-svg { display: block; width: 100%; height: 100%; font-family: var(--font-mono); font-size: 12px; cursor: grab; outline: none; touch-action: none; }
+.puddle-schema-svg:focus-visible { box-shadow: inset 0 0 0 2px var(--brand); }
+.puddle-schema-svg.is-panning { cursor: grabbing; }
+.puddle-schema-tools { position: absolute; top: var(--space-2); right: var(--space-2); display: flex; align-items: center; gap: var(--space-1); padding: var(--space-1); border: 1px solid var(--line); border-radius: var(--radius-md); background: var(--surface-raised); box-shadow: var(--shadow-node); }
+.puddle-schema-tools__search { width: calc(var(--space-8) * 5); height: var(--size-control-sm); }
+.puddle-schema-pop { position: absolute; z-index: var(--z-popover); max-height: calc(100% - var(--space-4)); pointer-events: none; }
+.puddle-schema-pop__name { font: 600 12px/18px var(--font-mono); color: var(--ink); overflow-wrap: anywhere; }
+.puddle-schema-pop__body { margin: 0; padding: var(--space-2) var(--space-3); display: grid; gap: var(--space-1); }
+.puddle-schema-pop__row { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: var(--space-2); }
+.puddle-schema-pop__row dt { color: var(--ink-muted); }
+.puddle-schema-pop__row dd { margin: 0; color: var(--ink); overflow-wrap: anywhere; white-space: pre-wrap; }
+
+/* Palette tones for DBML colours: a line colour and a fill that text reads on, in both themes. */
+.tone-teal { --tone: var(--brand); --tone-tint: var(--brand-tint); }
+.tone-blue { --tone: var(--node-source); --tone-tint: var(--node-source-tint); }
+.tone-purple { --tone: var(--node-combine); --tone-tint: var(--node-combine-tint); }
+.tone-amber { --tone: var(--accent-ink); --tone-tint: var(--accent-tint); }
+.tone-red { --tone: var(--fail); --tone-tint: var(--fail-tint); }
+.tone-grey { --tone: var(--node-check); --tone-tint: var(--node-check-tint); }
+
+.is-dim { opacity: 0.35; }
+.puddle-schema-table, .puddle-schema-enum, .puddle-schema-note { cursor: grab; outline: none; }
+.puddle-schema-table.is-moving, .puddle-schema-enum.is-moving, .puddle-schema-note.is-moving { cursor: grabbing; }
+.puddle-schema-table__box { fill: var(--surface-raised); stroke: var(--line-strong); }
+.puddle-schema-table__head { fill: var(--tone-tint, var(--node-source-tint)); }
+.puddle-schema-table__stripe { fill: var(--tone); pointer-events: none; }
+.puddle-schema-table__name { fill: var(--ink); font-weight: 600; pointer-events: none; }
+.puddle-schema-table__note { color: var(--ink-muted); }
+.puddle-schema-table.is-current .puddle-schema-table__box, .puddle-schema-table.is-found .puddle-schema-table__box,
+.puddle-schema-table:focus-visible .puddle-schema-table__box, .puddle-schema-enum:focus-visible .puddle-schema-table__box { stroke: var(--brand); stroke-width: 2; }
 .puddle-schema-col { cursor: pointer; }
 .puddle-schema-col__hit { fill: transparent; }
 .puddle-schema-col:hover .puddle-schema-col__hit { fill: var(--surface-hover); }
 .puddle-schema-col__rule { stroke: var(--line); }
-.puddle-schema-col__name { fill: var(--ink); }
+.puddle-schema-col__name { fill: var(--ink); pointer-events: none; }
 .puddle-schema-col__name.is-required { font-weight: 600; }
-.puddle-schema-col__type { fill: var(--ink-muted); }
-.puddle-schema-col__glyph { color: var(--ink-muted); }
+.puddle-schema-col__type { fill: var(--ink-muted); pointer-events: none; }
+.puddle-schema-col__glyph { color: var(--ink-muted); pointer-events: none; }
 .puddle-schema-col__glyph.is-key { color: var(--accent-ink); }
-.puddle-schema-ref__line { fill: none; stroke: var(--wire); stroke-width: 1.5; }
+.puddle-schema-enum__head { fill: var(--node-check-tint); }
+.puddle-schema-enum__tag { fill: var(--ink-muted); font-size: 11px; }
+.puddle-schema-link { fill: none; stroke: var(--line-strong); stroke-width: 1.25; stroke-dasharray: 2 4; }
+.puddle-schema-ref__line { fill: none; stroke: var(--tone, var(--wire)); stroke-width: 1.5; }
+.puddle-schema-ref__hit { fill: none; stroke: transparent; stroke-width: 10; }
+.puddle-schema-ref.is-inactive .puddle-schema-ref__line { stroke-dasharray: 6 4; }
+.puddle-schema-ref__dot { fill: var(--tone, var(--wire)); stroke: var(--tone, var(--wire)); stroke-width: 1.5; }
+.puddle-schema-ref__dot.is-optional { fill: var(--surface-canvas); }
 .puddle-schema-ref__end { fill: var(--ink-muted); font-size: 11px; font-weight: 600; }
-.puddle-schema-ref.is-current .puddle-schema-ref__line { stroke: var(--wire-active); stroke-width: 2; }
-.puddle-schema-ref.is-current .puddle-schema-ref__end { fill: var(--brand); }
+.puddle-schema-ref.is-current .puddle-schema-ref__line { stroke: var(--tone, var(--wire-active)); stroke-width: 2.5; }
+.puddle-schema-ref.is-current .puddle-schema-ref__end { fill: var(--ink); }
+.puddle-schema-group__frame { fill: var(--tone-tint, var(--surface-hover)); fill-opacity: 0.45; stroke: var(--tone, var(--line-strong)); stroke-dasharray: 6 4; }
+.puddle-schema-group__head { cursor: grab; outline: none; }
+.puddle-schema-group__hit { fill: transparent; }
+.puddle-schema-group__head:focus-visible .puddle-schema-group__hit { stroke: var(--brand); stroke-width: 2; }
+.puddle-schema-group__name { fill: var(--ink); font-weight: 600; pointer-events: none; }
+.puddle-schema-note__box { fill: var(--tone-tint); stroke: var(--tone); }
+.puddle-schema-note.is-plain .puddle-schema-note__box { fill: transparent; stroke: transparent; }
+.puddle-schema-note:focus-visible .puddle-schema-note__box { stroke: var(--brand); stroke-width: 2; }
+.puddle-schema-note__name { fill: var(--ink); font-weight: 600; pointer-events: none; }
+.puddle-schema-note__text { fill: var(--ink); pointer-events: none; }
