@@ -99,3 +99,9 @@
 .puddle-schema-note:focus-visible .puddle-schema-note__box { stroke: var(--brand); stroke-width: 2; }
 .puddle-schema-note__name { fill: var(--ink); font-weight: 600; pointer-events: none; }
 .puddle-schema-note__text { fill: var(--ink); pointer-events: none; }
+
+/* Editing on the diagram: selected tables, the ref being drawn, and the boxes and popover that ask for a value. */
+.puddle-schema-table.is-selected .puddle-schema-table__box { stroke: var(--accent-ink); stroke-width: 2; stroke-dasharray: 4 3; }
+.puddle-schema-col.is-linkable { cursor: crosshair; }
+.puddle-schema-linking { fill: none; stroke: var(--wire-active); stroke-width: 2; stroke-dasharray: 6 4; pointer-events: none; }
+.puddle-schema-ask { position: absolute; z-index: var(--z-popover); display: grid; gap: var(--space-2); padding: var(--space-3); width: max-content; max-width: var(--size-node-width); }

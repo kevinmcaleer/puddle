@@ -5,9 +5,9 @@ import { useSession } from '../app/session';
 import { copyText, saveBlob } from '../export/deliver';
 import { checkKeys } from '../flow/keys';
 import { useFlowStore } from '../flow/status';
-import { nodeById, useProject, useProjectStore, type Project } from '../model';
+import { nodeById, setSchemaDbml, useProject, useProjectStore, type Project } from '../model';
 import { Banner, Button, columnKind, cx, Dialog, Field, Icon, NODE_KIND, Select, TypeTag } from '../ui';
-import { toDbml } from './dbml';
+import { intoSchema, toDbml } from './dbml';
 import { relate } from './relate';
 import { cardinality, declaredKeys, describeCardinality, findRelationships, keyColumns, keyEnds, relationshipTables, type End, type Relationship, type RelTable, type Uniqueness } from './model';
 import '../query/query.css';
@@ -381,6 +381,14 @@ export function Relationships() {
   const [selected, setSelected] = useState<string | null>(null);
   const [message, setMessage] = useState<{ tone: 'info' | 'fail'; text: string } | null>(null);
   const dbml = () => toDbml(project, tables, relationships, unique);
+  const [asking, setAsking] = useState(false);
+  /** The tables written into the project's schema, one undo step, and the Schema view opened on them. */
+  const openInSchema = (mode: 'append' | 'replace') => {
+    const text = dbml();
+    setAsking(false);
+    useProjectStore.getState().apply((p) => setSchemaDbml(p, intoSchema(p.schema.dbml, text, mode)));
+    useSession.getState().setSchemaOpen(true);
+  };
   const view = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (document.activeElement === document.body) view.current?.focus();
@@ -408,10 +416,36 @@ export function Relationships() {
         >
           Copy DBML
         </Button>
+        <Button variant="ghost" size="sm" icon="schema" onClick={() => (project.schema.dbml.trim() ? setAsking(true) : openInSchema('replace'))} data-testid="open-in-schema">
+          Open in Schema
+        </Button>
         <Button variant="secondary" size="sm" icon="export" onClick={() => saveBlob(new Blob([dbml()], { type: 'text/plain' }), `${project.name || 'project'}.dbml`)}>
           Download DBML
         </Button>
       </div>
+      {asking && (
+        <div className="puddle-qd-notes" data-testid="open-in-schema-ask">
+          <Banner
+            tone="info"
+            title="The schema already has DBML"
+            action={
+              <>
+                <Button variant="secondary" size="sm" onClick={() => openInSchema('append')}>
+                  Add to it
+                </Button>
+                <Button variant="ghost" size="sm" onClick={() => openInSchema('replace')}>
+                  Replace it
+                </Button>
+                <Button variant="ghost" size="sm" onClick={() => setAsking(false)}>
+                  Cancel
+                </Button>
+              </>
+            }
+          >
+            Add these tables and relationships after what is written there, or replace it with them.
+          </Banner>
+        </div>
+      )}
       {message && (
         <div className="puddle-qd-notes" data-testid="relationships-message">
           <Banner tone={message.tone} action={<Button variant="ghost" size="sm" onClick={() => setMessage(null)}>Dismiss</Button>}>
