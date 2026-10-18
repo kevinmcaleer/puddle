@@ -16,6 +16,7 @@ import { describeProfile } from '../results/profile';
 import { exportAll, ExportBlockedBanner, ExportButton, exportViewed } from '../export';
 import { QueryDesigner } from '../query/QueryDesigner';
 import { SchemaView } from '../schema/SchemaView';
+import { Relationships } from '../relationships/Relationships';
 import { compareWith, offeredNode, togglePin, viewHere } from '../results/pin';
 import { ResultsTable } from '../results/ResultsTable';
 import { useResultsStore } from '../results/state';
@@ -36,7 +37,7 @@ import { openODataDialog } from '../sources/odataDialog';
 import { cardKind } from '../canvas/kind';
 import { Button, Menu, ResultsBar, StatusBadge, StatusStrip, Toolbar, useDisplayFormat, type NodeKind } from '../ui';
 import { ActivityControl } from './ActivityControl';
-import { addFiles, addNodeAfterSelection, cancelWiring, chooseFiles as pickSourceFiles, addPastedText, groupSelection, layoutFlow, openSelected, pasteFromClipboard, searchAddStep, selectNeighbour, startWiring, viewSelected } from './actions';
+import { addFiles, addNodeAfterSelection, addStepFromMenu, cancelWiring, chooseFiles as pickSourceFiles, addPastedText, groupSelection, layoutFlow, openSelected, pasteFromClipboard, searchAddStep, selectNeighbour, startWiring, viewSelected } from './actions';
 import { useEngineStore, type EngineStatus } from './engine';
 import { ResultsPanel } from './ResultsPanel';
 import { Console } from '../console/Console';
@@ -46,6 +47,7 @@ import { TemplateDialogs } from '../templates/TemplateDialogs';
 import { openExportRecipe, openRecipeFile } from '../recipes/actions';
 import { RecipeAttachBanner, RecipeDialogs } from '../recipes/RecipeDialogs';
 import { shortcutText, withShortcut, type GlobalShortcutId } from './shortcuts';
+import { STEP_GROUPS, stepForms } from '../steps';
 import { useShortcuts } from './useShortcuts';
 import { PROVIDER_IDS, PROVIDERS, useSync } from '../sync';
 import { openSyncDialog } from '../sync/dialogs';
@@ -241,6 +243,9 @@ export function AppShell() {
   const schemaOpen = useSession((s) => s.schemaOpen);
   // The Schema view belongs to the project it was opened on.
   useEffect(() => () => useSession.getState().setSchemaOpen(false), [project.id]);
+  const relationshipsOpen = useSession((s) => s.relationshipsOpen);
+  // The relationships view belongs to the project it was opened on.
+  useEffect(() => () => useSession.getState().setRelationshipsOpen(false), [project.id]);
   const fileInput = useRef<HTMLInputElement>(null);
   const canvas = useRef<HTMLElement>(null);
   const inspector = useRef<HTMLElement>(null);
@@ -253,18 +258,20 @@ export function AppShell() {
 
   const importInput = useRef<HTMLInputElement>(null);
   const recipeInput = useRef<HTMLInputElement>(null);
+  const [addMenuOpen, setAddMenuOpen] = useState(false);
+  const addMenuPending = useSession((s) => s.addMenuPending);
   const chooseFiles = () => void pickSourceFiles(() => fileInput.current?.click());
 
   const session = useSession.getState;
   /** A canvas key does nothing while the Schema view covers the canvas, and the key goes on to the view. */
-  const onCanvas = (run: () => void | boolean) => () => (session().schemaOpen ? false : run());
+  const onCanvas = (run: () => void | boolean) => () => (session().schemaOpen || session().relationshipsOpen ? false : run());
   const actions: Record<GlobalShortcutId, () => void | boolean> = {
     help: () => session().setShortcutsOpen(true),
     undo,
     redo,
     'toggle-inspector': () => session().setInspectorOpen(!session().inspectorOpen),
     'add-source': chooseFiles,
-    'add-transform': onCanvas(() => addNodeAfterSelection('transform')),
+    'add-transform': onCanvas(() => session().requestAddMenu()),
     'add-output': onCanvas(() => addNodeAfterSelection('output')),
     layout: onCanvas(() => project.nodes.length > 0 && layoutFlow()),
     group: onCanvas(groupSelection),
@@ -279,7 +286,7 @@ export function AppShell() {
     'toggle-results': () => session().setResultsOpen(!session().resultsOpen),
     pin: togglePin,
     'add-step': searchAddStep,
-    'open-node': () => (session().schemaOpen ? false : openSelected(focusInspector)),
+    'open-node': () => (session().schemaOpen || session().relationshipsOpen ? false : openSelected(focusInspector)),
     connect: onCanvas(startWiring),
     cancel: onCanvas(cancelWiring),
   };
@@ -293,6 +300,7 @@ export function AppShell() {
           project={project.name}
           projectMenu={[
             { label: 'Rename', icon: 'text', onSelect: () => openProjectDialog({ kind: 'rename', id: project.id, name: project.name }) },
+            { label: 'Relationships', icon: 'relationships', hint: 'Tables and keys, DBML', onSelect: () => session().setRelationshipsOpen(true) },
             { label: 'Schema', icon: 'schema', hint: 'Design tables in DBML', onSelect: () => session().setSchemaOpen(true) },
             { label: 'Export project', icon: 'export', hint: '.puddle.json', onSelect: exportProject },
             { label: 'Import project', icon: 'source', onSelect: () => importInput.current?.click() },
@@ -306,13 +314,19 @@ export function AppShell() {
           <Menu
             label="Add"
             button={{ variant: 'primary', icon: 'plus', ...{ 'data-tour': 'add-node' } }}
+            search="Search steps and nodes"
+            scroll
+            open={addMenuOpen || addMenuPending}
+            onOpenChange={(next) => {
+              setAddMenuOpen(next);
+              if (!next) session().clearAddMenu();
+            }}
             items={[
               { label: 'Choose files', icon: 'source', hint: 'CSV, TSV, JSON, Parquet', shortcut: shortcutText('add-source'), group: 'Sources', onSelect: chooseFiles },
               { label: 'From URL', icon: 'link', hint: 'https address', group: 'Sources', onSelect: () => openUrlDialog() },
               { label: 'From web page', icon: 'web', hint: 'Its tables', group: 'Sources', onSelect: () => openWebPageDialog() },
               { label: 'From OData feed', icon: 'database', hint: 'Its entity sets', group: 'Sources', onSelect: () => openODataDialog() },
               { label: 'Paste from clipboard', icon: 'paste', group: 'Sources', onSelect: () => void pasteFromClipboard() },
-              { label: 'Transform', icon: 'transform', shortcut: shortcutText('add-transform'), group: 'Nodes', onSelect: () => addNodeAfterSelection('transform') },
               { label: 'From template', icon: 'template', hint: 'Saved steps', group: 'Nodes', onSelect: openTemplates },
               { label: 'Join', icon: 'join', hint: 'Two inputs', group: 'Nodes', onSelect: () => addNodeAfterSelection('join') },
               { label: 'Append', icon: 'append', hint: 'Stack rows', group: 'Nodes', onSelect: () => addNodeAfterSelection('append') },
@@ -320,6 +334,8 @@ export function AppShell() {
               { label: 'Query', icon: 'query', hint: 'Design with tables', group: 'Nodes', onSelect: () => addNodeAfterSelection('query') },
               { label: 'SQL', icon: 'code', hint: 'Write a query', group: 'Nodes', onSelect: () => addNodeAfterSelection('sql') },
               { label: 'Output', icon: 'output', shortcut: shortcutText('add-output'), group: 'Nodes', onSelect: () => addNodeAfterSelection('output') },
+              // Every step, each making a node of its own after the selected node (T opens the menu with its search focused).
+              ...STEP_GROUPS.flatMap((g) => stepForms().filter((f) => f.group === g).map((f) => ({ label: f.title, group: `${g} steps`, onSelect: () => void addStepFromMenu(f) }))),
             ]}
           />
           <Button variant="ghost" icon="undo" iconOnly aria-label="Undo" title={withShortcut('Undo', 'undo')} disabled={!canUndo} onClick={undo} />
@@ -380,7 +396,7 @@ export function AppShell() {
 
         <div className={inspectorOpen ? 'grid min-h-0 grid-cols-[minmax(0,1fr)_var(--size-inspector)]' : 'grid min-h-0 grid-cols-[minmax(0,1fr)]'}>
           <main ref={canvas} tabIndex={-1} className="min-h-0 focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-brand" aria-label="Canvas">
-            {schemaOpen ? <SchemaView /> : designing?.type === 'query' ? <QueryDesigner node={designing} /> : <Canvas onAddSource={chooseFiles} onLayout={layoutFlow} />}
+            {schemaOpen ? <SchemaView /> : relationshipsOpen ? <Relationships /> : designing?.type === 'query' ? <QueryDesigner node={designing} /> : <Canvas onAddSource={chooseFiles} onLayout={layoutFlow} />}
           </main>
 
           {inspectorOpen && (

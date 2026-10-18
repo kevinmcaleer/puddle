@@ -60,7 +60,7 @@ Set each one's **Severity** to *warning*. These rules describe the raw file, whi
 
 ## 4. Clean the trips
 
-With the trips source selected, choose **Add**, then **Transform**. A Transform node holds a list of steps, applied in order. Add three from **Add step**:
+With the trips source selected, choose **Add**, then **Time between dates**, which makes a Transform node after the source. A Transform node holds a list of steps, applied in order; add the other two from **Add step** in the inspector:
 
 1. **Time between dates** (in Dates). From `tpep_pickup_datetime` to `tpep_dropoff_datetime`, in minutes, into a new column called `trip_minutes`.
 2. **Extract date part** (in Dates). The **Hour** of `tpep_pickup_datetime`, into a new column `tpep_pickup_datetime_hour`, for the summary later.

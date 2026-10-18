@@ -2,8 +2,12 @@ import { autoLayout } from '../canvas/layout';
 import { neighbour, type Direction } from '../canvas/navigate';
 import { suggestJoinKey, suggestLookupColumns } from '../compiler';
 import { useFlowStore } from '../flow/status';
-import { addNode, canConnect, canMakeGroup, connect, disconnect, freePort, groupOf, inputEdges, makeGroup, setGroupCollapsed, moveQueryTable, newId, nodeById, setJoinSpec, setLookupSpec, useProjectStore, type AddableNodeType, type ColumnSchema, type Port, type Project, type Source, type SourceFormat } from '../model';
+import { addNode, addStep, canConnect, canMakeGroup, connect, disconnect, freePort, groupOf, inputEdges, makeGroup, setGroupCollapsed, moveQueryTable, newId, nodeById, setJoinSpec, setLookupSpec, useProjectStore, type AddableNodeType, type ColumnSchema, type Port, type Project, type Source, type SourceFormat } from '../model';
+import { useEngineStore } from './engine';
+import { buildStep } from '../inspector/addStep';
+import { addStepAt } from '../quickfix/place';
 import { addClipboardSource, addFileSource } from '../sources/add';
+import { newStep, type StepForm } from '../steps';
 import { pickFiles, type PickedFile } from '../sources/handles';
 import { tableToCsv, type HtmlTable } from '../sources/html';
 import type { FeedSpec, ReadOptions } from '../sources/odata';
@@ -153,9 +157,9 @@ export function groupSelection() {
   select(null);
 }
 
-/** Move the selection along the wires (the arrow keys). Selecting doesn't view; V does. Not while the Query designer covers the canvas. */
+/** Move the selection along the wires (the arrow keys). Selecting doesn't view; V does. Not while the Query designer or the relationships view covers the canvas. */
 export function selectNeighbour(direction: Direction) {
-  if (useSession.getState().designerNodeId) return;
+  if (useSession.getState().designerNodeId || useSession.getState().relationshipsOpen) return;
   const project = useProjectStore.getState().history.present;
   const next = neighbour(project, useSession.getState().selectedNodeId, direction);
   if (!next) return;
@@ -175,8 +179,34 @@ export function viewSelected() {
 export function searchAddStep() {
   const id = useSession.getState().selectedNodeId;
   const node = id ? nodeById(useProjectStore.getState().history.present, id) : undefined;
-  if (node?.type !== 'transform') return useSession.getState().notify({ tone: 'info', text: 'Select a Transform node to add a step to it.' });
+  if (node?.type !== 'transform') return useSession.getState().requestAddMenu();
   useSession.getState().requestAddStep();
+}
+
+/**
+ * A step picked from the toolbar's Add menu. It goes after the selected node: in a new Transform between it and what
+ * it fed, or into it when it is a Transform and the project stacks steps (see placeStepAt). With nothing selected, it
+ * starts a Transform of its own, unwired. The step's defaults read the columns arriving there.
+ */
+export async function addStepFromMenu(form: StepForm) {
+  const { history, apply } = useProjectStore.getState();
+  const project = history.present;
+  const session = useSession.getState();
+  const node = session.selectedNodeId ? nodeById(project, session.selectedNodeId) : undefined;
+  if (!node) {
+    const step = newStep(form.type, { selected: [], available: [], locale: project.settings.locale });
+    const id = newId('n');
+    apply((p) => addStep(addNode(p, 'transform', positionAfter(p, []), undefined, id), id, step));
+    useProjectStore.getState().setView({ viewedNodeId: id, viewedStepIndex: 0 });
+    session.select(id);
+    session.selectStep(step.id);
+    return;
+  }
+  const viewedHere = project.view.viewedNodeId === node.id ? project.view.viewedStepIndex : undefined;
+  const after = node.type === 'transform' ? (viewedHere ?? node.steps.length - 1) : undefined;
+  const selected = project.view.viewedNodeId === node.id ? session.selectedColumns : [];
+  const step = await buildStep(form, useEngineStore.getState().engine, project, node.id, after, [], selected);
+  addStepAt({ nodeId: node.id, stepIndex: after }, step);
 }
 
 /**

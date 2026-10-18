@@ -17,6 +17,21 @@ function withSpec(project: Project, nodeId: string, edit: (spec: QuerySpec) => Q
 
 export const setQuerySpec = (project: Project, nodeId: string, patch: Partial<QuerySpec>): Project => withSpec(project, nodeId, (spec) => ({ ...spec, ...patch }));
 
+/** Run the Query as this SQL, which the grid can't show; undefined discards it and the design runs again. */
+export function setQuerySql(project: Project, nodeId: string, sql: string | undefined): Project {
+  return withSpec(project, nodeId, (spec) => {
+    if (spec.sql === sql) return spec;
+    const { sql: _old, ...design } = spec;
+    return sql == null ? design : { ...design, sql };
+  });
+}
+
+/** Take the design read from the SQL view in place of the one there, and run it rather than any SQL kept before. */
+export const setQueryDesign = (project: Project, nodeId: string, design: QuerySpec): Project => withSpec(project, nodeId, () => {
+  const { sql: _sql, ...rest } = design;
+  return rest;
+});
+
 /** Where a new table goes in the designer: to the right of the last one. */
 const TABLE_STEP = 240;
 const nextTablePosition = (spec: QuerySpec) => ({ x: spec.tables.length ? Math.max(...spec.tables.map((t) => t.x)) + TABLE_STEP : 24, y: 24 });

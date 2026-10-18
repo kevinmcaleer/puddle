@@ -20,6 +20,8 @@ interface SessionState {
   designerNodeId: string | null;
   /** The Schema view (DBML and its diagram) fills the canvas area, in place of the canvas. */
   schemaOpen: boolean;
+  /** The relationships view fills the canvas area, in place of the canvas. */
+  relationshipsOpen: boolean;
   /** The right-hand dock (the inspector) is showing. */
   inspectorOpen: boolean;
   /** The results dock is showing its table. */
@@ -30,6 +32,8 @@ interface SessionState {
   shortcutsOpen: boolean;
   /** The inspector's Add step menu should open with its search focused (the shortcut asked while it may not be showing). */
   addStepPending: boolean;
+  /** The toolbar's Add menu should open with its search focused (a shortcut asked for a step after the selected node). */
+  addMenuPending: boolean;
   /** Wiring from the keyboard (C): the node a wire starts from, until another node is chosen or Escape cancels. */
   connectFrom: string | null;
   select: (id: string | null) => void;
@@ -43,6 +47,8 @@ interface SessionState {
   openDesigner: (nodeId: string | null) => void;
   /** Show the Schema view in place of the canvas (closing any query designer), or go back to the canvas. */
   setSchemaOpen: (open: boolean) => void;
+  /** Show the relationships view in place of the canvas (closing any query designer), or go back to the canvas. */
+  setRelationshipsOpen: (open: boolean) => void;
   setInspectorOpen: (open: boolean) => void;
   setResultsOpen: (open: boolean) => void;
   /** Show or hide the console; showing it also shows the results dock it sits in. */
@@ -50,6 +56,8 @@ interface SessionState {
   setShortcutsOpen: (open: boolean) => void;
   requestAddStep: () => void;
   clearAddStep: () => void;
+  requestAddMenu: () => void;
+  clearAddMenu: () => void;
   setConnectFrom: (id: string | null) => void;
 }
 
@@ -62,11 +70,13 @@ export const useSession = create<SessionState>((set) => ({
   inspectorTab: 'project',
   designerNodeId: null,
   schemaOpen: false,
+  relationshipsOpen: false,
   inspectorOpen: true,
   resultsOpen: true,
   consoleOpen: false,
   shortcutsOpen: false,
   addStepPending: false,
+  addMenuPending: false,
   connectFrom: null,
   // Picking a node shows it in the inspector's Node tab.
   select: (id) => set((s) => ({ selectedNodeId: id, selectedNodeIds: id ? [id] : [], selectedStepId: null, inspectorTab: id ? 'node' : s.inspectorTab })),
@@ -81,13 +91,16 @@ export const useSession = create<SessionState>((set) => ({
   notify: (notice) => set({ notice }),
   setInspectorTab: (inspectorTab) => set({ inspectorTab, inspectorOpen: true }),
   openDesigner: (designerNodeId) =>
-    set((s) => (designerNodeId ? { designerNodeId, schemaOpen: false, selectedNodeId: designerNodeId, selectedNodeIds: [designerNodeId], selectedStepId: null, inspectorTab: 'node' } : { designerNodeId: null, selectedNodeIds: s.selectedNodeIds })),
-  setSchemaOpen: (schemaOpen) => set(schemaOpen ? { schemaOpen, designerNodeId: null } : { schemaOpen }),
+    set((s) => (designerNodeId ? { designerNodeId, schemaOpen: false, relationshipsOpen: false, selectedNodeId: designerNodeId, selectedNodeIds: [designerNodeId], selectedStepId: null, inspectorTab: 'node' } : { designerNodeId: null, selectedNodeIds: s.selectedNodeIds })),
+  setSchemaOpen: (schemaOpen) => set(schemaOpen ? { schemaOpen, relationshipsOpen: false, designerNodeId: null } : { schemaOpen }),
+  setRelationshipsOpen: (relationshipsOpen) => set(relationshipsOpen ? { relationshipsOpen, schemaOpen: false, designerNodeId: null } : { relationshipsOpen }),
   setInspectorOpen: (inspectorOpen) => set({ inspectorOpen }),
   setResultsOpen: (resultsOpen) => set({ resultsOpen }),
   setConsoleOpen: (consoleOpen) => set(consoleOpen ? { consoleOpen, resultsOpen: true } : { consoleOpen }),
   setShortcutsOpen: (shortcutsOpen) => set({ shortcutsOpen }),
   requestAddStep: () => set({ addStepPending: true, inspectorOpen: true, inspectorTab: 'node' }),
   clearAddStep: () => set({ addStepPending: false }),
+  requestAddMenu: () => set({ addMenuPending: true }),
+  clearAddMenu: () => set({ addMenuPending: false }),
   setConnectFrom: (connectFrom) => set({ connectFrom }),
 }));

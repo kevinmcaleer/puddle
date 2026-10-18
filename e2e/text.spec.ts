@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { addFiles, addStep, cell, fixture, node, openApp } from './helpers/app';
+import { addFiles, addStepNode, cell, fixture, node, openApp } from './helpers/app';
 
 const steps = (page: Page) => page.getByRole('listbox', { name: 'Applied steps' }).getByRole('option');
 const settings = (page: Page) => page.getByTestId('step-settings');
@@ -13,13 +13,10 @@ test.beforeEach(async ({ page }) => {
   await openApp(page);
   await addFiles(page, [fixture('customers.csv')]);
   await node(page, 'customers.csv').click();
-  await page.getByRole('button', { name: 'Add', exact: true }).click();
-  await page.getByRole('menuitem', { name: 'Transform' }).click();
-  await node(page, 'Transform 1').click();
 });
 
 test('find and replace by pattern, with a broken pattern explained before it runs', async ({ page }) => {
-  await addStep(page, 'Find and replace');
+  await addStepNode(page, 'Find and replace');
   await settings(page).getByRole('button', { name: 'name', exact: true }).click();
   await settings(page).getByRole('button', { name: 'joined', exact: true }).click();
   await settings(page).getByText('Use a regular expression').click();
@@ -34,7 +31,7 @@ test('find and replace by pattern, with a broken pattern explained before it run
 });
 
 test('extract text between delimiters into a new column', async ({ page }) => {
-  await addStep(page, 'Extract text');
+  await addStepNode(page, 'Extract text');
   await settings(page).getByRole('button', { name: 'email', exact: true }).click();
   await settings(page).getByLabel('Extract').selectOption('between');
   await expect(settings(page).getByLabel('Characters')).toHaveCount(0);

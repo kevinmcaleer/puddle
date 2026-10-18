@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 /** Bump when the saved shape changes, and add a migration in persistence. */
-export const FORMAT_VERSION = 1;
+export const FORMAT_VERSION = 2;
 
 export const ColumnSchemaZ = z.object({ name: z.string(), type: z.string() });
 
@@ -269,6 +269,11 @@ export const QuerySpecZ = z.object({
   totals: z.boolean().default(false),
   /** How many "or" rows the grid has below Criteria: each row's conditions are ANDed, and the rows ORed. */
   orRows: z.number().int().nonnegative().default(0),
+  /**
+   * SQL written in the SQL view that the grid can't show: while it's here the Query runs it as written, reading its
+   * tables by name, and the design above waits, unchanged, until the SQL is discarded.
+   */
+  sql: z.string().optional(),
 });
 
 export const DEFAULT_QUERY_SPEC = { tables: [], joins: [], fields: [], distinct: false, totals: false, orRows: 0 } as const satisfies z.input<typeof QuerySpecZ>;
@@ -304,8 +309,11 @@ export const ProjectSettingsZ = z.object({
   sampleThresholdRows: z.number().int().positive().default(5_000_000),
   locale: z.string().default('en-GB'),
   defaultDateFormats: z.array(z.string()).default([]),
-  /** Steps added from the results table (quick fixes, the column menu) go in a new Transform node each, as in Power Query's applied steps shown on the canvas. */
-  stepsAsNodes: z.boolean().default(false),
+  /**
+   * Steps added from the Add menu and the results table (quick fixes, the column menu) go in a new Transform node each,
+   * so the canvas reads like Power Query's applied steps. Off, they stack into the Transform being viewed.
+   */
+  stepsAsNodes: z.boolean().default(true),
   /** When the runner (puddle-run) runs this project's outputs, in cron syntax. Nothing runs until one is set. */
   schedule: z.string().optional(),
 });
@@ -369,7 +377,7 @@ export const ProjectZ = z.object({
   createdAt: z.string(),
   updatedAt: z.string(),
   notes: z.string().default(''),
-  settings: ProjectSettingsZ.default({ sampleThresholdRows: 5_000_000, locale: 'en-GB', defaultDateFormats: [], stepsAsNodes: false }),
+  settings: ProjectSettingsZ.default({ sampleThresholdRows: 5_000_000, locale: 'en-GB', defaultDateFormats: [], stepsAsNodes: true }),
   sources: z.array(SourceZ).default([]),
   nodes: z.array(NodeZ).default([]),
   edges: z.array(EdgeZ).default([]),

@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { addFiles, addStep, cell, fixture, node, openApp } from './helpers/app';
+import { addFiles, addStep, addStepNode, cell, fixture, node, openApp } from './helpers/app';
 
 const steps = (page: Page) => page.getByRole('listbox', { name: 'Applied steps' }).getByRole('option');
 const settings = (page: Page) => page.getByTestId('step-settings');
@@ -31,14 +31,11 @@ test.beforeEach(async ({ page }) => {
   await openApp(page);
   await addFiles(page, [fixture('sales.csv')]);
   await node(page, 'sales.csv').click();
-  await page.getByRole('button', { name: 'Add', exact: true }).click();
-  await page.getByRole('menuitem', { name: 'Transform' }).click();
-  await node(page, 'Transform 1').click();
 });
 
 test('pivot by dragging fields into zones; a new value waits for Refresh columns, which reports it', async ({ page }) => {
   // Leave East out first, so March isn't in the data when the pivot is set up.
-  await addStep(page, 'Filter rows');
+  await addStepNode(page, 'Filter rows');
   await settings(page).getByLabel('Condition 1 column', { exact: true }).selectOption('region');
   await settings(page).getByLabel('Condition 1 comparison').selectOption('notEquals');
   await settings(page).getByLabel('Condition 1 value').fill('East');
@@ -71,7 +68,7 @@ test('pivot by dragging fields into zones; a new value waits for Refresh columns
 });
 
 test('group by with the keyboard alone: add fields, move one, change an aggregate, rename a column', async ({ page }) => {
-  await addStep(page, 'Pivot or group by');
+  await addStepNode(page, 'Pivot or group by');
   await byKeyboard(page, 'Add region', 'Add to rows');
   await byKeyboard(page, 'Add units', 'Add to values');
   await byKeyboard(page, 'Add rep', 'Add to rows');
