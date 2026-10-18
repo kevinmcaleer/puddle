@@ -48,7 +48,9 @@ test('designing a query: tables in, a key dragged onto a key joins them, fields 
   await expect(page.getByTestId('inspector').getByText('This node can’t run')).toBeVisible();
   await expect(page.getByTestId('inspector')).toContainText('Drag fields from the tables into the grid');
 
-  // Fields: dragged onto the grid, or double-clicked.
+  // Fields: dragged onto the grid, or double-clicked. The designer scrolls in a short window, so bring the grid into
+  // view first: a drag that has to scroll after the mouse goes down would pick up whichever field moved under it.
+  await drop(page).scrollIntoViewIfNeeded();
   await field(page, 2, 'order_id').dragTo(drop(page));
   await field(page, 1, 'name').dblclick();
   await field(page, 2, 'total').dragTo(drop(page));

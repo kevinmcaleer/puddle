@@ -72,6 +72,11 @@ test('Help opens the user guide, and starts the taxi tutorial with both of its f
   // This build has no DuckDB extensions to read Parquet with; e2e/container/tutorial.spec.ts reads the real trips.
   await expect(node(page, 'yellow_tripdata_2024-01.parquet')).toHaveAttribute('data-fetch', 'ok', { timeout: 30_000 });
   await expect(node(page, 'taxi_zone_lookup.csv')).toHaveAttribute('data-status', 'ok', { timeout: 30_000 });
+  // The second file lands below the first; the canvas pans so the selected node is whole on screen.
+  await expect.poll(async () => {
+    const [canvas, added] = [await page.locator('.react-flow').boundingBox(), await node(page, 'taxi_zone_lookup.csv').boundingBox()];
+    return !!canvas && !!added && added.y >= canvas.y && added.y + added.height <= canvas.y + canvas.height;
+  }).toBe(true);
   await node(page, 'taxi_zone_lookup.csv').click();
   await expectRows(page, 11);
 });
