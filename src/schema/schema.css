@@ -1,6 +1,6 @@
 /* The Schema view: the DBML editor and the diagram it draws. Tokens only. */
 .puddle-schema { display: grid; grid-template-rows: auto minmax(0, 1fr); height: 100%; min-height: 0; background: var(--surface-panel); }
-.puddle-schema__bar { display: flex; align-items: center; gap: var(--space-2); padding: var(--space-2) var(--space-3); border-bottom: 1px solid var(--line); }
+.puddle-schema__bar { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); padding: var(--space-2) var(--space-3); border-bottom: 1px solid var(--line); }
 .puddle-schema__split { display: grid; min-height: 0; }
 .puddle-schema__code { display: flex; flex-direction: column; gap: var(--space-2); min-width: 0; min-height: 0; padding: var(--space-2); }
 .puddle-schema__errors { margin: 0; padding: 0; list-style: none; max-height: calc(var(--size-row) * 4); overflow: auto; }
