@@ -2,7 +2,7 @@ import { autoLayout } from '../canvas/layout';
 import { neighbour, type Direction } from '../canvas/navigate';
 import { suggestJoinKey, suggestLookupColumns } from '../compiler';
 import { useFlowStore } from '../flow/status';
-import { addNode, addStep, canConnect, canMakeGroup, connect, disconnect, freePort, groupOf, inputEdges, makeGroup, setGroupCollapsed, moveQueryTable, newId, nodeById, setJoinSpec, setLookupSpec, setTableSpec, useProjectStore, type AddableNodeType, type ColumnSchema, type Port, type Project, type Source, type SourceFormat } from '../model';
+import { addNode, addStep, canConnect, canMakeGroup, connect, disconnect, freePort, groupOf, inputEdges, makeGroup, setGroupCollapsed, moveQueryTable, newId, nodeById, setJoinSpec, setLookupSpec, setSchemaCheck, setTableSpec, useProjectStore, type AddableNodeType, type ColumnSchema, type Port, type Project, type Source, type SourceFormat } from '../model';
 import { useEngineStore } from './engine';
 import { buildStep } from '../inspector/addStep';
 import { addStepAt } from '../quickfix/place';
@@ -152,6 +152,9 @@ export const addSchemaTable = (schema: string, table: string) => addNodeAfterSel
 export function loadIntoSchemaTable(fromId: string, schema: string, table: string) {
   useSession.getState().select(fromId);
   addSchemaTable(schema, table);
+  // The rows going in are checked against the table’s design (part of the same undo step), unless they already are.
+  const from = nodeById(useProjectStore.getState().history.present, fromId);
+  if (from && !from.schemaCheck) useProjectStore.getState().amend((p) => setSchemaCheck(p, fromId, { schema, table, mapping: {} }));
 }
 
 export const layoutFlow = () => useProjectStore.getState().apply(autoLayout);
