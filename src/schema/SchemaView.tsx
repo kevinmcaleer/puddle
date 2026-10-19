@@ -1,4 +1,5 @@
 import { useDeferredValue, useEffect, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent } from 'react';
+import { addAllSchemaTables } from '../schemaTables/place';
 import { useSession } from '../app/session';
 import { moveSchemaElements, setSchemaDbml, useProject, useProjectStore, type Project } from '../model';
 import { Banner, Button } from '../ui';
@@ -103,6 +104,19 @@ export function SchemaView() {
           {schema.tables.length} {schema.tables.length === 1 ? 'table' : 'tables'}, {schema.refs.length} {schema.refs.length === 1 ? 'ref' : 'refs'}
         </span>
         <span className="flex-1" />
+        <Button
+          size="sm"
+          variant="ghost"
+          icon="plus"
+          disabled={!schema.tables.length}
+          title="A Schema table node for each table, holding its rows"
+          onClick={() => {
+            apply((p) => addAllSchemaTables(p).project);
+            useSession.getState().setSchemaOpen(false);
+          }}
+        >
+          Add all tables
+        </Button>
         <Button size="sm" variant="ghost" onClick={() => apply((p) => setSchemaDbml(p, p.schema.dbml.trim() ? `${p.schema.dbml.trimEnd()}\n\n${EXAMPLE_DBML}` : EXAMPLE_DBML))}>
           Insert example
         </Button>

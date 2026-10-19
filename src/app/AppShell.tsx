@@ -22,6 +22,8 @@ import { ResultsTable } from '../results/ResultsTable';
 import { useResultsStore } from '../results/state';
 import { ACCEPT } from '../sources/detect';
 import { useExcelSources } from '../sources/excel';
+import { useSchemaTableSync } from '../schemaTables/state';
+import { LOAD_FAILURES, projectSchema } from '../compiler';
 import { useXmlSources } from '../sources/xml';
 import { SamplesDialog } from '../samples/SamplePicker';
 import { openUserGuide, startTaxiTutorial } from '../samples/open';
@@ -37,7 +39,7 @@ import { openODataDialog } from '../sources/odataDialog';
 import { cardKind } from '../canvas/kind';
 import { Button, Menu, ResultsBar, StatusBadge, StatusStrip, Toolbar, useDisplayFormat, type NodeKind } from '../ui';
 import { ActivityControl } from './ActivityControl';
-import { addFiles, addNodeAfterSelection, addStepFromMenu, cancelWiring, chooseFiles as pickSourceFiles, addPastedText, groupSelection, layoutFlow, openSelected, pasteFromClipboard, searchAddStep, selectNeighbour, startWiring, viewSelected } from './actions';
+import { addFiles, addNodeAfterSelection, addSchemaTable, addStepFromMenu, cancelWiring, chooseFiles as pickSourceFiles, addPastedText, groupSelection, layoutFlow, openSelected, pasteFromClipboard, searchAddStep, selectNeighbour, startWiring, viewSelected } from './actions';
 import { useEngineStore, type EngineStatus } from './engine';
 import { ResultsPanel } from './ResultsPanel';
 import { Console } from '../console/Console';
@@ -93,8 +95,9 @@ function ResultsTitle() {
   const step = project.view.viewedStepIndex;
   const kind: NodeKind = cardKind(node.type);
   const pinned = project.view.pinned;
-  const failing = project.view.failingRuleId ? node.rules.find((r) => r.id === project.view.failingRuleId) : undefined;
-  const title = failing ? `${node.name} · failing ${failing.label}` : step == null ? node.name : `${node.name} · step ${step + 1}`;
+  const loadFailures = project.view.failingRuleId === LOAD_FAILURES ? { label: 'rows that can’t load' } : undefined;
+  const failing = loadFailures ?? (project.view.failingRuleId ? node.rules.find((r) => r.id === project.view.failingRuleId) : undefined);
+  const title = loadFailures ? `${node.name} · ${loadFailures.label}` : failing ? `${node.name} · failing ${failing.label}` : step == null ? node.name : `${node.name} · step ${step + 1}`;
   const pin = (
     <Button
       variant="ghost"
@@ -252,8 +255,10 @@ export function AppShell() {
   // The inspector may only be drawn on the next render (it was hidden, or the notes were showing).
   const focusInspector = () => requestAnimationFrame(() => inspector.current?.focus());
   const hasOutput = project.nodes.some((n) => n.type === 'output');
+  const schemaTables = projectSchema(project.schema.dbml).tables;
   useExcelSources();
   useXmlSources();
+  useSchemaTableSync();
   useFlowEvaluation();
 
   const importInput = useRef<HTMLInputElement>(null);
@@ -334,6 +339,8 @@ export function AppShell() {
               { label: 'Query', icon: 'query', hint: 'Design with tables', group: 'Nodes', onSelect: () => addNodeAfterSelection('query') },
               { label: 'SQL', icon: 'code', hint: 'Write a query', group: 'Nodes', onSelect: () => addNodeAfterSelection('sql') },
               { label: 'Output', icon: 'output', shortcut: shortcutText('add-output'), group: 'Nodes', onSelect: () => addNodeAfterSelection('output') },
+              // Every table designed in the Schema view, as a node holding its rows (the selected node loads into it).
+              ...schemaTables.map((t) => ({ label: t.name, icon: 'schema' as const, hint: t.schema === 'public' ? 'Schema table' : `Schema table in ${t.schema}`, group: 'Schema tables', onSelect: () => addSchemaTable(t.schema, t.name) })),
               // Every step, each making a node of its own after the selected node (T opens the menu with its search focused).
               ...STEP_GROUPS.flatMap((g) => stepForms().filter((f) => f.group === g).map((f) => ({ label: f.title, group: `${g} steps`, hint: f.newColumn ? 'New column' : undefined, onSelect: () => void addStepFromMenu(f) }))),
             ]}

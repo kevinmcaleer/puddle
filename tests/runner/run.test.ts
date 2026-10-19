@@ -6,7 +6,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { openDb, type RunnerDb } from '../../src/runner/db';
 import { runProject, runSucceeded, type RunLog } from '../../src/runner/run';
 import { parseArgs, projectFiles, watch } from '../../src/runner/cli';
-import type { Project } from '../../src/model';
+import { parseProject, type Project } from '../../src/model';
 import { flow, src, step } from '../helpers/projects';
 
 let folder: string;
@@ -141,5 +141,33 @@ describe('puddle-run', () => {
     writeFileSync(join(folder, 'b.puddle.json'), '{}');
     writeFileSync(join(folder, 'a.puddle.json'), '{}');
     expect(projectFiles(folder).map((f) => f.replace(folder, ''))).toEqual(['/a.puddle.json', '/b.puddle.json']);
+  });
+});
+
+describe('puddle-run with schema tables', () => {
+  const DBML = readFileSync(join(__dirname, '../fixtures/dbml/tables.dbml'), 'utf8');
+  const withTables = (table: string) =>
+    parseProject({
+      ...flow({
+        sources: [customers],
+        nodes: [
+          { id: 'c', type: 'source', sourceId: 'c' },
+          { id: 'tbl', type: 'table', tableSpec: { table } },
+          { id: 'out', type: 'output', outputSpec: { format: 'csv', options: {} } },
+        ],
+        wires: [
+          ['c', 'tbl', 0],
+          ['tbl', 'out', 0],
+        ],
+      }),
+      schema: { dbml: DBML, positions: {} },
+    });
+
+  it('builds the schema, and writes nothing below a load the table refuses', async () => {
+    const outDir = join(folder, 'out-schema');
+    // The customers fixture repeats customer 5, which the key refuses.
+    const { log } = await runProject(withTables('customers'), { folder, outDir, db });
+    expect(log.outputs[0]).toMatchObject({ status: 'blocked', blocking: ['tbl can’t take some of the rows loaded into it: 2 rows have a customer_id that is already in the table or repeated.'] });
+    expect(existsSync(join(outDir, 'out.csv'))).toBe(false);
   });
 });

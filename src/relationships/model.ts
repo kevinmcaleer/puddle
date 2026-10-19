@@ -2,6 +2,7 @@
 // columns that the project already states, in its Join and Lookup nodes, the Query nodes' join lines and the rules
 // that check a column's values exist in another node. Pure, so DBML is written from the same thing.
 import { cardKind } from '../canvas/kind';
+import { foreignKey, projectSchema, uniqueKeys } from '../compiler';
 import { inputEdge, inputEdges, nodeById, type ColumnSchema, type GraphNode, type Port, type Project } from '../model';
 import type { NodeKind } from '../ui';
 
@@ -14,7 +15,8 @@ export interface End {
 /** Where the project states a relationship: a node that combines on it, or a rule on `nodeId` that checks it. */
 export interface Via {
   nodeId: string;
-  kind: 'join' | 'lookup' | 'query' | 'rule';
+  /** `schema`: a ref of the project's DBML, between two Schema table nodes. */
+  kind: 'join' | 'lookup' | 'query' | 'rule' | 'schema';
   ruleId?: string;
   /** The node's name, or the rule's label. */
   label: string;
@@ -90,7 +92,36 @@ function statedPairs(project: Project): Array<{ from: End; to: End; via: Via }> 
       if (reads && p.node && nodeById(project, p.node)) pair(n.id, p.column ?? '', p.node, p.nodeColumn ?? '', { nodeId: n.id, kind: 'rule', ruleId: r.id, label: r.label });
     }
   }
+  // The schema's refs, between the Schema table nodes holding each end (every node for a table, as each holds its rows).
+  const tableNodes = project.nodes.filter((n) => n.type === 'table');
+  if (tableNodes.length) {
+    const nodesFor = (schema: string, table: string) => tableNodes.filter((n) => n.type === 'table' && n.tableSpec.schema === schema && n.tableSpec.table === table);
+    for (const ref of projectSchema(project.schema.dbml).refs) {
+      const fk = foreignKey(ref);
+      if (!fk) continue;
+      for (const child of nodesFor(fk.child.schema, fk.child.table))
+        for (const parent of nodesFor(fk.parent.schema, fk.parent.table))
+          fk.child.columns.forEach((c, i) => pair(child.id, c, parent.id, fk.parent.columns[i] ?? c, { nodeId: child.id, kind: 'schema', label: ref.name ? `Ref ${ref.name}` : 'Ref in the schema' }));
+    }
+  }
   return pairs;
+}
+
+/**
+ * The columns a Schema table node holds as keys: its single-column primary key and unique columns are the one end of
+ * any relationship, as its table refuses a load that repeats them.
+ */
+export function declaredKeys(project: Project): Uniqueness {
+  const schema = projectSchema(project.schema.dbml);
+  const out: Uniqueness = {};
+  for (const n of project.nodes) {
+    if (n.type !== 'table') continue;
+    const t = schema.tables.find((x) => x.schema === n.tableSpec.schema && x.name === n.tableSpec.table);
+    if (!t) continue;
+    const cols = uniqueKeys(t).filter((k) => k.length === 1).map((k) => k[0]!);
+    if (cols.length) out[n.id] = Object.fromEntries(cols.map((c) => [c, true]));
+  }
+  return out;
 }
 
 const endKey = (e: End) => `${e.nodeId}\u0000${e.column}`;
@@ -113,12 +144,12 @@ export function findRelationships(project: Project, columnsOf: ColumnsOf): Relat
 const asTable = (n: GraphNode, columnsOf: ColumnsOf): RelTable => ({ nodeId: n.id, name: n.name, kind: cardKind(n.type), columns: columnsOf(n.id) });
 
 /**
- * The tables to draw: every source, and every other node a relationship ends on. Related tables come next to each
+ * The tables to draw: every source and Schema table, and every other node a relationship ends on. Related tables come next to each
  * other: each source in project order, followed by the tables it reaches through relationships.
  */
 export function relationshipTables(project: Project, relationships: Relationship[], columnsOf: ColumnsOf): RelTable[] {
   const ends = new Set(relationships.flatMap((r) => [r.from.nodeId, r.to.nodeId]));
-  const shown = project.nodes.filter((n) => n.type === 'source' || ends.has(n.id));
+  const shown = project.nodes.filter((n) => n.type === 'source' || n.type === 'table' || ends.has(n.id));
   const next = new Map<string, string[]>();
   for (const r of relationships) {
     next.set(r.from.nodeId, [...(next.get(r.from.nodeId) ?? []), r.to.nodeId]);

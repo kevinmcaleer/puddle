@@ -5,6 +5,8 @@ export {
   compileDisplayPage,
   compileJoinCheck,
   compileKeyCheck,
+  compileLoadCheck,
+  schemaDdlKey,
   compileLookupCheck,
   compilePivotValues,
   compileTransposeRows,
@@ -38,6 +40,8 @@ export { compileSqlNode, sqlInputNames, sqlNodeProblem, sqlTableNames, type SqlI
 export { renameSqlColumns, sqlColumnRefs } from './columnRefs';
 export { describeType, typeFamily, typesFit } from './types';
 export { SchemaCache } from './schemaCache';
+export { dropDuckdbSchema, duckdbSchema, duckdbType, foreignKey, primaryKey, recordsOf, schemaDdl, schemaTableRef, uniqueKeys, type DdlWarning, type SchemaDdl, type TableDdl } from './ddl/duckdb';
+export { describeFailure, FAILURE_COLUMN, LOAD_FAILURES, loadColumns, projectSchema, tableFor, type LoadCheck, type LoadColumn } from './schemaTable';
 export { dropTable, sourceFileName, sourceRelation, sourceTableName } from './sources';
 export { dateText, dateType, isNumberDateFormat, NUMBER_DATE_FORMATS, readDateFormat, readDates } from './dateRead';
 export { englishDateNames, isParseLocale, PARSE_LOCALE_IDS, PARSE_LOCALES, parseLocale, type ParseLocale, type ParseLocaleId } from './locales';

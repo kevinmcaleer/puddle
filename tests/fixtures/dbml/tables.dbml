@@ -1,0 +1,28 @@
+// The shop's customers and orders, designed: loaded from tests/fixtures/shop-*.csv in the schema table tests.
+Enum order_status {
+  pending
+  shipped
+  cancelled
+}
+
+Table customers {
+  customer_id integer [pk]
+  name varchar [not null]
+  status varchar [default: 'active']
+  joined date [default: '2026-01-01']
+}
+
+Table orders {
+  order_id integer [pk]
+  customer_id integer [not null, ref: > customers.customer_id]
+  total decimal(10,2) [check: `total >= 0`]
+  status order_status [not null]
+}
+
+records customers(customer_id, name, status) {
+  10, 'Margaret', 'active'
+}
+
+records orders(order_id, customer_id, total, status) [example] {
+  900, 10, 1.50, 'pending'
+}

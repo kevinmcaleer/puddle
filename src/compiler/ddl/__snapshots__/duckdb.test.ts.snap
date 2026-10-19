@@ -1,0 +1,70 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`the DDL for a schema > creates the shop’s enum, tables, keys, foreign keys, indexes and records, parents first 1`] = `
+[
+  "CREATE SCHEMA IF NOT EXISTS "dbml_public"",
+  "CREATE TYPE "dbml_public"."order_status" AS ENUM ('pending', 'paid', 'shipped', 'cancelled')",
+  "CREATE SEQUENCE IF NOT EXISTS "dbml_public"."customers_id_seq"",
+  "CREATE TABLE "dbml_public"."customers" (
+  "id" INTEGER DEFAULT nextval('"dbml_public"."customers_id_seq"'),
+  "email" VARCHAR NOT NULL,
+  "name" VARCHAR NOT NULL,
+  "country" VARCHAR DEFAULT 'GB',
+  "created_at" TIMESTAMP DEFAULT (now()),
+  PRIMARY KEY ("id"),
+  UNIQUE ("email")
+)",
+  "CREATE SEQUENCE IF NOT EXISTS "dbml_public"."orders_id_seq"",
+  "CREATE TABLE "dbml_public"."orders" (
+  "id" INTEGER DEFAULT nextval('"dbml_public"."orders_id_seq"'),
+  "customer_id" INTEGER NOT NULL,
+  "status" "dbml_public"."order_status" DEFAULT 'pending' NOT NULL,
+  "total" DECIMAL(10,2) NOT NULL CHECK (total >= 0),
+  "ordered_at" TIMESTAMP NOT NULL,
+  PRIMARY KEY ("id"),
+  FOREIGN KEY ("customer_id") REFERENCES "dbml_public"."customers" ("id")
+)",
+  "CREATE INDEX "orders_by_customer" ON "dbml_public"."orders" ("customer_id", "ordered_at")",
+  "CREATE SEQUENCE IF NOT EXISTS "dbml_public"."products_id_seq"",
+  "CREATE TABLE "dbml_public"."products" (
+  "id" INTEGER DEFAULT nextval('"dbml_public"."products_id_seq"'),
+  "sku" VARCHAR NOT NULL,
+  "name" VARCHAR NOT NULL,
+  "price" DECIMAL(10,2) NOT NULL,
+  PRIMARY KEY ("id"),
+  UNIQUE ("sku")
+)",
+  "CREATE TABLE "dbml_public"."order_items" (
+  "order_id" INTEGER,
+  "product_id" INTEGER,
+  "quantity" INTEGER DEFAULT 1 NOT NULL,
+  PRIMARY KEY ("order_id", "product_id"),
+  FOREIGN KEY ("order_id") REFERENCES "dbml_public"."orders" ("id"),
+  FOREIGN KEY ("product_id") REFERENCES "dbml_public"."products" ("id")
+)",
+]
+`;
+
+exports[`the DDL for a schema > creates the tables of the schema table fixture 1`] = `
+[
+  "CREATE SCHEMA IF NOT EXISTS "dbml_public"",
+  "CREATE TYPE "dbml_public"."order_status" AS ENUM ('pending', 'shipped', 'cancelled')",
+  "CREATE TABLE "dbml_public"."customers" (
+  "customer_id" INTEGER,
+  "name" VARCHAR NOT NULL,
+  "status" VARCHAR DEFAULT 'active',
+  "joined" DATE DEFAULT '2026-01-01',
+  PRIMARY KEY ("customer_id")
+)",
+  "CREATE TABLE "dbml_public"."orders" (
+  "order_id" INTEGER,
+  "customer_id" INTEGER NOT NULL,
+  "total" DECIMAL(10,2) CHECK (total >= 0),
+  "status" "dbml_public"."order_status" NOT NULL,
+  PRIMARY KEY ("order_id"),
+  FOREIGN KEY ("customer_id") REFERENCES "dbml_public"."customers" ("customer_id")
+)",
+  "INSERT INTO "dbml_public"."customers" ("customer_id", "name", "status") VALUES
+  (10, 'Margaret', 'active')",
+]
+`;
