@@ -25,3 +25,5 @@ Drag a column onto the matching column of another table, or press Enter on a col
 ## DBML
 
 **Copy DBML** and **Download DBML** write the tables and relationships as [DBML](https://dbml.dbdiagram.io), which tools such as dbdiagram.io draw as a diagram: a `Table` for each table with its columns and DuckDB types, and a `Ref` for each relationship, many-to-one (`>`), one-to-many (`<`), one-to-one (`-`) or many-to-many (`<>`) as the checks found. A column that is the "one" end of a relationship is marked `[unique]`.
+
+**Open in Schema** writes the same DBML into the project's schema, adding it to what is there or replacing it, and opens the Schema view, where you can carry on designing the tables, export them as SQL and load data into them. See {doc}`schema`.
