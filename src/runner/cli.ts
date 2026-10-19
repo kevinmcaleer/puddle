@@ -2,7 +2,8 @@
 //   puddle-run run <project.puddle.json> [--out <folder>]
 //   puddle-run watch <folder> [--out <folder>] [--poll <seconds>]
 //   puddle-run check <project.puddle.json>
-import { readdirSync, readFileSync, statSync } from 'node:fs';
+//   puddle-run schema <project.puddle.json | schema.dbml> [--check] [--ddl <dialect> <out.sql>] …
+import { readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { basename, dirname, join, resolve } from 'node:path';
 import process from 'node:process';
 import { Cron } from 'croner';
@@ -11,6 +12,7 @@ import type { Project } from '../model';
 import { openDb } from './db';
 import { runProject, runSucceeded } from './run';
 import { nextRun, scheduleProblem } from './schedule';
+import { SCHEMA_USAGE, schemaCommand } from './schema';
 import { placeSources } from './sources';
 import { existsSync } from 'node:fs';
 
@@ -170,13 +172,20 @@ const USAGE = `puddle-run: run Puddle projects outside the browser, on DuckDB's 
   puddle-run run <project.puddle.json> [--out <folder>]    run every Output node once
   puddle-run watch <folder> [--out <folder>] [--poll <s>]   run each project on its schedule
   puddle-run check <project.puddle.json>                    say where its sources are and when it runs
+  puddle-run schema <project.puddle.json | schema.dbml> …   check the schema, write its SQL, docs or a migration
 
 Outputs, the run log (<project>.run.json) and the quality report (<project>.quality.md) go to --out,
 by default an out/ folder beside the project file. Source files are found by their runner path (set on the
-source in the editor), or by name beside the project file or in its sources/ folder.`;
+source in the editor), or by name beside the project file or in its sources/ folder.
+
+${SCHEMA_USAGE}`;
 
 async function main(argv: string[]) {
   const { command, target, out, poll } = parseArgs(argv);
+  if (command === 'schema') {
+    process.exitCode = schemaCommand(argv.slice(1), { readFile: (f) => readFileSync(f, 'utf8'), writeFile: (f, t) => writeFileSync(f, t), out: (l) => console.log(l), err: (l) => console.error(l) });
+    return;
+  }
   if (command === 'run' && target) process.exitCode = (await runOnce(target, out)) ? 0 : 1;
   else if (command === 'check' && target) process.exitCode = check(target) ? 0 : 1;
   else if (command === 'watch' && target) {
