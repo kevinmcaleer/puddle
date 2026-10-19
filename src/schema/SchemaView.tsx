@@ -1,13 +1,15 @@
 import { useDeferredValue, useEffect, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent } from 'react';
 import { addAllSchemaTables } from '../schemaTables/place';
 import { useSession } from '../app/session';
-import { moveSchemaElements, setSchemaDbml, useProject, useProjectStore, type Project } from '../model';
+import { editSchema, moveSchemaElements, setSchemaDbml, useProject, useProjectStore, type Project } from '../model';
 import { Banner, Button } from '../ui';
 import { tableId, type Point } from './diagram/geometry';
 import { SchemaDiagram } from './diagram/SchemaDiagram';
+import type { DiagramEdit } from './diagram/editing';
 import { DbmlEditor, type DbmlEditorHandle } from './editor/DbmlEditor';
 import { EXAMPLE_DBML } from './example';
 import { parseDbml } from './parse';
+import { addTable } from './edit';
 import './schema.css';
 
 const apply = (edit: (p: Project) => Project) => useProjectStore.getState().apply(edit);
@@ -63,6 +65,20 @@ export function SchemaView() {
     const c = column ? t.columns.find((x) => x.name === column) : undefined;
     const range = c?.range ?? t.nameRange ?? t.range;
     if (range) editor.current?.select(range.start, range.end);
+  };
+
+  /** An edit made on the diagram: the text changed in place, as one undo step; one it can't make says why. */
+  const edit: DiagramEdit = (change, also) => {
+    typing.settle();
+    const before = useProjectStore.getState().history.present;
+    let dbml: string;
+    try {
+      dbml = change(before.schema.dbml);
+    } catch (e) {
+      useSession.getState().notify({ tone: 'fail', text: e instanceof Error ? e.message : String(e) });
+      return;
+    }
+    if (dbml !== before.schema.dbml || also?.places) apply((p) => editSchema(p, dbml, also));
   };
 
   const resize = (fraction: number) => {
@@ -171,10 +187,14 @@ export function SchemaView() {
               current={current}
               onMove={(moves: Record<string, Point>) => apply((p) => moveSchemaElements(p, moves))}
               onPick={pick}
+              onEdit={edit}
             />
           ) : (
             <div className="puddle-schema__empty">
               <p>Write a Table in the editor to see it here, or insert the example.</p>
+              <Button size="sm" variant="secondary" icon="plus" onClick={() => edit((d) => addTable(d, { schema: 'public', table: 'new_table' }))}>
+                Add a table
+              </Button>
             </div>
           )}
         </section>

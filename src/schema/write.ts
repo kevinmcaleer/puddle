@@ -33,9 +33,9 @@ export function dbmlString(text: string, indent = ''): string {
 
 const defaultValue = (d: Default) => (d.kind === 'string' ? dbmlString(d.value) : d.kind === 'expression' ? `\`${d.value}\`` : d.value);
 
-const endpoint = (e: Endpoint) => `${tableName(e.schema, e.table)}.${e.columns.length === 1 ? dbmlName(e.columns[0]!) : `(${e.columns.map(dbmlName).join(', ')})`}`;
+export const writeEndpoint = (e: Endpoint) => `${tableName(e.schema, e.table)}.${e.columns.length === 1 ? dbmlName(e.columns[0]!) : `(${e.columns.map(dbmlName).join(', ')})`}`;
 
-const op = (r: Ref) => `${r.fromOptional ? '?' : ''}${r.op}${r.toOptional ? '?' : ''}`;
+export const writeRefOp = (r: Pick<Ref, 'fromOptional' | 'op' | 'toOptional'>) => `${r.fromOptional ? '?' : ''}${r.op}${r.toOptional ? '?' : ''}`;
 
 function settings(items: (string | false | undefined)[]): string {
   const kept = items.filter((x): x is string => !!x);
@@ -44,7 +44,8 @@ function settings(items: (string | false | undefined)[]): string {
 
 const properties = (props: Record<string, string>) => Object.entries(props).map(([k, v]) => `${k}: ${/^#[0-9a-fA-F]+$/.test(v) ? v : `"${v.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`}`);
 
-function column(c: Column, inlineRefs: Ref[], indent: string): string {
+/** One column line, its inline refs in its settings. */
+export function writeColumn(c: Column, inlineRefs: Ref[], indent = ''): string {
   const s = settings([
     c.pk && 'pk',
     c.increment && 'increment',
@@ -53,7 +54,7 @@ function column(c: Column, inlineRefs: Ref[], indent: string): string {
     c.unique && 'unique',
     c.default && `default: ${defaultValue(c.default)}`,
     ...c.checks.map((x) => `check: \`${x}\``),
-    ...inlineRefs.map((r) => `ref: ${op(r)} ${endpoint(r.to)}`),
+    ...inlineRefs.map((r) => `ref: ${writeRefOp(r)} ${writeEndpoint(r.to)}`),
     c.note !== undefined && `note: ${dbmlString(c.note, indent)}`,
     ...properties(c.properties),
   ]);
@@ -75,7 +76,7 @@ function body(item: Table | TablePartial, inlineRefs: Map<string, Ref[]>, schema
   const partials = 'partials' in item ? item.partials : [];
   own.forEach((c, i) => {
     for (const p of partials) if (p.at === i) lines.push(`  ~${dbmlName(p.name)}`);
-    lines.push(column(c, inlineRefs.get(c.name) ?? [], '  '));
+    lines.push(writeColumn(c, inlineRefs.get(c.name) ?? [], '  '));
   });
   for (const p of partials) if (p.at >= own.length) lines.push(`  ~${dbmlName(p.name)}`);
   const indexes = item.indexes.filter((ix) => !ix.partial);
@@ -127,7 +128,7 @@ export function writeDbml(schema: DbmlSchema): string {
   if (refs.length) {
     for (const r of refs) {
       const s = settings([r.delete && `delete: ${r.delete}`, r.update && `update: ${r.update}`, r.color && `color: ${r.color}`, r.inactive && 'inactive']);
-      out.push(`Ref${r.name !== undefined ? ` ${dbmlName(r.name)}` : ''}: ${endpoint(r.from)} ${op(r)} ${endpoint(r.to)}${s}`);
+      out.push(`Ref${r.name !== undefined ? ` ${dbmlName(r.name)}` : ''}: ${writeEndpoint(r.from)} ${writeRefOp(r)} ${writeEndpoint(r.to)}${s}`);
     }
     out.push('');
   }

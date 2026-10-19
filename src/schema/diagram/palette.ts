@@ -57,3 +57,6 @@ export function toneOf(color: string | undefined): Tone | undefined {
   }
   return best;
 }
+
+/** The colour written into the DBML when a tone is picked on the diagram: a hex DBML reads, which draws as that tone. */
+export const TONE_HEX: Record<Tone, string> = { teal: '#16A085', blue: '#3498DB', purple: '#8E44AD', amber: '#F39C12', red: '#E74C3C', grey: '#7F8C8D' };

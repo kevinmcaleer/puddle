@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { hueOf, toneOf } from './palette';
+import { hueOf, TONE_HEX, TONES, toneOf } from './palette';
 
 describe('DBML colours on the palette', () => {
   it('reads #rgb and #rrggbb', () => {
@@ -26,5 +26,11 @@ describe('DBML colours on the palette', () => {
   it('has no tone without a hex colour', () => {
     expect(toneOf(undefined)).toBeUndefined();
     expect(toneOf('none')).toBeUndefined();
+  });
+});
+
+describe('the colours written for each tone', () => {
+  it('draw as the tone they were picked as', () => {
+    for (const tone of TONES) expect(toneOf(TONE_HEX[tone])).toBe(tone);
   });
 });
