@@ -85,9 +85,9 @@ test('quick fixes and steps', async ({ page }) => {
   await shot(page, 'quickfix-case-menu', page.getByRole('menu'));
   await page.getByRole('menuitem', { name: 'Title Case' }).click();
   // Each fix is a Transform of its own, wired after the one before.
-  await expect(node(page, 'Transform 3')).toBeVisible();
+  await expect(node(page, 'Transform 3')).toHaveAttribute('data-status', 'ok', { timeout: 20_000 });
   await expect(steps(page)).toHaveCount(1);
-  await expect(cell(page, 0, 0)).toHaveText('Alice Patel');
+  await expect(cell(page, 0, 0)).toHaveText('Alice Patel', { timeout: 15_000 });
   await page.getByRole('button', { name: 'Auto layout' }).click();
   await shot(page, 'quickfix-applied');
 
