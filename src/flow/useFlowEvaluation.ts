@@ -3,6 +3,7 @@ import { useEngineStore } from '../app/engine';
 import { updateSource, useProject, useProjectStore, type Project } from '../model';
 import { useAttachments, type Attachment } from '../sources/attachments';
 import { excelReady, useExcelReads } from '../sources/excel';
+import { tableGate, useSchemaTables } from '../schemaTables/state';
 import { useXmlReads, xmlReady } from '../sources/xml';
 import { syncKept } from './kept';
 import { useRerun } from './rerun';
@@ -30,6 +31,8 @@ export function useFlowEvaluation() {
   const excel = useExcelReads((s) => s.reads);
   const xml = useXmlReads((s) => s.reads);
   const tick = useRerun((s) => s.tick);
+  // Schema table nodes wait for their tables to be built.
+  const tables = useSchemaTables((s) => s.built);
 
   useEffect(() => {
     if (!engine) return;
@@ -38,7 +41,7 @@ export function useFlowEvaluation() {
 
   useEffect(() => {
     if (!engine) return;
-    void evaluateFlow(engine, view, (id) => unreadable(attachments, view, id)).then(() => {
+    void evaluateFlow(engine, view, (id) => unreadable(attachments, view, id), (node) => tableGate(view, node, tables)).then(() => {
       // Rules run after every preview is settled, at background priority, so they never hold it up.
       void evaluateRules(engine, view);
       // Kept results build behind them too, from the project as evaluated (the sampled copy in sample mode),
@@ -57,5 +60,5 @@ export function useFlowEvaluation() {
         return next;
       });
     });
-  }, [engine, view, attachments, excel, xml, tick]);
+  }, [engine, view, attachments, excel, xml, tick, tables]);
 }

@@ -1,0 +1,125 @@
+/* The Schema view: the DBML editor and the diagram it draws. Tokens only. */
+.puddle-schema { display: grid; grid-template-rows: auto minmax(0, 1fr); height: 100%; min-height: 0; background: var(--surface-panel); }
+.puddle-schema__bar { display: flex; align-items: center; gap: var(--space-2); padding: var(--space-2) var(--space-3); border-bottom: 1px solid var(--line); }
+.puddle-schema__split { display: grid; min-height: 0; }
+.puddle-schema__code { display: flex; flex-direction: column; gap: var(--space-2); min-width: 0; min-height: 0; padding: var(--space-2); }
+.puddle-schema__errors { margin: 0; padding: 0; list-style: none; max-height: calc(var(--size-row) * 4); overflow: auto; }
+.puddle-schema__errors li { display: flex; align-items: baseline; gap: var(--space-2); }
+.puddle-schema__divider { width: var(--space-1); cursor: col-resize; background: var(--line); touch-action: none; }
+.puddle-schema__divider:hover, .puddle-schema__divider:focus-visible { background: var(--brand); outline: none; }
+.puddle-schema__pane { position: relative; display: flex; flex-direction: column; min-width: 0; min-height: 0; overflow: hidden; background-color: var(--surface-canvas); background-image: radial-gradient(var(--canvas-dot) 1px, transparent 1px); background-size: var(--space-4) var(--space-4); }
+.puddle-schema__stage { position: relative; flex: 1; min-height: 0; }
+.puddle-schema-views { display: flex; align-items: center; gap: var(--space-2); padding: var(--space-2) var(--space-3); border-bottom: 1px solid var(--line); background: var(--surface-panel); overflow-x: auto; }
+.puddle-schema-views .ui-tabs { flex: none; }
+.puddle-schema-detail { display: inline-flex; gap: 2px; flex: none; }
+.puddle-schema__empty { position: absolute; inset: 0; display: grid; place-items: center; color: var(--ink-muted); pointer-events: none; }
+
+/* The editor: a transparent textarea over a coloured copy of its text, line numbers to the left. */
+.puddle-dbml { position: relative; display: flex; flex: 1; min-height: 0; border: 1px solid var(--line-strong); border-radius: var(--radius-sm); background: var(--surface-sunken); overflow: hidden; }
+.puddle-dbml:focus-within { border-color: var(--brand); box-shadow: 0 0 0 1px var(--brand); }
+.puddle-dbml__gutter { flex: none; overflow: hidden; padding: var(--space-2) 0; border-right: 1px solid var(--line); background: var(--surface-panel); user-select: none; }
+.puddle-dbml__lineno { min-width: calc(var(--space-8) + var(--space-1)); padding: 0 var(--space-2); text-align: right; font: 400 12px/18px var(--font-mono); color: var(--ink-subtle); }
+.puddle-dbml__lineno.is-error { color: var(--fail); font-weight: 600; box-shadow: inset 2px 0 0 var(--fail); }
+.puddle-dbml__body { position: relative; flex: 1; min-width: 0; }
+.puddle-dbml__under, .puddle-dbml__text { position: absolute; inset: 0; box-sizing: border-box; margin: 0; padding: var(--space-2); border: 0; font: 400 12px/18px var(--font-mono); font-variant-ligatures: none; tab-size: 2; white-space: pre; overflow: auto; }
+.puddle-dbml__under { color: var(--ink); pointer-events: none; overflow: hidden; }
+.puddle-dbml__text { resize: none; background: transparent; color: transparent; caret-color: var(--ink); outline: none; }
+.puddle-dbml__text::selection { background: var(--brand-tint); color: transparent; }
+.puddle-dbml__text::placeholder { color: var(--ink-subtle); }
+.dbml-keyword { color: var(--brand); font-weight: 600; }
+.dbml-type { color: var(--node-source); }
+.dbml-setting { color: var(--node-combine); }
+.dbml-string { color: var(--accent-ink); }
+.dbml-expr { color: var(--accent-ink); font-style: italic; }
+.dbml-number, .dbml-color { color: var(--pass); }
+.dbml-op { color: var(--brand); font-weight: 600; }
+.dbml-punct { color: var(--ink-muted); }
+.dbml-comment { color: var(--ink-subtle); font-style: italic; }
+.dbml-error { text-decoration: underline wavy var(--fail); text-decoration-skip-ink: none; text-underline-offset: 3px; }
+.dbml-match { background: var(--brand-tint); box-shadow: inset 0 0 0 1px var(--brand); border-radius: var(--radius-xs); }
+.puddle-dbml__suggest { position: absolute; z-index: var(--z-popover); width: auto; min-width: 200px; max-width: 360px; max-height: calc(var(--size-row) * 8); overflow: auto; margin: 0; padding: var(--space-1) 0; list-style: none; }
+.puddle-dbml__option { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); padding: var(--space-1) var(--space-2); cursor: pointer; }
+.puddle-dbml__option.is-active, .puddle-dbml__option:hover { background: var(--surface-hover); }
+
+/* The diagram: pans and zooms inside the pane, its tools floating over the top right. */
+.puddle-schema-canvas { position: absolute; inset: 0; overflow: hidden; }
+.puddle-schema-svg { display: block; width: 100%; height: 100%; font-family: var(--font-mono); font-size: 12px; cursor: grab; outline: none; touch-action: none; }
+.puddle-schema-svg:focus-visible { box-shadow: inset 0 0 0 2px var(--brand); }
+.puddle-schema-svg.is-panning { cursor: grabbing; }
+.puddle-schema-tools { position: absolute; top: var(--space-2); right: var(--space-2); display: flex; align-items: center; gap: var(--space-1); padding: var(--space-1); border: 1px solid var(--line); border-radius: var(--radius-md); background: var(--surface-raised); box-shadow: var(--shadow-node); }
+.puddle-schema-tools__search { width: calc(var(--space-8) * 5); height: var(--size-control-sm); }
+.puddle-schema-pop { position: absolute; z-index: var(--z-popover); max-height: calc(100% - var(--space-4)); pointer-events: none; }
+.puddle-schema-pop__name { font: 600 12px/18px var(--font-mono); color: var(--ink); overflow-wrap: anywhere; }
+.puddle-schema-pop__body { margin: 0; padding: var(--space-2) var(--space-3); display: grid; gap: var(--space-1); }
+.puddle-schema-pop__row { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: var(--space-2); }
+.puddle-schema-pop__row dt { color: var(--ink-muted); }
+.puddle-schema-pop__row dd { margin: 0; color: var(--ink); overflow-wrap: anywhere; white-space: pre-wrap; }
+
+/* Palette tones for DBML colours: a line colour and a fill that text reads on, in both themes. */
+.tone-teal { --tone: var(--brand); --tone-tint: var(--brand-tint); }
+.tone-blue { --tone: var(--node-source); --tone-tint: var(--node-source-tint); }
+.tone-purple { --tone: var(--node-combine); --tone-tint: var(--node-combine-tint); }
+.tone-amber { --tone: var(--accent-ink); --tone-tint: var(--accent-tint); }
+.tone-red { --tone: var(--fail); --tone-tint: var(--fail-tint); }
+.tone-grey { --tone: var(--node-check); --tone-tint: var(--node-check-tint); }
+
+.is-dim { opacity: 0.35; }
+.puddle-schema-table, .puddle-schema-enum, .puddle-schema-note { cursor: grab; outline: none; }
+.puddle-schema-table.is-moving, .puddle-schema-enum.is-moving, .puddle-schema-note.is-moving { cursor: grabbing; }
+.puddle-schema-table__box { fill: var(--surface-raised); stroke: var(--line-strong); }
+.puddle-schema-table__head { fill: var(--tone-tint, var(--node-source-tint)); }
+.puddle-schema-table__stripe { fill: var(--tone); pointer-events: none; }
+.puddle-schema-table__name { fill: var(--ink); font-weight: 600; pointer-events: none; }
+.puddle-schema-table__note { color: var(--ink-muted); }
+.puddle-schema-table.is-current .puddle-schema-table__box, .puddle-schema-table.is-found .puddle-schema-table__box,
+.puddle-schema-table:focus-visible .puddle-schema-table__box, .puddle-schema-enum:focus-visible .puddle-schema-table__box { stroke: var(--brand); stroke-width: 2; }
+.puddle-schema-col { cursor: pointer; }
+.puddle-schema-col__hit { fill: transparent; }
+.puddle-schema-col:hover .puddle-schema-col__hit { fill: var(--surface-hover); }
+.puddle-schema-col__rule { stroke: var(--line); }
+.puddle-schema-col__name { fill: var(--ink); pointer-events: none; }
+.puddle-schema-col__name.is-required { font-weight: 600; }
+.puddle-schema-col__type { fill: var(--ink-muted); pointer-events: none; }
+.puddle-schema-col__glyph { color: var(--ink-muted); pointer-events: none; }
+.puddle-schema-col__glyph.is-key { color: var(--accent-ink); }
+.puddle-schema-enum__head { fill: var(--node-check-tint); }
+.puddle-schema-enum__tag { fill: var(--ink-muted); font-size: 11px; }
+.puddle-schema-link { fill: none; stroke: var(--line-strong); stroke-width: 1.25; stroke-dasharray: 2 4; }
+.puddle-schema-ref__line { fill: none; stroke: var(--tone, var(--wire)); stroke-width: 1.5; }
+.puddle-schema-ref__hit { fill: none; stroke: transparent; stroke-width: 10; }
+.puddle-schema-ref.is-inactive .puddle-schema-ref__line { stroke-dasharray: 6 4; }
+.puddle-schema-ref__dot { fill: var(--tone, var(--wire)); stroke: var(--tone, var(--wire)); stroke-width: 1.5; }
+.puddle-schema-ref__dot.is-optional { fill: var(--surface-canvas); }
+.puddle-schema-ref__end { fill: var(--ink-muted); font-size: 11px; font-weight: 600; }
+.puddle-schema-ref.is-current .puddle-schema-ref__line { stroke: var(--tone, var(--wire-active)); stroke-width: 2.5; }
+.puddle-schema-ref.is-current .puddle-schema-ref__end { fill: var(--ink); }
+.puddle-schema-group__frame { fill: var(--tone-tint, var(--surface-hover)); fill-opacity: 0.45; stroke: var(--tone, var(--line-strong)); stroke-dasharray: 6 4; }
+.puddle-schema-group__head { cursor: grab; outline: none; }
+.puddle-schema-group__hit { fill: transparent; }
+.puddle-schema-group__head:focus-visible .puddle-schema-group__hit { stroke: var(--brand); stroke-width: 2; }
+.puddle-schema-group__name { fill: var(--ink); font-weight: 600; pointer-events: none; }
+.puddle-schema-note__box { fill: var(--tone-tint); stroke: var(--tone); }
+.puddle-schema-note.is-plain .puddle-schema-note__box { fill: transparent; stroke: transparent; }
+.puddle-schema-note:focus-visible .puddle-schema-note__box { stroke: var(--brand); stroke-width: 2; }
+.puddle-schema-note__name { fill: var(--ink); font-weight: 600; pointer-events: none; }
+.puddle-schema-note__text { fill: var(--ink); pointer-events: none; }
+
+/* Editing on the diagram: selected tables, the ref being drawn, and the boxes and popover that ask for a value. */
+.puddle-schema-table.is-selected .puddle-schema-table__box { stroke: var(--accent-ink); stroke-width: 2; stroke-dasharray: 4 3; }
+.puddle-schema-col.is-linkable { cursor: crosshair; }
+.puddle-schema-linking { fill: none; stroke: var(--wire-active); stroke-width: 2; stroke-dasharray: 6 4; pointer-events: none; }
+.puddle-schema-ask { position: absolute; z-index: var(--z-popover); display: grid; gap: var(--space-2); padding: var(--space-3); width: max-content; max-width: var(--size-node-width); }
+
+/* Export as SQL: the script, read-only, in the code font. */
+.puddle-schema-sql { max-height: 50vh; margin: 0; padding: var(--space-3); overflow: auto; border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--surface-sunken); font: 12px/18px var(--font-mono); white-space: pre; }
+.puddle-schema-sql:focus-visible { outline: 2px solid var(--brand); outline-offset: 1px; }
+.puddle-schema-sql__notes { margin: 0; padding-left: var(--space-4); }
+.puddle-schema-import { min-height: calc(var(--size-row) * 8); max-height: 40vh; resize: vertical; font: 12px/18px var(--font-mono); white-space: pre; }
+
+/* A table's data sample, in its popover: the results grid's look, small. */
+.puddle-schema-sample { padding: 0 var(--space-3) var(--space-2); max-width: 100%; overflow: hidden; }
+.puddle-schema-sample table { border-collapse: collapse; font: 11px/16px var(--font-mono); width: 100%; table-layout: fixed; }
+.puddle-schema-sample th, .puddle-schema-sample td { padding: 1px var(--space-1); border: 1px solid var(--line); text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.puddle-schema-sample th { background: var(--surface-sunken); color: var(--ink-muted); font-weight: 600; }
+.puddle-schema-sample td.is-null { color: var(--ink-subtle); font-style: italic; }
+.puddle-schema-sample__note { margin: var(--space-1) var(--space-3) var(--space-2); color: var(--ink-muted); font-size: 11px; }

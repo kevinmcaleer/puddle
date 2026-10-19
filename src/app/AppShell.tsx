@@ -15,12 +15,15 @@ import { SampleBanner } from '../results/SampleBanner';
 import { describeProfile } from '../results/profile';
 import { exportAll, ExportBlockedBanner, ExportButton, exportViewed } from '../export';
 import { QueryDesigner } from '../query/QueryDesigner';
+import { SchemaView } from '../schema/SchemaView';
 import { Relationships } from '../relationships/Relationships';
 import { compareWith, offeredNode, togglePin, viewHere } from '../results/pin';
 import { ResultsTable } from '../results/ResultsTable';
 import { useResultsStore } from '../results/state';
 import { ACCEPT } from '../sources/detect';
 import { useExcelSources } from '../sources/excel';
+import { useSchemaTableSync } from '../schemaTables/state';
+import { LOAD_FAILURES, projectSchema } from '../compiler';
 import { useXmlSources } from '../sources/xml';
 import { SamplesDialog } from '../samples/SamplePicker';
 import { openUserGuide, startTaxiTutorial } from '../samples/open';
@@ -36,7 +39,7 @@ import { openODataDialog } from '../sources/odataDialog';
 import { cardKind } from '../canvas/kind';
 import { Button, Menu, ResultsBar, StatusBadge, StatusStrip, Toolbar, useDisplayFormat, type NodeKind } from '../ui';
 import { ActivityControl } from './ActivityControl';
-import { addFiles, addNodeAfterSelection, addStepFromMenu, cancelWiring, chooseFiles as pickSourceFiles, addPastedText, groupSelection, layoutFlow, openSelected, pasteFromClipboard, searchAddStep, selectNeighbour, startWiring, viewSelected } from './actions';
+import { addFiles, addNodeAfterSelection, addSchemaTable, addStepFromMenu, cancelWiring, chooseFiles as pickSourceFiles, addPastedText, groupSelection, layoutFlow, openSelected, pasteFromClipboard, searchAddStep, selectNeighbour, startWiring, viewSelected } from './actions';
 import { useEngineStore, type EngineStatus } from './engine';
 import { ResultsPanel } from './ResultsPanel';
 import { Console } from '../console/Console';
@@ -94,8 +97,9 @@ function ResultsTitle() {
   const step = project.view.viewedStepIndex;
   const kind: NodeKind = cardKind(node.type);
   const pinned = project.view.pinned;
-  const failing = project.view.failingRuleId ? node.rules.find((r) => r.id === project.view.failingRuleId) : undefined;
-  const title = failing ? `${node.name} · failing ${failing.label}` : step == null ? node.name : `${node.name} · step ${step + 1}`;
+  const loadFailures = project.view.failingRuleId === LOAD_FAILURES ? { label: 'rows that can’t load' } : undefined;
+  const failing = loadFailures ?? (project.view.failingRuleId ? node.rules.find((r) => r.id === project.view.failingRuleId) : undefined);
+  const title = loadFailures ? `${node.name} · ${loadFailures.label}` : failing ? `${node.name} · failing ${failing.label}` : step == null ? node.name : `${node.name} · step ${step + 1}`;
   const pin = (
     <Button
       variant="ghost"
@@ -239,6 +243,9 @@ export function AppShell() {
   const selectedId = useSession((s) => s.selectedNodeId);
   const hasSelection = !!selectedId && !!nodeById(project, selectedId);
   const designing = designerId ? nodeById(project, designerId) : undefined;
+  const schemaOpen = useSession((s) => s.schemaOpen);
+  // The Schema view belongs to the project it was opened on.
+  useEffect(() => () => useSession.getState().setSchemaOpen(false), [project.id]);
   const relationshipsOpen = useSession((s) => s.relationshipsOpen);
   // The relationships view belongs to the project it was opened on.
   useEffect(() => () => useSession.getState().setRelationshipsOpen(false), [project.id]);
@@ -248,8 +255,10 @@ export function AppShell() {
   // The inspector may only be drawn on the next render (it was hidden, or the notes were showing).
   const focusInspector = () => requestAnimationFrame(() => inspector.current?.focus());
   const hasOutput = project.nodes.some((n) => n.type === 'output');
+  const schemaTables = projectSchema(project.schema.dbml).tables;
   useExcelSources();
   useXmlSources();
+  useSchemaTableSync();
   useFlowEvaluation();
 
   const importInput = useRef<HTMLInputElement>(null);
@@ -259,33 +268,36 @@ export function AppShell() {
   const chooseFiles = () => void pickSourceFiles(() => fileInput.current?.click());
 
   const session = useSession.getState;
+  /** A canvas key does nothing while the Schema view covers the canvas, and the key goes on to the view. */
+  const onCanvas = (run: () => void | boolean) => () => (session().schemaOpen || session().relationshipsOpen ? false : run());
   const actions: Record<GlobalShortcutId, () => void | boolean> = {
     help: () => session().setShortcutsOpen(true),
     undo,
     redo,
     'toggle-inspector': () => session().setInspectorOpen(!session().inspectorOpen),
     'add-source': chooseFiles,
-    'add-transform': () => session().requestAddMenu(),
-    'add-output': () => addNodeAfterSelection('output'),
-    layout: () => project.nodes.length > 0 && layoutFlow(),
-    group: groupSelection,
+    'add-transform': onCanvas(() => session().requestAddMenu()),
+    'add-output': onCanvas(() => addNodeAfterSelection('output')),
+    layout: onCanvas(() => project.nodes.length > 0 && layoutFlow()),
+    group: onCanvas(groupSelection),
     'focus-canvas': () => canvas.current?.focus(),
-    'select-upstream': () => selectNeighbour('upstream'),
-    'select-downstream': () => selectNeighbour('downstream'),
-    'select-above': () => selectNeighbour('above'),
-    'select-below': () => selectNeighbour('below'),
+    'select-upstream': onCanvas(() => selectNeighbour('upstream')),
+    'select-downstream': onCanvas(() => selectNeighbour('downstream')),
+    'select-above': onCanvas(() => selectNeighbour('above')),
+    'select-below': onCanvas(() => selectNeighbour('below')),
     view: viewSelected,
     export: () => void exportViewed(),
     'export-all': () => void exportAll(),
     'toggle-results': () => session().setResultsOpen(!session().resultsOpen),
     pin: togglePin,
     'add-step': searchAddStep,
-    'open-node': () => openSelected(focusInspector),
-    connect: startWiring,
-    cancel: cancelWiring,
+    'open-node': () => (session().schemaOpen || session().relationshipsOpen ? false : openSelected(focusInspector)),
+    connect: onCanvas(startWiring),
+    cancel: onCanvas(cancelWiring),
     'show-canvas': () => showView(project, 'canvas'),
     'show-relationships': () => showView(project, 'relationships'),
     'show-designer': () => showView(project, 'designer'),
+    'show-schema': () => showView(project, 'schema'),
   };
   useShortcuts(actions, (text) => void addPastedText(text));
 
@@ -299,6 +311,7 @@ export function AppShell() {
           projectMenu={[
             { label: 'Rename', icon: 'text', onSelect: () => openProjectDialog({ kind: 'rename', id: project.id, name: project.name }) },
             { label: 'Relationships', icon: 'relationships', hint: 'Tables and keys, DBML', onSelect: () => session().setRelationshipsOpen(true) },
+            { label: 'Schema', icon: 'schema', hint: 'Design tables in DBML', onSelect: () => session().setSchemaOpen(true) },
             { label: 'Save project file', icon: 'export', hint: '.puddle.json', onSelect: exportProject },
             { label: 'Open project file', icon: 'source', onSelect: () => importInput.current?.click() },
             { label: 'Share as recipe', icon: 'template', hint: 'Steps, no data', onSelect: () => openExportRecipe() },
@@ -325,6 +338,8 @@ export function AppShell() {
               { label: 'From OData feed', icon: 'database', hint: 'Its entity sets', group: 'Sources', onSelect: () => openODataDialog() },
               { label: 'Paste from clipboard', icon: 'paste', group: 'Sources', onSelect: () => void pasteFromClipboard() },
               { label: 'From template', icon: 'template', hint: 'Saved steps', group: 'Nodes', onSelect: openTemplates },
+              // Every table designed in the Schema view, as a node holding its rows (the selected node, if any, loads into it).
+              ...schemaTables.map((t) => ({ label: t.name, icon: 'schema' as const, hint: t.schema === 'public' ? 'Schema table' : `Schema table in ${t.schema}`, group: 'Schema tables', onSelect: () => addSchemaTable(t.schema, t.name) })),
               // Nodes and steps go after the selected node, so with nothing selected they wait (principle 2).
               ...afterSelection([
                 { label: 'Join', icon: 'join', hint: 'Two inputs', group: 'Nodes', onSelect: () => addNodeAfterSelection('join') },
@@ -398,7 +413,7 @@ export function AppShell() {
           <main ref={canvas} tabIndex={-1} className="grid min-h-0 grid-rows-[auto_minmax(0,1fr)] focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-brand" aria-label="Canvas">
             <ViewSwitcher />
             <div className="min-h-0">
-              {relationshipsOpen ? <Relationships /> : designing?.type === 'query' ? <QueryDesigner node={designing} /> : <Canvas onAddSource={chooseFiles} onLayout={layoutFlow} />}
+              {schemaOpen ? <SchemaView /> : relationshipsOpen ? <Relationships /> : designing?.type === 'query' ? <QueryDesigner node={designing} /> : <Canvas onAddSource={chooseFiles} onLayout={layoutFlow} />}
             </div>
           </main>
 

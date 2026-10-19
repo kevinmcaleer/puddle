@@ -53,3 +53,9 @@ export function toDbml(project: { name: string }, tables: RelTable[], relationsh
   }
   return `${lines.join('\n').trimEnd()}\n`;
 }
+
+/** The project's DBML with tables written from its data: after what is there already, or in its place. */
+export function intoSchema(existing: string, generated: string, mode: 'append' | 'replace'): string {
+  const body = existing.replace(/\s+$/, '');
+  return mode === 'replace' || !body ? generated : `${body}\n\n${generated}`;
+}

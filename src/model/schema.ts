@@ -134,7 +134,15 @@ export const RuleZ = z.object({
   enabled: z.boolean().default(true),
   severity: z.enum(['warn', 'fail']).default('fail'),
   params: z.record(z.string(), z.unknown()).default({}),
+  /** Derived from the DBML by the node's schema check: rewritten whenever the DBML changes, not edited by hand. */
+  fromSchema: z.object({ schema: z.string(), table: z.string() }).optional(),
 });
+
+/**
+ * Check a node's rows against a table of the project's DBML: its keys, not nulls, enums, refs, checks and types become
+ * rules on the node. `mapping` names the node's column for a DBML column where they differ.
+ */
+export const SchemaCheckZ = z.object({ schema: z.string().default('public'), table: z.string(), mapping: z.record(z.string(), z.string()).default({}) });
 
 const PositionZ = z.object({ x: z.number(), y: z.number() });
 
@@ -149,6 +157,7 @@ const NodeBase = {
   dismissedSuggestions: z.array(z.string()).optional(),
   /** Materialise as a table for reuse (Phase 2). */
   pinnedResult: z.boolean().optional(),
+  schemaCheck: SchemaCheckZ.optional(),
 };
 
 export const SourceNodeZ = z.object({ ...NodeBase, type: z.literal('source'), sourceId: z.string().min(1) });
@@ -291,7 +300,22 @@ export const DEFAULT_SQL_SPEC = { query: 'SELECT *\nFROM input1' } as const sati
 
 export const SqlNodeZ = z.object({ ...NodeBase, type: z.literal('sql'), sqlSpec: SqlSpecZ.default(DEFAULT_SQL_SPEC) });
 
-export const NodeZ = z.discriminatedUnion('type', [SourceNodeZ, TransformNodeZ, JoinNodeZ, AppendNodeZ, LookupNodeZ, QueryNodeZ, SqlNodeZ, OutputNodeZ]);
+/**
+ * A table of the project's schema (its DBML), created in DuckDB with its keys and constraints. Its rows are the table's
+ * records, its `[example]` records when `examples` is on, and the rows of the node wired into it (if any), cast to the
+ * designed types; a loaded row that breaks a constraint stops the node, naming what broke. `mapping` gives, for a
+ * table column, the input column it is loaded from when the names differ ('' leaves it to its default).
+ */
+export const TableSpecZ = z.object({
+  schema: z.string().default('public'),
+  table: z.string(),
+  examples: z.boolean().default(true),
+  mapping: z.record(z.string(), z.string()).default({}),
+});
+
+export const SchemaTableNodeZ = z.object({ ...NodeBase, type: z.literal('table'), tableSpec: TableSpecZ });
+
+export const NodeZ = z.discriminatedUnion('type', [SourceNodeZ, TransformNodeZ, JoinNodeZ, AppendNodeZ, LookupNodeZ, QueryNodeZ, SqlNodeZ, SchemaTableNodeZ, OutputNodeZ]);
 
 /** Named input ports: Join's left and right, Lookup's main and lookup. Nodes with one input, and the numbered inputs of Append and Query, use an index. */
 export const NAMED_PORTS = ['left', 'right', 'main', 'lookup'] as const;
@@ -359,6 +383,43 @@ export const NodeGroupZ = z.object({
   position: PositionZ.default({ x: 0, y: 0 }),
 });
 
+/**
+ * The project's schema design (Phase 4): its DBML, which is the source of truth (the schema model is parsed from it,
+ * src/schema), and where the diagram draws each table, enum and note, by diagram key (src/schema/diagram).
+ */
+/** How much of each table the diagram shows: every column, only keys, or only the table names. */
+export const DetailZ = z.enum(['full', 'keys', 'names']);
+
+/** Where the diagram was panned and zoomed to. */
+export const ZoomZ = z.object({ x: z.number(), y: z.number(), k: z.number() });
+
+/**
+ * A named view of the schema diagram: the tables it shows (by diagram id, `table:schema.name`), their places in it,
+ * its detail level and zoom. Groups show with the tables of theirs in the view; the DBML is never changed by a view.
+ */
+export const SchemaViewZ = z.object({
+  id: z.string(),
+  name: z.string(),
+  tables: z.array(z.string()).default([]),
+  positions: z.record(z.string(), PositionZ).default({}),
+  detail: DetailZ.default('full'),
+  zoom: ZoomZ.optional(),
+});
+
+export const SchemaDocZ = z.object({
+  dbml: z.string().default(''),
+  /** Places in the All tables view, which every other view starts from. */
+  positions: z.record(z.string(), PositionZ).default({}),
+  /** The All tables view's detail level and zoom. */
+  detail: DetailZ.default('full'),
+  zoom: ZoomZ.optional(),
+  views: z.array(SchemaViewZ).default([]),
+  /** The view on show; none is All tables. */
+  view: z.string().optional(),
+});
+
+export const DEFAULT_SCHEMA_DOC = { dbml: '', positions: {}, detail: 'full' as const, views: [] };
+
 export const ProjectZ = z.object({
   id: z.string().min(1),
   name: z.string(),
@@ -372,6 +433,7 @@ export const ProjectZ = z.object({
   edges: z.array(EdgeZ).default([]),
   groups: z.array(NodeGroupZ).default([]),
   view: ProjectViewZ.default({ pinned: false, canvasViewport: { x: 0, y: 0, zoom: 1 } }),
+  schema: SchemaDocZ.default(DEFAULT_SCHEMA_DOC),
   /** Newest first, at most EXPORT_LOG_LIMIT entries. Not part of undo: an export happened either way. */
   exportLog: z.array(ExportLogEntryZ).default([]),
 });
@@ -408,6 +470,9 @@ export type QuerySpec = z.infer<typeof QuerySpecZ>;
 export type QueryNode = z.infer<typeof QueryNodeZ>;
 export type SqlSpec = z.infer<typeof SqlSpecZ>;
 export type SqlNode = z.infer<typeof SqlNodeZ>;
+export type TableSpec = z.infer<typeof TableSpecZ>;
+export type SchemaCheck = z.infer<typeof SchemaCheckZ>;
+export type SchemaTableNode = z.infer<typeof SchemaTableNodeZ>;
 export type Port = z.infer<typeof PortZ>;
 export type GraphNode = z.infer<typeof NodeZ>;
 export type NodeType = GraphNode['type'];
@@ -417,3 +482,8 @@ export type NodeGroup = z.infer<typeof NodeGroupZ>;
 export type ProjectView = z.infer<typeof ProjectViewZ>;
 export type Project = z.infer<typeof ProjectZ>;
 export type ExportLogEntry = z.infer<typeof ExportLogEntryZ>;
+export type SchemaDoc = z.infer<typeof SchemaDocZ>;
+export type SchemaView = z.infer<typeof SchemaViewZ>;
+export type Detail = z.infer<typeof DetailZ>;
+export type Zoom = z.infer<typeof ZoomZ>;
+export type Position = z.infer<typeof PositionZ>;

@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent a
 import { useEngineStore } from '../app/engine';
 import { useSession } from '../app/session';
 import { useTheme } from '../app/theme';
-import { compileDisplayPage, compileProfile, compileTypeSniff, PAGE_SIZE, ruleColumns, upstreamKey, type Target } from '../compiler';
+import { compileDisplayPage, compileProfile, compileTypeSniff, LOAD_FAILURES, PAGE_SIZE, ruleColumns, upstreamKey, type Target } from '../compiler';
 import { isCancelled, isStopped, tableRows, toEngineError, type EngineClient } from '../engine';
 import { runAgain } from '../flow/rerun';
 import { countRows, schemaCacheFor, useNodeStatus } from '../flow/status';
@@ -27,6 +27,7 @@ import { parseProfile, parseTypeSniff, qualityOf, type ColumnProfile } from './p
 import { cardKind } from '../canvas/kind';
 import { closeCompare, comparedNode } from './pin';
 import { useResultsStore } from './state';
+import { showFailing } from '../rules/view';
 import { ColumnMenu, type ColumnMenuRequest } from '../quickfix/ColumnMenu';
 
 /** Re-read token colours when the theme preference or the OS scheme changes. */
@@ -488,10 +489,24 @@ function NodeResult({ engine, project, target, ...pane }: { engine: EngineClient
       </div>
     );
   if (status.state === 'error' && status.stopped) return <Stopped />;
+  // A Schema table refusing a load shows the rows it refuses, each with why, when asked to.
+  if (status.state === 'error' && status.failures && target.failingRuleId === LOAD_FAILURES) return <StepGrid engine={engine} project={project} target={target} nodeColumns={[]} {...pane} />;
   if (status.state === 'error')
     return (
       <div className="p-4" data-testid="results-error">
-        <Banner tone="fail" title="This node can’t run">{status.message}</Banner>
+        <Banner
+          tone="fail"
+          title={status.failures ? 'Some rows can’t load' : 'This node can’t run'}
+          action={
+            status.failures && (
+              <Button size="sm" variant="secondary" onClick={() => showFailing(nodeId, LOAD_FAILURES)}>
+                Show failing rows
+              </Button>
+            )
+          }
+        >
+          {status.message}
+        </Banner>
       </div>
     );
   return <StepGrid engine={engine} project={project} target={target} nodeColumns={status.columns} {...pane} />;
@@ -502,7 +517,8 @@ const gridKey = (project: Project, target: Target, columns: ColumnSchema[]) => u
 /** Viewing a step inside a node needs that step's columns, which the schema cache knows. */
 function StepGrid({ engine, project, target, nodeColumns, ...pane }: { engine: EngineClient; project: Project; target: Target; nodeColumns: ColumnSchema[] } & PaneProps) {
   const [stepColumns, setStepColumns] = useState<{ key: string; columns: ColumnSchema[] } | { key: string; error: string } | null>(null);
-  const key = target.stepIndex == null ? '' : upstreamKey(project, target);
+  // A step's columns, or a load's failing rows (its raw input with why each fails), are described on their own.
+  const key = target.stepIndex == null && target.failingRuleId !== LOAD_FAILURES ? '' : upstreamKey(project, target);
   useEffect(() => {
     if (!key) return;
     let live = true;

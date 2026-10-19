@@ -122,7 +122,7 @@ export const cell = (page: Page, col: number, row: number) => page.getByTestId(`
 export const saved = (page: Page) =>
   page.evaluate(
     () =>
-      new Promise<{ name: string; nodes: unknown[]; view: { canvasViewport: { zoom: number } }; settings: { locale: string } } | null>((resolve) => {
+      new Promise<{ name: string; nodes: unknown[]; view: { canvasViewport: { zoom: number } }; settings: { locale: string }; schema: { views: { name: string; detail: string; tables: string[] }[] } } | null>((resolve) => {
         const id = localStorage.getItem('puddle.lastProject');
         const req = indexedDB.open('puddle');
         req.onsuccess = () => {

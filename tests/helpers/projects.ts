@@ -1,5 +1,5 @@
 import type { OutputSpec } from '../../src/compiler';
-import { createProject, parseProject, type AppendSpec, type JoinSpec, type LookupSpec, type QuerySpec, type SqlSpec, type Port, type Project, type Source, type Step } from '../../src/model';
+import { createProject, parseProject, type AppendSpec, type JoinSpec, type LookupSpec, type QuerySpec, type SqlSpec, type TableSpec, type Port, type Project, type Source, type Step } from '../../src/model';
 
 type SourceInit = Pick<Source, 'id' | 'format'> & Partial<Source>;
 
@@ -18,6 +18,7 @@ interface FlowInit {
     | { id: string; type: 'query'; querySpec?: Partial<QuerySpec> }
     | { id: string; type: 'sql'; sqlSpec?: Partial<SqlSpec> }
     | { id: string; type: 'output'; outputSpec?: Partial<OutputSpec> }
+    | { id: string; type: 'table'; tableSpec: Partial<TableSpec> & { table: string } }
   >;
   /** A wire goes into input 0 unless it names a port ("left", "right"). */
   wires?: Array<[from: string, to: string, port?: Port]>;

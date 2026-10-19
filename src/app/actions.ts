@@ -2,7 +2,7 @@ import { autoLayout } from '../canvas/layout';
 import { neighbour, type Direction } from '../canvas/navigate';
 import { suggestJoinKey, suggestLookupColumns } from '../compiler';
 import { useFlowStore } from '../flow/status';
-import { addNode, canConnect, canMakeGroup, connect, disconnect, freePort, groupOf, inputEdges, makeGroup, setGroupCollapsed, moveQueryTable, newId, nodeById, setJoinSpec, setLookupSpec, useProjectStore, type AddableNodeType, type ColumnSchema, type Port, type Project, type Source, type SourceFormat } from '../model';
+import { addNode, canConnect, canMakeGroup, connect, disconnect, freePort, groupOf, inputEdges, makeGroup, setGroupCollapsed, moveQueryTable, newId, nodeById, setJoinSpec, setLookupSpec, setSchemaCheck, setTableSpec, useProjectStore, type AddableNodeType, type ColumnSchema, type Port, type Project, type Source, type SourceFormat } from '../model';
 import { useEngineStore } from './engine';
 import { buildStep } from '../inspector/addStep';
 import { addStepAt } from '../quickfix/place';
@@ -123,12 +123,13 @@ export function positionAfter(project: Project, feeds: string[]) {
  * a Lookup takes them as its main and lookup inputs the same way; an Append takes every selected node as its
  * inputs 1, 2, 3 in that order, and so does a Query, as its tables. A new Query opens in the query designer.
  */
-export function addNodeAfterSelection(type: AddableNodeType) {
+export function addNodeAfterSelection(type: AddableNodeType, init?: (project: Project, nodeId: string) => Project) {
   const { apply, history } = useProjectStore.getState();
   const { selectedNodeId: selected, selectedNodeIds } = useSession.getState();
   const after = selected ? nodeById(history.present, selected) : undefined;
   // Principle 2 (data runs left to right): a node always arrives reading from the one before it, never unwired.
-  if (!after) return useSession.getState().notify({ tone: 'info', text: SELECT_FIRST });
+  // A Schema table holds rows of its own (sample data), so it may start a flow like a source.
+  if (!after && type !== 'table') return useSession.getState().notify({ tone: 'info', text: SELECT_FIRST });
   const several = selectedNodeIds.length > 1 && (type === 'join' || type === 'append' || type === 'lookup' || type === 'query' || type === 'sql');
   const feeds = several ? (type === 'join' || type === 'lookup' ? selectedNodeIds.slice(0, 2) : selectedNodeIds) : after?.id;
   const position = positionAfter(history.present, Array.isArray(feeds) ? feeds : after ? [after.id] : []);
@@ -144,11 +145,23 @@ export function addNodeAfterSelection(type: AddableNodeType) {
     if (key && type === 'lookup') next = setLookupSpec(next, added, { keys: [{ main: key.left, lookup: key.right }], columns: suggestLookupColumns(pair![0], pair![1], key.right) });
     // A Query's tables start side by side in the designer, in input order.
     if (type === 'query') for (const [i, e] of inputEdges(next, added).entries()) next = moveQueryTable(next, added, e.to.port as number, { x: 24 + i * 264, y: 24 });
-    return next;
+    return init ? init(next, added) : next;
   });
   if (!added) return;
   if (type === 'query') useSession.getState().openDesigner(added);
   else useSession.getState().select(added);
+}
+
+/** A Schema table node for one of the schema's tables, loaded from the selected node if there is one. */
+export const addSchemaTable = (schema: string, table: string) => addNodeAfterSelection('table', (p, id) => setTableSpec(p, id, { schema, table }));
+
+/** Load a node's rows into one of the schema's tables: a Schema table node wired from it. */
+export function loadIntoSchemaTable(fromId: string, schema: string, table: string) {
+  useSession.getState().select(fromId);
+  addSchemaTable(schema, table);
+  // The rows going in are checked against the table’s design (part of the same undo step), unless they already are.
+  const from = nodeById(useProjectStore.getState().history.present, fromId);
+  if (from && !from.schemaCheck) useProjectStore.getState().amend((p) => setSchemaCheck(p, fromId, { schema, table, mapping: {} }));
 }
 
 export const layoutFlow = () => useProjectStore.getState().apply(autoLayout);

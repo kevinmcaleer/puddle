@@ -42,6 +42,7 @@ export const SHORTCUTS = [
   { id: 'show-canvas', area: 'Canvas', label: 'Show the canvas', keys: [k('1')] },
   { id: 'show-relationships', area: 'Canvas', label: 'Show the relationships view', keys: [k('2')] },
   { id: 'show-designer', area: 'Canvas', label: 'Show the query designer', keys: [k('3')] },
+  { id: 'show-schema', area: 'Canvas', label: 'Show the Schema view', keys: [k('4')] },
   { id: 'layout', area: 'Canvas', label: 'Auto layout', keys: [k('l')] },
   { id: 'group', area: 'Canvas', label: 'Group the selected nodes', keys: [k('g')] },
   { id: 'focus-canvas', area: 'Canvas', label: 'Focus the canvas', keys: [k('f')] },

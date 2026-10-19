@@ -1,8 +1,8 @@
 import type { LucideIcon } from 'lucide-react';
 import {
   ArrowLeft, Blend, Calendar, ClipboardPaste, CaseSensitive, Check, ChevronDown, ChevronRight, ChevronUp, CircleHelp, Clock, Code, Columns2, Download, Ellipsis, Eye,
-  Database, File, Globe, FileText, GripVertical, Info, Keyboard, LayoutTemplate, Link, ListPlus, Monitor, Moon, PanelBottomClose, PanelBottomOpen, PanelRightClose, PanelRightOpen, Pin, Plus, Redo2, RefreshCw,
-  Group, Network, Search, ShieldCheck, Sigma, SlidersHorizontal, Sun, TableProperties, TriangleAlert, Type, Undo2, Ungroup, Workflow, X,
+  Database, File, Globe, FileText, GripVertical, Info, Keyboard, LayoutTemplate, Link, ListPlus, Monitor, Moon, PencilRuler, PanelBottomClose, PanelBottomOpen, PanelRightClose, PanelRightOpen, Pin, Plus, Redo2, RefreshCw,
+  Group, Network, Search, ShieldCheck, Sigma, SlidersHorizontal, Sun, TableProperties, TriangleAlert, Type, Undo2, Ungroup, Workflow, X, ZoomIn, ZoomOut, Scan,
 } from 'lucide-react';
 import { cx } from './cx';
 
@@ -49,6 +49,7 @@ const LUCIDE = {
   link: Link,
   web: Globe,
   database: Database,
+  schema: PencilRuler,
   refresh: RefreshCw,
   keyboard: Keyboard,
   'sidebar-close': PanelRightClose,
@@ -59,6 +60,9 @@ const LUCIDE = {
   group: Group,
   ungroup: Ungroup,
   relationships: Network,
+  'zoom-in': ZoomIn,
+  'zoom-out': ZoomOut,
+  fit: Scan,
 } satisfies Record<string, LucideIcon>;
 
 export type IconName = keyof typeof LUCIDE | 'trim';

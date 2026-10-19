@@ -1,6 +1,6 @@
 import { flow, src } from '../../tests/helpers/projects';
-import type { ColumnSchema, Project, Rule } from '../model';
-import { cardinality, describeCardinality, findRelationships, homeOf, keyColumns, keyEnds, relationshipTables } from './model';
+import { parseProject, setSchemaCheck, type ColumnSchema, type Project, type Rule } from '../model';
+import { cardinality, declaredKeys, describeCardinality, findRelationships, homeOf, keyColumns, keyEnds, relationshipTables } from './model';
 
 const cols = (...names: string[]): ColumnSchema[] => names.map((name) => ({ name, type: 'VARCHAR' }));
 
@@ -92,5 +92,32 @@ describe('relationships', () => {
     expect(cardinality(unique, rels[0]!, 'to')).toBe('one');
     expect(describeCardinality(unique, rels[1]!)).toBeUndefined();
     expect([...keyEnds(rels, unique)]).toEqual(['customers:customer_id']);
+  });
+});
+
+describe('schema tables', () => {
+  const DBML = 'Table customers {\n  customer_id int [pk]\n  email text [unique]\n}\nTable orders {\n  order_id int [pk]\n  customer_id int\n}\nRef sold: orders.customer_id > customers.customer_id';
+  const p = parseProject({
+    ...flow({ nodes: [{ id: 'c', type: 'table', tableSpec: { table: 'customers' } }, { id: 'o', type: 'table', tableSpec: { table: 'orders' } }, { id: 'x', type: 'transform' }] }),
+    schema: { dbml: DBML, positions: {} },
+  });
+
+  it('draws every schema table, related by the schema’s refs', () => {
+    const rels = findRelationships(p, () => undefined);
+    expect(rels.map((r) => [r.from, r.to, r.via.map((v) => [v.kind, v.label])])).toEqual([[{ nodeId: 'o', column: 'customer_id' }, { nodeId: 'c', column: 'customer_id' }, [['schema', 'Ref sold']]]]);
+    expect(relationshipTables(p, rels, () => undefined).map((t) => t.nodeId)).toEqual(['c', 'o']);
+  });
+
+  it('marks a node checked against a schema table, related to the parent by its derived exists-in rule', () => {
+    const checked = setSchemaCheck(p, 'x', { schema: 'public', table: 'orders', mapping: {} });
+    const rels = findRelationships(checked, () => undefined);
+    expect(rels.some((r) => r.from.nodeId === 'x' && r.to.nodeId === 'c' && r.via[0]!.kind === 'rule')).toBe(true);
+    const tables = relationshipTables(checked, rels, () => undefined);
+    expect(tables.find((t) => t.nodeId === 'x')?.checkedAgainst).toBe('orders');
+    expect(tables.find((t) => t.nodeId === 'o')?.checkedAgainst).toBeUndefined();
+  });
+
+  it('counts a table’s primary key and unique columns as the one end', () => {
+    expect(declaredKeys(p)).toEqual({ c: { customer_id: true, email: true }, o: { order_id: true } });
   });
 });

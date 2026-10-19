@@ -16,6 +16,7 @@ import { OutputPanel } from './OutputPanel';
 import { QueryPanel } from './QueryPanel';
 import { RulesPanel } from './RulesPanel';
 import { SqlPanel } from './SqlPanel';
+import { TablePanel } from './TablePanel';
 import { TransformPanel } from './TransformPanel';
 import { useAttachments } from '../sources/attachments';
 import { DetachedMessage } from '../sources/ReconnectBanner';
@@ -270,6 +271,17 @@ function NodeInspector({ node }: { node: GraphNode }) {
     return (
       <>
         <SqlPanel node={node} />
+        <KeepPanel key={node.id} node={node} />
+        <Columns nodeId={node.id} />
+        <RulesPanel node={node} />
+        <NodeNotes node={node} />
+      </>
+    );
+
+  if (node.type === 'table')
+    return (
+      <>
+        <TablePanel node={node} />
         <KeepPanel key={node.id} node={node} />
         <Columns nodeId={node.id} />
         <RulesPanel node={node} />

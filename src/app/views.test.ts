@@ -3,13 +3,13 @@ import { addNode, createProject, type Project } from '../model';
 import { useSession } from './session';
 import { currentView, designerTarget, showView, viewItems } from './views';
 
-const closed = { relationshipsOpen: false, designerNodeId: null, selectedNodeId: null };
+const closed = { schemaOpen: false, relationshipsOpen: false, designerNodeId: null, selectedNodeId: null };
 
 describe('the view switcher (principle 5: one screen, no modes)', () => {
   let p: Project;
   beforeEach(() => {
     p = addNode(createProject('Views'), 'transform', { x: 0, y: 0 });
-    useSession.setState({ relationshipsOpen: false, designerNodeId: null, selectedNodeId: null, notice: null });
+    useSession.setState({ schemaOpen: false, relationshipsOpen: false, designerNodeId: null, selectedNodeId: null, notice: null });
   });
 
   it('lists every surface, with the designer waiting for a Query node', () => {
@@ -17,6 +17,7 @@ describe('the view switcher (principle 5: one screen, no modes)', () => {
       { id: 'canvas', label: 'Canvas' },
       { id: 'relationships', label: 'Relationships' },
       { id: 'designer', label: 'Designer', disabled: true, title: 'Add a Query node to design a query' },
+      { id: 'schema', label: 'Schema' },
     ]);
     showView(p, 'designer');
     expect(useSession.getState().notice?.text).toBe('Add a Query node to design a query.');
@@ -42,7 +43,13 @@ describe('the view switcher (principle 5: one screen, no modes)', () => {
     expect(now()).toBe('designer');
     expect(useSession.getState().designerNodeId).toBe(query);
     expect(useSession.getState().relationshipsOpen).toBe(false);
+    showView(p, 'schema');
+    expect(now()).toBe('schema');
+    expect(useSession.getState().designerNodeId).toBeNull();
     showView(p, 'canvas');
     expect(now()).toBe('canvas');
+    showView(p, 'schema');
+    showView(p, 'canvas');
+    expect(useSession.getState().schemaOpen).toBe(false);
   });
 });

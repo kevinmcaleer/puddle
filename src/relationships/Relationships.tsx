@@ -5,11 +5,11 @@ import { useSession } from '../app/session';
 import { copyText, saveBlob } from '../export/deliver';
 import { checkKeys } from '../flow/keys';
 import { useFlowStore } from '../flow/status';
-import { nodeById, useProject, useProjectStore, type Project } from '../model';
+import { nodeById, setSchemaDbml, useProject, useProjectStore, type Project } from '../model';
 import { Banner, Button, columnKind, cx, Dialog, Field, Icon, NODE_KIND, Select, TypeTag } from '../ui';
-import { toDbml } from './dbml';
+import { intoSchema, toDbml } from './dbml';
 import { relate } from './relate';
-import { cardinality, describeCardinality, findRelationships, keyColumns, keyEnds, relationshipTables, type End, type Relationship, type RelTable, type Uniqueness } from './model';
+import { cardinality, declaredKeys, describeCardinality, findRelationships, keyColumns, keyEnds, relationshipTables, type End, type Relationship, type RelTable, type Uniqueness } from './model';
 import '../query/query.css';
 import './relationships.css';
 
@@ -176,7 +176,7 @@ function RelationshipPane({ tables, relationships, unique, selected, onSelect }:
 
   const drawn = lines.flatMap((l) => {
     const r = relationships.find((x) => x.key === l.key);
-    return r ? [{ ...l, r, check: r.via.every((v) => v.kind === 'rule') }] : [];
+    return r ? [{ ...l, r, check: r.via.every((v) => v.kind === 'rule' || v.kind === 'schema') }] : [];
   });
   const mark = (c: 'one' | 'many' | undefined) => (c === 'one' ? '1' : c === 'many' ? '∞' : '');
 
@@ -194,6 +194,11 @@ function RelationshipPane({ tables, relationships, unique, selected, onSelect }:
             <div className="puddle-qd-table__head" onPointerDown={(e) => startMove(pos, e)} title="Drag to move, or focus and use the arrow keys" tabIndex={0} role="group" aria-label={`Move ${t.name} with the arrow keys`} onKeyDown={moveKeys(pos)}>
               <Icon name={NODE_KIND[t.kind].icon} />
               <span className="puddle-qd-table__name">{t.name}</span>
+              {t.checkedAgainst && (
+                <span className="puddle-rel-table__checked" title={`Checked against ${t.checkedAgainst} in the schema`} aria-label={`Checked against ${t.checkedAgainst} in the schema`} role="img" data-testid={`rel-checked-${t.name}`}>
+                  <Icon name="tick" size={12} />
+                </span>
+              )}
             </div>
             <ul data-rel-list={t.nodeId} className="puddle-qd-table__fields" onScroll={remeasure}>
               {t.columns ? (
@@ -282,7 +287,7 @@ function RelationshipPane({ tables, relationships, unique, selected, onSelect }:
   );
 }
 
-const VIA_ICON = { join: 'join', lookup: 'join', query: 'query', rule: 'check' } as const;
+const VIA_ICON = { join: 'join', lookup: 'join', query: 'query', rule: 'check', schema: 'schema' } as const;
 
 /** Open the node that states a relationship: a Query in its designer, anything else selected in the inspector. */
 function openVia(project: Project, nodeId: string) {
@@ -373,10 +378,22 @@ export function Relationships() {
   };
   const relationships = findRelationships(project, columnsOf);
   const tables = relationshipTables(project, relationships, columnsOf);
-  const unique = useUniqueness(project, tables, relationships);
+  const checked = useUniqueness(project, tables, relationships);
+  // A schema table's declared keys are unique by design: its load is refused otherwise.
+  const declared = declaredKeys(project);
+  const unique: Uniqueness = { ...checked };
+  for (const [id, cols] of Object.entries(declared)) unique[id] = { ...checked[id], ...cols };
   const [selected, setSelected] = useState<string | null>(null);
   const [message, setMessage] = useState<{ tone: 'info' | 'fail'; text: string } | null>(null);
   const dbml = () => toDbml(project, tables, relationships, unique);
+  const [asking, setAsking] = useState(false);
+  /** The tables written into the project's schema, one undo step, and the Schema view opened on them. */
+  const openInSchema = (mode: 'append' | 'replace') => {
+    const text = dbml();
+    setAsking(false);
+    useProjectStore.getState().apply((p) => setSchemaDbml(p, intoSchema(p.schema.dbml, text, mode)));
+    useSession.getState().setSchemaOpen(true);
+  };
   const view = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (document.activeElement === document.body) view.current?.focus();
@@ -404,10 +421,36 @@ export function Relationships() {
         >
           Copy DBML
         </Button>
+        <Button variant="ghost" size="sm" icon="schema" onClick={() => (project.schema.dbml.trim() ? setAsking(true) : openInSchema('replace'))} data-testid="open-in-schema">
+          Open in Schema
+        </Button>
         <Button variant="secondary" size="sm" icon="export" onClick={() => saveBlob(new Blob([dbml()], { type: 'text/plain' }), `${project.name || 'project'}.dbml`)}>
           Download DBML
         </Button>
       </div>
+      {asking && (
+        <div className="puddle-qd-notes" data-testid="open-in-schema-ask">
+          <Banner
+            tone="info"
+            title="The schema already has DBML"
+            action={
+              <>
+                <Button variant="secondary" size="sm" onClick={() => openInSchema('append')}>
+                  Add to it
+                </Button>
+                <Button variant="ghost" size="sm" onClick={() => openInSchema('replace')}>
+                  Replace it
+                </Button>
+                <Button variant="ghost" size="sm" onClick={() => setAsking(false)}>
+                  Cancel
+                </Button>
+              </>
+            }
+          >
+            Add these tables and relationships after what is written there, or replace it with them.
+          </Banner>
+        </div>
+      )}
       {message && (
         <div className="puddle-qd-notes" data-testid="relationships-message">
           <Banner tone={message.tone} action={<Button variant="ghost" size="sm" onClick={() => setMessage(null)}>Dismiss</Button>}>

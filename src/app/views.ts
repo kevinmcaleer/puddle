@@ -1,13 +1,14 @@
-// The surfaces that stand where the canvas does: the canvas itself, the relationships view and a Query node's
-// designer. Principle 5 (one screen, no modes): each is listed, named and one click or key away, and switching keeps
+// The surfaces that stand where the canvas does: the canvas itself, the relationships view, a Query node's designer
+// and the Schema view. Principle 5 (one screen, no modes): each is listed, named and one click or key away, and switching keeps
 // the toolbar, inspector, results and status strip in place.
 import type { TabItem } from '../ui';
 import type { Project } from '../model';
 import { useSession } from './session';
 
-export type CanvasView = 'canvas' | 'relationships' | 'designer';
+export type CanvasView = 'canvas' | 'relationships' | 'designer' | 'schema';
 
 interface ViewState {
+  schemaOpen: boolean;
   relationshipsOpen: boolean;
   designerNodeId: string | null;
   selectedNodeId: string | null;
@@ -15,6 +16,7 @@ interface ViewState {
 
 /** Which surface is showing now. */
 export function currentView(project: Project, s: ViewState): CanvasView {
+  if (s.schemaOpen) return 'schema';
   if (s.relationshipsOpen) return 'relationships';
   if (s.designerNodeId && project.nodes.some((n) => n.id === s.designerNodeId && n.type === 'query')) return 'designer';
   return 'canvas';
@@ -34,6 +36,7 @@ export function viewItems(project: Project, s: ViewState): TabItem[] {
     { id: 'canvas', label: 'Canvas' },
     { id: 'relationships', label: 'Relationships' },
     target ? { id: 'designer', label: `Designer: ${name}` } : { id: 'designer', label: 'Designer', disabled: true, title: 'Add a Query node to design a query' },
+    { id: 'schema', label: 'Schema' },
   ];
 }
 
@@ -41,10 +44,13 @@ export function viewItems(project: Project, s: ViewState): TabItem[] {
 export function showView(project: Project, view: CanvasView) {
   const session = useSession.getState();
   if (view === 'canvas') {
+    session.setSchemaOpen(false);
     session.setRelationshipsOpen(false);
     session.openDesigner(null);
   } else if (view === 'relationships') {
     session.setRelationshipsOpen(true);
+  } else if (view === 'schema') {
+    session.setSchemaOpen(true);
   } else {
     const target = designerTarget(project, session);
     if (target) session.openDesigner(target);

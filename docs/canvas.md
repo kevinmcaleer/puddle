@@ -35,7 +35,7 @@ The canvas is where your flow lives. Tabs above it switch to the {doc}`relations
 
 ## Using the keyboard
 
-Arrow keys move between connected nodes and show each one in the results, as a click does (with the results pinned they only select, and V moves the pin to the selected node). Enter opens the selected node, T opens the Add menu to add a step after it, O adds an Output, and G groups the selected nodes. C starts wiring the selected node: move to another node and press Enter to wire or unwire them. 1, 2 and 3 switch between the canvas, the relationships view and the query designer. **?** lists every shortcut (see {doc}`settings`).
+Arrow keys move between connected nodes and show each one in the results, as a click does (with the results pinned they only select, and V moves the pin to the selected node). Enter opens the selected node, T opens the Add menu to add a step after it, O adds an Output, and G groups the selected nodes. C starts wiring the selected node: move to another node and press Enter to wire or unwire them. 1, 2, 3 and 4 switch between the canvas, the relationships view, the query designer and the Schema view. **?** lists every shortcut (see {doc}`settings`).
 
 ## Groups
 

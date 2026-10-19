@@ -17,6 +17,8 @@ export interface InputPort {
 
 const NO_PORTS: InputPort[] = [];
 const ONE_PORT: InputPort[] = [{ id: 0, label: 'Input' }];
+/** A schema table holds its records without an input; rows wired in are loaded into it. */
+const LOAD_PORT: InputPort[] = [{ id: 0, label: 'Load', optional: true }];
 const JOIN_PORTS: InputPort[] = [
   { id: 'left', label: 'Left' },
   { id: 'right', label: 'Right' },
@@ -46,6 +48,8 @@ export function inputPorts(project: Project, node: GraphNode): InputPort[] {
   switch (node.type) {
     case 'source':
       return NO_PORTS;
+    case 'table':
+      return LOAD_PORT;
     case 'join':
       return JOIN_PORTS;
     case 'lookup':

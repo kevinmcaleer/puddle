@@ -4,7 +4,8 @@
 import { existsSync, mkdtempSync, mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { compileExport, compileRules, exportFileName, fullData, SchemaCache, sourceFileName, str } from '../compiler';
+import { compileExport, compileLoadCheck, compileRules, describeFailure, exportFileName, fullData, SchemaCache, sourceFileName, str } from '../compiler';
+import { buildSchema } from '../schemaTables/build';
 import { describeBlock, exportGate, type BlockingRule } from '../flow/gate';
 import type { RuleResult } from '../flow/ruleResult';
 import { nodeById, topoSort, upstreamIds, type OutputNode, type Project } from '../model';
@@ -149,16 +150,40 @@ export async function runProject(project: Project, opts: RunOptions): Promise<{ 
     await opts.db.query(`SET file_search_path = ${str(stageDir)}`);
     for (const [id, why] of problems) say(`Source ${full.sources.find((s) => s.id === id)?.name ?? id} ${why}.`);
 
+    // Schema table nodes read the project's DBML built as tables, as in the browser.
+    const tableNodes = full.nodes.filter((n) => n.type === 'table');
+    const builtTables = tableNodes.length ? await buildSchema(opts.db, full) : undefined;
+    for (const [name, t] of Object.entries(builtTables?.tables ?? {})) if (t.state === 'failed') say(`Schema table ${name} not built: ${t.message}`);
+
     // Joins and appends compile from their inputs' columns, which the cache describes into the shared schema book.
     const schemas = new SchemaCache((sql) => opts.db.describe(sql));
     const outputNodes = full.nodes.filter((n): n is OutputNode => n.type === 'output');
-    for (const node of outputNodes) await schemas.prepare(full, { nodeId: node.id }).catch(() => undefined);
+    for (const node of [...tableNodes, ...outputNodes]) await schemas.prepare(full, { nodeId: node.id }).catch(() => undefined);
+    // A load a schema table refuses stops every output below it, as the node does in the browser.
+    const refused = new Map<string, string>();
+    for (const node of tableNodes) {
+      try {
+        const check = compileLoadCheck(full, node.id, { schemas: schemas.book });
+        if (!check?.checks.length) continue;
+        const row = (await opts.db.query(check.sql))[0] ?? {};
+        const failures = check.checks.flatMap((c, i) => (Number(row[`f${i}`] ?? 0) ? [describeFailure(c, Number(row[`f${i}`]))] : []));
+        if (failures.length) refused.set(node.id, `${node.name} can’t take some of the rows loaded into it: ${failures.join('; ')}.`);
+      } catch (e) {
+        refused.set(node.id, `${node.name} can’t be checked: ${e instanceof Error ? e.message.split('\n')[0] : String(e)}`);
+      }
+    }
     rules = await checkAllRules(opts.db, full, say);
 
     for (const node of outputNodes) {
       const missing = sourcesAbove(full, node.id).filter((id) => problems.has(id));
       if (missing.length) {
         outputs.push({ nodeId: node.id, nodeName: node.name, status: 'skipped', reason: `source ${missing.map((id) => full.sources.find((s) => s.id === id)?.name ?? id).join(', ')} ${problems.get(missing[0]!)}` });
+        continue;
+      }
+      const loads = [...upstreamIds(full, node.id)].flatMap((id) => (refused.has(id) ? [refused.get(id)!] : []));
+      if (loads.length) {
+        outputs.push({ nodeId: node.id, nodeName: node.name, status: 'blocked', blocking: loads });
+        say(`${node.name} not written: ${loads.join(' ')}`);
         continue;
       }
       const gate = exportGate(full, node.id, Object.fromEntries(Object.entries(rules).map(([id, r]) => [id, { results: r }])));
