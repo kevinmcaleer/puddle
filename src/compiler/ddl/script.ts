@@ -63,7 +63,7 @@ export interface ScriptOptions {
 const NUMBER = /^[+-]?(\d+\.?\d*|\.\d+)(e[+-]?\d+)?$/i;
 
 /** Many-to-many refs as a junction table between the two, as dbdiagram.io does: `a_b`, with a key of both sides. */
-function withJunctions(schema: DbmlSchema): DbmlSchema {
+export function withJunctions(schema: DbmlSchema): DbmlSchema {
   const many = schema.refs.filter((r) => r.op === '<>' && !r.inactive);
   if (!many.length) return schema;
   const tables = [...schema.tables];
@@ -90,7 +90,7 @@ function withJunctions(schema: DbmlSchema): DbmlSchema {
  * Parents before the tables whose foreign keys point at them; a loop keeps the order the tables are written in, and
  * the refs that close loops (a table's ref to itself among them) are given back.
  */
-function ordered(schema: DbmlSchema): { tables: Table[]; loops: Set<Ref> } {
+export function ordered(schema: DbmlSchema): { tables: Table[]; loops: Set<Ref> } {
   const out: Table[] = [];
   const loops = new Set<Ref>();
   const state = new Map<Table, 'visiting' | 'done'>();
@@ -112,9 +112,40 @@ function ordered(schema: DbmlSchema): { tables: Table[]; loops: Set<Ref> } {
   return { tables: out, loops };
 }
 
-/** The statements that create a schema in a database, as one script. */
-export function sqlScript(input: DbmlSchema, rules: DialectRules, options: ScriptOptions = {}): SqlScript {
-  const schema = withJunctions(input);
+/** One column's definition, in parts, so a migration can write it whole or piece by piece. */
+export interface ColumnSql {
+  name: string;
+  /** The type as the database writes it (the increment's own type, if it needs one). */
+  type: string;
+  /** What follows the type: the increment clause, or `DEFAULT …`. */
+  clause?: string;
+  increment?: Increment;
+  /** Written `PRIMARY KEY` on the column itself. */
+  primaryKey: boolean;
+  notNull: boolean;
+  unique: boolean;
+  checks: string[];
+  /** `COMMENT '…'`, for a database that comments in clauses. */
+  comment?: string;
+  /** The note as a `--` comment after the column, for a database that comments in lines. */
+  note?: string;
+}
+
+/** The parts of a CREATE TABLE and what goes with it. */
+export interface TableSql {
+  /** Statements that must come before it (DuckDB's sequences). */
+  before: string[];
+  /** The note as comment lines, then CREATE TABLE. */
+  create: string[];
+  indexes: string[];
+  /** ALTER TABLE … ADD FOREIGN KEY, for a database that adds them after every table. */
+  foreignKeys: string[];
+  /** COMMENT ON statements. */
+  comments: string[];
+}
+
+/** Writes the pieces of a script for one schema and database; the export and the migration (migration.ts) share it. */
+export function scriptWriter(schema: DbmlSchema, rules: DialectRules) {
   const q = (name: string) => identIn(rules.dialect, name);
   const s = (value: string) => strIn(rules.dialect, value);
   const unmapped: string[] = [];
@@ -122,16 +153,6 @@ export function sqlScript(input: DbmlSchema, rules: DialectRules, options: Scrip
   const namespaces = rules.schemas !== 'none';
   const ref = (sch: string, name: string) => (sch === 'public' || !namespaces ? q(name) : `${q(sch)}.${q(name)}`);
   const enumRef = (e: DbmlEnum) => ref(e.schema, e.name);
-  const out: string[] = [`-- ${rules.label} script made by Puddle from the project's DBML`];
-  const block = (lines: string[]) => lines.length && out.push('', ...lines);
-
-  if (!namespaces) {
-    const other = [...new Set(schema.tables.filter((t) => t.schema !== 'public').map((t) => t.schema))];
-    if (other.length) warnings.push(`${rules.label} has no schemas: the tables in ${other.join(', ')} are created without theirs.`);
-  }
-  const schemas = namespaces ? [...new Set([...schema.tables.map((t) => t.schema), ...(rules.enums === 'type' ? schema.enums.map((e) => e.schema) : [])])].filter((x) => x !== 'public') : [];
-  if (rules.schemas !== 'none') block(schemas.flatMap((x) => (rules.schemas as Exclude<DialectRules['schemas'], 'none'>).create(q(x))));
-  if (rules.enums === 'type') block(schema.enums.map((e) => `CREATE TYPE ${enumRef(e)} AS ENUM (${e.values.map((v) => s(v.name)).join(', ')});`));
 
   const bool = (v: string) => rules.bool(v.toLowerCase() === 'true');
   const defaultSql = (d: Default) => {
@@ -192,34 +213,51 @@ export function sqlScript(input: DbmlSchema, rules: DialectRules, options: Scrip
     return { type: c.type };
   };
 
-  const { tables, loops } = ordered(schema);
-  const later: string[] = [];
-  const comments: string[] = [];
-  for (const t of tables) {
+  /** A column's definition in parts; `pk` is the table's primary key. */
+  const column = (t: Table, c: Column, pk = primaryKey(t)): ColumnSql => {
+    const { type, check } = columnType(t, c);
+    const single = pk.length === 1 && pk[0] === c.name;
+    const inc = c.increment ? rules.increment(type, { table: t, column: c, tableRef: ref(t.schema, t.name), single }) : undefined;
+    if (c.increment && !inc) warnings.push(`${qualified(t.schema, t.name)}.${c.name} can’t increment in ${rules.label}: it is created without.`);
+    return {
+      name: c.name,
+      type: inc?.type ?? type,
+      clause: inc ? inc.clause : c.default ? `DEFAULT ${defaultSql(c.default)}` : undefined,
+      increment: inc,
+      primaryKey: single && !inc?.primaryKey,
+      notNull: !!c.notNull && !inc?.primaryKey,
+      unique: c.unique && !single,
+      checks: [...c.checks, ...(check ? [check] : [])],
+      comment: c.note && rules.comments === 'clause' ? `COMMENT ${s(oneLine(c.note))}` : undefined,
+      note: rules.comments === 'lines' && c.note ? oneLine(c.note) : undefined,
+    };
+  };
+  /** The column as written in CREATE TABLE. */
+  const columnText = (c: ColumnSql) => {
+    const parts = [q(c.name), c.type];
+    if (c.clause) parts.push(c.clause);
+    if (c.primaryKey) parts.push('PRIMARY KEY');
+    else if (c.notNull) parts.push('NOT NULL');
+    if (c.unique) parts.push('UNIQUE');
+    for (const x of c.checks) parts.push(`CHECK (${x})`);
+    if (c.comment) parts.push(c.comment);
+    return parts.join(' ');
+  };
+  /** CREATE INDEX for the table's index at `i`, named as the export names it when it has no name. */
+  const indexSql = (t: Table, ix: Table['indexes'][number], i: number) => {
+    const parts = ix.parts.map((p) => (p.kind === 'column' ? q(p.value) : p.value));
+    return `CREATE ${ix.unique ? 'UNIQUE ' : ''}INDEX ${q(indexName(t, ix, i))} ON ${ref(t.schema, t.name)} (${parts.join(', ')});`;
+  };
+
+  /** Everything that creates one table; `loops` are the refs that close loops (see ordered). */
+  const table = (t: Table, loops: Set<Ref>): TableSql => {
     const tableRef = ref(t.schema, t.name);
     const pk = primaryKey(t);
-    let keyInline = false;
     const before: string[] = [];
-    const lines: { text: string; note?: string }[] = t.columns.map((c) => {
-      const { type, check } = columnType(t, c);
-      const parts = [q(c.name), type];
-      const inc = c.increment ? rules.increment(type, { table: t, column: c, tableRef, single: pk.length === 1 && pk[0] === c.name }) : undefined;
-      if (c.increment && !inc) warnings.push(`${qualified(t.schema, t.name)}.${c.name} can’t increment in ${rules.label}: it is created without.`);
-      if (inc) {
-        if (inc.type) parts[1] = inc.type;
-        if (inc.primaryKey) keyInline = true;
-        before.push(...(inc.before ?? []));
-        parts.push(inc.clause);
-      } else if (c.default) parts.push(`DEFAULT ${defaultSql(c.default)}`);
-      if (pk.length === 1 && pk[0] === c.name && !inc?.primaryKey) {
-        parts.push('PRIMARY KEY');
-        keyInline = true;
-      } else if (c.notNull && !inc?.primaryKey) parts.push('NOT NULL');
-      if (c.unique && !(pk.length === 1 && pk[0] === c.name)) parts.push('UNIQUE');
-      for (const x of [...c.checks, ...(check ? [check] : [])]) parts.push(`CHECK (${x})`);
-      if (c.note && rules.comments === 'clause') parts.push(`COMMENT ${s(oneLine(c.note))}`);
-      return { text: parts.join(' '), note: rules.comments === 'lines' && c.note ? oneLine(c.note) : undefined };
-    });
+    const columns = t.columns.map((c) => column(t, c, pk));
+    for (const c of columns) before.push(...(c.increment?.before ?? []));
+    const keyInline = columns.some((c) => c.primaryKey || c.increment?.primaryKey);
+    const lines: { text: string; note?: string }[] = columns.map((c) => ({ text: columnText(c), note: c.note }));
     if (pk.length && !keyInline) lines.push({ text: `PRIMARY KEY (${pk.map(q).join(', ')})` });
     for (const x of t.checks) lines.push({ text: `${x.name ? `CONSTRAINT ${q(x.name)} ` : ''}CHECK (${x.expression})` });
     const fks = schema.refs.filter((r) => {
@@ -235,24 +273,56 @@ export function sqlScript(input: DbmlSchema, rules: DialectRules, options: Scrip
       }
       return true;
     });
+    const foreignKeys: string[] = [];
     if (rules.inlineForeignKeys) for (const r of fks) lines.push({ text: fkSql(r) });
-    else for (const r of fks) later.push(`ALTER TABLE ${tableRef} ADD ${fkSql(r)};`);
+    else for (const r of fks) foreignKeys.push(`ALTER TABLE ${tableRef} ADD ${fkSql(r)};`);
 
     const head = rules.comments === 'lines' && t.note ? t.note.split('\n').map((l) => `-- ${l.trim()}`) : [];
     const body = lines.map((l, i) => `  ${l.text}${i < lines.length - 1 ? ',' : ''}${l.note ? ` -- ${l.note}` : ''}`);
     const tail = rules.comments === 'clause' && t.note ? `) COMMENT=${s(oneLine(t.note))};` : ');';
-    block([...before, ...head, `CREATE TABLE ${tableRef} (`, ...body, tail]);
-
-    const indexes = t.indexes.flatMap((ix, i) => {
-      if (ix.pk) return [];
-      const parts = ix.parts.map((p) => (p.kind === 'column' ? q(p.value) : p.value));
-      return [`CREATE ${ix.unique ? 'UNIQUE ' : ''}INDEX ${q(ix.name ?? `${t.name}_index_${i + 1}`)} ON ${tableRef} (${parts.join(', ')});`];
-    });
-    block(indexes);
+    const indexes = t.indexes.flatMap((ix, i) => (ix.pk ? [] : [indexSql(t, ix, i)]));
+    const comments: string[] = [];
     if (rules.comments === 'comment-on') {
       if (t.note) comments.push(`COMMENT ON TABLE ${tableRef} IS ${s(t.note)};`);
       for (const c of t.columns) if (c.note) comments.push(`COMMENT ON COLUMN ${tableRef}.${q(c.name)} IS ${s(c.note)};`);
     }
+    return { before, create: [...head, `CREATE TABLE ${tableRef} (`, ...body, tail], indexes, foreignKeys, comments };
+  };
+
+  return { schema, rules, q, s, ref, enumRef, defaultSql, valueSql, fkSql, columnType, column, columnText, indexSql, table, oneLine, unmapped, warnings };
+}
+
+export type ScriptWriter = ReturnType<typeof scriptWriter>;
+
+/** The name an index is created with: its own, or `table_index_N` by its place in the table. */
+export const indexName = (t: Pick<Table, 'name'>, ix: Pick<Table['indexes'][number], 'name'>, i: number) => ix.name ?? `${t.name}_index_${i + 1}`;
+
+/** The statements that create a schema in a database, as one script. */
+export function sqlScript(input: DbmlSchema, rules: DialectRules, options: ScriptOptions = {}): SqlScript {
+  const schema = withJunctions(input);
+  const w = scriptWriter(schema, rules);
+  const { q, ref, warnings, unmapped } = w;
+  const namespaces = rules.schemas !== 'none';
+  const out: string[] = [`-- ${rules.label} script made by Puddle from the project's DBML`];
+  const block = (lines: string[]) => lines.length && out.push('', ...lines);
+
+  if (!namespaces) {
+    const other = [...new Set(schema.tables.filter((t) => t.schema !== 'public').map((t) => t.schema))];
+    if (other.length) warnings.push(`${rules.label} has no schemas: the tables in ${other.join(', ')} are created without theirs.`);
+  }
+  const schemas = namespaces ? [...new Set([...schema.tables.map((t) => t.schema), ...(rules.enums === 'type' ? schema.enums.map((e) => e.schema) : [])])].filter((x) => x !== 'public') : [];
+  if (rules.schemas !== 'none') block(schemas.flatMap((x) => (rules.schemas as Exclude<DialectRules['schemas'], 'none'>).create(q(x))));
+  if (rules.enums === 'type') block(schema.enums.map((e) => `CREATE TYPE ${w.enumRef(e)} AS ENUM (${e.values.map((v) => w.s(v.name)).join(', ')});`));
+
+  const { tables, loops } = ordered(schema);
+  const later: string[] = [];
+  const comments: string[] = [];
+  for (const t of tables) {
+    const x = w.table(t, loops);
+    block([...x.before, ...x.create]);
+    block(x.indexes);
+    later.push(...x.foreignKeys);
+    comments.push(...x.comments);
   }
   block(later);
   block(comments);
@@ -262,7 +332,7 @@ export function sqlScript(input: DbmlSchema, rules: DialectRules, options: Scrip
       const blocks = schema.records.filter((r) => r.schema === t.schema && r.table === t.name && !r.example && r.rows.length);
       for (const b of blocks) {
         const columns = b.columns.filter((c) => t.columns.some((x) => x.name === c));
-        const rows = b.rows.map((row) => `  (${columns.map((c) => valueSql(row[b.columns.indexOf(c)] ?? { kind: 'null', value: '' })).join(', ')})`);
+        const rows = b.rows.map((row) => `  (${columns.map((c) => w.valueSql(row[b.columns.indexOf(c)] ?? { kind: 'null', value: '' })).join(', ')})`);
         block([`INSERT INTO ${ref(t.schema, t.name)} (${columns.map(q).join(', ')}) VALUES`, `${rows.join(',\n')};`]);
       }
     }

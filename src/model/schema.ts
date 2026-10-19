@@ -144,7 +144,7 @@ export const RuleZ = z.object({
  */
 export const SchemaCheckZ = z.object({ schema: z.string().default('public'), table: z.string(), mapping: z.record(z.string(), z.string()).default({}) });
 
-const PositionZ = z.object({ x: z.number(), y: z.number() });
+export const PositionZ = z.object({ x: z.number(), y: z.number() });
 
 const NodeBase = {
   id: z.string().min(1),
@@ -406,6 +406,9 @@ export const SchemaViewZ = z.object({
   zoom: ZoomZ.optional(),
 });
 
+/** A named point in the schema's history: the DBML as it was when saved. */
+export const SchemaVersionZ = z.object({ id: z.string(), label: z.string(), at: z.string(), dbml: z.string() });
+
 export const SchemaDocZ = z.object({
   dbml: z.string().default(''),
   /** Places in the All tables view, which every other view starts from. */
@@ -416,9 +419,11 @@ export const SchemaDocZ = z.object({
   views: z.array(SchemaViewZ).default([]),
   /** The view on show; none is All tables. */
   view: z.string().optional(),
+  /** Saved versions, newest first; as many as the user keeps. */
+  versions: z.array(SchemaVersionZ).default([]),
 });
 
-export const DEFAULT_SCHEMA_DOC = { dbml: '', positions: {}, detail: 'full' as const, views: [] };
+export const DEFAULT_SCHEMA_DOC = { dbml: '', positions: {}, detail: 'full' as const, views: [], versions: [] };
 
 export const ProjectZ = z.object({
   id: z.string().min(1),
@@ -484,6 +489,7 @@ export type Project = z.infer<typeof ProjectZ>;
 export type ExportLogEntry = z.infer<typeof ExportLogEntryZ>;
 export type SchemaDoc = z.infer<typeof SchemaDocZ>;
 export type SchemaView = z.infer<typeof SchemaViewZ>;
+export type SchemaVersion = z.infer<typeof SchemaVersionZ>;
 export type Detail = z.infer<typeof DetailZ>;
 export type Zoom = z.infer<typeof ZoomZ>;
 export type Position = z.infer<typeof PositionZ>;

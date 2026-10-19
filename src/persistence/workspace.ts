@@ -149,6 +149,13 @@ export async function startWorkspace() {
   useWorkspace.setState({ screen: 'home' });
 }
 
+/** Start the app on a project made here (a shared schema kept in a new project) instead of reopening the last one. */
+export async function startWorkspaceWith(project: Project) {
+  started = true;
+  await refreshProjects().catch(() => undefined);
+  await openNewProject(project);
+}
+
 export async function openProject(id: string) {
   await flush();
   const raw = await loadProject(id);

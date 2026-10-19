@@ -1,0 +1,66 @@
+// The schema a migration goes to from migration-old.dbml: tables added, removed and renamed, columns added, removed,
+// renamed and retyped, nullability and defaults changed, refs added and removed, and a value added to an enum.
+Enum order_status {
+  pending
+  paid
+  shipped
+  refunded
+}
+
+Table customers {
+  id integer [pk, increment]
+  email varchar(255) [not null, unique]
+  name varchar(100) [not null]
+  country char(2) [default: 'US']
+  referrer_id integer
+}
+
+Table products {
+  id integer [pk]
+  sku varchar(16) [not null]
+  price decimal(10,2)
+}
+
+Table orders {
+  id integer [pk, increment]
+  customer_id integer [not null, ref: > customers.id]
+  product_id integer
+  status order_status [not null, default: 'pending']
+  total decimal(12,2) [not null]
+  note varchar(500)
+  shipped_at timestamp
+
+  indexes {
+    (customer_id, status)
+  }
+}
+
+Table reviews {
+  id integer [pk]
+  product_id integer [ref: > products.id]
+  stars smallint
+  comment text
+
+  indexes {
+    product_id
+  }
+}
+
+Table suppliers {
+  id integer [pk]
+  vendor_name varchar(100) [not null]
+  phone varchar(30)
+}
+
+Table refunds {
+  id integer [pk, increment]
+  order_id integer [not null, ref: > orders.id]
+  supplier_id integer [ref: > suppliers.id]
+  amount decimal(10,2) [not null]
+
+  indexes {
+    order_id
+  }
+}
+
+Ref: customers.referrer_id > customers.id
