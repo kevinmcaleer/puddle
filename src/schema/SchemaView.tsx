@@ -1,4 +1,5 @@
 import { useDeferredValue, useEffect, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent } from 'react';
+import { nodeFor } from '../schemaTables/sample';
 import { addAllSchemaTables } from '../schemaTables/place';
 import { useSession } from '../app/session';
 import { editSchema, setSchemaDbml, useProject, useProjectStore, type Project } from '../model';
@@ -13,6 +14,8 @@ import { addTable } from './edit';
 import { ExportImageDialog } from './ExportImageDialog';
 import { ExportMermaidDialog } from './ExportMermaidDialog';
 import { ExportSqlDialog } from './ExportSqlDialog';
+import { FillSampleDialog } from './FillSampleDialog';
+import { TableSampleView } from './TableSampleView';
 import { ImportSqlDialog } from './ImportSqlDialog';
 import { layoutDiagram } from './diagram/geometry';
 import { SchemaViews } from './SchemaViews';
@@ -62,10 +65,16 @@ export function SchemaView() {
   const [selected, setSelected] = useState<string[]>([]);
   const [exporting, setExporting] = useState<'sql' | 'image' | 'mermaid' | null>(null);
   const [importing, setImporting] = useState(false);
+  const [filling, setFilling] = useState<string[] | null>(null);
   // Tables to select on the diagram once they are drawn (those just imported).
   const [choose, setChoose] = useState<string[]>();
   const view = currentView(project.schema);
   const only = useMemo(() => viewTables(view), [view]);
+  /** The tables to fill: the selected ones, else every table on show. */
+  const fillTargets = () => {
+    const picked = selected.filter((id) => id.startsWith('table:'));
+    return picked.length ? picked : schema.tables.map(tableId).filter((id) => !only || only.has(id));
+  };
 
   const current = useMemo(() => {
     if (caret == null) return null;
@@ -150,6 +159,16 @@ export function SchemaView() {
         <Button size="sm" variant="ghost" icon="database" onClick={() => setImporting(true)}>
           Import SQL
         </Button>
+        <Button
+          size="sm"
+          variant="ghost"
+          icon="template"
+          disabled={!schema.tables.length}
+          title="Rows that keep the design, for the selected tables or every table on show"
+          onClick={() => setFilling(fillTargets())}
+        >
+          Fill with sample data
+        </Button>
         <Menu
           label="Export"
           button={{ size: 'sm', variant: 'ghost', icon: 'export', disabled: !schema.tables.length }}
@@ -225,6 +244,26 @@ export function SchemaView() {
                 onSelectionChange={setSelected}
                 onHide={view && ((ids) => apply((p) => hideFromSchemaView(p, view.id, ids)))}
                 choose={choose}
+                sample={(t) => <TableSampleView schema={schema} table={t} />}
+                tableActions={(t) => {
+                  const node = nodeFor(project, t);
+                  const id = `table:${t.schema}.${t.name}`;
+                  const fill = { label: 'Fill with sample data…', icon: 'template' as const, group: 'Data', onSelect: () => setFilling(selected.includes(id) ? fillTargets() : [id]) };
+                  return node
+                    ? [
+                        fill,
+                        {
+                          label: 'Open in results',
+                          icon: 'eye',
+                          group: 'Data',
+                          onSelect: () => {
+                            useSession.getState().setSchemaOpen(false);
+                            useSession.getState().select(node.id);
+                          },
+                        },
+                      ]
+                    : [fill];
+                }}
               />
             ) : (
               <div className="puddle-schema__empty">
@@ -245,6 +284,19 @@ export function SchemaView() {
           onImport={(next, tables) => {
             typing.settle();
             apply((p) => setSchemaDbml(openSchemaView(p, undefined), next));
+            setChoose(tables);
+          }}
+        />
+      )}
+      {filling && (
+        <FillSampleDialog
+          dbml={dbml}
+          schema={schema}
+          tables={filling}
+          onClose={() => setFilling(null)}
+          onFill={(next, tables) => {
+            typing.settle();
+            apply((p) => setSchemaDbml(p, next));
             setChoose(tables);
           }}
         />
