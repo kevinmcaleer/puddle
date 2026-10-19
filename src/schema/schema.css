@@ -1,6 +1,6 @@
 /* The Schema view: the DBML editor and the diagram it draws. Tokens only. */
 .puddle-schema { display: grid; grid-template-rows: auto minmax(0, 1fr); height: 100%; min-height: 0; background: var(--surface-panel); }
-.puddle-schema__bar { display: flex; align-items: center; gap: var(--space-2); padding: var(--space-2) var(--space-3); border-bottom: 1px solid var(--line); }
+.puddle-schema__bar { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); padding: var(--space-2) var(--space-3); border-bottom: 1px solid var(--line); }
 .puddle-schema__split { display: grid; min-height: 0; }
 .puddle-schema__code { display: flex; flex-direction: column; gap: var(--space-2); min-width: 0; min-height: 0; padding: var(--space-2); }
 .puddle-schema__errors { margin: 0; padding: 0; list-style: none; max-height: calc(var(--size-row) * 4); overflow: auto; }
@@ -127,3 +127,17 @@
 /* Diagrams drawn out of sight, to be pictured for the docs export. */
 .puddle-schema-offstage { position: fixed; left: -10000px; top: 0; pointer-events: none; }
 .puddle-schema-offstage__pane { position: relative; width: 1200px; height: 800px; }
+
+/* Schema versions: the list beside the comparison. */
+.puddle-schema-versions { display: grid; grid-template-columns: minmax(220px, 1fr) 2fr; gap: var(--space-4); min-height: 0; }
+.puddle-schema-versions__list, .puddle-schema-versions__compare { display: flex; flex-direction: column; gap: var(--space-2); min-width: 0; }
+.puddle-schema-versions .ui-step.is-selected { background: var(--brand-tint); }
+@media (max-width: 720px) { .puddle-schema-versions { grid-template-columns: 1fr; } }
+.puddle-schema-changes { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: var(--space-1); }
+.puddle-schema-changes li { padding-left: var(--space-3); border-left: 2px solid var(--line); }
+.puddle-schema-changes li.is-added { border-left-color: var(--pass); }
+.puddle-schema-changes li.is-removed { border-left-color: var(--fail); }
+.puddle-schema-changes li.is-changed { border-left-color: var(--warn); }
+.puddle-schema-linediff__line { display: block; }
+.puddle-schema-linediff__line.is-added { background: var(--pass-tint); }
+.puddle-schema-linediff__line.is-removed { background: var(--fail-tint); }

@@ -1,0 +1,52 @@
+// The saved version a migration starts from; migration-new.dbml is the schema it goes to.
+Enum order_status {
+  pending
+  paid
+  shipped
+}
+
+Table customers {
+  id integer [pk, increment]
+  email varchar(255) [not null, unique]
+  name varchar(100)
+  country char(2) [default: 'GB']
+}
+
+Table products {
+  id integer [pk]
+  sku varchar(32) [not null]
+  price decimal(10,2) [not null]
+}
+
+Table orders {
+  id integer [pk, increment]
+  customer_id integer [not null, ref: > customers.id]
+  product_id integer [ref: > products.id]
+  status order_status [not null, default: 'pending']
+  total decimal(10,2)
+  note text
+  legacy_code varchar(10)
+}
+
+Table reviews {
+  id integer [pk]
+  product_id integer [ref: > products.id]
+  stars smallint
+  body text
+
+  indexes {
+    product_id
+  }
+}
+
+Table audit_log {
+  id integer [pk]
+  order_id integer [ref: > orders.id]
+  happened_at timestamp
+}
+
+Table vendors {
+  id integer [pk]
+  vendor_name varchar(100) [not null]
+  phone varchar(30)
+}

@@ -41,6 +41,7 @@ export { renameSqlColumns, sqlColumnRefs } from './columnRefs';
 export { describeType, typeFamily, typesFit } from './types';
 export { SchemaCache } from './schemaCache';
 export { dropDuckdbSchema, duckdbSchema, duckdbType, foreignKey, primaryKey, recordsOf, schemaDdl, schemaTableRef, uniqueKeys, type DdlWarning, type SchemaDdl, type TableDdl } from './ddl/duckdb';
+export { migrationSql, narrows, type Migration } from './ddl/migration';
 export { describeFailure, FAILURE_COLUMN, LOAD_FAILURES, loadColumns, projectSchema, tableFor, textSample, type LoadCheck, type LoadColumn } from './schemaTable';
 export { dropTable, sourceFileName, sourceRelation, sourceTableName } from './sources';
 export { dateText, dateType, isNumberDateFormat, NUMBER_DATE_FORMATS, readDateFormat, readDates } from './dateRead';
