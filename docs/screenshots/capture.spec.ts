@@ -66,6 +66,14 @@ test('sources', async ({ page }) => {
   await shot(page, 'sources-excel');
 });
 
+/** Each fix opens a new node, whose table may still be loading: click name and city until they are the selection. */
+async function reselect(page: Page) {
+  await expect(async () => {
+    await selectColumnsAt(page, 90, 450);
+    await expect(page.getByTestId('quick-fixes')).toHaveAttribute('data-columns', 'name,city', { timeout: 2_000 });
+  }).toPass({ timeout: 20_000 });
+}
+
 test('quick fixes and steps', async ({ page }) => {
   await start(page);
   await openSample(page, 'contacts');
@@ -78,9 +86,9 @@ test('quick fixes and steps', async ({ page }) => {
   await shot(page, 'quickfix-bar', fixes);
   await fixes.getByRole('button', { name: 'Trim' }).click();
   await expect(steps(page)).toHaveText([/Trimmed name, city/]);
-  await selectColumnsAt(page, 90, 450);
+  await reselect(page);
   await fixes.getByRole('button', { name: 'Collapse spaces' }).click();
-  await selectColumnsAt(page, 90, 450);
+  await reselect(page);
   await fixes.getByRole('button', { name: 'Case' }).click();
   await shot(page, 'quickfix-case-menu', page.getByRole('menu'));
   await page.getByRole('menuitem', { name: 'Title Case' }).click();
