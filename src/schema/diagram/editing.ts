@@ -43,6 +43,11 @@ export interface PaneSpot {
   width?: number;
 }
 
+/** Where a popover's top goes so all of it shows in the pane: moved up when it would run past the bottom, never above the gap. */
+export function topInPane(top: number, height: number, paneHeight: number, gap = 8): number {
+  return Math.max(gap, Math.min(top, paneHeight - height - gap));
+}
+
 /** What is being typed, and where. */
 export interface Ask {
   kind: 'rename-table' | 'rename-column' | 'type' | 'default' | 'note' | 'new-column' | 'new-group';

@@ -68,6 +68,63 @@ docker run --rm -v /srv/puddle/projects:/projects puddle-run:latest run /project
 
 Without Docker, `npm run build:runner` builds `dist-runner/puddle-run.mjs`, and `node dist-runner/puddle-run.mjs watch /srv/puddle/projects` runs it on any machine with Node 20 or later (the native DuckDB binding is downloaded by `npm ci` for the machine's own platform).
 
+### Schemas in a pipeline (puddle-run schema)
+
+`puddle-run schema` does the Schema view's jobs from the command line, on a project file or a plain `.dbml` file, so a repository that keeps its database design as DBML can check it and generate from it in CI. It needs no DuckDB and reads no data.
+
+```sh
+node dist-runner/puddle-run.mjs schema shop.dbml --check
+node dist-runner/puddle-run.mjs schema shop.puddle.json --ddl postgres schema.sql --records
+node dist-runner/puddle-run.mjs schema shop.dbml --docs schema.html --docs-md schema.md --mermaid schema.mmd
+node dist-runner/puddle-run.mjs schema shop.dbml --diff old/shop.dbml --migration postgres migration.sql
+```
+
+| Option | Writes |
+| --- | --- |
+| `--check` | nothing; prints each DBML error with its line and column, and exits 1 if there are any |
+| `--dbml <out.dbml>` | the DBML as Puddle writes it (normalised) |
+| `--ddl <dialect> <out.sql>` | the CREATE script for `duckdb`, `postgres`, `mysql`, `sqlite` or `sqlserver`; `--records` adds the INSERTs for the DBML's records |
+| `--docs <out.html>`, `--docs-md <out.md>` | the docs page, as Export › Docs writes it, without the diagrams (drawing them needs a browser) |
+| `--mermaid <out.mmd>` | the diagram as a Mermaid `erDiagram` |
+| `--diff <older>` | prints what changed since an older project or `.dbml` file; with `--migration <dialect> <out.sql>`, the script that takes the older schema to this one, with lossy changes marked |
+
+It exits 0 when everything worked, 1 on DBML errors or a file it can't read, and 2 on arguments it doesn't understand. A GitHub Actions job that fails a pull request on a DBML error and commits the regenerated SQL and docs:
+
+```yaml
+name: Schema
+on:
+  pull_request:
+    paths: ['db/schema.dbml']
+permissions:
+  contents: write
+jobs:
+  schema:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+      - uses: actions/checkout@v4
+        with:
+          repository: kevinmcaleer/puddle
+          path: .puddle
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm ci && npm run build:runner
+        working-directory: .puddle
+      - name: Check the DBML
+        run: node .puddle/dist-runner/puddle-run.mjs schema db/schema.dbml --check
+      - name: Write the SQL and docs
+        run: node .puddle/dist-runner/puddle-run.mjs schema db/schema.dbml --ddl postgres db/schema.sql --docs-md db/schema.md
+      - name: Commit them if they changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add db/schema.sql db/schema.md
+          git diff --cached --quiet || (git commit -m "Regenerate schema SQL and docs" && git push)
+```
+
 ## The tunnel
 
 1. In Cloudflare Zero Trust, go to Networks, then Tunnels, and create a tunnel. Copy its token.

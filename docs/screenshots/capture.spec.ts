@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import { addFiles, addStep, addStepNode, addStepWithT, cell, expectRows, fixture, fixtureText, node } from '../../e2e/helpers/app';
-import { annotate, openSample, projectMenu, selectColumnsAt, settings, shot, shotPanel, start, steps } from './helpers';
+import { annotate, openSample, projectMenu, selectColumnsAt, settings, shot, shotClip, shotPanel, start, steps } from './helpers';
 
 // Each test captures the pictures for one page of the docs. Pictures are named <page>-<what>.png.
 
@@ -66,6 +66,14 @@ test('sources', async ({ page }) => {
   await shot(page, 'sources-excel');
 });
 
+/** Each fix opens a new node, whose table may still be loading: click name and city until they are the selection. */
+async function reselect(page: Page) {
+  await expect(async () => {
+    await selectColumnsAt(page, 90, 450);
+    await expect(page.getByTestId('quick-fixes')).toHaveAttribute('data-columns', 'name,city', { timeout: 2_000 });
+  }).toPass({ timeout: 20_000 });
+}
+
 test('quick fixes and steps', async ({ page }) => {
   await start(page);
   await openSample(page, 'contacts');
@@ -78,16 +86,16 @@ test('quick fixes and steps', async ({ page }) => {
   await shot(page, 'quickfix-bar', fixes);
   await fixes.getByRole('button', { name: 'Trim' }).click();
   await expect(steps(page)).toHaveText([/Trimmed name, city/]);
-  await selectColumnsAt(page, 90, 450);
+  await reselect(page);
   await fixes.getByRole('button', { name: 'Collapse spaces' }).click();
-  await selectColumnsAt(page, 90, 450);
+  await reselect(page);
   await fixes.getByRole('button', { name: 'Case' }).click();
   await shot(page, 'quickfix-case-menu', page.getByRole('menu'));
   await page.getByRole('menuitem', { name: 'Title Case' }).click();
   // Each fix is a Transform of its own, wired after the one before.
-  await expect(node(page, 'Transform 3')).toBeVisible();
+  await expect(node(page, 'Transform 3')).toHaveAttribute('data-status', 'ok', { timeout: 20_000 });
   await expect(steps(page)).toHaveCount(1);
-  await expect(cell(page, 0, 0)).toHaveText('Alice Patel');
+  await expect(cell(page, 0, 0)).toHaveText('Alice Patel', { timeout: 15_000 });
   await page.getByRole('button', { name: 'Auto layout' }).click();
   await shot(page, 'quickfix-applied');
 
@@ -387,4 +395,182 @@ test('sync, settings and help', async ({ page }) => {
   await node(page, 'sales.csv').click();
   await page.emulateMedia({ colorScheme: 'dark' });
   await shot(page, 'settings-dark');
+});
+
+/** Open the Schema view with the shop's DBML written in, laid out by Auto-arrange. */
+async function openShopSchema(page: Page) {
+  await page.getByTestId('project-menu').click();
+  await page.getByRole('menuitem', { name: 'Schema' }).click();
+  await page.getByRole('combobox', { name: 'DBML' }).fill(fixtureText('dbml/shop.dbml'));
+  await expect(page.getByTestId('schema-table-order_items')).toBeVisible();
+  // The whole window for the editor and the diagram.
+  await page.getByRole('button', { name: 'Hide inspector' }).click();
+  await page.getByRole('button', { name: 'Hide results' }).click();
+  await page.getByRole('button', { name: 'Auto-arrange' }).click();
+}
+
+test('schema view and editing', async ({ page }) => {
+  await start(page);
+  await openShopSchema(page);
+  await shot(page, 'schema-view');
+  // Hovering a column shows its settings.
+  await page.getByTestId('schema-col-orders-status').hover();
+  await expect(page.getByTestId('schema-popover')).toBeVisible();
+  await shot(page, 'schema-column-popover', page.getByTestId('schema-popover'));
+  await page.mouse.move(5, 5);
+  // A column's menu.
+  await page.getByTestId('schema-col-orders-total').click({ button: 'right' });
+  await shot(page, 'schema-column-menu', page.getByRole('menu'));
+  await page.keyboard.press('Escape');
+  // A view of two tables at the Keys detail level.
+  await page.getByTestId('schema-table-orders').locator('.puddle-schema-table__head').click({ modifiers: ['Shift'] });
+  await page.getByTestId('schema-table-customers').locator('.puddle-schema-table__head').click({ modifiers: ['Shift'] });
+  await page.getByRole('button', { name: 'New view of 2' }).click();
+  await page.getByTestId('schema-views').getByRole('button', { name: 'Keys' }).click();
+  await page.getByRole('button', { name: 'Fit' }).click();
+  await shot(page, 'schema-views');
+
+  // Drag a column onto another table's column: the popover that adds the ref.
+  await page.getByTestId('schema-views').getByRole('tab', { name: /All tables/ }).click();
+  await page.getByRole('combobox', { name: 'DBML' }).fill('Table products {\n  id integer [pk]\n  name varchar\n}\n\nTable reviews {\n  id integer [pk]\n  product_id integer\n  stars integer\n}\n');
+  await page.getByRole('button', { name: 'Auto-arrange' }).click();
+  await page.waitForTimeout(300);
+  const centre = async (testId: string) => {
+    const b = (await page.getByTestId(testId).boundingBox())!;
+    return { x: b.x + b.width / 2, y: b.y + b.height / 2 };
+  };
+  const from = await centre('schema-col-reviews-product_id');
+  const to = await centre('schema-col-products-id');
+  await page.mouse.move(from.x, from.y);
+  await page.mouse.down();
+  await page.mouse.move((from.x + to.x) / 2, (from.y + to.y) / 2, { steps: 5 });
+  await page.mouse.move(to.x, to.y, { steps: 5 });
+  await page.mouse.up();
+  await expect(page.getByTestId('schema-ref-ask')).toBeVisible();
+  await shot(page, 'schema-add-ref', page.getByTestId('schema-ref-ask'), { pad: 24 });
+});
+
+test('schema import and export', async ({ page }) => {
+  await start(page);
+  await openShopSchema(page);
+  await page.getByRole('button', { name: 'Export' }).click();
+  await shot(page, 'schema-export-menu', page.getByRole('menu'));
+  await page.getByRole('menuitem', { name: /SQL/ }).click();
+  const sql = page.getByRole('dialog', { name: 'Export as SQL' });
+  await sql.getByLabel('Database').selectOption({ label: 'PostgreSQL' });
+  await expect(sql.getByTestId('export-sql-preview')).toContainText('CREATE TABLE');
+  await shot(page, 'schema-export-sql', sql);
+  await sql.getByRole('button', { name: 'Cancel' }).click();
+
+  await page.getByRole('button', { name: 'Import SQL' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Import SQL' });
+  await dialog.getByLabel('SQL').fill(
+    [
+      'CREATE TABLE suppliers (',
+      '  id serial PRIMARY KEY,',
+      '  name text NOT NULL,',
+      '  email text UNIQUE',
+      ');',
+      '',
+      'CREATE TABLE deliveries (',
+      '  id serial PRIMARY KEY,',
+      '  supplier_id integer NOT NULL REFERENCES suppliers (id),',
+      '  arrived date',
+      ');',
+      '',
+      "INSERT INTO suppliers (name) VALUES ('Acme');",
+    ].join('\n'),
+  );
+  await expect(dialog.getByTestId('import-sql-found')).toHaveText('2 tables, 1 ref found.');
+  await shot(page, 'schema-import-sql', dialog);
+});
+
+test('schema versions', async ({ page }) => {
+  await start(page);
+  await openShopSchema(page);
+  await page.getByRole('button', { name: 'Versions' }).click();
+  let dialog = page.getByRole('dialog', { name: 'Schema versions' });
+  await dialog.getByLabel('Label').fill('First design');
+  await dialog.getByRole('button', { name: 'Save version' }).click();
+  await expect(dialog.getByTestId('version-First design')).toBeVisible();
+  await dialog.getByRole('button', { name: 'Close' }).click();
+
+  // Since then: a phone column, a longer name, and products gone.
+  const text = fixtureText('dbml/shop.dbml')
+    .replace("  name varchar(100) [not null]\n", "  name varchar(200) [not null]\n  phone varchar(20)\n")
+    .replace(/Table products \{[^}]*\}\n\n/, '')
+    .replace('Ref: order_items.product_id > products.id\n', '');
+  await page.getByRole('combobox', { name: 'DBML' }).fill(text);
+  await expect(page.getByTestId('schema-table-products')).toHaveCount(0);
+  await page.getByRole('button', { name: 'Versions' }).click();
+  dialog = page.getByRole('dialog', { name: 'Schema versions' });
+  await expect(dialog.getByTestId('version-changes')).toContainText('phone');
+  await shot(page, 'schema-versions', dialog);
+  await dialog.getByRole('tab', { name: 'Migration' }).click();
+  await expect(dialog.getByTestId('migration-preview')).toContainText('ALTER TABLE');
+  await shot(page, 'schema-versions-migration', dialog);
+});
+
+test('schema share and sample data', async ({ page }) => {
+  await start(page);
+  await openShopSchema(page);
+  await page.getByRole('button', { name: 'Share' }).click();
+  const share = page.getByRole('dialog', { name: 'Share the schema' });
+  await expect(share.getByTestId('share-notice')).toBeVisible();
+  await share.getByRole('switch', { name: 'Embed the diagram in another page' }).click();
+  await expect(share.getByTestId('share-embed')).toBeVisible();
+  await shot(page, 'schema-share', share);
+  await share.getByRole('button', { name: 'Close' }).click();
+
+  await page.getByTestId('schema-table-order_items').locator('.puddle-schema-table__head').click({ button: 'right' });
+  await page.getByRole('menuitem', { name: 'Fill with sample data…' }).click();
+  const fill = page.getByRole('dialog', { name: 'Fill with sample data' });
+  await fill.getByLabel('Rows per table').fill('20');
+  await expect(fill.getByTestId('fill-sample-tables')).toContainText('order_items');
+  await shot(page, 'schema-fill-sample', fill);
+  await fill.getByRole('button', { name: 'Fill' }).click();
+  await expect(fill).toBeHidden();
+  // A table's data sample, on hovering its header.
+  await page.getByTestId('schema-table-orders').locator('.puddle-schema-table__head').hover();
+  await expect(page.getByTestId('schema-sample').locator('tbody tr')).toHaveCount(5, { timeout: 20_000 });
+  await shot(page, 'schema-data-sample', page.getByTestId('schema-popover'));
+});
+
+test('schema tables', async ({ page }) => {
+  await start(page);
+  await page.getByTestId('project-menu').click();
+  await page.getByRole('menuitem', { name: 'Schema' }).click();
+  await page.getByRole('combobox', { name: 'DBML' }).fill(fixtureText('dbml/tables.dbml'));
+  await page.getByRole('button', { name: 'Back to canvas' }).click();
+  await addFiles(page, [fixture('shop-customers.csv')]);
+  await expect(node(page, 'shop-customers.csv')).toHaveAttribute('data-status', 'ok', { timeout: 20_000 });
+  await node(page, 'shop-customers.csv').click({ button: 'right' });
+  await shot(page, 'schema-load-into', page.getByTestId('context-menu'));
+  await page.getByTestId('context-menu').getByRole('menuitem', { name: 'Load into customers' }).click();
+  await expect(node(page, 'customers')).toHaveAttribute('data-status', 'error', { timeout: 20_000 });
+  await node(page, 'customers').click();
+  await expect(page.getByTestId('table-failures')).toBeVisible();
+  await page.getByRole('button', { name: 'Auto layout' }).click();
+  await shot(page, 'schema-table-node');
+});
+
+test('schema check', async ({ page }) => {
+  await start(page);
+  await page.getByTestId('project-menu').click();
+  await page.getByRole('menuitem', { name: 'Schema' }).click();
+  await page.getByRole('combobox', { name: 'DBML' }).fill(fixtureText('dbml/rules.dbml'));
+  await page.getByRole('button', { name: 'Back to canvas' }).click();
+  await addFiles(page, [fixture('schema-rules-customers.csv')]);
+  await expect(node(page, 'schema-rules-customers.csv')).toHaveAttribute('data-status', 'ok', { timeout: 20_000 });
+  await node(page, 'schema-rules-customers.csv').click();
+  await page.getByLabel('Check against the schema').selectOption('public.customers');
+  const rules = page.getByTestId('rules');
+  await expect(rules.locator('.ui-rule').filter({ hasText: 'id is unique' }).first()).toHaveAttribute('data-status', 'fail', { timeout: 20_000 });
+  // The Rules section from its heading down to the last rule, without the suggestions below.
+  await page.setViewportSize({ width: 1440, height: 1800 });
+  await page.getByTestId('rules').scrollIntoViewIfNeeded();
+  const top = (await page.getByLabel('Check against the schema').boundingBox())!;
+  const list = (await page.getByTestId('rules').boundingBox())!;
+  const y = top.y - 60;
+  await shotClip(page, 'schema-check', { x: list.x - 8, y, width: list.width + 16, height: list.y + list.height - y + 8 });
 });

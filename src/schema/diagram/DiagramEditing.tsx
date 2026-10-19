@@ -1,10 +1,35 @@
 // The boxes the diagram asks for a value in: a name, type, default or note typed in place, and the popover that adds a
 // ref after a column is dragged onto another.
-import { useId, useState, type FormEvent } from 'react';
+import { useId, useLayoutEffect, useRef, useState, type FormEvent } from 'react';
 import { Button, Select, Switch, TextInput } from '../../ui';
-import { suggestOp, type Ask, type PaneSpot } from './editing';
+import { suggestOp, topInPane, type Ask, type PaneSpot } from './editing';
 import type { ColumnRef, NewRef } from '../edit';
 import { qualified, type DbmlSchema, type RefOp } from '../model';
+
+const POP_GAP = 8;
+
+/**
+ * Where a popover sits so all of it shows in the pane: moved up after it is drawn if it would run past the bottom, and
+ * no taller than the pane (scrolling inside instead), since a focused field in a taller box would scroll the pane itself.
+ */
+function useInPane(top: number) {
+  const ref = useRef<HTMLFormElement>(null);
+  const [place, setPlace] = useState<{ top: number; maxHeight?: number }>({ top });
+  useLayoutEffect(() => {
+    const el = ref.current;
+    const pane = el?.offsetParent as HTMLElement | null;
+    if (!el || !pane) return setPlace({ top });
+    // Fractional sizes rounded outwards, so a pane of 366.4px never takes a popover reaching 366.6px.
+    const height = Math.floor(pane.getBoundingClientRect().height);
+    setPlace({ top: topInPane(top, Math.ceil(el.getBoundingClientRect().height), height), maxHeight: Math.max(0, height - 2 * POP_GAP) });
+  }, [top]);
+  // The field focused on opening may have scrolled the pane, which only clips and never scrolls; put it back.
+  useLayoutEffect(() => {
+    const pane = ref.current?.offsetParent as HTMLElement | null;
+    pane?.scrollTo({ top: 0 });
+  }, [place]);
+  return [ref, place] as const;
+}
 
 const LABEL: Record<Ask['kind'], string> = {
   'rename-table': 'Table name',
@@ -25,13 +50,14 @@ const HINT: Partial<Record<Ask['kind'], string>> = {
 /** The box a name, type, default or note is typed into: Enter keeps it, Escape leaves it as it was. */
 export function AskBox({ ask, onDone }: { ask: Ask; onDone: (value: string | null) => void }) {
   const [value, setValue] = useState(ask.value);
+  const [ref, place] = useInPane(ask.at.top);
   const id = useId();
   const submit = (e: FormEvent) => {
     e.preventDefault();
     onDone(value);
   };
   return (
-    <form className="ui-popover puddle-schema-ask" style={{ left: ask.at.left, top: ask.at.top, minWidth: ask.at.width }} onSubmit={submit} data-testid="schema-ask">
+    <form ref={ref} className="ui-popover puddle-schema-ask" style={{ left: ask.at.left, ...place, overflowY: 'auto', minWidth: ask.at.width }} onSubmit={submit} data-testid="schema-ask">
       <label className="text-label text-ink-muted" htmlFor={id}>
         {LABEL[ask.kind]}
       </label>
@@ -70,11 +96,13 @@ export function RefAsk({ schema, from, to, at, onAdd, onCancel }: { schema: Dbml
   const [op, setOp] = useState<RefOp>(() => suggestOp(schema, from, to));
   const [fromOptional, setFromOptional] = useState(false);
   const [toOptional, setToOptional] = useState(false);
+  const [ref, place] = useInPane(at.top);
   const id = useId();
   return (
     <form
+      ref={ref}
       className="ui-popover puddle-schema-ask"
-      style={{ left: at.left, top: at.top }}
+      style={{ left: at.left, ...place, overflowY: 'auto' }}
       data-testid="schema-ref-ask"
       aria-label="Add a ref"
       onSubmit={(e) => {

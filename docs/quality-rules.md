@@ -30,6 +30,10 @@ Select a node and open the **Rules** section of the inspector. Puddle profiles t
 
 Each rule has a **Severity**. A failing *fail* rule blocks exports from Output nodes after it (until you choose to export anyway). A *warning* is shown but doesn't block.
 
+## Rules from the schema
+
+If the project has a schema (see {doc}`schema`), **Check against the schema** in the Rules section checks a node against one of its tables. Its keys, not null columns, enums, refs, checks and types become rules on the node, marked as from the schema and kept up to date as the DBML changes. **Add as rules** keeps them as the node's own. See [Checking data against the schema](schema.md#checking-data-against-the-schema).
+
 ## Seeing what fails
 
 A rule shows whether it passes and how many rows fail ("6 of 53"). The node on the canvas gets a badge ("2 rules failing"), and the status strip counts passes and failures for the node you're viewing.
