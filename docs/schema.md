@@ -128,6 +128,8 @@ Any node with data can be checked against one of the schema's tables, without lo
 - each ref, when the project has a Schema table node for the other table: every value exists there,
 - each column with a number, date or true-or-false type: reads as that type, as a warning.
 
+![The inspector of a CSV checked against the customers table: its mapping, and the rules it made, each marked as from the schema, with id is unique failing on 2 of 4 rows](_static/screenshots/schema-check.png)
+
 Each rule is marked as from the schema, and is rewritten whenever the DBML changes, keeping the switches you set on it. If the data names a column differently, match it under the table's name. **Add as rules** keeps the rules as the node's own, to edit like any other, and stops following the schema. Loading a node into a Schema table checks it against that table.
 
 See {doc}`quality-rules` for what rules do once they're on a node.

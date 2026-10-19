@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import { addFiles, addStep, addStepNode, addStepWithT, cell, expectRows, fixture, fixtureText, node } from '../../e2e/helpers/app';
-import { annotate, openSample, projectMenu, selectColumnsAt, settings, shot, shotPanel, start, steps } from './helpers';
+import { annotate, openSample, projectMenu, selectColumnsAt, settings, shot, shotClip, shotPanel, start, steps } from './helpers';
 
 // Each test captures the pictures for one page of the docs. Pictures are named <page>-<what>.png.
 
@@ -544,4 +544,25 @@ test('schema tables', async ({ page }) => {
   await expect(page.getByTestId('table-failures')).toBeVisible();
   await page.getByRole('button', { name: 'Auto layout' }).click();
   await shot(page, 'schema-table-node');
+});
+
+test('schema check', async ({ page }) => {
+  await start(page);
+  await page.getByTestId('project-menu').click();
+  await page.getByRole('menuitem', { name: 'Schema' }).click();
+  await page.getByRole('combobox', { name: 'DBML' }).fill(fixtureText('dbml/rules.dbml'));
+  await page.getByRole('button', { name: 'Back to canvas' }).click();
+  await addFiles(page, [fixture('schema-rules-customers.csv')]);
+  await expect(node(page, 'schema-rules-customers.csv')).toHaveAttribute('data-status', 'ok', { timeout: 20_000 });
+  await node(page, 'schema-rules-customers.csv').click();
+  await page.getByLabel('Check against the schema').selectOption('public.customers');
+  const rules = page.getByTestId('rules');
+  await expect(rules.locator('.ui-rule').filter({ hasText: 'id is unique' }).first()).toHaveAttribute('data-status', 'fail', { timeout: 20_000 });
+  // The Rules section from its heading down to the last rule, without the suggestions below.
+  await page.setViewportSize({ width: 1440, height: 1800 });
+  await page.getByTestId('rules').scrollIntoViewIfNeeded();
+  const top = (await page.getByLabel('Check against the schema').boundingBox())!;
+  const list = (await page.getByTestId('rules').boundingBox())!;
+  const y = top.y - 60;
+  await shotClip(page, 'schema-check', { x: list.x - 8, y, width: list.width + 16, height: list.y + list.height - y + 8 });
 });
