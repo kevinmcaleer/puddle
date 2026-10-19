@@ -1,10 +1,12 @@
 // One run of a project: place its sources, check the quality gate, write every Output node's file, and leave a run
 // log and a quality report beside the outputs. The same compiler the browser uses; DuckDB's native build runs it.
-// Only pure modules are imported here (model, compiler, the gate, the XML reader), so the bundle never touches the browser engine.
+// Only pure modules are imported here (model, compiler, the gate, the XML and Access readers), so the bundle never touches the browser engine.
 import { existsSync, mkdtempSync, mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { compileExport, compileLoadCheck, compileRules, describeFailure, exportFileName, fullData, SchemaCache, sourceFileName, str } from '../compiler';
+import { columnsToCsv } from '../access/csv';
+import { openDatabase, readTable } from '../access/read';
+import { compileAccessLoad, compileExport, compileLoadCheck, compileRules, describeFailure, exportFileName, fullData, SchemaCache, sourceFileName, sourceTableName, str } from '../compiler';
 import { buildSchema } from '../schemaTables/build';
 import { describeBlock, exportGate, type BlockingRule } from '../flow/gate';
 import type { RuleResult } from '../flow/ruleResult';
@@ -71,9 +73,14 @@ const fetchOrThrow = (fetchText: RunOptions['fetchText'], address: string) => {
   return fetchText(address);
 };
 
-/** Put each source where the compiled SQL reads it: a link to the file, the pasted text, or the fetched address. */
-async function stage(places: SourcePlace[], stageDir: string, { fetchText, fetchImpl }: Pick<RunOptions, 'fetchText' | 'fetchImpl'>): Promise<Map<string, string>> {
+/**
+ * Put each source where the compiled SQL reads it: a link to the file, the pasted text, or the fetched address. An
+ * Access table is written as CSV, and the statement that loads it as the typed table the SQL reads goes in `loads`.
+ */
+async function stage(places: SourcePlace[], stageDir: string, { fetchText, fetchImpl }: Pick<RunOptions, 'fetchText' | 'fetchImpl'>, loads: Map<string, string>): Promise<Map<string, string>> {
   const problems = new Map<string, string>();
+  // Each Access database is opened once, however many of its tables the project reads.
+  const databases = new Map<string, ReturnType<typeof openDatabase>>();
   for (const p of places) {
     const { source } = p;
     if (p.path === undefined) {
@@ -82,7 +89,15 @@ async function stage(places: SourcePlace[], stageDir: string, { fetchText, fetch
     }
     const target = join(stageDir, sourceFileName(source));
     try {
-      if (source.format === 'xml') {
+      if (source.format === 'access') {
+        // Read as in the browser: mdb-reader, then each column given its Access type by DuckDB.
+        const table = sourceTableName(source);
+        let db = databases.get(p.path);
+        if (!db) databases.set(p.path, (db = openDatabase(new Uint8Array(readFileSync(p.path)))));
+        const data = readTable(db, source.parseOptions.table);
+        writeFileSync(join(stageDir, `${table}.csv`), columnsToCsv(data.columns));
+        loads.set(source.id, compileAccessLoad(table, data.columns, { csv: `${table}.csv` }));
+      } else if (source.format === 'xml') {
         // DuckDB reads the CSV Puddle writes from the XML's records, as in the browser.
         const xml = source.kind === 'clipboard' ? source.clipboard!.text : source.kind === 'url' ? await fetchOrThrow(fetchText, p.path) : new Uint8Array(readFileSync(p.path));
         const o = source.parseOptions;
@@ -145,9 +160,11 @@ export async function runProject(project: Project, opts: RunOptions): Promise<{ 
   let rules: RunLog['rules'] = {};
   const places = placeSources(full, opts.folder, existsSync);
   try {
-    const problems = await stage(places, stageDir, opts);
+    const loads = new Map<string, string>();
+    const problems = await stage(places, stageDir, opts, loads);
     // The compiled SQL reads `src_<id>.csv` by bare name; DuckDB looks for it here.
     await opts.db.query(`SET file_search_path = ${str(stageDir)}`);
+    for (const [id, sql] of loads) await opts.db.query(sql).catch((e: unknown) => problems.set(id, `couldn’t be read: ${e instanceof Error ? e.message : String(e)}`));
     for (const [id, why] of problems) say(`Source ${full.sources.find((s) => s.id === id)?.name ?? id} ${why}.`);
 
     // Schema table nodes read the project's DBML built as tables, as in the browser.

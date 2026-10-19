@@ -16,6 +16,8 @@ describe('format from a file name', () => {
     ['book.xlsx', 'xlsx'],
     ['BOOK.XLSX', 'xlsx'],
     ['books.xml', 'xml'],
+    ['shop.accdb', 'access'],
+    ['SHOP.MDB', 'access'],
   ])('%s is %s', (name, format) => {
     expect(formatFromName(name)).toBe(format);
   });
@@ -26,7 +28,7 @@ describe('format from a file name', () => {
   });
 
   it('refuses unknown formats with what it can read', () => {
-    expect(() => formatFromName('photo.png')).toThrow(/CSV, TSV, JSON, NDJSON, Parquet, Excel \(\.xlsx\) or XML file/);
+    expect(() => formatFromName('photo.png')).toThrow(/CSV, TSV, JSON, NDJSON, Parquet, Excel \(\.xlsx\), XML or Access \(\.accdb, \.mdb\) file/);
     expect(() => formatFromName('README')).toThrow(SourceError);
   });
 

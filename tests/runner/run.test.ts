@@ -6,6 +6,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { openDb, type RunnerDb } from '../../src/runner/db';
 import { runProject, runSucceeded, type RunLog } from '../../src/runner/run';
 import { parseArgs, projectFiles, watch } from '../../src/runner/cli';
+import { sourceTableName } from '../../src/compiler';
 import { parseProject, type Project } from '../../src/model';
 import { flow, src, step } from '../helpers/projects';
 
@@ -132,6 +133,41 @@ describe('puddle-run', () => {
     const csv = readFileSync(join(outDir, 'out.csv'), 'utf8').trim().split('\n');
     expect(csv[0]).toBe('id,format,title,published,price,price.currency,author,stock');
     expect(csv[3]).toBe('bk102,,Good Omens,1990-05-10,9.5,GBP,Neil Gaiman,0');
+  });
+
+  it('reads an Access table with the types the browser gives it, and says when its table isn’t there', async () => {
+    writeFileSync(join(folder, 'shop.accdb'), readFileSync(join(__dirname, '../fixtures/shop.accdb')));
+    const shop = (id: string, table: string) => ({ ...src({ id, format: 'access' }), name: table, parseOptions: { table }, file: { originalName: 'shop.accdb', size: 1, lastModified: 0, headHash: 'h' } });
+    const p = flow({
+      sources: [shop('o', 'Orders'), shop('a', 'Archive'), shop('x', 'Invoices')],
+      nodes: [
+        { id: 'o', type: 'source', sourceId: 'o' },
+        { id: 'a', type: 'source', sourceId: 'a' },
+        { id: 'x', type: 'source', sourceId: 'x' },
+        { id: 'out', type: 'output', outputSpec: { format: 'csv', options: {} } },
+        { id: 'out2', type: 'output', outputSpec: { format: 'csv', options: {} } },
+        { id: 'out3', type: 'output', outputSpec: { format: 'csv', options: {} } },
+      ],
+      wires: [
+        ['o', 'out', 0],
+        ['a', 'out2', 0],
+        ['x', 'out3', 0],
+      ],
+    });
+    p.name = 'Shop';
+    const outDir = join(folder, 'out-access');
+    const { log } = await runProject(p, { folder, outDir, db, now: () => new Date('2026-10-17T03:00:00Z') });
+    expect(log.outputs.map((o) => [o.nodeName, o.status, o.rows])).toEqual([
+      ['out', 'written', 4],
+      ['out2', 'written', 0],
+      ['out3', 'skipped', undefined],
+    ]);
+    const csv = readFileSync(join(outDir, 'out.csv'), 'utf8').trim().split('\n');
+    expect(csv[0]).toBe('OrderID,CustomerID,OrderDate,Quantity,Weight,Discount,Priority,Amount,Notes,Shipped');
+    expect(csv[2]).toBe('2,2,2026-02-10 14:05:00,1,0.4,0.0,2,80.0000,,false');
+    // Empty text stays apart from no value.
+    expect(csv[4]).toBe('4,3,,,2.0,,,,"",false');
+    expect(await db.describe(`SELECT * FROM "${sourceTableName(p.sources[0]!)}"`)).toContainEqual({ name: 'Amount', type: 'DECIMAL(19,4)' });
   });
 
   it('reads the command line and lists a folder’s project files', () => {

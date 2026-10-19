@@ -32,6 +32,7 @@ Puddle reads these formats:
 | JSON and NDJSON | `.json`, `.ndjson`, `.jsonl` | An array of objects, or one object per line. |
 | Parquet | `.parquet`, `.pq` | Read directly, with its column types. |
 | XML | `.xml` | The repeating element is read as rows. See [XML](#xml). |
+| Access | `.accdb`, `.mdb` | Choose the table; add the database's other tables as sources of their own. See [Access databases](#access-databases). |
 
 ## Tables on a web page
 
@@ -119,13 +120,38 @@ The inspector lists every repeating element under **Record element**, with how m
 
 XML can come from a file, from a web address (Puddle recognises `.xml` addresses and servers that say they send XML, including Atom and RSS feeds), or pasted as text. Puddle reads it in your browser, a piece at a time, so a large file doesn't have to fit in memory as a document; the rows it finds do. `puddle-run` reads XML sources the same way.
 
+## Access databases
+
+An Access database (`.accdb`, or `.mdb` from Access 2003 and before) holds several tables. Add the file like any other and Puddle reads its first table; the inspector lists every table with its size under **Table**, so you can read another one instead. **Add the other tables** adds a source for each table not yet in the project, reading the same file, so you can join them on the canvas or see how they relate in the Relationships view.
+
+![An Access database read as a source: its table picker and the button that adds its other tables](_static/screenshots/sources-access.png)
+
+The columns keep their Access types:
+
+| Access type | Read as |
+| --- | --- |
+| Short Text, Long Text, Hyperlink | Text |
+| Number (Byte, Integer, Long Integer), AutoNumber | Whole numbers of the same size |
+| Number (Single, Double) | Decimals |
+| Currency, Number (Decimal) | Exact decimals, so no pennies are lost to rounding |
+| Large Number | A big whole number |
+| Date/Time | A timestamp, as written in Access (Access keeps no time zone) |
+| Yes/No | True or false |
+| Replication ID | Text |
+| Attachment | The attached files' names |
+| OLE Object, binary | Bytes (`BLOB`) |
+
+Only the tables are read: queries, forms and reports stay in Access. Linked tables point to data elsewhere, so they are left out; add that data directly. A database encrypted with a password can't be opened: in Access, remove the password (*File › Info › Decrypt Database*), save it, and add it again. Like an Excel workbook, the database is read into memory whole, so for a very large one (Puddle warns above 200 MB) export the tables you need from Access as CSV.
+
+Puddle reads the database in your browser; nothing is uploaded. When you open the project again, choose the database once and every table read from it connects. `puddle-run` reads Access tables the same way, with the same types.
+
 ## Read options
 
 Select a source to see how it is read in the inspector. For a CSV file that is the delimiter, whether the first row is the header, the encoding, the quote character and which values count as empty (such as `NA` or `n/a`). Change any of them and every node after the source updates.
 
 ![A CSV source selected, with its read options in the inspector](_static/screenshots/screen-overview.png)
 
-An Excel source shows the workbook's sheets with their sizes, the header row it detected (often below a title or a few blank rows), and the cell range being read. An XML source shows its record element and what gets a row of its own (see [XML](#xml)).
+An Excel source shows the workbook's sheets with their sizes, the header row it detected (often below a title or a few blank rows), and the cell range being read. An Access source shows the database's tables (see [Access databases](#access-databases)). An XML source shows its record element and what gets a row of its own (see [XML](#xml)).
 
 A file source also has **Path to this file** under *On the runner*: where `puddle-run` finds the file when it runs the project outside the browser (see {doc}`self-hosting`). Left empty, the runner looks for the file by name beside the project file or in a `sources/` folder there.
 

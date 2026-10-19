@@ -5,7 +5,7 @@ export const FORMAT_VERSION = 2;
 
 export const ColumnSchemaZ = z.object({ name: z.string(), type: z.string() });
 
-export const SourceFormatZ = z.enum(['csv', 'tsv', 'json', 'ndjson', 'parquet', 'xlsx', 'xml']);
+export const SourceFormatZ = z.enum(['csv', 'tsv', 'json', 'ndjson', 'parquet', 'xlsx', 'xml', 'access']);
 
 export const ParseOptionsZ = z
   .object({
@@ -22,6 +22,8 @@ export const ParseOptionsZ = z
     record: z.string(),
     /** XML: a repeating element inside each record, as a path from it ("author"), given a row each. */
     expand: z.string(),
+    /** Access: the table of the database read. */
+    table: z.string(),
   })
   .partial();
 

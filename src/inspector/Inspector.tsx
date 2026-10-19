@@ -22,6 +22,8 @@ import { useAttachments } from '../sources/attachments';
 import { DetachedMessage } from '../sources/ReconnectBanner';
 import { ReattachButton } from '../sources/ReattachButton';
 import { UrlPanel } from '../sources/UrlPanel';
+import { isAccessSource } from '../sources/access';
+import { AccessPanel } from '../sources/AccessPanel';
 import { isExcelSource } from '../sources/excel';
 import { ExcelPanel } from '../sources/ExcelPanel';
 import { isXmlSource } from '../sources/xml';
@@ -314,6 +316,7 @@ function NodeInspector({ node }: { node: GraphNode }) {
       {source && source.kind === 'url' && <UrlPanel source={source} />}
       {source && isExcelSource(source) && <ExcelPanel source={source} />}
       {source && isXmlSource(source) && <XmlPanel source={source} />}
+      {source && isAccessSource(source) && <AccessPanel source={source} />}
       {source && hasParseOptions(source) && <SourceOptions source={source} />}
       {source && source.kind === 'file' && <RunnerPath source={source} />}
       {node.type === 'output' && <OutputPanel node={node} />}

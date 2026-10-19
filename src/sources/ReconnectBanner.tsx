@@ -7,6 +7,8 @@ import { useAttachments } from './attachments';
 import { reconnectAll, supportsFileHandles, useReconnect } from './handles';
 
 const plural = (n: number) => `${n} ${n === 1 ? 'file' : 'files'}`;
+/** The files sources wait for, each once: the tables of one Access database (or sheets of one workbook) share a file. */
+const fileNames = (sources: Source[]) => [...new Set(sources.map((s) => s.file?.originalName ?? s.name))];
 const listed = (names: string[]) => (names.length <= 2 ? names.join(' and ') : `${names.slice(0, 2).join(', ')} and ${names.length - 2} more`);
 
 /** The one title for files a reopened project needs again, whichever way the browser gets them back. */
@@ -25,6 +27,7 @@ export function FilesNotKeptBanner({ supported = supportsFileHandles() }: { supp
   if (supported || dismissed === project.id) return null;
   const waiting = project.sources.filter((s) => s.kind === 'file' && attachments[s.id] === 'detached');
   if (!waiting.length) return null;
+  const names = fileNames(waiting);
   return (
     <div data-testid="files-not-kept-banner">
       <Banner
@@ -33,7 +36,7 @@ export function FilesNotKeptBanner({ supported = supportsFileHandles() }: { supp
         action={
           <div className="flex gap-2">
             <Button size="sm" variant="primary" icon="source" onClick={() => input.current?.click()}>
-              Choose {plural(waiting.length)}
+              Choose {plural(names.length)}
             </Button>
             <Button size="sm" variant="ghost" onClick={() => setDismissed(project.id)}>
               Dismiss
@@ -41,7 +44,7 @@ export function FilesNotKeptBanner({ supported = supportsFileHandles() }: { supp
           </div>
         }
       >
-        {filesNotKeptMessage(waiting.map((s) => s.file?.originalName ?? s.name))}
+        {filesNotKeptMessage(names)}
       </Banner>
       <input
         ref={input}
@@ -67,7 +70,8 @@ export function ReconnectBanner() {
   const sources = useProject().sources;
   const waiting = sources.filter((s) => s.id in pending);
   if (!waiting.length) return null;
-  const list = listed(waiting.map((s) => s.file?.originalName ?? s.name));
+  const names = fileNames(waiting);
+  const list = listed(names);
   return (
     <div data-testid="reconnect-banner">
       <Banner
@@ -75,7 +79,7 @@ export function ReconnectBanner() {
         title={FILES_FROM_LAST_TIME}
         action={
           <Button size="sm" variant="primary" icon="source" disabled={busy} onClick={() => void reconnectAll(connectHandle)}>
-            Reconnect {plural(waiting.length)}
+            Reconnect {plural(names.length)}
           </Button>
         }
       >

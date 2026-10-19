@@ -19,6 +19,8 @@ import { DetachedMessage } from '../sources/ReconnectBanner';
 import { ReattachButton } from '../sources/ReattachButton';
 import { UrlProblemBanner } from '../sources/UrlPanel';
 import { attachmentOf } from '../sources/attachments';
+import { isAccessSource } from '../sources/access';
+import { AccessProblemBanner } from '../sources/AccessPanel';
 import { isExcelSource } from '../sources/excel';
 import { ExcelProblemBanner } from '../sources/ExcelPanel';
 import { isXmlSource } from '../sources/xml';
@@ -472,6 +474,12 @@ function NodeResult({ engine, project, target, ...pane }: { engine: EngineClient
       return (
         <div className="p-4" data-testid="results-excel">
           <ExcelProblemBanner source={source} />
+        </div>
+      );
+    if (source && isAccessSource(source) && attachmentOf(source.id) !== 'detached')
+      return (
+        <div className="p-4" data-testid="results-access">
+          <AccessProblemBanner source={source} />
         </div>
       );
     return (

@@ -32,6 +32,15 @@ describe('files not kept in this browser', () => {
     expect(screen.queryByTestId('files-not-kept-banner')).toBeNull();
   });
 
+  it('asks for a file shared by several sources once, such as the tables of one Access database', () => {
+    const table = (id: string): Source => ({ ...file(id), format: 'access', file: { originalName: 'shop.accdb', size: 1, lastModified: 0, headHash: 'x' } });
+    useProjectStore.getState().load({ ...createProject('Shop'), sources: [table('customers'), table('orders')] });
+    useAttachments.setState({ sources: { customers: 'detached', orders: 'detached' } });
+    render(<FilesNotKeptBanner supported={false} />);
+    expect(screen.getByRole('status').textContent).toContain('Choose shop.accdb again to read it');
+    expect(screen.getByRole('button', { name: 'Choose 1 file' })).toBeTruthy();
+  });
+
   it('stays away where the browser keeps file handles, or nothing needs choosing', () => {
     const { unmount } = render(<FilesNotKeptBanner supported />);
     expect(screen.queryByTestId('files-not-kept-banner')).toBeNull();
@@ -59,6 +68,15 @@ describe('matching files chosen together to the sources waiting for them', () =>
     expect(pairs.map((p) => [p.source.id, p.file.name])).toEqual([
       ['p', 'prices.parquet'],
       ['o', 'orders-2026.csv'],
+    ]);
+  });
+
+  it('gives one file to every source named for it, such as the tables of one Access database', () => {
+    const pairs = matchFiles([src('c', 'shop.accdb', 'access'), src('o', 'shop.accdb', 'access'), src('x', 'x.csv')], [f('shop.accdb'), f('x2.csv')]);
+    expect(pairs.map((p) => [p.source.id, p.file.name])).toEqual([
+      ['c', 'shop.accdb'],
+      ['o', 'shop.accdb'],
+      ['x', 'x2.csv'],
     ]);
   });
 

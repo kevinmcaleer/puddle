@@ -1,7 +1,7 @@
 // Shapes shared by the SheetJS worker and the main thread. Nothing here imports SheetJS.
 
-/** The DuckDB type a sheet column is given. */
-export type SheetColumnType = 'BIGINT' | 'DOUBLE' | 'DATE' | 'TIMESTAMP' | 'BOOLEAN' | 'VARCHAR';
+/** The DuckDB type a sheet column is given. BLOB is only used by Access databases (src/access). */
+export type SheetColumnType = 'BIGINT' | 'DOUBLE' | 'DATE' | 'TIMESTAMP' | 'BOOLEAN' | 'VARCHAR' | 'BLOB';
 
 /** A sheet in a workbook and the size of its used range. */
 export interface SheetInfo {
@@ -26,7 +26,7 @@ export interface SheetReadOptions {
 export interface SheetColumn {
   name: string;
   type: SheetColumnType;
-  values: (number | string | boolean | null)[];
+  values: (number | string | boolean | Uint8Array | null)[];
 }
 
 export interface SheetData {

@@ -8,6 +8,7 @@ import { summarise, useRuleStore } from '../flow/rules';
 import { useNodeStatus } from '../flow/status';
 import { hasNumberedInputs, inputPorts, useProject, type GraphNode } from '../model';
 import { useAttachments } from '../sources/attachments';
+import { isAccessSource, useAccessReads } from '../sources/access';
 import { isExcelSource, useExcelReads } from '../sources/excel';
 import { isXmlSource, useXmlReads } from '../sources/xml';
 import { urlProblem, useUrlFetches } from '../sources/url';
@@ -47,10 +48,11 @@ export function PuddleNode({ data, selected }: NodeProps<PuddleFlowNode>) {
   const fetch = useUrlFetches((s) => (source?.kind === 'url' ? s.fetches[source.id] : undefined));
   const excel = useExcelReads((s) => (source && isExcelSource(source) ? s.reads[source.id] : undefined));
   const xml = useXmlReads((s) => (source && isXmlSource(source) ? s.reads[source.id] : undefined));
+  const access = useAccessReads((s) => (source && isAccessSource(source) ? s.reads[source.id] : undefined));
   const fileChosen = useAttachments((s) => (source ? (s.sources[source.id] ?? 'detached') !== 'detached' : false));
-  // An Excel sheet or XML whose file is here but not read yet (or that can't be read): reading, or why not.
-  const sheetPending = !!source && (isExcelSource(source) || isXmlSource(source)) && fileChosen;
-  const read = excel ?? xml;
+  // An Excel sheet, Access table or XML whose file is here but not read yet (or that can't be read): reading, or why not.
+  const sheetPending = !!source && (isExcelSource(source) || isAccessSource(source) || isXmlSource(source)) && fileChosen;
+  const read = excel ?? access ?? xml;
   const readFailed = sheetPending && read?.state === 'failed';
   // A URL source being fetched, or a sheet being read, is dimmed until its data arrives; one that can't be read says why.
   const fetching = !readFailed && ((source?.kind === 'url' && fetch?.state !== 'failed') || sheetPending);
@@ -64,7 +66,7 @@ export function PuddleNode({ data, selected }: NodeProps<PuddleFlowNode>) {
         ? undefined
         : 'File not connected. Choose it again in the inspector.';
   return (
-    <div data-testid={`node-${node.name}`} data-status={status.state} data-rules={rule?.status} data-export={node.type === 'output' && ok ? (blocked ? 'blocked' : 'ready') : undefined} data-fetch={fetch?.state} data-sheet={excel?.state} data-xml={xml?.state}>
+    <div data-testid={`node-${node.name}`} data-status={status.state} data-rules={rule?.status} data-export={node.type === 'output' && ok ? (blocked ? 'blocked' : 'ready') : undefined} data-fetch={fetch?.state} data-sheet={excel?.state} data-access={access?.state} data-xml={xml?.state}>
       <NodeCard
         kind={cardKind(node.type)}
         name={heading.name}

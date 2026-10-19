@@ -21,6 +21,7 @@ import { compareWith, offeredNode, togglePin, viewHere } from '../results/pin';
 import { ResultsTable } from '../results/ResultsTable';
 import { useResultsStore } from '../results/state';
 import { ACCEPT } from '../sources/detect';
+import { useAccessSources } from '../sources/access';
 import { useExcelSources } from '../sources/excel';
 import { useSchemaTableSync } from '../schemaTables/state';
 import { LOAD_FAILURES, projectSchema } from '../compiler';
@@ -257,6 +258,7 @@ export function AppShell() {
   const hasOutput = project.nodes.some((n) => n.type === 'output');
   const schemaTables = projectSchema(project.schema.dbml).tables;
   useExcelSources();
+  useAccessSources();
   useXmlSources();
   useSchemaTableSync();
   useFlowEvaluation();
