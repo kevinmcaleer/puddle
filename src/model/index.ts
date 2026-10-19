@@ -11,6 +11,7 @@ export { setAppendSpec, swapAppendInputs } from './append';
 export { setLookupSpec, swapLookupInputs } from './lookup';
 export { addQueryField, addQueryJoin, addQueryOrRow, addQueryTable, criteriaCell, moveQueryField, moveQueryTable, removeQueryField, removeQueryJoin, removeQueryOrRow, removeQueryTable, setQueryCriteria, setQueryDesign, setQueryJoinKind, setQuerySpec, setQuerySql, updateQueryField } from './query';
 export { editSchema, moveSchemaElements, setSchemaDbml } from './schemaDoc';
+export { deriveSchemaRules, keepSchemaRules, setSchemaCheck, syncSchemaRules } from './schemaRules';
 export { useProject, useProjectStore, type ProjectState } from './store';
 export { placeStep, placeStepAt, type Placed, type StepTarget } from './quickfix';
 export { addRule, dismissSuggestion, removeRule, updateRule } from './rules';

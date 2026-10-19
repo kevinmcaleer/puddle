@@ -41,6 +41,8 @@ export interface RelTable {
   kind: NodeKind;
   /** Undefined while they're being read, or when the node can't run. */
   columns?: ColumnSchema[];
+  /** The schema table the node is checked against (see schemaRules), named as the schema writes it. */
+  checkedAgainst?: string;
 }
 
 /** The columns a node is known to have, or undefined while they aren't known. */
@@ -141,7 +143,13 @@ export function findRelationships(project: Project, columnsOf: ColumnsOf): Relat
   return [...found.values()];
 }
 
-const asTable = (n: GraphNode, columnsOf: ColumnsOf): RelTable => ({ nodeId: n.id, name: n.name, kind: cardKind(n.type), columns: columnsOf(n.id) });
+const asTable = (n: GraphNode, columnsOf: ColumnsOf): RelTable => ({
+  nodeId: n.id,
+  name: n.name,
+  kind: cardKind(n.type),
+  columns: columnsOf(n.id),
+  ...(n.schemaCheck ? { checkedAgainst: n.schemaCheck.schema === 'public' ? n.schemaCheck.table : `${n.schemaCheck.schema}.${n.schemaCheck.table}` } : {}),
+});
 
 /**
  * The tables to draw: every source and Schema table, and every other node a relationship ends on. Related tables come next to each

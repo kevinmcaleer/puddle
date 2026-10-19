@@ -194,6 +194,11 @@ function RelationshipPane({ tables, relationships, unique, selected, onSelect }:
             <div className="puddle-qd-table__head" onPointerDown={(e) => startMove(pos, e)} title="Drag to move, or focus and use the arrow keys" tabIndex={0} role="group" aria-label={`Move ${t.name} with the arrow keys`} onKeyDown={moveKeys(pos)}>
               <Icon name={NODE_KIND[t.kind].icon} />
               <span className="puddle-qd-table__name">{t.name}</span>
+              {t.checkedAgainst && (
+                <span className="puddle-rel-table__checked" title={`Checked against ${t.checkedAgainst} in the schema`} aria-label={`Checked against ${t.checkedAgainst} in the schema`} role="img" data-testid={`rel-checked-${t.name}`}>
+                  <Icon name="tick" size={12} />
+                </span>
+              )}
             </div>
             <ul data-rel-list={t.nodeId} className="puddle-qd-table__fields" onScroll={remeasure}>
               {t.columns ? (
