@@ -44,6 +44,8 @@ export interface SchemaDiagramProps {
   onSelectionChange?: (ids: string[]) => void;
   /** In a view: take these tables (by diagram id) out of it. Adds "Hide from view" to the table menu. */
   onHide?: (ids: string[]) => void;
+  /** Tables to select, by diagram id, each time a new list is given (the tables just imported). */
+  choose?: string[];
 }
 
 /** What the popover shows, and where: next to a table or a column's row. */
@@ -147,7 +149,7 @@ const Detail = ({ term, children }: { term: string; children: ReactNode }) => (
  * links to the columns that use them, group frames and sticky notes. Pans and zooms with the wheel, a trackpad, the
  * toolbar or the keyboard; a search box finds a table and centres it.
  */
-export function SchemaDiagram({ schema, positions, detail = 'full', current, onMove, onPick, onEdit, only, initialView, onViewChange, onSelectionChange, onHide }: SchemaDiagramProps) {
+export function SchemaDiagram({ schema, positions, detail = 'full', current, onMove, onPick, onEdit, only, initialView, onViewChange, onSelectionChange, onHide, choose }: SchemaDiagramProps) {
   const [moving, setMoving] = useState<Record<string, Point>>();
   const shown = useMemo(() => (moving ? { ...positions, ...moving } : positions), [positions, moving]);
   const diagram = useMemo(() => layoutDiagram(schema, shown, { detail, only }), [schema, shown, detail, only]);
@@ -171,12 +173,18 @@ export function SchemaDiagram({ schema, positions, detail = 'full', current, onM
   const [ask, setAsk] = useState<Ask | null>(null);
   const [linking, setLinking] = useState<{ from: Point; to: Point } | null>(null);
   const [refAsk, setRefAsk] = useState<{ from: ColumnRef; to: ColumnRef; at: PaneSpot } | null>(null);
-  const [selected, setSelected] = useState<string[]>([]);
+  const [selected, setSelected] = useState<string[]>(() => choose ?? []);
   const heard = useRef({ onSelectionChange, onViewChange });
   useEffect(() => {
     heard.current = { onSelectionChange, onViewChange };
   });
   useEffect(() => heard.current.onSelectionChange?.(selected), [selected]);
+  // A new list to choose replaces the selection, set while rendering so no effect runs it a frame late.
+  const [chosen, setChosen] = useState(choose);
+  if (choose !== chosen) {
+    setChosen(choose);
+    if (choose) setSelected(choose);
+  }
   // The pan and zoom are kept once they settle, not on every frame of a drag or a pinch.
   useEffect(() => {
     if (view === START) return;
