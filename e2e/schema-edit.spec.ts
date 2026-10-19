@@ -60,7 +60,8 @@ test('editing on the diagram writes the DBML: a dragged ref, a renamed table, an
   await expect(text).toHaveValue(`${DBML.replace('email varchar', 'email varchar [not null]')}\nRef: orders.user_id > users.id\n`);
 });
 
-// Regression: the Add a ref box was placed at the dropped-on column and ran past the bottom of a short pane.
+// Regression: the Add a ref box was placed at the dropped-on column and ran past the bottom of a short pane, and its
+// focused field scrolled the diagram to show it.
 test('the Add a ref box stays inside the diagram when the drop is low in it', async ({ page }) => {
   await openApp(page);
   await page.getByTestId('project-menu').click();
@@ -81,5 +82,6 @@ test('the Add a ref box stays inside the diagram when the drop is low in it', as
   await expect(ask).toBeVisible();
   const box = (await ask.boundingBox())!;
   const pane = (await ask.locator('xpath=..').boundingBox())!;
+  expect(box.y).toBeGreaterThanOrEqual(pane.y);
   expect(box.y + box.height).toBeLessThanOrEqual(pane.y + pane.height);
 });
