@@ -1,12 +1,12 @@
 # The canvas
 
-The canvas is where your flow lives. Data runs left to right along wires: sources feed transforms and other nodes, and those feed outputs. Every node shows its row and column counts, and a badge when one of its rules fails.
+The canvas is where your flow lives. Tabs above it switch to the {doc}`relationships` view and, once the project has a Query node, the {doc}`query designer <query-designer>`. Data runs left to right along wires: sources feed transforms and other nodes, and those feed outputs. Every node shows its row and column counts, and a badge when one of its rules fails.
 
 ![A flow on the canvas: two sources wired into a Join node](_static/screenshots/combine-join.png)
 
 ## Kinds of node
 
-**Add** in the toolbar adds a source, a node after the selected one, or a step, which goes in a Transform node of its own after the selected node.
+**Add** in the toolbar adds a source, a node after the selected one, or a step, which goes in a Transform node of its own after the selected node. New nodes always arrive wired, so with nothing selected the nodes and steps wait, marked **Select a node first**; sources can be added at any time.
 
 ![The Add menu: sources, then the nodes From template, Join, Append, Lookup, Query and Output, then every step](_static/screenshots/canvas-add-node-menu.png)
 
@@ -30,12 +30,13 @@ The canvas is where your flow lives. Data runs left to right along wires: source
 - Drag a node to move it. **Auto layout** (L), in the canvas controls at the bottom left, arranges the whole flow neatly.
 - Drag from a node's right-hand handle to another node's input to wire them. Select a wire and press Delete to remove it.
 - The zoom buttons sit at the bottom left. An overview map appears at the bottom right when part of the flow is off screen.
+- The canvas keeps what you are working on in view. A node you add or select off screen is panned into view, and a project you open, such as a sample, starts with all its nodes showing. A project you have already panned or zoomed opens where you left it.
 
 ![The selection bar shown when two sources are selected](_static/screenshots/combine-selection-bar.png)
 
 ## Using the keyboard
 
-Arrow keys move between connected nodes, Enter opens the selected node, T opens the Add menu to add a step after it, O adds an Output, and G groups the selected nodes. C starts wiring the selected node: move to another node and press Enter to wire or unwire them. **?** lists every shortcut (see {doc}`settings`).
+Arrow keys move between connected nodes and show each one in the results, as a click does (with the results pinned they only select, and V moves the pin to the selected node). Enter opens the selected node, T opens the Add menu to add a step after it, O adds an Output, and G groups the selected nodes. C starts wiring the selected node: move to another node and press Enter to wire or unwire them. 1, 2, 3 and 4 switch between the canvas, the relationships view, the query designer and the Schema view. **?** lists every shortcut (see {doc}`settings`).
 
 ## Groups
 

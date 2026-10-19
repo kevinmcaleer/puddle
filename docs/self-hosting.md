@@ -43,4 +43,4 @@ Google Drive sync needs a Google Cloud OAuth client ID at build time: `--build-a
 
 ## Browser support
 
-Puddle runs in Chrome, Edge, Firefox and Safari. Only Chrome and Edge keep access to files between visits, so in Firefox and Safari each file is chosen again when a project reopens.
+Puddle runs in Chrome, Edge, Firefox and Safari. Only Chrome and Edge keep access to files between visits, so in Firefox and Safari the files are chosen again, all in one go, when a project reopens.

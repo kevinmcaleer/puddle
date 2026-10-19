@@ -139,4 +139,4 @@ Files are read from disk in pieces, so a source can be larger than your computer
 
 ## Reopening a project
 
-Projects save how to read each file, not the file itself. When you reopen a project in Chrome or Edge, Puddle asks once for permission and reconnects every file in one click. Firefox and Safari can't keep access to files between visits, so each source asks you to choose its file again, and Puddle checks that the file you choose has the columns the project expects.
+Projects save how to read each file, not the file itself. When you reopen a project, a note headed **Files from last time** lists the files it needs. In Chrome or Edge, Puddle asks once for permission and reconnects every file in one click. Firefox and Safari can't keep access to files between visits, so the note's button (**Choose 2 files**, say) takes them all in one go: pick every file at once, and each goes to the source with its name (a renamed file goes to the one source of its kind still waiting). You can also choose a file from its own node. Either way, Puddle checks that the file you choose is the one the project was built on.

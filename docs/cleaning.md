@@ -85,7 +85,7 @@ A number or date column can't hold a word such as `empty`. Turn on **Change to t
 
 ### Each step as a new node
 
-**Add each step as a new node** is on for a new project: every step you add from the Add menu or the results table (by the column menu or a quick fix) gets a Transform node of its own, wired after the one you're viewing, the way Power Query lists its applied steps. Turn it off, at the bottom of the column menu or in the project settings, to stack those steps into the Transform you're viewing instead. Viewing an earlier step of a Transform always adds the step in place, after the one you're viewing. A stacked Transform's card lists its steps on the canvas, and a group of one-step nodes can [merge into one node](#merging-a-group-into-one-node) and come apart again.
+**Add each step as a new node** is on for a new project: every step you add from the Add menu or the results table (by the column menu or a quick fix) gets a Transform node of its own, wired after the one you're viewing, the way Power Query lists its applied steps. Turn it off in the project settings (the inspector's **Project** tab) to stack those steps into the Transform you're viewing instead. Viewing an earlier step of a Transform always adds the step in place, after the one you're viewing. A stacked Transform's card lists its steps on the canvas, and a group of one-step nodes can [merge into one node](#merging-a-group-into-one-node) and come apart again.
 
 ## The Add menu
 

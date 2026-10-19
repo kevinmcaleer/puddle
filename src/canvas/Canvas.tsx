@@ -11,9 +11,10 @@ import {
   type EdgeChange,
   type NodeChange,
   type OnMove,
+  type Viewport,
 } from '@xyflow/react';
 import '@xyflow/react/dist/base.css';
-import { useCallback, useEffect, useMemo, useState, type DragEvent, type FocusEvent } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent, type FocusEvent } from 'react';
 import { addFiles, addNodeAfterSelection, loadIntoSchemaTable, wireNodes } from '../app/actions';
 import { openTemplateDialog } from '../templates/actions';
 import { droppedFiles } from '../sources/handles';
@@ -62,6 +63,7 @@ import { TourOffer } from '../tour/TourOffer';
 import { CANVAS_ARIA, nodeLabel, wireLabel } from './a11y';
 import { formatLabel, sourceFormatLabel } from './formatLabel';
 import { focusNodeWhenDrawn } from './focusNode';
+import { revealNodeWhenDrawn, shouldFit } from './reveal';
 import { portBroken, portName } from './ports';
 import { PuddleNode, type PuddleFlowNode } from './PuddleNode';
 import { GroupFrame, GroupNode, type GroupFlowNode, type GroupFrameFlowNode } from './GroupNode';
@@ -451,9 +453,27 @@ export function Canvas({ onAddSource, onLayout }: { onAddSource: () => void; onL
   };
   // And a node selected from the keyboard (an arrow key, T or O) takes the focus, while the keyboard is on the canvas.
   const selectedId = useSession((s) => s.selectedNodeId);
+  // A node selected off screen, added below the others or reached with an arrow key, is panned into view first.
+  const canvasRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
-    if (selectedId) return focusNodeWhenDrawn(selectedId);
-  }, [selectedId]);
+    if (!selectedId) return;
+    const stopReveal = revealNodeWhenDrawn(selectedId, rf, () => canvasRef.current);
+    const stopFocus = focusNodeWhenDrawn(selectedId);
+    return () => (stopReveal(), stopFocus());
+  }, [selectedId, rf]);
+  // A project opened at the untouched viewport with nodes off screen (a sample, say) starts with them all in view.
+  // Fitted to 100% at most, and again as the nodes finish drawing, until the person moves the canvas themselves.
+  const projectId = project.id;
+  const lastFit = useRef<{ projectId: string; viewport: Viewport } | null>(null);
+  useEffect(() => {
+    const el = canvasRef.current;
+    const drawn = rf.getNodes().filter((n) => n.type !== 'frame');
+    if (!el || drawn.some((n) => !measured[n.id])) return;
+    const boxes = drawn.map((n) => ({ ...n.position, ...measured[n.id]! }));
+    const mine = lastFit.current?.projectId === projectId ? lastFit.current.viewport : null;
+    if (!shouldFit(rf.getViewport(), mine, boxes, { width: el.clientWidth, height: el.clientHeight })) return;
+    void rf.fitView({ maxZoom: 1, padding: 0.1 }).then(() => (lastFit.current = { projectId, viewport: rf.getViewport() }));
+  }, [projectId, measured, rf]);
 
   const onMoveEnd: OnMove = useCallback((_e, viewport) => setView({ canvasViewport: viewport }), [setView]);
 
@@ -467,6 +487,7 @@ export function Canvas({ onAddSource, onLayout }: { onAddSource: () => void; onL
 
   return (
     <div
+      ref={canvasRef}
       className={`puddle-canvas relative h-full min-h-0 ${dropping ? 'is-dropping' : ''}`}
       data-testid="canvas"
       onFocus={onFocus}

@@ -206,7 +206,7 @@ test('rules, outputs and export', async ({ page }) => {
   await expect(page.getByTestId('export-log')).toContainText('Exported anyway past');
   await shotPanel(page, 'export-output-settings', page.getByTestId('output-settings'));
 
-  await page.getByRole('button', { name: 'Export quality report' }).click();
+  await page.getByRole('button', { name: 'Write quality report' }).click();
   await shot(page, 'export-report-dialog', page.getByRole('dialog'));
 });
 
@@ -282,6 +282,8 @@ test('query designer', async ({ page }) => {
   await page.getByLabel('Criteria value for total').fill('5');
   await page.getByLabel('Criteria value for total').press('Enter');
   await expect(page.getByTestId('results-title')).toHaveText('Query 1');
+  // Filling in the criteria scrolled the designer down; the shot starts at its bar.
+  await designer.evaluate((el) => el.scrollTo(0, 0));
   await shot(page, 'query-designer');
   await designer.getByRole('tab', { name: 'SQL' }).click();
   await expect(designer.getByLabel('SQL', { exact: true })).toHaveValue(/WHERE t2.total > 5/);
@@ -368,7 +370,7 @@ test('projects, templates and recipes', async ({ page }) => {
   await shot(page, 'recipes-gallery', page.getByTestId('recipe-gallery'));
   await page.getByTestId('recipe-gallery').getByRole('listitem', { name: 'Tidy a contact list' }).getByRole('button', { name: 'Use recipe' }).click();
   await expect(page.getByTestId('recipe-attach')).toBeVisible();
-  const reconnect = page.getByRole('status').filter({ hasText: 'Files aren’t kept in this browser' });
+  const reconnect = page.getByRole('status').filter({ hasText: 'Files from last time' });
   if (await reconnect.isVisible()) await reconnect.getByRole('button', { name: 'Dismiss' }).click();
   await shot(page, 'recipes-attach');
 });

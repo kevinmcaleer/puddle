@@ -17,8 +17,8 @@ test('without file handles, a reopened project says plainly to choose its files 
   await expect(page.getByTestId('engine-ready')).toBeVisible({ timeout: 45_000 });
   await expect(node(page, 'customers.csv')).toHaveAttribute('data-status', 'detached');
   const banner = page.getByTestId('files-not-kept-banner');
-  await expect(banner).toContainText('Files aren’t kept in this browser');
-  await expect(banner).toContainText('choose customers.csv again from its node');
+  await expect(banner).toContainText('Files from last time');
+  await expect(banner).toContainText('Choose customers.csv again to read it');
   // The one-click reconnect is for browsers that keep handles; it isn't offered here.
   await expect(page.getByTestId('reconnect-banner')).toHaveCount(0);
 
@@ -31,7 +31,7 @@ test('without file handles, a reopened project says plainly to choose its files 
   await expectRows(page, 4);
 });
 
-test('the note about files not being kept can be dismissed', async ({ page }) => {
+test('every file a reopened project needs is chosen in one go, or the note dismissed', async ({ page }) => {
   await openApp(page);
   await addFiles(page, [fixture('customers.csv'), fixture('orders.tsv')]);
   await expect(node(page, 'orders.tsv')).toHaveAttribute('data-status', 'ok', { timeout: 20_000 });
@@ -39,7 +39,19 @@ test('the note about files not being kept can be dismissed', async ({ page }) =>
   await page.reload();
   await expect(page.getByTestId('engine-ready')).toBeVisible({ timeout: 45_000 });
   const banner = page.getByTestId('files-not-kept-banner');
-  await expect(banner).toContainText(/choose (customers\.csv and orders\.tsv|orders\.tsv and customers\.csv) again from their nodes/);
+  await expect(banner).toContainText(/Choose (customers\.csv and orders\.tsv|orders\.tsv and customers\.csv) again to read them/);
+
+  // One picker takes both files, in any order, and each goes to the source it belongs to.
+  const chooser = page.waitForEvent('filechooser');
+  await banner.getByRole('button', { name: 'Choose 2 files' }).click();
+  await (await chooser).setFiles([fixture('orders.tsv'), fixture('customers.csv')]);
+  await expect(node(page, 'customers.csv')).toHaveAttribute('data-status', 'ok', { timeout: 20_000 });
+  await expect(node(page, 'orders.tsv')).toHaveAttribute('data-status', 'ok', { timeout: 20_000 });
+  await expect(banner).toHaveCount(0);
+
+  // Reopened again, the note can be dismissed instead.
+  await page.reload();
+  await expect(page.getByTestId('engine-ready')).toBeVisible({ timeout: 45_000 });
   await banner.getByRole('button', { name: 'Dismiss' }).click();
   await expect(banner).toHaveCount(0);
   await expect(node(page, 'orders.tsv')).toHaveAttribute('data-status', 'detached');

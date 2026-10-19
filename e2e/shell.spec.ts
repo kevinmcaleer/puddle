@@ -4,8 +4,9 @@ test('the empty shell renders with every docked region', async ({ page }) => {
   await page.goto('/');
   await expect(page.locator('.ui-wordmark')).toHaveText('Puddle');
   await expect(page.getByRole('button', { name: 'Add', exact: true })).toBeVisible();
-  // Seven controls and no more: the wordmark, the project menu, Add, undo, redo, Help and the inspector toggle.
-  await expect(page.locator('.ui-toolbar').getByRole('button')).toHaveCount(6);
+  // Seven controls and no more: the wordmark (the way to every project), the project menu, Add, undo, redo, Help and
+  // the inspector toggle.
+  await expect(page.locator('.ui-toolbar').getByRole('button')).toHaveCount(7);
   await expect(page.locator('.ui-toolbar .ui-wordmark')).toHaveCount(1);
   await expect(page.getByTestId('canvas')).toBeVisible();
   await expect(page.getByTestId('inspector')).toBeVisible();
@@ -34,12 +35,10 @@ test.describe('with a dark OS theme', () => {
     await expect(html).not.toHaveAttribute('data-theme');
     const system = await bg();
 
-    // The theme lives in the Help menu, as a choice of three.
+    // The theme lives with the other display settings, in the inspector's Project tab, as a choice of three.
     const pickTheme = async (name: string) => {
-      await page.getByTestId('help-menu').click();
-      const item = page.getByRole('menuitemradio', { name });
-      await expect(page.getByRole('group', { name: 'Theme' })).toBeVisible();
-      await item.click();
+      await page.getByRole('tab', { name: 'Project' }).click();
+      await page.getByTestId('display-settings').getByLabel('Theme').selectOption({ label: name });
     };
     await pickTheme('Light');
     await expect(html).toHaveAttribute('data-theme', 'light');
@@ -54,9 +53,9 @@ test.describe('with a dark OS theme', () => {
 
     await page.reload();
     await expect(html).toHaveAttribute('data-theme', 'dark');
-    await page.getByTestId('help-menu').click();
-    await expect(page.getByRole('menuitemradio', { name: 'Dark' })).toHaveAttribute('aria-checked', 'true');
-    await page.getByRole('menuitemradio', { name: 'Match the system' }).click();
+    await page.getByRole('tab', { name: 'Project' }).click();
+    await expect(page.getByTestId('display-settings').getByLabel('Theme')).toHaveValue('dark');
+    await pickTheme('Match the system');
     await expect(html).not.toHaveAttribute('data-theme');
     expect(await bg()).toBe(system);
   });

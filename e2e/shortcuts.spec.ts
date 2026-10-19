@@ -91,11 +91,18 @@ test('building a flow from the keyboard: add, layout, move along the wires, view
   await page.keyboard.press('ArrowRight');
   await isSelected(page, 'Transform 1');
 
-  // Arrows select without viewing (and don't nudge the node); V views.
-  await expect(page.getByTestId('results-title')).not.toHaveText('Transform 1');
-  await page.keyboard.press('v');
+  // Arrows view the node they select, as a click does (and don't nudge the node). With the results pinned they only
+  // select, and V moves the pin to the selection.
   await expect(page.getByTestId('results-title')).toHaveText('Transform 1');
   expect((await store(page)).positions).toEqual(laidOut);
+  await page.keyboard.press('p');
+  await page.keyboard.press('ArrowLeft');
+  await isSelected(page, 'shop-orders.csv');
+  await expect(page.getByTestId('results-title')).toHaveText('Transform 1');
+  await page.keyboard.press('v');
+  await expect(page.getByTestId('results-title')).toHaveText('shop-orders.csv');
+  await page.keyboard.press('p');
+  await page.keyboard.press('ArrowRight');
 
   // Regression: an arrow on a node focused by clicking it used to nudge the node; now it only moves the selection.
   await node(page, 'shop-orders.csv').click();

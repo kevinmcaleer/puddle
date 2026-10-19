@@ -159,9 +159,12 @@ test('the query designer joins tables and moves fields without dragging', async 
   await expect(page.getByRole('group', { name: 'customer_id, column 2 of 2' })).toBeFocused();
 
   // The arrow keys move a focused table.
+  // Focus the table first: focusing scrolls the designer to it, which mustn't count as the move.
   const table = page.getByTestId('query-table-2');
+  const handle = page.getByRole('group', { name: 'Move shop-orders.csv with the arrow keys' });
+  await handle.focus();
   const before = (await table.boundingBox())!;
-  await page.getByRole('group', { name: 'Move shop-orders.csv with the arrow keys' }).press('ArrowDown');
+  await handle.press('ArrowDown');
   await expect.poll(async () => (await table.boundingBox())!.y).toBeCloseTo(before.y + 16, 0);
 
   // Back on the canvas the Query has the keyboard, and Enter opens it in its designer again.

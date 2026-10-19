@@ -55,7 +55,9 @@ import { PROVIDER_IDS, PROVIDERS, useSync } from '../sync';
 import { openSyncDialog } from '../sync/dialogs';
 import { SyncConflictBanner } from '../sync/SyncDialogs';
 import { useSession } from './session';
-import { THEME_ICON, useTheme } from './theme';
+import { afterSelection } from './addMenu';
+import { showView } from './views';
+import { ViewSwitcher } from './ViewSwitcher';
 
 function EngineBadge({ status }: { status: EngineStatus }) {
   if (status.state === 'loading') return <StatusBadge status="pending">Starting DuckDB</StatusBadge>;
@@ -152,13 +154,12 @@ function ResultsTitle() {
   );
 }
 
-/** Help: the user guide, its taxi tutorial, the guided tour (from the start, or from where it was left), the keyboard shortcuts and the theme. */
+/** Help: the user guide, its taxi tutorial, the guided tour (from the start, or from where it was left) and the keyboard shortcuts. */
 function HelpMenu() {
   // Read when the menu opens, so it knows how far the tour got.
   const [progress, setProgress] = useState(readProgress);
   const running = useTour((s) => s.projectId != null);
   const resume = !running && canResume(progress) ? progress.stop : undefined;
-  const theme = useTheme();
   return (
     <Menu
       label={<span className="sr-only">Help</span>}
@@ -170,14 +171,11 @@ function HelpMenu() {
         ...(resume != null ? [{ label: 'Resume the tour', icon: 'info' as const, hint: `Stop ${resume + 1} of ${TOUR_STOPS.length}`, onSelect: () => startTourSafely(resume) }] : []),
         { label: 'Take the tour', icon: 'info', onSelect: () => startTourSafely() },
         { label: 'Keyboard shortcuts', icon: 'keyboard', shortcut: shortcutText('help'), onSelect: () => useSession.getState().setShortcutsOpen(true) },
-        ...THEMES.map((t) => ({ label: THEME_NAME[t], icon: THEME_ICON[t], group: 'Theme', checked: theme.preference === t, onSelect: () => theme.setPreference(t) })),
       ]}
     />
   );
 }
 
-const THEMES = ['system', 'light', 'dark'] as const;
-const THEME_NAME = { system: 'Match the system', light: 'Light', dark: 'Dark' } as const;
 
 /** The strip's sync badge: nothing for a project that doesn't sync. */
 function useSyncBadge() {
@@ -230,8 +228,8 @@ function Strip() {
 
 /**
  * The fixed layout every feature lives in: toolbar on top, canvas in the centre, inspector docked right,
- * results docked below the canvas, status strip underneath. The toolbar keeps to seven controls: the wordmark,
- * the project menu, Add, undo, redo, Help and the inspector toggle; the rest lives in menus or on the canvas.
+ * results docked below the canvas, status strip underneath. The toolbar keeps to seven controls: the wordmark
+ * (the way back to every project), the project menu, Add, undo, redo, Help and the inspector toggle; the rest lives in menus or on the canvas.
  */
 export function AppShell() {
   const project = useProject();
@@ -242,6 +240,8 @@ export function AppShell() {
   const inspectorOpen = useSession((s) => s.inspectorOpen);
   const consoleOpen = useSession((s) => s.consoleOpen);
   const designerId = useSession((s) => s.designerNodeId);
+  const selectedId = useSession((s) => s.selectedNodeId);
+  const hasSelection = !!selectedId && !!nodeById(project, selectedId);
   const designing = designerId ? nodeById(project, designerId) : undefined;
   const schemaOpen = useSession((s) => s.schemaOpen);
   // The Schema view belongs to the project it was opened on.
@@ -294,6 +294,10 @@ export function AppShell() {
     'open-node': () => (session().schemaOpen || session().relationshipsOpen ? false : openSelected(focusInspector)),
     connect: onCanvas(startWiring),
     cancel: onCanvas(cancelWiring),
+    'show-canvas': () => showView(project, 'canvas'),
+    'show-relationships': () => showView(project, 'relationships'),
+    'show-designer': () => showView(project, 'designer'),
+    'show-schema': () => showView(project, 'schema'),
   };
   useShortcuts(actions, (text) => void addPastedText(text));
 
@@ -302,14 +306,15 @@ export function AppShell() {
       <div className="grid h-full min-w-[960px] grid-rows-[auto_auto_minmax(0,1fr)_auto_auto] bg-surface-panel text-body text-ink">
         <h1 className="sr-only">{project.name}</h1>
         <Toolbar
+          onHome={() => void goHome()}
           project={project.name}
           projectMenu={[
             { label: 'Rename', icon: 'text', onSelect: () => openProjectDialog({ kind: 'rename', id: project.id, name: project.name }) },
             { label: 'Relationships', icon: 'relationships', hint: 'Tables and keys, DBML', onSelect: () => session().setRelationshipsOpen(true) },
             { label: 'Schema', icon: 'schema', hint: 'Design tables in DBML', onSelect: () => session().setSchemaOpen(true) },
-            { label: 'Export project', icon: 'export', hint: '.puddle.json', onSelect: exportProject },
-            { label: 'Import project', icon: 'source', onSelect: () => importInput.current?.click() },
-            { label: 'Export recipe', icon: 'template', hint: 'Steps, no data', onSelect: () => openExportRecipe() },
+            { label: 'Save project file', icon: 'export', hint: '.puddle.json', onSelect: exportProject },
+            { label: 'Open project file', icon: 'source', onSelect: () => importInput.current?.click() },
+            { label: 'Share as recipe', icon: 'template', hint: 'Steps, no data', onSelect: () => openExportRecipe() },
             { label: 'Open recipe', icon: 'template', hint: '.puddle-recipe.json', onSelect: () => recipeInput.current?.click() },
             ...PROVIDER_IDS.map((id) => ({ label: `Sync to ${PROVIDERS[id]!.label}`, icon: 'refresh' as const, onSelect: () => openSyncDialog({ kind: 'project', provider: id }) })),
             { label: 'Export all', icon: 'export', hint: hasOutput ? 'Every Output node' : 'No Output node yet', shortcut: shortcutText('export-all'), disabled: !hasOutput, onSelect: () => void exportAll() },
@@ -333,16 +338,19 @@ export function AppShell() {
               { label: 'From OData feed', icon: 'database', hint: 'Its entity sets', group: 'Sources', onSelect: () => openODataDialog() },
               { label: 'Paste from clipboard', icon: 'paste', group: 'Sources', onSelect: () => void pasteFromClipboard() },
               { label: 'From template', icon: 'template', hint: 'Saved steps', group: 'Nodes', onSelect: openTemplates },
-              { label: 'Join', icon: 'join', hint: 'Two inputs', group: 'Nodes', onSelect: () => addNodeAfterSelection('join') },
-              { label: 'Append', icon: 'append', hint: 'Stack rows', group: 'Nodes', onSelect: () => addNodeAfterSelection('append') },
-              { label: 'Lookup', icon: 'join', hint: 'Bring columns across', group: 'Nodes', onSelect: () => addNodeAfterSelection('lookup') },
-              { label: 'Query', icon: 'query', hint: 'Design with tables', group: 'Nodes', onSelect: () => addNodeAfterSelection('query') },
-              { label: 'SQL', icon: 'code', hint: 'Write a query', group: 'Nodes', onSelect: () => addNodeAfterSelection('sql') },
-              { label: 'Output', icon: 'output', shortcut: shortcutText('add-output'), group: 'Nodes', onSelect: () => addNodeAfterSelection('output') },
-              // Every table designed in the Schema view, as a node holding its rows (the selected node loads into it).
+              // Every table designed in the Schema view, as a node holding its rows (the selected node, if any, loads into it).
               ...schemaTables.map((t) => ({ label: t.name, icon: 'schema' as const, hint: t.schema === 'public' ? 'Schema table' : `Schema table in ${t.schema}`, group: 'Schema tables', onSelect: () => addSchemaTable(t.schema, t.name) })),
-              // Every step, each making a node of its own after the selected node (T opens the menu with its search focused).
-              ...STEP_GROUPS.flatMap((g) => stepForms().filter((f) => f.group === g).map((f) => ({ label: f.title, group: `${g} steps`, hint: f.newColumn ? 'New column' : undefined, onSelect: () => void addStepFromMenu(f) }))),
+              // Nodes and steps go after the selected node, so with nothing selected they wait (principle 2).
+              ...afterSelection([
+                { label: 'Join', icon: 'join', hint: 'Two inputs', group: 'Nodes', onSelect: () => addNodeAfterSelection('join') },
+                { label: 'Append', icon: 'append', hint: 'Stack rows', group: 'Nodes', onSelect: () => addNodeAfterSelection('append') },
+                { label: 'Lookup', icon: 'join', hint: 'Bring columns across', group: 'Nodes', onSelect: () => addNodeAfterSelection('lookup') },
+                { label: 'Query', icon: 'query', hint: 'Design with tables', group: 'Nodes', onSelect: () => addNodeAfterSelection('query') },
+                { label: 'SQL', icon: 'code', hint: 'Write a query', group: 'Nodes', onSelect: () => addNodeAfterSelection('sql') },
+                { label: 'Output', icon: 'output', shortcut: shortcutText('add-output'), group: 'Nodes', onSelect: () => addNodeAfterSelection('output') },
+                // Every step, each making a node of its own after the selected node (T opens the menu with its search focused).
+                ...STEP_GROUPS.flatMap((g) => stepForms().filter((f) => f.group === g).map((f) => ({ label: f.title, group: `${g} steps`, hint: f.newColumn ? 'New column' : undefined, onSelect: () => void addStepFromMenu(f) }))),
+              ], hasSelection),
             ]}
           />
           <Button variant="ghost" icon="undo" iconOnly aria-label="Undo" title={withShortcut('Undo', 'undo')} disabled={!canUndo} onClick={undo} />
@@ -402,8 +410,11 @@ export function AppShell() {
         />
 
         <div className={inspectorOpen ? 'grid min-h-0 grid-cols-[minmax(0,1fr)_var(--size-inspector)]' : 'grid min-h-0 grid-cols-[minmax(0,1fr)]'}>
-          <main ref={canvas} tabIndex={-1} className="min-h-0 focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-brand" aria-label="Canvas">
-            {schemaOpen ? <SchemaView /> : relationshipsOpen ? <Relationships /> : designing?.type === 'query' ? <QueryDesigner node={designing} /> : <Canvas onAddSource={chooseFiles} onLayout={layoutFlow} />}
+          <main ref={canvas} tabIndex={-1} className="grid min-h-0 grid-rows-[auto_minmax(0,1fr)] focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-brand" aria-label="Canvas">
+            <ViewSwitcher />
+            <div className="min-h-0">
+              {schemaOpen ? <SchemaView /> : relationshipsOpen ? <Relationships /> : designing?.type === 'query' ? <QueryDesigner node={designing} /> : <Canvas onAddSource={chooseFiles} onLayout={layoutFlow} />}
+            </div>
           </main>
 
           {inspectorOpen && (

@@ -32,7 +32,7 @@ async function overriddenExport(page: Page) {
 }
 
 async function exportReport(page: Page, { format, scope, rows }: { format: 'markdown' | 'json' | 'html'; scope?: 'all'; rows?: number }) {
-  await page.getByRole('button', { name: 'Export quality report' }).click();
+  await page.getByRole('button', { name: 'Write quality report' }).click();
   await expect(dialog(page)).toBeVisible();
   await dialog(page).getByLabel('Format').selectOption(format);
   if (scope) await dialog(page).getByLabel('Rules from').selectOption(scope);
@@ -42,10 +42,10 @@ async function exportReport(page: Page, { format, scope, rows }: { format: 'mark
     await dialog(page).getByLabel('Failing rows per rule').fill(String(rows));
   }
   const download = page.waitForEvent('download');
-  await page.getByRole('button', { name: 'Export report' }).click();
+  await page.getByRole('button', { name: 'Save report' }).click();
   const file = await download;
   await expect(dialog(page)).toBeHidden();
-  await expect(page.getByTestId('canvas-notice')).toContainText(`Exported ${file.suggestedFilename()}.`);
+  await expect(page.getByTestId('canvas-notice')).toContainText(`Saved ${file.suggestedFilename()}.`);
   return file;
 }
 

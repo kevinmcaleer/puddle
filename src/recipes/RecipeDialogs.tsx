@@ -18,8 +18,8 @@ function ExportDialog() {
   const close = () => openExportRecipe(false);
   return (
     <Dialog
-      title="Export recipe"
-      confirm="Export recipe"
+      title="Share as recipe"
+      confirm="Share as recipe"
       confirmDisabled={!name.trim()}
       onClose={close}
       onConfirm={() => {

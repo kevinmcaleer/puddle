@@ -134,7 +134,7 @@ function Manage({ template }: { template: Template }) {
         Rename or describe
       </Button>
       <Button size="sm" variant="ghost" icon="export" title="Download as a single-node recipe, to share" onClick={() => exportTemplateRecipe(template)}>
-        Export
+        Save to file
       </Button>
       {deleting ? (
         <>
@@ -185,7 +185,7 @@ function LibraryDialog() {
     <Dialog
       title="Templates"
       confirm="Insert template"
-      confirmDisabled={!chosen || reading}
+      confirmDisabled={!chosen || reading || !feed}
       onClose={close}
       onConfirm={() => {
         if (!chosen) return;
@@ -197,7 +197,7 @@ function LibraryDialog() {
       <div className="flex gap-2">
         <input className="ui-input min-w-0 flex-1" aria-label="Search templates" placeholder="Search templates" value={query} autoFocus onChange={(e) => setQuery(e.target.value)} onKeyDown={onEnter(() => shown[0] && choose(shown[0]))} />
         <Button variant="ghost" icon="source" title="Add a template from a .puddle-recipe.json file" onClick={() => importInput.current?.click()}>
-          Import template
+          Open template file
         </Button>
         <div ref={body} className="flex">
           <OperationButtons ops={templateOperations} within={body} onError={(text) => setImported({ tone: 'fail', text })} />
@@ -223,7 +223,7 @@ function LibraryDialog() {
       {unreadable > 0 && <Banner tone="warn">{unreadable === 1 ? 'One template' : `${unreadable} templates`} can’t be read here: saved by a newer Puddle, or damaged.</Banner>}
       <div className="flex max-h-[40vh] flex-col gap-1 overflow-auto" role="listbox" aria-label="Templates library">
         {!templates.length ? (
-          <p className="text-ink-muted">No templates yet. Select a Transform node, or a group of them, and choose Save as template. A whole flow, sources and all, is a recipe: see Export recipe in the project menu.</p>
+          <p className="text-ink-muted">No templates yet. Select a Transform node, or a group of them, and choose Save as template. A whole flow, sources and all, is a recipe: see Share as recipe in the project menu.</p>
         ) : !shown.length ? (
           <p className="text-ink-muted">No templates match.</p>
         ) : (
@@ -264,7 +264,7 @@ function LibraryDialog() {
             <StepList steps={chosen.steps.map((s) => ({ label: s.label, disabled: !s.enabled }))} onAdd={false} />
           </div>
           {!feed ? (
-            <Banner>No node is selected, so it goes on the canvas unwired, with its steps as they were saved.</Banner>
+            <Banner>Select the node it should follow on the canvas first, then insert it there. Templates can still be renamed, saved to a file or deleted here.</Banner>
           ) : reading ? (
             <p className="text-label text-ink-muted">Reading the columns of {feedNode?.name}…</p>
           ) : !actual ? (

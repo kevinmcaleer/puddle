@@ -76,7 +76,7 @@ for (const theme of ['light', 'dark'] as const) {
       await page.keyboard.press('i');
       await expect(page.getByTestId('inspector')).not.toBeAttached();
       await page.getByTestId('help-menu').click();
-      await expect(page.getByRole('group', { name: 'Theme' })).toBeVisible();
+      await expect(page.getByRole('menuitem', { name: 'Keyboard shortcuts' })).toBeVisible();
       await expectAccessible(page, 'the Help menu');
       await page.keyboard.press('Escape');
       await page.keyboard.press('i');
@@ -107,7 +107,7 @@ for (const theme of ['light', 'dark'] as const) {
 
       await node(page, 'Output 1').click();
       await expectAccessible(page, 'the Output inspector, viewing a waiting node');
-      await page.getByRole('button', { name: 'Export quality report' }).click();
+      await page.getByRole('button', { name: 'Write quality report' }).click();
       await expect(page.getByTestId('report-dialog')).toBeVisible();
       await expectAccessible(page, 'the report dialog');
     });

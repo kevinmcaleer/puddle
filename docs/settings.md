@@ -23,17 +23,16 @@ Run on a schedule
 
 ## Display
 
-Below the project settings, **Display** sets how numbers and dates are shown on this device only. It changes nothing in your data, steps or exports.
+Below the project settings, **Display** sets how Puddle looks on this device only: its theme, and how numbers and dates are shown. It changes nothing in your data, steps or exports.
+
+Theme
+: Match your system, light or dark. The projects screen has a button that switches between them too.
 
 Show numbers and dates as
 : The browser's language, or a locale you choose.
 
 Show dates
 : In the locale's short form, or as ISO 8601 (2026-12-31).
-
-## Theme
-
-**Theme**, in the **Help** menu, picks between matching your system, light and dark.
 
 ![Puddle in the dark theme](_static/screenshots/settings-dark.png)
 

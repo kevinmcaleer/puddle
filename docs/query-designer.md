@@ -2,7 +2,7 @@
 
 A Query node is for those who like Microsoft Access's query designer: put tables on a design surface, drag a field onto another to join them, and build the result in a grid of fields with sorting and criteria.
 
-To make one, select the tables on the canvas and choose **Query these** on the selection bar, or **Query** from **Add**. The designer opens in place of the canvas; **Back to canvas** returns. Selecting the Query node later and pressing Enter opens it again.
+To make one, select the tables on the canvas and choose **Query these** on the selection bar, or **Query** from **Add**. The designer opens in place of the canvas, and the tabs above it (**Canvas**, **Relationships**, **Designer**, **Schema**) move between them, as do the keys 1, 2, 3 and 4; **Back to canvas** returns too. Selecting the Query node later and pressing Enter opens it again.
 
 ![The query designer: two tables joined on customer_id, and a grid of three fields](_static/screenshots/query-designer.png)
 

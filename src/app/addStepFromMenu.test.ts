@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { addNode, addStep, createProject, inputEdges, outputEdges, useProjectStore, type Project, type TransformNode } from '../model';
 import { stepForm } from '../steps';
-import { addStepFromMenu } from './actions';
+import { addNodeAfterSelection, addStepFromMenu, SELECT_FIRST } from './actions';
 import { useSession } from './session';
 
 const present = () => useProjectStore.getState().history.present;
@@ -54,13 +54,18 @@ describe('a step from the Add menu', () => {
     expect(transforms()[0]!.steps.map((s) => s.type)).toEqual(['trimWhitespace', 'removeBlankRows']);
   });
 
-  it('with nothing selected, starts an unwired Transform, whatever is viewed', async () => {
+  it('with nothing selected, adds nothing and asks for the node to follow (principle 2), whatever is viewed', async () => {
     useProjectStore.getState().setView({ viewedNodeId: 'in' });
+    const before = present();
     await addStepFromMenu(trim);
-    const [t] = transforms();
-    expect(t?.steps).toHaveLength(1);
-    expect(inputEdges(present(), t!.id)).toEqual([]);
-    expect(useSession.getState().selectedNodeId).toBe(t!.id);
+    expect(present()).toBe(before);
+    expect(useSession.getState().notice?.text).toBe(SELECT_FIRST);
+  });
+
+  it('adds no node of any kind with nothing selected', () => {
+    const before = present();
+    for (const type of ['output', 'join', 'append', 'lookup', 'query', 'sql'] as const) addNodeAfterSelection(type);
+    expect(present()).toBe(before);
   });
 
   it('stacks a Transform selected at an earlier step, however the project is set', async () => {

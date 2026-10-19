@@ -1,9 +1,10 @@
 import { whenEngine } from '../app/engine';
+import { useSession } from '../app/session';
 import { sourceFileName } from '../compiler';
 import { updateSource, useProjectStore, type Project, type Source } from '../model';
 import { rememberFile, sourceFile } from './add';
 import { markAttached, useAttachments, type Attachment } from './attachments';
-import { formatFromName, SourceError } from './detect';
+import { formatFromName, knownFormat, SourceError } from './detect';
 import { keepHandle, offerHandles, settleSource, supportsFileHandles, useReconnect, type FileHandle } from './handles';
 import { headHash } from './hash';
 import { deleteHandles, loadHandles } from '../persistence/db';
@@ -80,12 +81,57 @@ export async function reattachFile(source: Source, file: File, handle?: FileHand
   return state;
 }
 
-/** Why a source can't be read, and how to fix it. */
 /** What to tell someone whose browser can't keep files between visits (Firefox, Safari), naming the files to choose again. */
 export function filesNotKeptMessage(names: string[]): string {
   const list = names.length <= 2 ? names.join(' and ') : `${names.slice(0, 2).join(', ')} and ${names.length - 2} more`;
-  return `This browser can’t keep access to files between visits, so choose ${list} again from ${names.length === 1 ? 'its node' : 'their nodes'}. In Chrome or Edge, Puddle reopens files with one click.`;
+  return `Choose ${list} again to read ${names.length === 1 ? 'it' : 'them'}. This browser can’t keep access to files between visits; Chrome and Edge reopen them with one click.`;
 }
+
+/**
+ * Pair files chosen together with the detached sources they belong to: by the file's name first (ignoring case), then,
+ * where only one source and one file of a format are left over, those two. Files that fit no source are left out.
+ */
+export function matchFiles<F extends { name: string }>(sources: Source[], files: F[]): { source: Source; file: F }[] {
+  const pairs: { source: Source; file: F }[] = [];
+  const openSources = [...sources];
+  const openFiles = [...files];
+  const take = (source: Source, file: F) => {
+    pairs.push({ source, file });
+    openSources.splice(openSources.indexOf(source), 1);
+    openFiles.splice(openFiles.indexOf(file), 1);
+  };
+  for (const source of [...openSources]) {
+    const name = (source.file?.originalName ?? source.name).toLowerCase();
+    const file = openFiles.find((f) => f.name.toLowerCase() === name);
+    if (file) take(source, file);
+  }
+  for (const source of [...openSources]) {
+    const sameFormat = openSources.filter((s) => s.format === source.format);
+    const files = openFiles.filter((f) => knownFormat(f.name) === source.format);
+    if (sameFormat.length === 1 && files.length === 1) take(source, files[0]!);
+  }
+  return pairs;
+}
+
+/**
+ * Choose files chosen together for the sources waiting for them, matched by name (then by format, when only one of
+ * each is left). Says which files fitted no source.
+ */
+export async function chooseFilesFor(waiting: Source[], files: File[]) {
+  const pairs = matchFiles(waiting, files);
+  const notify = useSession.getState().notify;
+  for (const { source, file } of pairs) {
+    try {
+      await reattachFile(source, file);
+    } catch (e) {
+      notify({ tone: 'fail', text: e instanceof Error ? e.message : String(e) });
+    }
+  }
+  const unused = files.filter((f) => !pairs.some((p) => p.file === f)).map((f) => f.name);
+  if (unused.length) notify({ tone: 'warn', text: `${unused.length <= 2 ? unused.join(' and ') : `${unused.slice(0, 2).join(', ')} and ${unused.length - 2} more`} ${unused.length === 1 ? 'isn’t' : 'aren’t'} a file this project reads. Choose it from the node it belongs to.` });
+}
+
+/** Why a source can't be read, and how to fix it. */
 
 export function detachedMessage(source: Source): string {
   if (!source.file && source.kind === 'file') return `Recipes hold the steps, not the data, so choose a file for ${source.name} to read it.`;

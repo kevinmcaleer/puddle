@@ -1,4 +1,5 @@
 import { useSession } from '../app/session';
+import { useTheme, type ThemePreference } from '../app/theme';
 import { NotesPanel } from '../notes/NotesPanel';
 import { inspectorTabs, shownTab } from './tabs';
 import { useNodeStatus } from '../flow/status';
@@ -145,8 +146,15 @@ function RunnerPath({ source }: { source: Source }) {
   );
 }
 
-/** How numbers and dates look on this device: a viewer's preference, kept out of the project. */
+const THEMES = [
+  { value: 'system', label: 'Match the system' },
+  { value: 'light', label: 'Light' },
+  { value: 'dark', label: 'Dark' },
+];
+
+/** How Puddle looks on this device (the theme, how numbers and dates are shown): a viewer's preference, kept out of the project. */
 function DisplaySettings() {
+  const theme = useTheme();
   const preference = useDisplay((s) => s.preference);
   const setPreference = useDisplay((s) => s.setPreference);
   const format = useDisplayFormat();
@@ -154,6 +162,9 @@ function DisplaySettings() {
   return (
     <Section title="Display">
       <div className="flex flex-col gap-3" data-testid="display-settings">
+        <Field label="Theme" htmlFor="set-theme" hint="On this device only.">
+          <Select id="set-theme" options={THEMES} value={theme.preference} onChange={(e) => theme.setPreference(e.target.value as ThemePreference)} />
+        </Field>
         <Field label="Show numbers and dates as" htmlFor="set-display-locale" hint="On this device only. Values, steps and exports stay as they are.">
           <Select
             id="set-display-locale"

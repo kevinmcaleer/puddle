@@ -83,21 +83,32 @@ test('the minimap appears only once a node runs off the visible canvas, and the 
 test('dragging a wire connects nodes, and a wire that would make a loop is refused with a reason', async ({ page }) => {
   await openApp(page);
   await addFiles(page, [fixture('customers.csv')]);
-  // Regression (flaky on a busy machine): adding a file is asynchronous and selects its node when it lands. If it
-  // landed after the canvas click below, the Transform was added after the source and wired to it. Wait until the
-  // source is in and selected, so the click really leaves nothing selected.
   await expect(page.getByTestId('inspector-source')).toBeVisible();
+  // With nothing selected the Add menu's nodes and steps wait, saying why, so nothing lands unwired (principle 2).
   await page.getByTestId('canvas').click({ position: { x: 20, y: 20 } });
   await expect(page.getByTestId('inspector-source')).toHaveCount(0);
-  // With nothing selected, a step from the Add menu starts a Transform of its own, unwired.
+  await page.getByRole('button', { name: 'Add', exact: true }).click();
+  await expect(page.getByRole('menuitem', { name: /^Remove blank rows/ })).toBeDisabled();
+  await expect(page.getByRole('menuitem', { name: /^Output/ })).toContainText('Select a node first');
+  await page.keyboard.press('Escape');
+  // A Transform added after the source, then unwired, to drag a wire into.
+  await node(page, 'customers.csv').click();
   await addStepNode(page, 'Remove blank rows');
+  await page.getByTestId('canvas').click({ position: { x: 20, y: 20 } });
+  await page.getByTestId('wire-customers.csv->Transform 1').click({ force: true });
+  await page.keyboard.press('Delete');
   await expect(node(page, 'Transform 1')).toHaveAttribute('data-status', 'unwired');
 
   await dragWire(page, 'customers.csv', 'Transform 1', () => expect(page.getByTestId('wire-customers.csv->Transform 1')).toBeAttached({ timeout: 2000 }));
   await expect(node(page, 'Transform 1')).toHaveAttribute('data-status', 'ok');
 
-  await page.getByTestId('canvas').click({ position: { x: 20, y: 20 } });
+  // Transform 2 after Transform 1, then unwired, to drag Transform 1 into it again.
+  await node(page, 'Transform 1').click();
   await addStepNode(page, 'Remove blank rows', 'Transform 2');
+  await page.getByTestId('canvas').click({ position: { x: 20, y: 20 } });
+  await page.getByTestId('wire-Transform 1->Transform 2').click({ force: true });
+  await page.keyboard.press('Delete');
+  await expect(node(page, 'Transform 2')).toHaveAttribute('data-status', 'unwired');
   await dragWire(page, 'Transform 1', 'Transform 2', () => expect(page.getByTestId('wire-Transform 1->Transform 2')).toBeAttached({ timeout: 2000 }));
   // Regression (Firefox in CI): once wired, Transform 2 reads its input and its counts line grows the node, which
   // moves its handles. A drag started while that was happening began beside the handle and dragged the canvas
