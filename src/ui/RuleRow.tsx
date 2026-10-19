@@ -1,4 +1,5 @@
 import { Button } from './Button';
+import { Icon } from './Icon';
 import { cx } from './cx';
 import { abbreviate } from './format';
 import { useDisplayFormat } from './locale';
@@ -23,6 +24,7 @@ export function RuleRow({
   metric: metricText,
   noFailingRows,
   suggestion,
+  source,
 }: {
   name: string;
   expr?: string;
@@ -44,6 +46,8 @@ export function RuleRow({
    * result, because suggestions never run as rules.
    */
   suggestion?: { reason: string; onAdd: () => void; onDismiss: () => void };
+  /** Where a rule comes from when it isn't the user's own, e.g. "From the schema: customers": shown as a glyph. */
+  source?: string;
 }) {
   const display = useDisplayFormat();
   if (suggestion)
@@ -61,6 +65,11 @@ export function RuleRow({
         </span>
       </div>
     );
+  const glyph = source && (
+    <span className="ui-rule__source" title={source} aria-label={source} role="img" data-testid="rule-source">
+      <Icon name="schema" size={12} />
+    </span>
+  );
   const ok = !error && failures === 0;
   const status = disabled ? 'neutral' : pending ? 'pending' : error ? 'fail' : ok ? 'pass' : severity;
   const word = disabled ? 'Off' : pending ? 'Checking' : error ? 'Can’t run' : ok ? 'Pass' : severity === 'warn' ? 'Warn' : 'Fail';
@@ -72,10 +81,14 @@ export function RuleRow({
       </span>
       {onSelect ? (
         <button type="button" className="ui-rule__name text-left" aria-pressed={!!selected} onClick={onSelect}>
+          {glyph}
           {name}
         </button>
       ) : (
-        <span className="ui-rule__name">{name}</span>
+        <span className="ui-rule__name">
+          {glyph}
+          {name}
+        </span>
       )}
       <span className="ui-metric">{metric}</span>
       {expr && <code className="ui-rule__expr">{expr}</code>}

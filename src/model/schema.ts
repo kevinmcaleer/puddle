@@ -134,7 +134,15 @@ export const RuleZ = z.object({
   enabled: z.boolean().default(true),
   severity: z.enum(['warn', 'fail']).default('fail'),
   params: z.record(z.string(), z.unknown()).default({}),
+  /** Derived from the DBML by the node's schema check: rewritten whenever the DBML changes, not edited by hand. */
+  fromSchema: z.object({ schema: z.string(), table: z.string() }).optional(),
 });
+
+/**
+ * Check a node's rows against a table of the project's DBML: its keys, not nulls, enums, refs, checks and types become
+ * rules on the node. `mapping` names the node's column for a DBML column where they differ.
+ */
+export const SchemaCheckZ = z.object({ schema: z.string().default('public'), table: z.string(), mapping: z.record(z.string(), z.string()).default({}) });
 
 const PositionZ = z.object({ x: z.number(), y: z.number() });
 
@@ -149,6 +157,7 @@ const NodeBase = {
   dismissedSuggestions: z.array(z.string()).optional(),
   /** Materialise as a table for reuse (Phase 2). */
   pinnedResult: z.boolean().optional(),
+  schemaCheck: SchemaCheckZ.optional(),
 };
 
 export const SourceNodeZ = z.object({ ...NodeBase, type: z.literal('source'), sourceId: z.string().min(1) });
@@ -462,6 +471,7 @@ export type QueryNode = z.infer<typeof QueryNodeZ>;
 export type SqlSpec = z.infer<typeof SqlSpecZ>;
 export type SqlNode = z.infer<typeof SqlNodeZ>;
 export type TableSpec = z.infer<typeof TableSpecZ>;
+export type SchemaCheck = z.infer<typeof SchemaCheckZ>;
 export type SchemaTableNode = z.infer<typeof SchemaTableNodeZ>;
 export type Port = z.infer<typeof PortZ>;
 export type GraphNode = z.infer<typeof NodeZ>;

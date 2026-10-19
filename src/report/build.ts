@@ -4,6 +4,7 @@ import type { RuleResult } from '../flow/rules';
 import { sampledUpstream, type Sample } from '../flow/sample';
 import { nodeById, topoSort, upstreamIds, type GraphNode, type Project, type Rule, type Source } from '../model';
 import { ruleForm, ruleLabel } from '../rules';
+import { qualified } from '../schema/model';
 
 /** Names the JSON format; bump the number when a field changes meaning or goes away (adding one doesn't). */
 export const REPORT_SCHEMA = 'puddle-quality-report/1';
@@ -120,7 +121,11 @@ export function lastOverride(project: Project, node: GraphNode, rule: Rule): Rep
 export const redactValues = (message: string) => message.replace(/'(?:[^']|'')*'/g, '‘…’');
 
 /** The rule's name as the rules panel shows it: a rule reading another node names it as it is called now. */
-const labelOf = (project: Project, rule: Rule) => (ruleRefs(rule).length ? ruleLabel(rule, (id) => nodeById(project, id)?.name) : rule.label);
+/** A rule's label as it reads now; one derived from the schema says which table it came from. */
+function labelOf(project: Project, rule: Rule): string {
+  const label = ruleRefs(rule).length ? ruleLabel(rule, (id) => nodeById(project, id)?.name) : rule.label;
+  return rule.fromSchema ? `Schema ${qualified(rule.fromSchema.schema, rule.fromSchema.table)}: ${label}` : label;
+}
 
 function statusOf(rule: Rule, result: RuleResult | undefined, override: ReportOverride | undefined): ReportStatus {
   if (!rule.enabled) return 'off';

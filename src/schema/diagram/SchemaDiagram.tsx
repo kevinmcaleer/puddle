@@ -16,6 +16,8 @@ const PAN_FAR = 192;
 const ZOOM_STEP = 1.25;
 /** The popover's width (the design system's 240px popover), its tallest usual height, and its gap from the element. */
 const POP_WIDTH = 240;
+/** A table's popover with its data sample. */
+const POP_WIDE = 360;
 const POP_HEIGHT = 160;
 const POP_GAP = 8;
 
@@ -44,7 +46,16 @@ export interface SchemaDiagramProps {
   onSelectionChange?: (ids: string[]) => void;
   /** In a view: take these tables (by diagram id) out of it. Adds "Hide from view" to the table menu. */
   onHide?: (ids: string[]) => void;
+  /** Tables to select, by diagram id, each time a new list is given (the tables just imported). */
+  choose?: string[];
+  /** A table's data sample, shown under its details when it is hovered or focused. */
+  sample?: (table: Table) => ReactNode;
+  /** More actions on a table's menu (its data: open its rows, fill it with sample rows). */
+  tableActions?: (table: Table) => MenuItem[];
 }
+
+/** A table's menu with more actions, put before its Delete. */
+const withActions = (items: MenuItem[], more: MenuItem[]) => [...items.slice(0, -1), ...more, ...items.slice(-1)];
 
 /** What the popover shows, and where: next to a table or a column's row. */
 interface Pop {
@@ -147,7 +158,7 @@ const Detail = ({ term, children }: { term: string; children: ReactNode }) => (
  * links to the columns that use them, group frames and sticky notes. Pans and zooms with the wheel, a trackpad, the
  * toolbar or the keyboard; a search box finds a table and centres it.
  */
-export function SchemaDiagram({ schema, positions, detail = 'full', current, onMove, onPick, onEdit, only, initialView, onViewChange, onSelectionChange, onHide }: SchemaDiagramProps) {
+export function SchemaDiagram({ schema, positions, detail = 'full', current, onMove, onPick, onEdit, only, initialView, onViewChange, onSelectionChange, onHide, choose, sample, tableActions }: SchemaDiagramProps) {
   const [moving, setMoving] = useState<Record<string, Point>>();
   const shown = useMemo(() => (moving ? { ...positions, ...moving } : positions), [positions, moving]);
   const diagram = useMemo(() => layoutDiagram(schema, shown, { detail, only }), [schema, shown, detail, only]);
@@ -171,12 +182,18 @@ export function SchemaDiagram({ schema, positions, detail = 'full', current, onM
   const [ask, setAsk] = useState<Ask | null>(null);
   const [linking, setLinking] = useState<{ from: Point; to: Point } | null>(null);
   const [refAsk, setRefAsk] = useState<{ from: ColumnRef; to: ColumnRef; at: PaneSpot } | null>(null);
-  const [selected, setSelected] = useState<string[]>([]);
+  const [selected, setSelected] = useState<string[]>(() => choose ?? []);
   const heard = useRef({ onSelectionChange, onViewChange });
   useEffect(() => {
     heard.current = { onSelectionChange, onViewChange };
   });
   useEffect(() => heard.current.onSelectionChange?.(selected), [selected]);
+  // A new list to choose replaces the selection, set while rendering so no effect runs it a frame late.
+  const [chosen, setChosen] = useState(choose);
+  if (choose !== chosen) {
+    setChosen(choose);
+    if (choose) setSelected(choose);
+  }
   // The pan and zoom are kept once they settle, not on every frame of a drag or a pinch.
   useEffect(() => {
     if (view === START) return;
@@ -354,7 +371,8 @@ export function SchemaDiagram({ schema, positions, detail = 'full', current, onM
     if (!f) return;
     // Beside the element, on whichever side has room, and kept inside the pane.
     const room = f.right - r.right;
-    const left = room >= POP_WIDTH + POP_GAP ? r.right - f.left + POP_GAP : Math.max(POP_GAP, r.left - f.left - POP_WIDTH - POP_GAP);
+    const width = sample && !column ? POP_WIDE : POP_WIDTH;
+    const left = room >= width + POP_GAP ? r.right - f.left + POP_GAP : Math.max(POP_GAP, r.left - f.left - width - POP_GAP);
     const top = Math.max(POP_GAP, Math.min(r.top - f.top, f.height - POP_HEIGHT - POP_GAP));
     setPop({ table, column, at: { left, top } });
   };
@@ -395,7 +413,7 @@ export function SchemaDiagram({ schema, positions, detail = 'full', current, onM
     if (!onEdit) return;
     setPop(null);
     const t = box.table;
-    const items = column ? columnMenu(t, column, onEdit, askAt(el, tableRef(t))) : tableMenu(schema, t, onEdit, askAt(el, tableRef(t)), selection(), onHide && (() => onHide([...new Set([box.id, ...selected])])));
+    const items = column ? columnMenu(t, column, onEdit, askAt(el, tableRef(t))) : withActions(tableMenu(schema, t, onEdit, askAt(el, tableRef(t)), selection(), onHide && (() => onHide([...new Set([box.id, ...selected])]))), tableActions?.(t) ?? []);
     setMenu({ x, y, label: column ? `Actions for ${box.label}.${column}` : `Actions for ${box.label}`, items });
   };
   /** The menu key, or Shift+F10, opens an element's menu where it is. */
@@ -801,8 +819,15 @@ export function SchemaDiagram({ schema, positions, detail = 'full', current, onM
         />
       )}
       {popTable && !ask && !refAsk && (
-        <div className="ui-popover puddle-schema-pop" id={popId} role="tooltip" data-testid="schema-popover" style={{ left: pop.at.left, top: pop.at.top }}>
-          {popColumn ? <ColumnDetails schema={schema} table={popTable.table} column={popColumn} /> : <TableDetails table={popTable.table} />}
+        <div className="ui-popover puddle-schema-pop" id={popId} role="tooltip" data-testid="schema-popover" style={{ left: pop.at.left, top: pop.at.top, width: sample && !popColumn ? POP_WIDE : undefined }}>
+          {popColumn ? (
+            <ColumnDetails schema={schema} table={popTable.table} column={popColumn} />
+          ) : (
+            <>
+              <TableDetails table={popTable.table} />
+              {sample?.(popTable.table)}
+            </>
+          )}
         </div>
       )}
     </div>
