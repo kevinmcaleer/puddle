@@ -26,7 +26,7 @@ function useInPane(top: number) {
   // The field focused on opening may have scrolled the pane, which only clips and never scrolls; put it back.
   useLayoutEffect(() => {
     const pane = ref.current?.offsetParent as HTMLElement | null;
-    if (pane) pane.scrollTop = 0;
+    pane?.scrollTo({ top: 0 });
   }, [place]);
   return [ref, place] as const;
 }
