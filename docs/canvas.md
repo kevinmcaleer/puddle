@@ -19,6 +19,7 @@ The canvas is where your flow lives. Data runs left to right along wires: source
 | Append | Stacks the rows of two or more inputs. | {doc}`combining` |
 | Lookup | Brings columns across from a second input, keeping every row of the first. | {doc}`combining` |
 | Query | Designs a query over several tables with a grid, in the style of Access. | {doc}`query-designer` |
+| Schema table | A table designed in the Schema view, as a real DuckDB table holding its records and any rows wired into it, checked against its keys, types and checks. | {doc}`schema` |
 | SQL | One DuckDB query you write over any nodes wired into it, readable as `input1`, `input2`... or by their names. | |
 | Output | Marks data that's ready, and exports it. | {doc}`exporting` |
 

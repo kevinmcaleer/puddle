@@ -88,6 +88,12 @@ describe('buildReport', () => {
     expect(r.nodes[0]!.rules[0]!.failedPercent).toBe(33.33);
   });
 
+  it('names the schema table a derived rule comes from', () => {
+    const p = project({ in: [rule('id', { id: 'schema-unique-id', type: 'unique', label: 'id is unique', params: { columns: ['id'] }, fromSchema: { schema: 'public', table: 'customers' } }), rule('name')] });
+    const r = buildReport(input(p, { results: { in: { results: { 'schema-unique-id': ok(0), name: ok(0) } } } }));
+    expect(r.nodes[0]!.rules.map((x) => x.label)).toEqual(['Schema customers: id is unique', 'No leading or trailing spaces in name']);
+  });
+
   it('gives a table rule its row count but no pass or fail rows', () => {
     const p = project({ in: [{ id: 'n', type: 'rowCount', label: 'At least 10 rows', enabled: true, severity: 'fail', params: { mode: 'atLeast', n: 10 } }] });
     const r = buildReport(input(p, { results: { in: { results: { n: ok(1, 4) } } } }));

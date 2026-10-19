@@ -118,3 +118,9 @@ export async function selectColumnsAt(page: Page, ...xs: number[]) {
     if (k) await page.keyboard.up('Control');
   }
 }
+
+/** A picture of one area of the window, for a subject that is part of a larger element. */
+export async function shotClip(page: Page, name: string, clip: { x: number; y: number; width: number; height: number }) {
+  await page.waitForTimeout(400);
+  await page.screenshot({ path: join(OUT, `${name}.png`), clip, animations: 'disabled', caret: 'hide' });
+}

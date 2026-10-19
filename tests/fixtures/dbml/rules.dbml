@@ -1,0 +1,24 @@
+// A design to check data against: each constraint here is broken once by schema-rules-customers.csv.
+Enum tier {
+  gold
+  silver
+}
+
+Table customers {
+  id int [pk]
+  email varchar [unique, not null]
+  tier tier
+  age int [check: `age >= 0`]
+  joined date
+  note text
+}
+
+Table orders {
+  order_id int [pk]
+  customer_id int [not null, ref: > customers.id]
+  placed timestamp [default: `now()`]
+
+  checks {
+    `order_id > 0` [name: 'positive_id']
+  }
+}

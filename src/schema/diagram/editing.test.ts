@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { parseDbml } from '../parse';
-import { answer, columnMenu, suggestOp, tableMenu, type Ask } from './editing';
+import { answer, columnMenu, suggestOp, tableMenu, topInPane, type Ask } from './editing';
 
 const DBML = 'Table users {\n  id int [pk]\n  email text\n}\nTable orders {\n  id int [pk]\n  user_id int\n}\nTableGroup people {\n  users\n}';
 const schema = parseDbml(DBML).schema;
@@ -85,4 +85,11 @@ describe('the menus', () => {
     items.find((i) => i.label === 'Primary key')!.onSelect();
     expect((edit.mock.calls[0]![0] as (d: string) => string)(DBML)).toContain('  id int\n');
   });
+});
+
+// Regression: a popover opened low in the pane (the Add a ref box after dropping a column near the bottom) ran past it.
+describe('a popover in the pane', () => {
+  it('stays where it was put when it fits', () => expect(topInPane(100, 200, 600)).toBe(100));
+  it('moves up so its bottom shows', () => expect(topInPane(500, 200, 600)).toBe(392));
+  it('keeps its top showing when the pane is shorter than it', () => expect(topInPane(500, 700, 600)).toBe(8));
 });

@@ -21,6 +21,8 @@ cleaning
 combining
 query-designer
 relationships
+schema
+schema-dbml
 reshaping
 quality-rules
 exporting

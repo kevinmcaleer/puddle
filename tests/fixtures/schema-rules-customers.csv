@@ -1,0 +1,5 @@
+id,email,tier,age,joined,note
+1,ada@example.org,gold,30,2024-01-02,first
+2,grace@example.org,silver,-1,2024-02-30,
+2,,bronze,40,2024-03-01,again
+4,ada@example.org,gold,50,2024-04-01,
