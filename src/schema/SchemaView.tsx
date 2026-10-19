@@ -2,7 +2,7 @@ import { useDeferredValue, useEffect, useMemo, useRef, useState, type KeyboardEv
 import { addAllSchemaTables } from '../schemaTables/place';
 import { useSession } from '../app/session';
 import { editSchema, setSchemaDbml, useProject, useProjectStore, type Project } from '../model';
-import { Banner, Button } from '../ui';
+import { Banner, Button, Menu } from '../ui';
 import { tableId, type Point } from './diagram/geometry';
 import { SchemaDiagram } from './diagram/SchemaDiagram';
 import type { DiagramEdit } from './diagram/editing';
@@ -10,6 +10,7 @@ import { DbmlEditor, type DbmlEditorHandle } from './editor/DbmlEditor';
 import { EXAMPLE_DBML } from './example';
 import { parseDbml } from './parse';
 import { addTable } from './edit';
+import { ExportSqlDialog } from './ExportSqlDialog';
 import { SchemaViews } from './SchemaViews';
 import { currentView, hideFromSchemaView, moveInSchemaView, setSchemaZoom, viewPositions, viewTables } from './views';
 import './schema.css';
@@ -55,6 +56,7 @@ export function SchemaView() {
   const [share, setShare] = useState(editorShare);
   const [caret, setCaret] = useState<number | null>(null);
   const [selected, setSelected] = useState<string[]>([]);
+  const [exporting, setExporting] = useState<'sql' | null>(null);
   const view = currentView(project.schema);
   const only = useMemo(() => viewTables(view), [view]);
 
@@ -138,6 +140,11 @@ export function SchemaView() {
         >
           Add all tables
         </Button>
+        <Menu
+          label="Export"
+          button={{ size: 'sm', variant: 'ghost', icon: 'export', disabled: !schema.tables.length }}
+          items={[{ label: 'SQL…', hint: 'PostgreSQL, MySQL, SQL Server, SQLite or DuckDB', onSelect: () => setExporting('sql') }]}
+        />
         <Button size="sm" variant="ghost" onClick={() => apply((p) => setSchemaDbml(p, p.schema.dbml.trim() ? `${p.schema.dbml.trimEnd()}\n\n${EXAMPLE_DBML}` : EXAMPLE_DBML))}>
           Insert example
         </Button>
@@ -215,6 +222,7 @@ export function SchemaView() {
           </div>
         </section>
       </div>
+      {exporting === 'sql' && <ExportSqlDialog schema={schema} onClose={() => setExporting(null)} />}
     </div>
   );
 }

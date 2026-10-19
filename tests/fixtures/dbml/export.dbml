@@ -1,0 +1,41 @@
+// What the SQL export has to handle beyond the shop: another schema, many to many, records, notes and odd types.
+Enum billing.plan {
+  free
+  pro
+}
+
+Table billing.accounts {
+  id uuid [pk]
+  plan billing.plan [not null, default: 'free']
+  active boolean [default: true]
+  settings json
+  location geometry
+  opened date [note: 'When the account was opened']
+
+  Note: 'One per paying customer'
+}
+
+Table authors {
+  id bigint [pk, increment]
+  name varchar(80) [not null]
+  account_id uuid
+}
+
+Table books {
+  id bigint [pk, increment]
+  title text [not null]
+  price decimal(8,2) [check: `price > 0`]
+  added timestamptz [default: `now()`]
+}
+
+Ref: authors.account_id > billing.accounts.id [delete: set null, update: restrict]
+Ref: books.id <> authors.id
+
+records authors(id, name) {
+  1, 'Ursula'
+  2, 'Terry'
+}
+
+records books(id, title, price) [example] {
+  1, 'A sample', 9.99
+}
