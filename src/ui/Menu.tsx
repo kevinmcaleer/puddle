@@ -128,7 +128,7 @@ export function Menu({
             setOpen(true);
           }}
         >
-          {label}
+          {button?.iconOnly && typeof label === 'string' ? <span className="sr-only">{label}</span> : label}
           {!button?.iconOnly && <Icon name="chevron-down" size={14} />}
         </Button>
       )}

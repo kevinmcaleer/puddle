@@ -13,6 +13,14 @@ const items = (pick = vi.fn()) => [
 ];
 
 describe('Menu', () => {
+  // Regression: an icon-only button given a plain text label drew the label over its neighbours (a view's tab, a
+  // version's date in the Schema view); the text is for screen readers only.
+  it('keeps a text label of an icon-only button for screen readers only', () => {
+    render(<Menu label="Actions for View 1" button={{ icon: 'more', iconOnly: true }} items={items()} />);
+    const button = screen.getByRole('button', { name: 'Actions for View 1' });
+    expect(button.querySelector('.sr-only')?.textContent).toBe('Actions for View 1');
+  });
+
   it('shows each item’s shortcut in mono', () => {
     render(<Menu label="Add" items={items()} />);
     fireEvent.click(screen.getByRole('button', { name: 'Add' }));
