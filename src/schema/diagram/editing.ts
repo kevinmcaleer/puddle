@@ -23,10 +23,14 @@ import type { DbmlSchema, RefOp, Table } from '../model';
 import { tableId } from './geometry';
 import { TONE_HEX, TONES, toneOf } from './palette';
 
-/** What else a change to the text moves: a renamed table's place (old and new diagram ids), new elements' places. */
+/**
+ * What else a change to the text moves: a renamed table's place (old and new diagram ids), new elements' places, and a
+ * deleted table's (by diagram id), in every view.
+ */
 export interface EditPlaces {
   renamed?: { from: string; to: string };
   places?: Record<string, { x: number; y: number }>;
+  deleted?: string;
 }
 
 /** A change to the DBML text, made as one undo step with the places it moves. */
@@ -92,8 +96,18 @@ export function suggestOp(schema: DbmlSchema, from: ColumnRef, to: ColumnRef): R
 
 const TONE_NAME: Record<(typeof TONES)[number], string> = { teal: 'Teal', blue: 'Blue', purple: 'Purple', amber: 'Amber', red: 'Red', grey: 'Grey' };
 
-/** A table's right-click menu. `ask` opens a box at the table; `selection` is every table selected with it. */
-export function tableMenu(schema: DbmlSchema, table: Table, edit: DiagramEdit, ask: (kind: Ask['kind'], value: string, extra?: Partial<Ask>) => void, selection: TableRef[]): MenuItem[] {
+/**
+ * A table's right-click menu. `ask` opens a box at the table; `selection` is every table selected with it; `hide`, in
+ * a view, takes the table (and the others selected) out of the view.
+ */
+export function tableMenu(
+  schema: DbmlSchema,
+  table: Table,
+  edit: DiagramEdit,
+  ask: (kind: Ask['kind'], value: string, extra?: Partial<Ask>) => void,
+  selection: TableRef[],
+  hide?: () => void,
+): MenuItem[] {
   const ref = tableRef(table);
   const tone = table.headerColor ? toneOf(table.headerColor) : undefined;
   const group = schema.groups.find((g) => g.tables.some((t) => t.schema === table.schema && t.name === table.name));
@@ -119,7 +133,8 @@ export function tableMenu(schema: DbmlSchema, table: Table, edit: DiagramEdit, a
       ],
       onSelect: () => undefined,
     },
-    { label: 'Delete table', icon: 'cross', group: 'Delete', onSelect: () => edit((d) => deleteTable(d, ref)) },
+    ...(hide ? [{ label: others.length ? `Hide ${others.length + 1} tables from view` : 'Hide from view', icon: 'eye' as const, group: 'View', onSelect: hide }] : []),
+    { label: 'Delete table', icon: 'cross', group: 'Delete', onSelect: () => edit((d) => deleteTable(d, ref), { deleted: tableId(table) }) },
   ];
 }
 

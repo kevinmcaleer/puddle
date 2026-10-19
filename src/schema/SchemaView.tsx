@@ -1,7 +1,7 @@
 import { useDeferredValue, useEffect, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent } from 'react';
 import { addAllSchemaTables } from '../schemaTables/place';
 import { useSession } from '../app/session';
-import { editSchema, moveSchemaElements, setSchemaDbml, useProject, useProjectStore, type Project } from '../model';
+import { editSchema, setSchemaDbml, useProject, useProjectStore, type Project } from '../model';
 import { Banner, Button } from '../ui';
 import { tableId, type Point } from './diagram/geometry';
 import { SchemaDiagram } from './diagram/SchemaDiagram';
@@ -10,6 +10,8 @@ import { DbmlEditor, type DbmlEditorHandle } from './editor/DbmlEditor';
 import { EXAMPLE_DBML } from './example';
 import { parseDbml } from './parse';
 import { addTable } from './edit';
+import { SchemaViews } from './SchemaViews';
+import { currentView, hideFromSchemaView, moveInSchemaView, setSchemaZoom, viewPositions, viewTables } from './views';
 import './schema.css';
 
 const apply = (edit: (p: Project) => Project) => useProjectStore.getState().apply(edit);
@@ -52,6 +54,9 @@ export function SchemaView() {
   const split = useRef<HTMLDivElement>(null);
   const [share, setShare] = useState(editorShare);
   const [caret, setCaret] = useState<number | null>(null);
+  const [selected, setSelected] = useState<string[]>([]);
+  const view = currentView(project.schema);
+  const only = useMemo(() => viewTables(view), [view]);
 
   const current = useMemo(() => {
     if (caret == null) return null;
@@ -180,23 +185,34 @@ export function SchemaView() {
           onKeyDown={dividerKeys}
         />
         <section className="puddle-schema__pane" aria-label="Diagram">
-          {schema.tables.length ? (
-            <SchemaDiagram
-              schema={schema}
-              positions={project.schema.positions}
-              current={current}
-              onMove={(moves: Record<string, Point>) => apply((p) => moveSchemaElements(p, moves))}
-              onPick={pick}
-              onEdit={edit}
-            />
-          ) : (
-            <div className="puddle-schema__empty">
-              <p>Write a Table in the editor to see it here, or insert the example.</p>
-              <Button size="sm" variant="secondary" icon="plus" onClick={() => edit((d) => addTable(d, { schema: 'public', table: 'new_table' }))}>
-                Add a table
-              </Button>
-            </div>
-          )}
+          {schema.tables.length > 0 && <SchemaViews project={project} schema={schema} selected={selected} />}
+          <div className="puddle-schema__stage">
+            {schema.tables.length ? (
+              <SchemaDiagram
+                // A view opens where it was left: its own pan and zoom.
+                key={view?.id ?? 'all'}
+                schema={schema}
+                positions={viewPositions(project.schema, view)}
+                detail={view?.detail ?? project.schema.detail}
+                only={only}
+                initialView={view ? view.zoom : project.schema.zoom}
+                current={current}
+                onMove={(moves: Record<string, Point>) => apply((p) => moveInSchemaView(p, moves))}
+                onPick={pick}
+                onEdit={edit}
+                onViewChange={(zoom) => useProjectStore.getState().amend((p) => setSchemaZoom(p, zoom))}
+                onSelectionChange={setSelected}
+                onHide={view && ((ids) => apply((p) => hideFromSchemaView(p, view.id, ids)))}
+              />
+            ) : (
+              <div className="puddle-schema__empty">
+                <p>Write a Table in the editor to see it here, or insert the example.</p>
+                <Button size="sm" variant="secondary" icon="plus" onClick={() => edit((d) => addTable(d, { schema: 'public', table: 'new_table' }))}>
+                  Add a table
+                </Button>
+              </div>
+            )}
+          </div>
         </section>
       </div>
     </div>

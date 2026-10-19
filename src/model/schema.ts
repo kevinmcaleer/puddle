@@ -378,12 +378,38 @@ export const NodeGroupZ = z.object({
  * The project's schema design (Phase 4): its DBML, which is the source of truth (the schema model is parsed from it,
  * src/schema), and where the diagram draws each table, enum and note, by diagram key (src/schema/diagram).
  */
-export const SchemaDocZ = z.object({
-  dbml: z.string().default(''),
+/** How much of each table the diagram shows: every column, only keys, or only the table names. */
+export const DetailZ = z.enum(['full', 'keys', 'names']);
+
+/** Where the diagram was panned and zoomed to. */
+export const ZoomZ = z.object({ x: z.number(), y: z.number(), k: z.number() });
+
+/**
+ * A named view of the schema diagram: the tables it shows (by diagram id, `table:schema.name`), their places in it,
+ * its detail level and zoom. Groups show with the tables of theirs in the view; the DBML is never changed by a view.
+ */
+export const SchemaViewZ = z.object({
+  id: z.string(),
+  name: z.string(),
+  tables: z.array(z.string()).default([]),
   positions: z.record(z.string(), PositionZ).default({}),
+  detail: DetailZ.default('full'),
+  zoom: ZoomZ.optional(),
 });
 
-export const DEFAULT_SCHEMA_DOC = { dbml: '', positions: {} };
+export const SchemaDocZ = z.object({
+  dbml: z.string().default(''),
+  /** Places in the All tables view, which every other view starts from. */
+  positions: z.record(z.string(), PositionZ).default({}),
+  /** The All tables view's detail level and zoom. */
+  detail: DetailZ.default('full'),
+  zoom: ZoomZ.optional(),
+  views: z.array(SchemaViewZ).default([]),
+  /** The view on show; none is All tables. */
+  view: z.string().optional(),
+});
+
+export const DEFAULT_SCHEMA_DOC = { dbml: '', positions: {}, detail: 'full' as const, views: [] };
 
 export const ProjectZ = z.object({
   id: z.string().min(1),
@@ -447,4 +473,7 @@ export type ProjectView = z.infer<typeof ProjectViewZ>;
 export type Project = z.infer<typeof ProjectZ>;
 export type ExportLogEntry = z.infer<typeof ExportLogEntryZ>;
 export type SchemaDoc = z.infer<typeof SchemaDocZ>;
+export type SchemaView = z.infer<typeof SchemaViewZ>;
+export type Detail = z.infer<typeof DetailZ>;
+export type Zoom = z.infer<typeof ZoomZ>;
 export type Position = z.infer<typeof PositionZ>;

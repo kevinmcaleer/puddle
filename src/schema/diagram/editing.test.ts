@@ -61,6 +61,18 @@ describe('the menus', () => {
     expect((edit.mock.calls[0]![0] as (d: string) => string)(DBML)).toContain('Table users [headercolor: #3498DB] {');
   });
 
+  it('in a view, offer hiding the table (and the others selected); deleting a table says which, so views drop it', () => {
+    const edit = vi.fn();
+    const hide = vi.fn();
+    const items = tableMenu(schema, t, edit, vi.fn(), [{ schema: 'public', table: 'orders' }], hide);
+    const hiding = items.find((i) => i.label === 'Hide 2 tables from view')!;
+    hiding.onSelect();
+    expect(hide).toHaveBeenCalled();
+    expect(tableMenu(schema, t, edit, vi.fn(), []).some((i) => i.label.startsWith('Hide'))).toBe(false);
+    items.find((i) => i.label === 'Delete table')!.onSelect();
+    expect(edit.mock.calls[0]![1]).toEqual({ deleted: 'table:public.users' });
+  });
+
   it('offer a column’s settings as toggles, ticked as they are', () => {
     const edit = vi.fn();
     const items = columnMenu(t, 'id', edit, vi.fn());
