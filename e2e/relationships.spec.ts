@@ -46,6 +46,6 @@ test('the relationships view shows a join’s key between the tables, relates tw
   // The rule is the project's own: back on the canvas, the orders source carries it.
   await view.getByRole('button', { name: 'Back to canvas' }).click();
   await expect(page.getByTestId('relationships')).toHaveCount(0);
-  await node(page, 'shop-orders.csv').click();
+  await selectNode(page, 'shop-orders.csv');
   await expect(page.getByTestId('inspector')).toContainText('Every status exists in shop-customers.csv.status');
 });

@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { addFiles, fixture, node, openApp } from './helpers/app';
+import { addFiles, fixture, node, openApp, selectNode } from './helpers/app';
 
 const suggestions = (page: Page) => page.getByTestId('rule-suggestions');
 const suggestion = (page: Page, key: string) => page.getByTestId(`suggestion-${key}`);
@@ -56,7 +56,7 @@ test('profiling suggests rules with reasons; one adds a passing rule, a dismisse
   // The click waits for the file to be read: on a node still settling (its counts arriving, the card growing) a
   // slower browser can take the press as the start of a drag, and the node is never selected.
   await expect(node(page, 'customers.csv')).toHaveAttribute('data-status', 'ok', { timeout: 20_000 });
-  await node(page, 'customers.csv').click();
+  await selectNode(page, 'customers.csv');
   await expect(suggestion(page, 'notEmpty:joined')).toBeVisible({ timeout: 20_000 });
   expect(await keys(page)).toEqual(['notEmpty:id', 'inRange:id', 'unique:name', 'notEmpty:joined', 'noEdgeSpaces:joined']);
   await expect(page.getByTestId('rules').getByText('id is unique')).toBeVisible();

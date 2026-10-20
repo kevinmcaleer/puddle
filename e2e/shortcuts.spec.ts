@@ -105,7 +105,7 @@ test('building a flow from the keyboard: add, layout, move along the wires, view
   await page.keyboard.press('ArrowRight');
 
   // Regression: an arrow on a node focused by clicking it used to nudge the node; now it only moves the selection.
-  await node(page, 'shop-orders.csv').click();
+  await selectNode(page, 'shop-orders.csv');
   await page.keyboard.press('ArrowRight');
   await isSelected(page, 'Transform 1');
   await page.keyboard.press('ArrowDown');

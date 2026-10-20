@@ -1,5 +1,5 @@
 import { expect, test, type Download, type Page } from '@playwright/test';
-import { addFiles, fixture, node, openApp } from './helpers/app';
+import { addFiles, fixture, node, openApp, selectNode } from './helpers/app';
 
 const dialog = (page: Page) => page.getByTestId('report-dialog');
 const textOf = async (file: Download) => Buffer.concat(await (await file.createReadStream()).toArray()).toString('utf8');
@@ -9,12 +9,12 @@ async function overriddenExport(page: Page) {
   await openApp(page);
   await addFiles(page, [fixture('customers.csv')]);
   await expect(node(page, 'customers.csv')).toHaveAttribute('data-status', 'ok', { timeout: 20_000 });
-  await node(page, 'customers.csv').click();
+  await selectNode(page, 'customers.csv');
   await page.getByRole('button', { name: 'Add', exact: true }).click();
   await page.getByRole('menuitem', { name: 'Output' }).click();
   await expect(node(page, 'Output 1')).toHaveAttribute('data-status', 'ok');
 
-  await node(page, 'customers.csv').click();
+  await selectNode(page, 'customers.csv');
   await page.getByRole('button', { name: 'Add rule' }).click();
   await page.getByRole('menuitem', { name: 'No leading or trailing spaces', exact: true }).click();
   await page.getByTestId('rule-settings').getByRole('button', { name: 'name', exact: true }).click();
@@ -24,7 +24,7 @@ async function overriddenExport(page: Page) {
   await expect(page.getByTestId('rule-unique')).toContainText('id is unique');
   await expect(node(page, 'customers.csv')).toHaveAttribute('data-rules', 'fail', { timeout: 20_000 });
 
-  await node(page, 'Output 1').click();
+  await selectNode(page, 'Output 1');
   const download = page.waitForEvent('download');
   await page.locator('.ui-resultsbar').getByTestId('export-blocked').getByRole('button', { name: 'Export anyway' }).click();
   await download;
@@ -52,9 +52,9 @@ async function exportReport(page: Page, { format, scope, rows }: { format: 'mark
 test('an Output node exports a Markdown quality report with the rules panel’s counts, the override, and no row values', async ({ page }) => {
   await overriddenExport(page);
   // The rules panel's figures, to match against.
-  await node(page, 'customers.csv').click();
+  await selectNode(page, 'customers.csv');
   await expect(page.getByTestId('rule-noEdgeSpaces')).toContainText('2 of 4');
-  await node(page, 'Output 1').click();
+  await selectNode(page, 'Output 1');
 
   const file = await exportReport(page, { format: 'markdown' });
   expect(file.suggestedFilename()).toMatch(/ quality report\.md$/);
@@ -69,7 +69,7 @@ test('an Output node exports a Markdown quality report with the rules panel’s 
 
 test('the rules panel exports an HTML report with sample failing rows, and JSON for every node with rules', async ({ page }) => {
   await overriddenExport(page);
-  await node(page, 'customers.csv').click();
+  await selectNode(page, 'customers.csv');
 
   const html = await textOf(await exportReport(page, { format: 'html', rows: 1 }));
   expect(html.startsWith('<!doctype html>')).toBe(true);

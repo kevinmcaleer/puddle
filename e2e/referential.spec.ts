@@ -18,7 +18,7 @@ async function shop(page: Page) {
   await selectNode(page, 'shop-customers.csv');
   await addStepNode(page, 'Remove blank rows');
   await expect(node(page, 'Transform 1')).toHaveAttribute('data-status', 'ok');
-  await node(page, 'shop-orders.csv').click();
+  await selectNode(page, 'shop-orders.csv');
   await expectRows(page, 5);
 }
 
@@ -55,7 +55,7 @@ test('a referential rule reads another node, draws a dashed reference, and shows
   await page.getByTestId('wire-shop-customers.csv->Transform 1').click({ force: true });
   await page.keyboard.press('Delete');
   await expect(node(page, 'Transform 1')).toHaveAttribute('data-status', 'unwired');
-  await node(page, 'shop-orders.csv').click();
+  await selectNode(page, 'shop-orders.csv');
   await expect(row).toContainText('Can’t run', { timeout: 20_000 });
   await expect(row).toContainText('Transform 1 isn’t connected yet, so this rule can’t be checked.');
   await expect(node(page, 'shop-orders.csv')).toHaveAttribute('data-rules', 'fail');
@@ -63,7 +63,7 @@ test('a referential rule reads another node, draws a dashed reference, and shows
   // Wired back (undo), it re-runs and fails on the data again.
   await page.keyboard.press('Control+z');
   await expect(node(page, 'Transform 1')).toHaveAttribute('data-status', 'ok');
-  await node(page, 'shop-orders.csv').click();
+  await selectNode(page, 'shop-orders.csv');
   await expect(row).toContainText('1 of 5', { timeout: 20_000 });
 });
 
@@ -124,7 +124,7 @@ test('reads as a whole number, with its failing rows', async ({ page }) => {
   await openApp(page);
   await addFiles(page, [fixture('types.csv')]);
   await expect(node(page, 'types.csv')).toHaveAttribute('data-status', 'ok', { timeout: 20_000 });
-  await node(page, 'types.csv').click();
+  await selectNode(page, 'types.csv');
   await expectRows(page, 7);
   await addRule(page, 'Reads as a type');
   await settings(page).getByRole('button', { name: 'value', exact: true }).click();

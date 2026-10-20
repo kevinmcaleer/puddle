@@ -90,7 +90,7 @@ test('a third file dragged onto the spare input is stacked last, and another spa
   await expect(port(page, 3)).toHaveText('4');
   await expect(node(page, 'Append 1')).toContainText('Append · 3 inputs');
 
-  await node(page, 'Append 1').click();
+  await selectNode(page, 'Append 1');
   await expect(columns(page)).toHaveText(['id', 'name', 'email', 'joined', 'phone', 'customer_id', 'status']);
   await expect(page.getByTestId('append-column-from').last()).toHaveText('only input 3');
   await expectRows(page, 11);

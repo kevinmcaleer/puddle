@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { addFiles, columnsOf, expectRows, fixture, node, openApp } from './helpers/app';
+import { addFiles, columnsOf, expectRows, fixture, node, openApp, selectNode } from './helpers/app';
 
 test('a file is read by what is in it: a semicolon CSV named .txt and tabs named .csv open right, and plain text asks', async ({ page }) => {
   await openApp(page);
@@ -23,7 +23,7 @@ test('a file is read by what is in it: a semicolon CSV named .txt and tabs named
   await page.getByRole('button', { name: 'Read it this way' }).click();
   await expect(dialog).toHaveCount(0);
   await expect(node(page, 'notes.txt')).toHaveAttribute('data-status', 'ok', { timeout: 20_000 });
-  await node(page, 'notes.txt').click();
+  await selectNode(page, 'notes.txt');
   // Four lines, the blank one included, each a row now the first isn't a header.
   await expectRows(page, 4);
   await expect(page.getByTestId('inspector-source').getByLabel('First row is the header')).toHaveAttribute('aria-checked', 'false');

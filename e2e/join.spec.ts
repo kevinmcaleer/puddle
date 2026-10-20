@@ -58,7 +58,7 @@ test('joining two sources: wired left and right, matched on a shared key, with e
   await expect(page.getByTestId('inspector-columns').locator('.ui-col')).toHaveText(['order_id', 'customer_id', 'total', 'status', 'name', 'status_right']);
 
   // Customer 5 appears twice, so the left join warns that it adds a row.
-  await node(page, 'Join 1').click();
+  await selectNode(page, 'Join 1');
   await expectRows(page, 6);
   await expect(page.getByTestId('join-multiplied')).toContainText('5 rows on the left became 6 rows');
 
@@ -112,7 +112,7 @@ test('a wire dragged onto the right input goes there, and a taken input is refus
   await addFiles(page, [fixture('shop-orders.csv'), fixture('shop-customers.csv')]);
   // A Join always arrives wired after the selected node; taking that wire away leaves it with no wires to drag onto.
   await expect(node(page, 'shop-customers.csv')).toHaveAttribute('data-status', 'ok');
-  await node(page, 'shop-customers.csv').click();
+  await selectNode(page, 'shop-customers.csv');
   await page.getByRole('button', { name: 'Add', exact: true }).click();
   await page.getByRole('menuitem', { name: /Join/ }).click();
   await expect(page.getByTestId('wire-shop-customers.csv->Join 1')).toBeAttached();
@@ -140,7 +140,7 @@ test('a wire dragged onto the right input goes there, and a taken input is refus
   // No key yet: the join says what it needs; picking one runs it.
   await expect(node(page, 'Join 1')).toHaveAttribute('data-status', 'error');
   await expect(node(page, 'Join 1')).toContainText('Pick the columns to match on');
-  await node(page, 'Join 1').click();
+  await selectNode(page, 'Join 1');
   await page.getByTestId('inspector-join').getByRole('button', { name: 'Add key pair' }).click();
   await expect(page.getByTestId('inspector-join').getByLabel('Left column 1')).toHaveValue('customer_id');
   await expect(node(page, 'Join 1')).toHaveAttribute('data-status', 'ok');
@@ -168,7 +168,7 @@ test('breaking a key column upstream turns that wire red; a type mismatch is exp
     page,
     `return { ...p, nodes: p.nodes.map((n) => n.id === 'drop' ? { ...n, steps: [{ id: 'st1', type: 'changeType', label: 'Changed type', enabled: true, params: { columns: ['customer_id'], to: 'text', onError: 'empty' } }] } : n) };`,
   );
-  await node(page, 'Join 1').click();
+  await selectNode(page, 'Join 1');
   const message = 'customer_id is a number on the left and text on the right; change one with Change type.';
   await expect(page.getByTestId('join-keys')).toContainText(message);
   await expect(node(page, 'Join 1')).toContainText(message);
@@ -216,6 +216,6 @@ test('grouping the nodes before a join and ungrouping them keep it working', asy
   await page.getByRole('button', { name: 'Undo' }).click();
   await expect(page.getByTestId('wire-Upper->Join 1')).toHaveAttribute('data-port', 'right');
   await expect(node(page, 'Join 1')).toHaveAttribute('data-status', 'ok');
-  await node(page, 'Join 1').click();
+  await selectNode(page, 'Join 1');
   await expectRows(page, 6);
 });

@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { addFiles, expectRows, fixture, node, openApp } from './helpers/app';
+import { addFiles, expectRows, fixture, node, openApp, selectNode } from './helpers/app';
 
 test('Fix all clears a source’s issues as a Fixes group in one undo step, and the dropdown applies a chosen subset', async ({ page }) => {
   await openApp(page);
@@ -21,7 +21,7 @@ test('Fix all clears a source’s issues as a Fixes group in one undo step, and 
   await expect(node(page, 'messy.csv').getByTestId('node-issues')).toHaveText('6 issues');
 
   // From the inspector: untick Trim in the dropdown and apply the rest. The spaces issues stay listed.
-  await node(page, 'messy.csv').click();
+  await selectNode(page, 'messy.csv');
   const fixAll = page.getByTestId('inspector-source').getByTestId('fix-all');
   await fixAll.getByRole('button', { name: 'Choose fixes' }).click();
   const dialog = page.getByRole('dialog', { name: 'Choose fixes' });

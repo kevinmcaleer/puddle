@@ -103,16 +103,24 @@ export async function addFiles(page: Page, files: string[] | { name: string; mim
 
 export const node = (page: Page, name: string) => page.getByTestId(`node-${name}`);
 
+/** The names of the nodes selected on the canvas, as the session has them (React Flow draws its `selected` class from the session). */
+const selectedNodes = (page: Page) => page.locator('.react-flow__node.selected > [data-testid^="node-"], .react-flow__node.selected [data-testid^="node-"]').evaluateAll((els) => [...new Set(els.map((e) => e.getAttribute('data-testid')!.slice('node-'.length)))]);
+
 /**
- * Click a node on the canvas (Shift adds it to the selection) and wait until it is selected. Firefox can take a click
- * on a canvas still settling as a drag that selects nothing, so a click that didn't select is tried again; a node
- * already selected isn't clicked, so Shift never toggles it off.
+ * Click a node on the canvas (Shift adds it to the selection) and wait until the selection is what the click asked for:
+ * just this node, or this node with the ones already selected. Firefox can take a click on a canvas still settling as
+ * a drag that selects nothing, and a Shift+click as a plain click that drops the rest, so a click that didn't leave the
+ * selection right is tried again (the dropped nodes added back); a node already selected isn't clicked, so Shift never
+ * toggles it off.
  */
 export async function selectNode(page: Page, name: string, modifiers: Array<'Shift'> = []) {
-  const selected = page.locator('.react-flow__node.selected').filter({ has: node(page, name) });
+  const shift = modifiers.includes('Shift');
+  const want = shift ? [...new Set([...(await selectedNodes(page)), name])] : [name];
   await expect(async () => {
-    if (!(await selected.count())) await node(page, name).click({ modifiers });
-    await expect(selected).toHaveCount(1, { timeout: 2_000 });
+    const have = await selectedNodes(page);
+    const right = shift ? want.every((n) => have.includes(n)) : have.length === 1 && have[0] === name;
+    if (!right) for (const n of shift ? want.filter((n) => !have.includes(n)) : [name]) await node(page, n).click({ modifiers });
+    await expect.poll(() => selectedNodes(page), { timeout: 2_000 }).toEqual(shift ? expect.arrayContaining(want) : [name]);
   }).toPass({ timeout: 20_000 });
 }
 

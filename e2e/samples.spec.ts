@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import { readFileSync } from 'node:fs';
-import { cell, expectRows, fixture, node, openApp } from './helpers/app';
+import { cell, expectRows, fixture, node, openApp, selectNode } from './helpers/app';
 
 const projectMenu = async (page: Page, item: string) => {
   await page.getByTestId('project-menu').click();
@@ -27,7 +27,7 @@ test('a sample opens from the empty canvas as a new project, with its data and i
   await page.reload();
   await expect(node(page, 'contacts.csv')).toHaveAttribute('data-status', 'ok', { timeout: 45_000 });
   await expectRows(page, 53);
-  await node(page, 'contacts.csv').click();
+  await selectNode(page, 'contacts.csv');
   await expect(page.getByTestId('url-panel')).toHaveAttribute('data-state', 'ok');
   await expect(page.getByRole('region', { name: 'Sample data' })).toBeVisible();
 });
@@ -77,6 +77,6 @@ test('Help opens the user guide, and starts the taxi tutorial with both of its f
     const [canvas, added] = [await page.locator('.react-flow').boundingBox(), await node(page, 'taxi_zone_lookup.csv').boundingBox()];
     return !!canvas && !!added && added.y >= canvas.y && added.y + added.height <= canvas.y + canvas.height;
   }).toBe(true);
-  await node(page, 'taxi_zone_lookup.csv').click();
+  await selectNode(page, 'taxi_zone_lookup.csv');
   await expectRows(page, 11);
 });

@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { addFiles, fixture, node, openApp } from './helpers/app';
+import { addFiles, fixture, node, openApp, selectNode } from './helpers/app';
 
 /** The open project's notes as IndexedDB holds them right now (autosave runs a moment after each change). */
 const savedNotes = (page: Page) =>
@@ -104,19 +104,19 @@ test('project notes are written in Markdown, render safely, undo as one step and
 test('source and output nodes take a note, marked on the canvas with the note on hover', async ({ page }) => {
   await openApp(page);
   await addFiles(page, [fixture('customers.csv')]);
-  await node(page, 'customers.csv').click();
+  await selectNode(page, 'customers.csv');
   await page.getByRole('button', { name: 'Add', exact: true }).click();
   await page.getByRole('menuitem', { name: 'Output' }).click();
 
   await expect(node(page, 'customers.csv').getByTestId('node-note')).toHaveCount(0);
-  await node(page, 'customers.csv').click();
+  await selectNode(page, 'customers.csv');
   await page.getByLabel('Node notes').fill('Sent weekly by <b>finance</b>.');
   await page.getByLabel('Node notes').blur();
   const marker = node(page, 'customers.csv').getByTestId('node-note');
   await expect(marker).toHaveAttribute('title', 'Sent weekly by <b>finance</b>.');
   await marker.hover();
 
-  await node(page, 'Output 1').click();
+  await selectNode(page, 'Output 1');
   await expect(page.getByTestId('inspector-output')).toBeVisible();
   await page.getByLabel('Node notes').fill('For the board pack.');
   await page.getByLabel('Node notes').blur();
@@ -132,7 +132,7 @@ test('source and output nodes take a note, marked on the canvas with the note on
   // Opening the notes tab and then picking a node moves to its Node tab.
   await page.getByRole('tab', { name: 'Notes' }).click();
   await expect(page.getByTestId('notes-panel')).toBeVisible();
-  await node(page, 'customers.csv').click();
+  await selectNode(page, 'customers.csv');
   await expect(page.getByTestId('inspector-source')).toBeVisible();
   await expect(page.getByLabel('Node notes')).toHaveValue('Sent weekly by <b>finance</b>.');
 });
