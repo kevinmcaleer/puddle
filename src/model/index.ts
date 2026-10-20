@@ -15,6 +15,7 @@ export { deriveSchemaRules, keepSchemaRules, setSchemaCheck, syncSchemaRules } f
 export { useProject, useProjectStore, type ProjectState } from './store';
 export { placeStep, placeStepAt, type Placed, type StepTarget } from './quickfix';
 export { addRule, dismissSuggestion, removeRule, updateRule } from './rules';
+export { ignoreIssue, unignoreIssue } from './issues';
 export { logExport, setOutputFormat, setOutputSpec } from './exports';
 export { carryPin, viewWithout } from './view';
 export { canMakeGroup, chainAround, groupById, groupOf, joinGroupOf, groupPorts, makeGroup, moveGroup, nextGroupName, pruneGroups, renameGroup, setGroupCollapsed, ungroup, type GroupPorts } from './groups';

@@ -19,6 +19,8 @@ export interface NodeCardProps {
   cols?: number;
   steps?: number | NodeStepSummary[];
   rule?: { status: Status; label: string };
+  /** Issues analysis found in the node's data, shown as a small badge. */
+  issues?: number;
   selected?: boolean;
   viewed?: boolean;
   pinned?: boolean;
@@ -41,7 +43,7 @@ export interface NodeCardProps {
 
 /** The node card. The canvas wraps this in a React Flow custom node and swaps the ports for handles. */
 export function NodeCard({
-  kind = 'transform', name, detail, rows, cols, steps, rule, selected, viewed, pinned, comparing, error, dimmed, expanded, brokenInput, note, kept,
+  kind = 'transform', name, detail, rows, cols, steps, rule, issues, selected, viewed, pinned, comparing, error, dimmed, expanded, brokenInput, note, kept,
   style, className, onClick, renderPorts,
 }: NodeCardProps) {
   const display = useDisplayFormat();
@@ -85,7 +87,7 @@ export function NodeCard({
           <span>{error}</span>
         </div>
       )}
-      {(rows != null || rule || kept) && (
+      {(rows != null || rule || kept || issues) && (
         <div className="ui-node__meta">
           <span className="ui-metric">
             {rows != null && `${abbreviate(rows, display)} rows`}
@@ -97,7 +99,10 @@ export function NodeCard({
               </span>
             )}
           </span>
-          {rule && <StatusBadge status={rule.status}>{rule.label}</StatusBadge>}
+          <span className="ui-row" style={{ gap: 4 }}>
+            {issues ? <span data-testid="node-issues"><StatusBadge status="warn">{issues} {issues === 1 ? 'issue' : 'issues'}</StatusBadge></span> : null}
+            {rule && <StatusBadge status={rule.status}>{rule.label}</StatusBadge>}
+          </span>
         </div>
       )}
       {expanded && Array.isArray(steps) && (

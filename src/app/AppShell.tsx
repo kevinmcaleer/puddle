@@ -9,6 +9,7 @@ import { exportProject, goHome, importProject } from '../persistence/workspace';
 import { QuickFixes } from '../quickfix/QuickFixes';
 import { showFailing } from '../rules';
 import { useKeptTotal } from '../flow/kept';
+import { issuesOf, useAnalysisEntry, useAnalysisEvaluation } from '../analysis';
 import { ruleTally, useRuleStore } from '../flow/rules';
 import { sampledUpstream, useSample, useViewProject } from '../flow/sample';
 import { SampleBanner } from '../results/SampleBanner';
@@ -205,6 +206,7 @@ function Strip() {
   const kept = useKeptTotal();
   const node = viewed ? nodeById(project, viewed) : undefined;
   const results = useRuleStore((s) => (viewed ? s.nodes[viewed]?.results : undefined));
+  const analysis = useAnalysisEntry(viewed ?? '');
   const sample = useSample(project);
   const display = useDisplayFormat();
   const end = (
@@ -218,13 +220,14 @@ function Strip() {
   const p = one ? profile?.[one] : undefined;
   const sampled = sampledUpstream(project, node.id, sample).length > 0;
   const rules = ruleTally(node.rules, results);
+  const issues = analysis?.state === 'ok' ? issuesOf(node, analysis).length : undefined;
   const detail = (
     <>
       {rules && sampled && <span data-testid="rules-on-sample">Rules checked on the sample</span>}
       {one && p && <span data-testid="column-profile">{one} · {describeProfile(p, display)}</span>}
     </>
   );
-  return <StatusStrip rows={rows} cols={cols} ms={ms} rules={rules} kept={kept} sample={sampled && sample ? sample.rows : undefined} detail={(rules && sampled) || (one && p) ? detail : undefined} end={end} {...syncBadge} />;
+  return <StatusStrip rows={rows} cols={cols} ms={ms} rules={rules} issues={issues} kept={kept} sample={sampled && sample ? sample.rows : undefined} detail={(rules && sampled) || (one && p) ? detail : undefined} end={end} {...syncBadge} />;
 }
 
 /**
@@ -262,6 +265,7 @@ export function AppShell() {
   useXmlSources();
   useSchemaTableSync();
   useFlowEvaluation();
+  useAnalysisEvaluation();
 
   const importInput = useRef<HTMLInputElement>(null);
   const recipeInput = useRef<HTMLInputElement>(null);
