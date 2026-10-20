@@ -10,6 +10,7 @@ import { QuickFixes } from '../quickfix/QuickFixes';
 import { showFailing } from '../rules';
 import { useKeptTotal } from '../flow/kept';
 import { issuesOf, useAnalysisEntry, useAnalysisEvaluation } from '../analysis';
+import { FixAll } from '../analysis/FixAll';
 import { ruleTally, useRuleStore } from '../flow/rules';
 import { sampledUpstream, useSample, useViewProject } from '../flow/sample';
 import { SampleBanner } from '../results/SampleBanner';
@@ -150,7 +151,12 @@ function ResultsTitle() {
           </Button>
         </div>
       ) : (
-        <QuickFixes />
+        <div className="flex items-start gap-2">
+          <QuickFixes />
+          <div className="ml-auto px-3 pb-2 empty:hidden">
+            <FixAll node={node} />
+          </div>
+        </div>
       )}
     </ResultsBar>
   );

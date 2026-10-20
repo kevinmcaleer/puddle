@@ -14,6 +14,7 @@ export { editSchema, moveSchemaElements, setSchemaDbml } from './schemaDoc';
 export { deriveSchemaRules, keepSchemaRules, setSchemaCheck, syncSchemaRules } from './schemaRules';
 export { useProject, useProjectStore, type ProjectState } from './store';
 export { placeStep, placeStepAt, type Placed, type StepTarget } from './quickfix';
+export { FIXES_GROUP_NAME, placeFixes, type PlacedFixes } from './fixes';
 export { addRule, dismissSuggestion, removeRule, updateRule } from './rules';
 export { ignoreIssue, unignoreIssue } from './issues';
 export { logExport, setOutputFormat, setOutputSpec } from './exports';

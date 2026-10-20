@@ -342,6 +342,8 @@ export const ProjectSettingsZ = z.object({
    * so the canvas reads like Power Query's applied steps. Off, they stack into the Transform being viewed.
    */
   stepsAsNodes: z.boolean().default(true),
+  /** Fix all also applies the fixes analysis only suggests (ones that could change meaning, such as reading text as numbers). */
+  fixAllSuggestions: z.boolean().default(false),
   /** When the runner (puddle-run) runs this project's outputs, in cron syntax. Nothing runs until one is set. */
   schedule: z.string().optional(),
 });
@@ -436,7 +438,7 @@ export const ProjectZ = z.object({
   createdAt: z.string(),
   updatedAt: z.string(),
   notes: z.string().default(''),
-  settings: ProjectSettingsZ.default({ sampleThresholdRows: 5_000_000, locale: 'en-GB', defaultDateFormats: [], stepsAsNodes: true }),
+  settings: ProjectSettingsZ.default({ sampleThresholdRows: 5_000_000, locale: 'en-GB', defaultDateFormats: [], stepsAsNodes: true, fixAllSuggestions: false }),
   sources: z.array(SourceZ).default([]),
   nodes: z.array(NodeZ).default([]),
   edges: z.array(EdgeZ).default([]),
