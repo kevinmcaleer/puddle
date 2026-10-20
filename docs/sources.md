@@ -28,7 +28,7 @@ Puddle reads these formats:
 | Format | Extensions | Notes |
 | --- | --- | --- |
 | CSV and TSV | `.csv`, `.tsv`, `.tab`, `.txt` | The delimiter, header row, encoding and quoting are detected, and can be changed in the inspector. Ragged rows are padded rather than rejected. |
-| Excel | `.xlsx` | Choose the sheet, the header row and an optional cell range. |
+| Excel | `.xlsx` | Choose the sheet and, when it holds several tables, which one; the header row and how many rows it takes; an optional cell range; and whether merged cells are filled. |
 | JSON and NDJSON | `.json`, `.ndjson`, `.jsonl` | An array of objects, or one object per line. |
 | Parquet | `.parquet`, `.pq` | Read directly, with its column types. |
 | XML | `.xml` | The repeating element is read as rows. See [XML](#xml). |
@@ -161,7 +161,7 @@ Select a source to see how it is read in the inspector. For a CSV file that is t
 
 ![A CSV source selected, with its read options in the inspector](_static/screenshots/screen-overview.png)
 
-An Excel source shows the workbook's sheets with their sizes, the header row it detected (often below a title or a few blank rows), and the cell range being read. An Access source shows the database's tables (see [Access databases](#access-databases)). An XML source shows its record element and what gets a row of its own (see [XML](#xml)). A fixed-width source shows its first lines on a ruler with the column boundaries (see [Fixed width and pipe tables](#fixed-width-and-pipe-tables)).
+An Excel source shows the workbook's sheets with their sizes, the header row it detected (often below a title or a few blank rows), and the cell range being read. A sheet with several blocks of cells, with blank rows between them, holds several tables: the largest is read, **Table** picks another, and **Add the other tables** adds a source for each of the rest, reading the same file. A header over two or three rows (quarters merged over their months) is detected from the merged cells, or set with **Header rows**, and the names are joined (`Q1 Jan`). **Fill merged cells**, on by default, gives every cell of a merged cell its value, so a region merged down its stores is on each row; switched off, the rows below the first read as empty and the Issues panel lists the merged cells. An Access source shows the database's tables (see [Access databases](#access-databases)). An XML source shows its record element and what gets a row of its own (see [XML](#xml)). A fixed-width source shows its first lines on a ruler with the column boundaries (see [Fixed width and pipe tables](#fixed-width-and-pipe-tables)).
 
 A file source also has **Path to this file** under *On the runner*: where `puddle-run` finds the file when it runs the project outside the browser (see {doc}`self-hosting`). Left empty, the runner looks for the file by name beside the project file or in a `sources/` folder there.
 

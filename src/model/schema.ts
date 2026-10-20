@@ -25,8 +25,12 @@ export const ParseOptionsZ = z
     columns: z.array(z.string()),
     sheet: z.string(),
     headerRow: z.number().int().nonnegative(),
-    /** Excel: an A1 cell range to read, such as B3:F200. */
+    /** Excel: an A1 cell range to read, such as B3:F200; unset, the largest table on the sheet. */
     range: z.string(),
+    /** Excel: how many rows the header takes (1 to 3), the names joined ("Q1 Jan"); found from the merged cells when unset. */
+    headerRows: z.number().int().min(1).max(3),
+    /** Excel: whether every cell of a merged cell in the data takes its value; unset means yes. */
+    fillMerges: z.boolean(),
     /** XML: the repeating element read as records, as a path of local names from the root ("catalog/book"). */
     record: z.string(),
     /** XML: a repeating element inside each record, as a path from it ("author"), given a row each. */

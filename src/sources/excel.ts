@@ -4,10 +4,11 @@ import { useEngineStore } from '../app/engine';
 import { dropTable, sourceTableName } from '../compiler';
 import type { EngineClient } from '../engine';
 import { excelClient, type ExcelClient } from '../excel/client';
-import type { SheetInfo, SheetReadOptions } from '../excel/types';
-import { useProject, useProjectStore, type ParseOptions, type Project, type Source } from '../model';
-import { sourceFile } from './add';
-import { useAttachments } from './attachments';
+import type { SheetInfo, SheetReadOptions, SheetTable } from '../excel/types';
+import { addSource, newId, useProject, useProjectStore, type ParseOptions, type Project, type Source } from '../model';
+import { shareHandle } from './access';
+import { rememberFile, sourceFile } from './add';
+import { markAttached, useAttachments } from './attachments';
 
 /**
  * Excel sources (plan D8). DuckDB-WASM can't read .xlsx reliably, so SheetJS parses the workbook in a worker into an
@@ -27,14 +28,19 @@ export const formatBytes = (n: number) => (n >= 1024 * 1024 ? `${Math.round(n / 
 export const isExcelSource = (s: Source) => s.format === 'xlsx' && s.kind === 'file';
 
 /** The options SheetJS needs, from a source's parse options. */
-export const sheetOptions = (o: ParseOptions): SheetReadOptions => ({ sheet: o.sheet, headerRow: o.headerRow, range: o.range });
+export const sheetOptions = (o: ParseOptions): SheetReadOptions => ({ sheet: o.sheet, headerRow: o.headerRow, range: o.range, headerRows: o.headerRows, fillMerges: o.fillMerges });
 
 export interface SheetRead {
   sheets: SheetInfo[];
   sheet: string;
   headerRow: number;
+  headerRows: number;
   range: string;
   rows: number;
+  /** Merged cells in the rows read. */
+  merges: number;
+  /** The tables on the sheet, largest first. */
+  tables: SheetTable[];
 }
 
 /** What the latest read of each Excel source found. */
@@ -109,7 +115,7 @@ async function read(engine: EngineClient, client: ExcelClient, source: Source, f
     // The table may be left from an earlier read of the same file and options that was let go.
     await drop(engine, table);
     await engine.insertArrow(table, r.ipc);
-    const info: SheetRead = { sheets: r.sheets, sheet: r.sheet, headerRow: r.headerRow, range: r.range, rows: r.rows };
+    const info: SheetRead = { sheets: r.sheets, sheet: r.sheet, headerRow: r.headerRow, headerRows: r.headerRows, range: r.range, rows: r.rows, merges: r.merges, tables: r.tables };
     remember(engine, id, table, file, info, () => {
       const now = useProjectStore.getState().history.present.sources.find((s) => s.id === id);
       return now && sourceTableName(now);
@@ -190,4 +196,65 @@ export function parseHeaderRow(text: string): number | 'auto' | undefined {
   if (!/^\d+$/.test(t)) return undefined;
   const n = Number(t);
   return n <= 1_048_576 ? n : undefined;
+}
+
+/** A typed count of header rows: empty means detect it; 1 to 3 are allowed. */
+export function parseHeaderRows(text: string): number | 'auto' | undefined {
+  const t = text.trim();
+  if (!t) return 'auto';
+  return /^[123]$/.test(t) ? Number(t) : undefined;
+}
+
+/** "A4:J21 (18 rows, 10 columns)". */
+export const sheetTableLabel = (t: SheetTable) => `${t.range} (${t.rows.toLocaleString('en-GB')} ${t.rows === 1 ? 'row' : 'rows'}, ${t.columns} ${t.columns === 1 ? 'column' : 'columns'})`;
+
+/** The table of its sheet a source reads: the range it was given, else the largest, as its last read found. */
+export const sheetTableOf = (source: Source, read: ExcelRead | undefined): string | undefined => source.parseOptions.range ?? (read?.state === 'ok' ? read.tables[0]?.range : undefined);
+
+/** The tables on a source's sheet that no source in the project reads yet (from this same file and sheet). */
+export function sheetTablesNotAdded(project: Project, source: Source, read: ExcelRead | undefined, reads: Record<string, ExcelRead>): SheetTable[] {
+  if (read?.state !== 'ok' || read.tables.length < 2) return [];
+  const file = sourceFile(source.id);
+  const sheet = source.parseOptions.sheet ?? read.sheet;
+  const taken = new Set(
+    project.sources
+      .filter((s) => isExcelSource(s) && sourceFile(s.id) === file && (s.parseOptions.sheet ?? (reads[s.id]?.state === 'ok' ? (reads[s.id] as { sheet: string }).sheet : undefined)) === sheet)
+      .map((s) => sheetTableOf(s, reads[s.id])),
+  );
+  return read.tables.filter((t) => !taken.has(t.range));
+}
+
+/**
+ * Add a source for each of these tables of a source's sheet, below it on the canvas, as one undo step. They share
+ * its file (and, where the browser gave one, its handle), so the workbook is parsed once.
+ */
+export function addExcelTables(source: Source, tables: SheetTable[]): Source[] {
+  const file = sourceFile(source.id);
+  if (!file || !source.file) return [];
+  const project = useProjectStore.getState().history.present;
+  const node = project.nodes.find((n) => n.type === 'source' && n.sourceId === source.id);
+  const at = node?.position ?? { x: 80, y: 80 };
+  const read = useExcelReads.getState().reads[source.id];
+  const sheet = source.parseOptions.sheet ?? (read?.state === 'ok' ? read.sheet : undefined);
+  const added = tables.map(
+    (t): Source => ({
+      id: newId('s'),
+      name: `${source.name} ${t.range}`,
+      kind: 'file',
+      format: 'xlsx',
+      file: { ...source.file! },
+      parseOptions: { ...(sheet ? { sheet } : {}), range: t.range },
+      detectedSchema: [],
+    }),
+  );
+  if (!added.length) return [];
+  for (const s of added) {
+    rememberFile(s.id, file);
+    markAttached(s.id);
+  }
+  useProjectStore.getState().batch(() => {
+    added.forEach((s, i) => useProjectStore.getState().apply((p) => addSource(p, s, { x: at.x, y: at.y + (i + 1) * 128 })));
+  });
+  void shareHandle(project.id, source.id, added.map((s) => s.id));
+  return added;
 }

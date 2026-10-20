@@ -31,7 +31,7 @@ export function sourceFileName(source: Source): string {
  */
 export function sourceTableName(source: Source): string {
   const o = source.parseOptions;
-  const key = source.format === 'access' ? [source.file?.headHash ?? null, 'access', o.table ?? null] : [source.file?.headHash ?? null, o.sheet ?? null, o.headerRow ?? null, o.range ?? null];
+  const key = source.format === 'access' ? [source.file?.headHash ?? null, 'access', o.table ?? null] : [source.file?.headHash ?? null, o.sheet ?? null, o.headerRow ?? null, o.range ?? null, o.headerRows ?? null, o.fillMerges ?? null];
   return `src_${source.id}_${hashValue(key).slice(0, 12)}`;
 }
 

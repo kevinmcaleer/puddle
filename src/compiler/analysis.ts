@@ -172,8 +172,9 @@ export function compileShape(project: Project, target: Target, columns: string[]
   const header = named.length >= 2 ? named.map((c) => `${text(c)} = ${str(c)}`).join(' AND ') : 'false';
   const leading = columns.slice(0, 3);
   const firstFilled = `coalesce(${leading.map((c) => `nullif(${text(c)}, '')`).join(', ')})`;
-  // RE2 has no backreferences and \b fails after "*", so the words are spelt out, each ending the value or followed by a space or colon.
-  const totalWord = `regexp_extract(lower(${firstFilled}), '^(\\*+|grand total|sub ?totals?|totals?|sum)(\\s|:|$)', 1)`;
+  // RE2 has no backreferences and \b fails after "*", so the words are spelt out, each ending the value or followed by a
+  // space or colon; one word may come first ("North total"), and is kept so the fix names each total row's own words.
+  const totalWord = `regexp_extract(lower(${firstFilled}), '^((?:[a-z]+ )?(?:\\*+|grand total|sub ?totals?|totals?|sum))(\\s|:|$)', 1)`;
   const total = `${totalWord} <> ''`;
   const totalCol = `CASE ${leading.map((c) => `WHEN ${filled(c)} THEN ${str(c)}`).join(' ')} END`;
   const flags = `SELECT row_number() OVER () AS rn, ${blank} AS blank, ${narrow} AS narrow, ${separator} AS separator, ${header} AS header, ${total} AS total, ${totalWord} AS word, ${totalCol} AS col, ${text(first)} AS first FROM (${nodeSql(project, target, limit)})`;

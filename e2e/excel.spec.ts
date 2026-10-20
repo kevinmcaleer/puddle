@@ -18,7 +18,7 @@ test('an Excel workbook loads its first sheet, past the title row, with Excel ty
   // The inspector lists every sheet with its size, and shows the detected header row.
   await expect(page.getByTestId('inspector-source')).toContainText('Source · Excel');
   await expect(page.getByLabel('Sheet').locator('option')).toHaveText(['Sales (7 rows, 8 columns)', 'Visits (3 rows, 4 columns)', 'Empty (empty)']);
-  await expect(page.getByLabel('Header row')).toHaveAttribute('placeholder', 'Detect (row 3)');
+  await expect(page.getByLabel('Header row', { exact: true })).toHaveAttribute('placeholder', 'Detect (row 3)');
   await expect(page.getByTestId('excel-large')).toHaveCount(0);
 });
 
@@ -55,7 +55,7 @@ test('header row and cell range re-read the sheet, and a header row outside the 
   await expectRows(page, 2);
   await expect(range).toHaveValue('A3:C5');
 
-  const header = page.getByLabel('Header row');
+  const header = page.getByLabel('Header row', { exact: true });
   await header.fill('0');
   await header.press('Enter');
   await expect(columns(page)).toHaveText(['Column A', 'Column B', 'Column C']);

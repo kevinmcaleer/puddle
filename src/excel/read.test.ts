@@ -1,10 +1,11 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import * as XLSX from 'xlsx';
-import { guessHeaderRow, listSheets, parseWorkbook, readSheet, serialToMs } from './read';
+import { findHeaderRows, findTables, guessHeaderRow, listSheets, parseWorkbook, readSheet, serialToMs } from './read';
 import { ExcelError } from './types';
 
 const fixture = () => new Uint8Array(readFileSync(join(__dirname, '../../tests/fixtures/sales.xlsx')));
+const merged = () => new Uint8Array(readFileSync(join(__dirname, '../../tests/fixtures/messy/merged.xlsx')));
 const day = (y: number, m: number, d: number) => Date.UTC(y, m - 1, d) / 86_400_000;
 
 /** A workbook built in memory and written to .xlsx bytes, so each test reads exactly what it describes. */
@@ -30,7 +31,8 @@ describe('the fixture workbook', () => {
 
   it('skips the title row, names merged and empty header cells, and keeps Excel types', () => {
     const data = readSheet(wb);
-    expect(data).toMatchObject({ sheet: 'Sales', headerRow: 3, range: 'A1:H7', rows: 4 });
+    // The title above the blank row is a block of its own, not a table; the table below it is read.
+    expect(data).toMatchObject({ sheet: 'Sales', headerRow: 3, headerRows: 1, range: 'A3:H7', rows: 4, merges: 0, tables: [{ range: 'A3:H7', rows: 5, columns: 8, cells: 36 }] });
     expect(data.columns.map((c) => [c.name, c.type])).toEqual([
       ['Region', 'VARCHAR'],
       ['Order date', 'DATE'],
@@ -143,6 +145,10 @@ describe('header row detection', () => {
   it('skips a title row and blank rows', () => {
     expect(guessHeaderRow([1, 0, 6, 6, 5])).toBe(2);
   });
+  it('never takes one cell on its own as the header of a wider table', () => {
+    expect(guessHeaderRow([1, 2, 2, 2])).toBe(1);
+    expect(guessHeaderRow([1, 1, 1])).toBe(0);
+  });
   it('takes a row half as wide as the widest', () => {
     expect(guessHeaderRow([3, 6, 6])).toBe(0);
     expect(guessHeaderRow([2, 6, 6])).toBe(1);
@@ -150,5 +156,79 @@ describe('header row detection', () => {
   it('falls back to the first row', () => {
     expect(guessHeaderRow([])).toBe(0);
     expect(guessHeaderRow([1])).toBe(0);
+  });
+});
+
+/** The merges of a sheet built in memory, written as A1 ranges. */
+const withMerges = (...ranges: string[]) => (ws: XLSX.WorkSheet) => (ws['!merges'] = ranges.map((r) => XLSX.utils.decode_range(r)));
+const at = (ws: XLSX.WorkSheet) => (r: number, c: number) => ws[XLSX.utils.encode_cell({ r, c })] as XLSX.CellObject | undefined;
+const whole = (ws: XLSX.WorkSheet) => XLSX.utils.decode_range(ws['!ref']!);
+
+describe('the tables on a sheet', () => {
+  it('are blocks of filled rows, a title and footnotes apart from the table, with a spacer column kept inside it', () => {
+    const wb = parseWorkbook(merged());
+    const data = readSheet(wb);
+    // The title and the subtitle, one cell each, aren't a table.
+    expect(data.tables).toEqual([
+      { range: 'A4:J21', rows: 18, columns: 10, cells: 136 },
+      { range: 'A24:B28', rows: 5, columns: 2, cells: 9 },
+    ]);
+    expect(data).toMatchObject({ range: 'A4:J21', headerRow: 4, headerRows: 2, rows: 16, merges: 4 });
+    expect(data.columns.map((c) => c.name)).toEqual(['Region', 'Store', 'Q1 Jan', 'Q1 Feb', 'Q1 Mar', 'Q2 Apr', 'Q2 May', 'Q2 Jun', 'Column I', 'Notes']);
+    // Each region is filled down its stores; the subtotal rows below the merge stay empty.
+    expect(data.columns[0]!.values.slice(0, 5)).toEqual(['North', 'North', 'North', null, 'South']);
+    expect(data.columns[1]!.values[3]).toBe('North total');
+    expect(data.columns[2]!.type).toBe('BIGINT');
+    expect(data.columns[8]!.values.every((v) => v == null)).toBe(true);
+  });
+
+  it('leave merged cells as they are when told to, still counting them', () => {
+    const data = readSheet(parseWorkbook(merged()), { fillMerges: false });
+    expect(data.merges).toBe(4);
+    expect(data.columns[0]!.values.slice(0, 4)).toEqual(['North', null, null, null]);
+  });
+
+  it('read the footnotes as a table of their own, with its own header row', () => {
+    const data = readSheet(parseWorkbook(merged()), { range: 'A24:B28' });
+    expect(data).toMatchObject({ headerRow: 25, headerRows: 1, rows: 3 });
+    expect(data.columns.map((c) => c.name)).toEqual(['Code', 'Meaning']);
+  });
+
+  it('join groups of rows with a blank row between them into one table, and split two tables side by side', () => {
+    const groups = XLSX.utils.aoa_to_sheet([['a', 'b', 'c'], [1, 2, 3], [null, null, null], [4, 5, 6], [7, 8, null]]);
+    expect(findTables(whole(groups), at(groups)).map((r) => XLSX.utils.encode_range(r))).toEqual(['A1:C5']);
+    const side = XLSX.utils.aoa_to_sheet([['a', 'b', null, 'x', 'y'], [1, 2, null, 3, 4]]);
+    expect(findTables(whole(side), at(side)).map((r) => XLSX.utils.encode_range(r))).toEqual(['A1:B2', 'D1:E2']);
+    const list = XLSX.utils.aoa_to_sheet([['only'], ['one'], [null], ['column']]);
+    expect(findTables(whole(list), at(list)).map((r) => XLSX.utils.encode_range(r))).toEqual(['A1:A4']);
+  });
+
+  it('read the largest table unless a header row says which', () => {
+    const bytes = book([['Title'], [null], ['a', 'b'], [1, 2], [null], ['Notes', 'Meaning', 'More', 'Yet', 'Again'], ['x', 'y', 'z', 1, 2], ['p', 'q', 'r', 3, 4]]);
+    expect(readSheet(parseWorkbook(bytes))).toMatchObject({ range: 'A6:E8', headerRow: 6 });
+    expect(readSheet(parseWorkbook(bytes), { headerRow: 3 })).toMatchObject({ range: 'A3:B4', headerRow: 3, rows: 1 });
+  });
+});
+
+describe('header rows', () => {
+  it('are found from merged cells over a row of names, downwards and upwards', () => {
+    const ws = XLSX.utils.aoa_to_sheet([['Region', 'Q1', null, 'Q2', null], [null, 'Jan', 'Feb', 'Mar', 'Apr'], ['North', 1, 2, 3, 4]]);
+    withMerges('B1:C1', 'D1:E1', 'A1:A2')(ws);
+    expect(findHeaderRows(whole(ws), 0, at(ws), ws['!merges']!)).toEqual({ header: 0, rows: 2 });
+    expect(findHeaderRows(whole(ws), 1, at(ws), ws['!merges']!)).toEqual({ header: 0, rows: 2 });
+  });
+
+  it('are one row when the row below holds data, even under a merged header cell', () => {
+    const data = readSheet(parseWorkbook(fixture()));
+    expect(data).toMatchObject({ headerRows: 1 });
+    expect(data.columns[5]!.values[0]).toBe('Ann');
+  });
+
+  it('are as many as asked, with the names joined and a cell merged down taken once', () => {
+    const bytes = book([['Sales', null, null], ['Region', 'Q1', null], [null, 'Jan', 'Feb'], ['North', 1, 2]], withMerges('A1:C1', 'B2:C2', 'A2:A3'));
+    const data = readSheet(parseWorkbook(bytes), { headerRow: 1, headerRows: 3 });
+    expect(data.columns.map((c) => c.name)).toEqual(['Sales Region', 'Sales Q1 Jan', 'Sales Q1 Feb']);
+    expect(data).toMatchObject({ headerRows: 3, rows: 1 });
+    expect(() => readSheet(parseWorkbook(bytes), { headerRow: 4, headerRows: 2 })).toThrow('The header can’t be 2 rows from row 4: the data read (A1:C4) ends at row 4.');
   });
 });

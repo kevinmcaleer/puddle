@@ -97,8 +97,10 @@ export interface AnalysisFacts {
   rows: number;
   dups?: number;
   columns: Record<string, ColumnFacts>;
-  /** For a source read from delimited text: the rows around and inside the table that aren't data, and the read options it had. */
-  shape?: { facts: ShapeFacts; options: ParseOptions };
+  /** For a source read from delimited text or a sheet: the rows around and inside the table that aren't data, and the read options it had. */
+  shape?: { facts: ShapeFacts; options: ParseOptions; sheet?: boolean };
+  /** For a sheet: the merged cells in the rows read, and whether every cell of each took its value. */
+  sheet?: { merges: number; filled: boolean };
   /** The project's style for column names, as it was when the node was analysed. */
   columnNames?: ColumnNamesMode;
   /** When the table was too big to look at whole: the rows looked at (its first ones) and how many it has. */
@@ -274,8 +276,10 @@ export function findIssues(columns: ColumnSchema[], profile: Record<string, Colu
   };
   if (!facts.rows) return out;
   const names = columns.map((c) => c.name);
-  const textOptions = facts.shape?.options;
-  if (facts.shape) out.push(...findShapeIssues(names, facts.shape.facts, facts.shape.options, ignored));
+  const textOptions = facts.shape && !facts.shape.sheet ? facts.shape.options : undefined;
+  if (facts.shape) out.push(...findShapeIssues(names, facts.shape.facts, facts.shape.options, ignored, facts.shape.sheet));
+  if (facts.sheet?.merges && !facts.sheet.filled)
+    add('mergedCells', undefined, { count: facts.sheet.merges, examples: [], severity: 'fix', fix: { readOptions: { fillMerges: true }, label: 'Fill merged cells' } });
   // Shifted rows first: the columns they moved through are judged once they are back in line.
   const skewed = facts.skew && { column: names[facts.skew.skew.at]!, issue: skewIssue(columns, facts.skew.skew, facts.skew.fix) };
   if (skewed) add('skewedRows', skewed.column, skewed.issue);
