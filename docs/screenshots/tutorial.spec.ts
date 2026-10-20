@@ -42,7 +42,8 @@ async function selectColumn(page: Page, name: string) {
  */
 async function quiet(page: Page) {
   await page.waitForTimeout(1500);
-  await expect(page.getByTestId('activity')).toHaveCount(0, SLOW);
+  // Polled for its text rather than its count, so a timeout names the query that was still running.
+  await expect.poll(() => page.getByTestId('activity').allTextContents(), SLOW).toEqual([]);
 }
 
 async function addRule(page: Page, title: string) {
