@@ -8,7 +8,7 @@ import { markAttached } from './attachments';
 import { openFormatDialog } from './formatDialog';
 import { keepHandle, type FileHandle } from './handles';
 import { HEAD_BYTES, hashBytes } from './hash';
-import { sniff, sniffPasted } from './sniff';
+import { sniff, sniffPasted, TAIL_BYTES } from './sniff';
 
 /** Files picked this session, by source id. Projects store references, never the data (plan D6). */
 const files = new Map<string, File>();
@@ -30,9 +30,10 @@ function engineOrThrow() {
  */
 export async function addFileSource(file: File, position = { x: 80, y: 80 }, handle?: FileHandle): Promise<Source> {
   const head = new Uint8Array(await file.slice(0, HEAD_BYTES).arrayBuffer());
+  const tail = file.size > HEAD_BYTES ? new Uint8Array(await file.slice(Math.max(0, file.size - TAIL_BYTES)).arrayBuffer()) : undefined;
   // The bytes say what the file is (plan D24); the name only breaks a tie. A file that could be two things opens the
   // Format picker once it is on the canvas, with the best guess already read.
-  const sniffed = sniff({ name: file.name, head, size: file.size });
+  const sniffed = sniff({ name: file.name, head, size: file.size, tail });
   const engine = engineOrThrow();
   const source: Source = {
     id: newId('s'),

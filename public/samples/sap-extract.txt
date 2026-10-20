@@ -1,0 +1,82 @@
+Vendor line items                                                   Page       1
+Company code 1000   Fiscal year 2026   Period 03                    PRD/100
+User KMCALEER      Date 20.03.2026   Time 08:14:52
+
+---------------------------------------------------------------------------------------------------------------
+|Doc. no.  |Vendor              |Doc. date |Pstng date|Crcy|    Amount in LC|Cost ctr|Text                    |
+---------------------------------------------------------------------------------------------------------------
+|5100000000|Wayne Industrial    |02.02.2026|03.02.2026|EUR |         891,36 |CC3009  |Invoice                 |
+|5100000007|Müller GmbH         |23.03.2026|24.03.2026|EUR |       7.625,43 |CC2006  |Q1 maintenance          |
+|5100000014|Acme Supplies Ltd   |25.01.2026|26.01.2026|GBP |       2.989,98 |CC8001  |Spares                  |
+|5100000021|Umbrella Logistics  |14.02.2026|15.02.2026|EUR |       9.509,39 |CC8008  |Freight                 |
+|5100000028|Tyrell Parts        |03.03.2026|05.03.2026|EUR |       6.757,79 |CC2002  |Q1 maintenance          |
+|5100000035|Wayne Industrial    |11.03.2026|14.03.2026|EUR |       3.321,81 |CC8006  |Credit memo             |
+|5100000042|Umbrella Logistics  |04.02.2026|04.02.2026|GBP |       5.095,86-|CC5008  |Invoice                 |
+|5100000049|Wayne Industrial    |04.03.2026|07.03.2026|EUR |         118,07-|CC1002  |Consulting March        |
+|5100000056|Wayne Industrial    |12.01.2026|14.01.2026|EUR |       8.009,55 |CC1005  |Q1 maintenance          |
+|5100000063|Tyrell Parts        |05.01.2026|06.01.2026|EUR |         398,85 |CC6008  |Freight                 |
+|5100000070|Stark Components    |19.01.2026|19.01.2026|EUR |       7.984,02 |CC6002  |Q1 maintenance          |
+|5100000077|Stark Components    |27.01.2026|28.01.2026|EUR |       1.099,51 |CC6006  |                        |
+|5100000084|Müller GmbH         |01.03.2026|01.03.2026|EUR |       7.418,67 |CC7004  |Invoice                 |
+|5100000091|Wayne Industrial    |21.01.2026|22.01.2026|EUR |       8.388,08 |CC7001  |                        |
+|5100000098|Acme Supplies Ltd   |14.03.2026|17.03.2026|GBP |       6.727,94 |CC1002  |Invoice                 |
+|5100000105|Umbrella Logistics  |05.03.2026|08.03.2026|EUR |       7.375,64 |CC2008  |Freight                 |
+|5100000112|Acme Supplies Ltd   |20.03.2026|23.03.2026|EUR |         646,37 |CC1007  |Consulting March        |
+|5100000119|Stark Components    |23.02.2026|23.02.2026|EUR |       3.601,86-|CC8005  |Invoice                 |
+|5100000126|Umbrella Logistics  |23.01.2026|23.01.2026|EUR |       7.994,03 |CC7008  |Freight                 |
+|5100000133|Stark Components    |23.02.2026|23.02.2026|EUR |       9.220,56 |CC2005  |Credit memo             |
+|5100000140|Acme Supplies Ltd   |08.01.2026|08.01.2026|EUR |       6.099,88 |CC5002  |Spares                  |
+|5100000147|Acme Supplies Ltd   |04.01.2026|07.01.2026|GBP |       9.783,95 |CC4003  |Credit memo             |
+|5100000154|Stark Components    |25.02.2026|27.02.2026|EUR |       2.240,68-|CC2007  |Invoice                 |
+|5100000161|Northwind Traders   |27.01.2026|28.01.2026|GBP |       1.297,64 |CC6007  |Consulting March        |
+|5100000168|Müller GmbH         |22.02.2026|24.02.2026|EUR |       8.517,98 |CC1009  |Invoice                 |
+|5100000175|Umbrella Logistics  |13.02.2026|13.02.2026|EUR |       2.639,29 |CC9009  |Consulting March        |
+|5100000182|Acme Supplies Ltd   |26.03.2026|26.03.2026|EUR |       6.421,19 |CC9002  |Credit memo             |
+|5100000189|Wayne Industrial    |13.01.2026|15.01.2026|EUR |       9.779,81-|CC4005  |Credit memo             |
+|5100000196|Umbrella Logistics  |09.01.2026|11.01.2026|EUR |       3.099,53 |CC2009  |Spares                  |
+|5100000203|Umbrella Logistics  |26.02.2026|28.02.2026|EUR |       3.796,26 |CC5002  |Spares                  |
+|5100000210|Initech             |20.03.2026|20.03.2026|EUR |       3.623,72-|CC5008  |Freight                 |
+|5100000217|Acme Supplies Ltd   |19.01.2026|19.01.2026|EUR |       7.840,28 |CC8005  |Consulting March        |
+|5100000224|Northwind Traders   |18.03.2026|21.03.2026|EUR |       5.643,23 |CC2008  |Spares                  |
+|5100000231|Umbrella Logistics  |28.03.2026|28.03.2026|EUR |         455,21 |CC6008  |                        |
+|5100000238|Northwind Traders   |01.01.2026|03.01.2026|GBP |       8.729,38 |CC7008  |Spares                  |
+
+
+Vendor line items                                                   Page       2
+Company code 1000   Fiscal year 2026   Period 03                    PRD/100
+User KMCALEER      Date 20.03.2026   Time 08:14:52
+
+---------------------------------------------------------------------------------------------------------------
+|Doc. no.  |Vendor              |Doc. date |Pstng date|Crcy|    Amount in LC|Cost ctr|Text                    |
+---------------------------------------------------------------------------------------------------------------
+|5100000245|Umbrella Logistics  |12.02.2026|15.02.2026|GBP |       5.922,01-|CC3000  |Credit memo             |
+|5100000252|Wayne Industrial    |27.01.2026|27.01.2026|EUR |       6.424,27 |CC2001  |Credit memo             |
+|5100000259|Northwind Traders   |13.01.2026|13.01.2026|GBP |         677,54-|CC4009  |Q1 maintenance          |
+|5100000266|Initech             |07.03.2026|09.03.2026|EUR |       6.473,61 |CC4005  |Freight                 |
+|5100000273|Wayne Industrial    |22.03.2026|24.03.2026|EUR |       7.983,54 |CC8006  |Consulting March        |
+|5100000280|Umbrella Logistics  |23.03.2026|25.03.2026|EUR |       5.924,72 |CC9009  |Freight                 |
+|5100000287|Wayne Industrial    |27.03.2026|28.03.2026|EUR |       3.798,51 |CC5000  |Freight                 |
+|5100000294|Umbrella Logistics  |01.01.2026|03.01.2026|GBP |         269,94 |CC9003  |Q1 maintenance          |
+|5100000301|Müller GmbH         |10.01.2026|13.01.2026|EUR |       6.125,71-|CC9007  |Consulting March        |
+|5100000308|Müller GmbH         |15.03.2026|15.03.2026|EUR |       2.753,70 |CC2005  |                        |
+|5100000315|Initech             |06.03.2026|06.03.2026|GBP |       2.538,35 |CC7002  |Consulting March        |
+|5100000322|Initech             |26.03.2026|26.03.2026|EUR |         886,47 |CC4004  |Consulting March        |
+|5100000329|Northwind Traders   |04.01.2026|05.01.2026|EUR |       3.154,66 |CC4008  |Spares                  |
+|5100000336|Stark Components    |15.01.2026|18.01.2026|EUR |       2.334,30 |CC6008  |Credit memo             |
+|5100000343|Northwind Traders   |13.03.2026|16.03.2026|EUR |       9.043,94-|CC2003  |Spares                  |
+|5100000350|Tyrell Parts        |16.02.2026|19.02.2026|EUR |       2.246,71 |CC1005  |                        |
+|5100000357|Wayne Industrial    |21.03.2026|22.03.2026|EUR |       1.238,29 |CC4001  |Q1 maintenance          |
+|5100000364|Initech             |14.01.2026|14.01.2026|EUR |       4.048,40 |CC2004  |Q1 maintenance          |
+|5100000371|Stark Components    |13.02.2026|14.02.2026|EUR |       9.497,46 |CC5002  |Spares                  |
+|5100000378|Stark Components    |14.01.2026|17.01.2026|GBP |       2.244,60 |CC5009  |Credit memo             |
+|5100000385|Wayne Industrial    |16.02.2026|18.02.2026|EUR |         431,93-|CC3008  |Spares                  |
+|5100000392|Acme Supplies Ltd   |01.02.2026|01.02.2026|EUR |       7.924,39 |CC8000  |Invoice                 |
+|5100000399|Müller GmbH         |22.02.2026|24.02.2026|EUR |       5.472,87 |CC7009  |Spares                  |
+|5100000406|Initech             |26.01.2026|26.01.2026|GBP |       3.061,95 |CC3008  |Consulting March        |
+|5100000413|Tyrell Parts        |28.01.2026|28.01.2026|EUR |         176,25 |CC5007  |Invoice                 |
+---------------------------------------------------------------------------------------------------------------
+|*         |                    |          |          |EUR |     192.474,66 |        |                        |
+---------------------------------------------------------------------------------------------------------------
+
+60 items displayed
+End of report

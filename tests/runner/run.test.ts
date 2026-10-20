@@ -170,6 +170,22 @@ describe('puddle-run', () => {
     expect(await db.describe(`SELECT * FROM "${sourceTableName(p.sources[0]!)}"`)).toContainEqual({ name: 'Amount', type: 'DECIMAL(19,4)' });
   });
 
+  it('reads a text file with the skip options and column names the browser’s sniff set, the same rows as the browser', async () => {
+    writeFileSync(join(folder, 'messy.txt'), readFileSync(join(__dirname, '../fixtures/messy/messy.txt')));
+    const parseOptions = { delimiter: ';', skip: 2, skipBottom: 1, columns: ['Customer ID', 'Customer Name', 'City', 'Status', 'Signed up', 'Balance', 'Phone', 'Notes'] };
+    const crm = { ...src({ id: 'm', format: 'csv' }), name: 'messy.txt', parseOptions, file: { originalName: 'messy.txt', size: 1, lastModified: 0, headHash: 'h' } };
+    const p = flow({ sources: [crm], nodes: [{ id: 'm', type: 'source', sourceId: 'm' }, { id: 'out', type: 'output', outputSpec: { format: 'csv', options: {} } }], wires: [['m', 'out', 0]] });
+    p.name = 'CRM';
+    const outDir = join(folder, 'out-crm');
+    const { log } = await runProject(p, { folder, outDir, db, now: () => new Date('2026-10-17T03:00:00Z') });
+    // The two comment lines and the row count at the end are skipped; the header pasted in again is a row (an issue the browser lists).
+    expect(log.outputs[0]).toMatchObject({ status: 'written', rows: 45 });
+    const csv = readFileSync(join(outDir, 'out.csv'), 'utf8').trim().split('\n');
+    expect(csv[0]).toBe('Customer ID,Customer Name,City,Status,Signed up,Balance,Phone,Notes');
+    expect(csv[1]).toContain('CU1000,kofi jones,Cardiff');
+    expect(csv[csv.length - 1]).toContain('CU1039,dev smith');
+  });
+
   it('reads the command line and lists a folder’s project files', () => {
     expect(parseArgs(['run', 'a.puddle.json', '--out', '/tmp/x'])).toEqual({ command: 'run', target: 'a.puddle.json', out: '/tmp/x', poll: undefined });
     expect(parseArgs(['watch', '/projects', '--poll', '5'])).toMatchObject({ command: 'watch', target: '/projects', poll: 5 });

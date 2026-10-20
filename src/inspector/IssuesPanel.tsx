@@ -1,6 +1,6 @@
 // The Issues section: what analysis found wrong with the selected node's data, each with the step that fixes it.
 import { issueLabel, useAnalysisEntry, issuesOf } from '../analysis';
-import { fixName } from '../analysis/fixName';
+import { fixLabel } from '../analysis/fixes';
 import { FixAll } from '../analysis/FixAll';
 import { useNodeStatus } from '../flow/status';
 import { ignoreIssue, unignoreIssue, useProjectStore, type GraphNode } from '../model';
@@ -32,9 +32,9 @@ export function IssuesPanel({ node }: { node: GraphNode }) {
               name={issueLabel(issue)}
               severity={issue.severity}
               count={issue.count}
-              total={issue.kind === 'mixedCase' ? undefined : issue.kind === 'duplicateRows' ? rows : (entry?.state === 'ok' ? entry.analysis.facts.columns[issue.column!]?.nonNull : undefined)}
+              total={issue.kind === 'mixedCase' ? undefined : issue.column == null ? rows : (entry?.state === 'ok' ? entry.analysis.facts.columns[issue.column]?.nonNull : undefined)}
               examples={issue.examples}
-              fix={fixName(issue.fix?.type)}
+              fix={fixLabel(issue)}
               onIgnore={() => apply((p) => ignoreIssue(p, node.id, issue.key))}
             />
           </div>

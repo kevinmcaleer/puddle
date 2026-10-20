@@ -34,9 +34,10 @@ const analyse = async (source: typeof messy) => {
 };
 
 describe('analysing a node', () => {
-  it('finds each of messy.csv’s problems in four queries, with counts and examples from the data', async () => {
+  it('finds each of messy.csv’s problems in five queries, with counts and examples from the data', async () => {
     const { issues, analysis } = await analyse(messy);
-    expect(queries).toBe(4);
+    // Count, profile, type sniff, the exact counts, and the shape of the text file.
+    expect(queries).toBe(5);
     expect(analysis.facts.rows).toBe(5);
     // price (£1,234.50, (12.00)) and joined (31/01/2024) don't read as numbers or dates to DuckDB's casts: the full
     // column catalogue (#186) learns symbols, brackets and day-first dates.
@@ -52,8 +53,9 @@ describe('analysing a node', () => {
   it('finds the CRM export’s duplicate rows, spaces, hidden characters, mixed capitals and text-typed columns', async () => {
     const { issues } = await analyse(crm);
     const keys = issues.map((i) => i.key);
-    expect(keys[0]).toBe('duplicateRows');
-    expect(issues[0]).toMatchObject({ count: 4, fix: { type: 'duplicateRows' } });
+    // The header pasted in again comes first (a shape issue, src/analysis/shape.ts), then the duplicates.
+    expect(keys.slice(0, 2)).toEqual(['repeatedHeader', 'duplicateRows']);
+    expect(issues[1]).toMatchObject({ count: 4, fix: { type: 'duplicateRows' } });
     for (const k of [issueKey('edgeSpaces', 'Customer Name'), issueKey('doubleSpaces', 'Customer Name'), issueKey('mixedCase', 'Customer Name'), issueKey('nonPrinting', 'City'), issueKey('mixedCase', 'Status'), issueKey('nonPrinting', 'Notes'), issueKey('edgeSpaces', 'Balance')])
       expect(keys, k).toContain(k);
     const status = issues.find((i) => i.key === issueKey('mixedCase', 'Status'))!;

@@ -7,6 +7,8 @@ export interface SampleFile {
   file: string;
   /** Where it is served beside the app, when it isn't shipped in public/samples. */
   path?: string;
+  /** The rows the file reads as, when that isn't one per line after the header (a banner, a footer, blank lines). */
+  rows?: number;
 }
 
 export interface Sample {
@@ -89,6 +91,45 @@ Takings per store, laid out like a spreadsheet report. What’s wrong with it:
 - **Numbers stored as text**: some have thousands separators (“28,512”).
 
 Try it: add a Transform, use **Unpivot columns** to turn the month columns into \`month\` and \`sales\`, then **Parse numbers** on \`sales\`.
+
+This is a sample project. Delete it from the projects list when you’re done.`,
+  },
+  {
+    id: 'crm',
+    title: 'CRM export',
+    projectName: 'Sample: CRM export',
+    blurb: 'A text export with comment lines, a footer, a header pasted in twice and ragged rows.',
+    files: [{ file: 'messy.txt', rows: 45 }],
+    note: `## CRM export (sample)
+
+A customer list exported from a CRM, then pasted together with a second export and edited by hand. What’s wrong with it:
+
+- **Comment lines** above the header and a **row count** after the table. Puddle skips both when it reads the file (see Read options in the inspector).
+- **The header pasted in again** half way down, where the second export was added.
+- **Duplicate rows**: four customers appear twice.
+- **Ragged rows**: one row is two cells short, one has an extra cell.
+- **Untidy text**: stray and doubled spaces, mixed capitals, non-printing characters, empty values written five ways, dates in three formats and amounts as text.
+
+Try it: with the source selected, use **Fix all** on the Issues panel. It drops the repeated header and the duplicates and tidies the text in one go; the date and number issues it leaves are suggestions, one click each.
+
+This is a sample project. Delete it from the projects list when you’re done.`,
+  },
+  {
+    id: 'sap',
+    title: 'SAP extract',
+    projectName: 'Sample: SAP extract',
+    blurb: 'A report printed to text: banners, separator lines, a page break and a total row.',
+    files: [{ file: 'sap-extract.txt', rows: 70 }],
+    note: `## SAP extract (sample)
+
+Vendor line items printed from SAP to a text file, as a report rather than a table. What’s wrong with it:
+
+- **A banner** above the table and a **footer** below it. Puddle skips both when it reads the file.
+- **Separator lines** of dashes, and a **page break** with the banner and the header printed again.
+- **A total row** at the end, marked with an asterisk.
+- **Pipes** at both ends of every row, leaving an empty column at each side; values padded with spaces; amounts in German notation (7.625,43).
+
+Try it: **Fix all** on the Issues panel removes the separator lines, the second banner and the repeated header and trims the values. Remove the total row from its suggestion, then **Parse numbers** on the amount with the German locale.
 
 This is a sample project. Delete it from the projects list when you’re done.`,
   },

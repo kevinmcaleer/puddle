@@ -1,6 +1,9 @@
 import { hashValue, type Source } from '../model';
 import { CompileError } from './errors';
-import { bool, ident, str, strList } from './sql';
+import { bool, ident, num, str, strList } from './sql';
+
+const ROW = ident('__puddle_row');
+const TOTAL = ident('__puddle_total');
 
 const EXT: Record<Source['format'], string> = { csv: 'csv', tsv: 'tsv', json: 'json', ndjson: 'ndjson', parquet: 'parquet', xlsx: 'xlsx', xml: 'csv', access: 'accdb' };
 
@@ -67,11 +70,24 @@ export function sourceRelation(source: Source): string {
       if (o.quote != null) args.push(`quote = ${str(o.quote)}`);
       if (o.encoding != null) args.push(`encoding = ${str(o.encoding)}`);
       if (o.nullStrings?.length) args.push(`nullstr = ${strList(o.nullStrings)}`);
+      if (o.skip) args.push(`skip = ${num(o.skip)}`);
+      // With a banner skipped, DuckDB's sniffer fails on a ragged row below, so the columns are given outright: the
+      // names the file's own sniff read from the header line, every one as text (the steps type them after).
       // Ragged rows (a header with a trailing comma, an unquoted comma in one value) otherwise make the sniffer give
       // up on the delimiter and read each line as one column, or fail outright when the delimiter is set.
       // Short rows are padded with empty values instead, as Power Query does.
       args.push('null_padding = true');
-      return `read_csv(${args.join(', ')})`;
+      // A file with a banner is also read in DuckDB's lenient mode, which takes mixed line endings and a row with
+      // too many values (dropped past the last column); strict mode fails on both. Lenient mode misreads a quote
+      // inside a value, so a plain file keeps the strict one.
+      if (o.columns?.length) {
+        if (o.header == null) args.push('header = true');
+        args.push('auto_detect = false', `columns = {${o.columns.map((c) => `${str(c)}: 'VARCHAR'`).join(', ')}}`, 'strict_mode = false');
+      }
+      const relation = `read_csv(${args.join(', ')})`;
+      // A footer: the last rows go, counted from the end in file order (DuckDB reads a file in order on one thread).
+      if (o.skipBottom) return `(SELECT * EXCLUDE (${ROW}, ${TOTAL}) FROM (SELECT *, row_number() OVER () AS ${ROW}, count(*) OVER () AS ${TOTAL} FROM ${relation}) WHERE ${ROW} <= ${TOTAL} - ${num(o.skipBottom)})`;
+      return relation;
     }
     case 'json':
       return `read_json_auto(${file})`;

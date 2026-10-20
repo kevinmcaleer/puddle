@@ -2,7 +2,7 @@
 // no fix-level issue; unticking one fix leaves just that issue.
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { analyseNode, findIssues, planFixes, sortIssues, type Issue } from '../../src/analysis';
+import { analyseNode, findIssues, isStepFix, planFixes, sortIssues, type Issue } from '../../src/analysis';
 import { compile, sourceFileName } from '../../src/compiler';
 import { detectDateFormats } from '../../src/dates';
 import { EngineClient } from '../../src/engine/client';
@@ -26,7 +26,7 @@ const analyse = async (project: Project, nodeId: string) => {
 
 const fixAll = async (project: Project, chosen: (issues: Issue[]) => Issue[]) => {
   const before = await analyse(project, 'in');
-  const steps = await planFixes(chosen(before.issues), {
+  const { steps } = await planFixes(chosen(before.issues), {
     available: before.columns,
     locale: project.settings.locale,
     detectDates: (column) => detectDateFormats(engine, project, { nodeId: 'in' }, column),
@@ -55,7 +55,7 @@ describe('Fix all on messy.csv', () => {
 
   it('with Trim unticked, fixes the rest and leaves the spaces issues listed', async () => {
     const project = flow({ sources: [messy], nodes: [{ id: 'in', type: 'source', sourceId: messy.id }] });
-    const { after } = await fixAll(project, (issues) => issues.filter((i) => i.severity === 'fix' && i.fix?.type !== 'trimWhitespace'));
+    const { after } = await fixAll(project, (issues) => issues.filter((i) => i.severity === 'fix' && !(isStepFix(i.fix) && i.fix.type === 'trimWhitespace')));
     expect(after.issues.map((i) => i.key).sort()).toEqual(['edgeSpaces:city', 'edgeSpaces:name']);
   });
 });

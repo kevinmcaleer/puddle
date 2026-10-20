@@ -59,3 +59,28 @@ describe('reading a table of an Access database', () => {
     );
   });
 });
+
+describe('reading delimited text around a table', () => {
+  const text = (parseOptions: Source['parseOptions']): Source => ({
+    id: 'a',
+    name: 'report.txt',
+    kind: 'file',
+    format: 'csv',
+    file: { originalName: 'report.txt', size: 1, lastModified: 0, headHash: 'h1' },
+    parseOptions,
+    detectedSchema: [],
+  });
+
+  it('skips a banner at the top as DuckDB’s skip, and names the columns itself when told to, all as text', () => {
+    expect(sourceRelation(text({ skip: 5 }))).toBe(`read_csv('src_a.csv', skip = 5, null_padding = true)`);
+    expect(sourceRelation(text({ skip: 0, columns: [] }))).toBe(`read_csv('src_a.csv', null_padding = true)`);
+    expect(sourceRelation(text({ skip: 2, columns: ['id', "O'Brien"] }))).toBe(`read_csv('src_a.csv', skip = 2, null_padding = true, header = true, auto_detect = false, columns = {'id': 'VARCHAR', 'O''Brien': 'VARCHAR'}, strict_mode = false)`);
+    expect(sourceRelation(text({ skip: 3, header: false, columns: ['column0', 'column1'] }))).toBe(`read_csv('src_a.csv', header = false, skip = 3, null_padding = true, auto_detect = false, columns = {'column0': 'VARCHAR', 'column1': 'VARCHAR'}, strict_mode = false)`);
+  });
+
+  it('drops a footer by counting rows from the end, in file order', () => {
+    expect(sourceRelation(text({ delimiter: '|', skipBottom: 2 }))).toBe(
+      `(SELECT * EXCLUDE ("__puddle_row", "__puddle_total") FROM (SELECT *, row_number() OVER () AS "__puddle_row", count(*) OVER () AS "__puddle_total" FROM read_csv('src_a.csv', delim = '|', null_padding = true)) WHERE "__puddle_row" <= "__puddle_total" - 2)`,
+    );
+  });
+});

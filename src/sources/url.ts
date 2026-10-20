@@ -2,11 +2,12 @@ import { create } from 'zustand';
 import { whenEngine } from '../app/engine';
 import { sourceFileName } from '../compiler';
 import { invalidateCaches } from '../flow/status';
-import { addSource, newId, updateSource, useProjectStore, type Source, type SourceFormat } from '../model';
+import { addSource, newId, setSourceFormat, updateSource, useProjectStore, type Source, type SourceFormat } from '../model';
 import { markAttached } from './attachments';
 import { formatFromName, knownFormat } from './detect';
 import { parseAddress, UrlSourceError, type UrlErrorKind } from './address';
-import { headHash } from './hash';
+import { HEAD_BYTES, headHash } from './hash';
+import { sniff, TAIL_BYTES } from './sniff';
 import { isSampleFile, isShippedFile, sampleAddress, sampleBase } from '../samples/catalog';
 import type { HtmlTable } from './html';
 import { fetchTable, tableFetched } from './webpage';
@@ -23,7 +24,6 @@ import { rememberXml } from './xml';
 /** The brand book's wording for a server that doesn't send CORS headers. */
 export const CORS_MESSAGE = 'This server doesn’t allow other sites to read the file. Download it and drop it here instead.';
 
-const HEAD_BYTES = 1024 * 1024;
 
 export { parseAddress, UrlSourceError, type UrlErrorKind };
 
@@ -267,6 +267,20 @@ export async function addODataSource(root: URL, spec: FeedSpec, opts: ReadOption
   return source;
 }
 
+/**
+ * A sample read for the first time is sniffed as a chosen file is (src/sources/sniff.ts), so a sample with a
+ * banner, a footer or semicolons opens with the read options that suit it, and the issues its note describes.
+ */
+function sniffSample(source: Source, fetched: Fetched) {
+  const data = fetched.data;
+  if (!data || !source.url?.sample || Object.keys(source.parseOptions).length || (source.format !== 'csv' && source.format !== 'tsv')) return;
+  const tail = data.length > HEAD_BYTES ? data.subarray(data.length - TAIL_BYTES) : undefined;
+  const sniffed = sniff({ name: source.name, head: data.subarray(0, HEAD_BYTES), size: data.length, tail });
+  if ((sniffed.format !== 'csv' && sniffed.format !== 'tsv') || sniffed.confidence === 'unsure') return;
+  if (sniffed.format === source.format && !Object.keys(sniffed.parseOptions).length) return;
+  useProjectStore.getState().amend((p) => setSourceFormat(p, source.id, sniffed.format, sniffed.parseOptions));
+}
+
 const inFlight = new Map<string, Promise<void>>();
 
 /**
@@ -287,6 +301,8 @@ export function loadUrlSource(source: Source, opts: FetchOptions & { refresh?: b
         : source.url.table
         ? await fetchTable(addressOf(source), source.url.table, opts)
         : await fetchAddress(addressOf(source), { ...opts, format: source.format, shipped: isShippedFile(source.url.sample) });
+      // Sniffed before the bytes go to the engine, which takes the buffer with them.
+      sniffSample(source, fetched);
       await register(source, fetched);
       const current = useProjectStore.getState().history.present.sources.find((s) => s.id === source.id);
       const before = current?.url?.headHash ?? source.url.headHash;

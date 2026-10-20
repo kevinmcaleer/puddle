@@ -1,8 +1,23 @@
 // The issue catalogue: every kind of problem analysis can find in a node's data, in the user's words, with how
 // serious it is and the step that clears it. Detectors (columns.ts) make issues; the Issues panel shows them;
 // Fix all turns their fixes into steps.
+import type { ParseOptions } from '../model';
 
-export type IssueKind = 'edgeSpaces' | 'doubleSpaces' | 'nonPrinting' | 'emptyText' | 'numbersAsText' | 'datesAsText' | 'mixedCase' | 'duplicateRows';
+export type IssueKind =
+  | 'bannerRows'
+  | 'footerRows'
+  | 'repeatedHeader'
+  | 'narrowRows'
+  | 'blankRows'
+  | 'totalRows'
+  | 'duplicateRows'
+  | 'edgeSpaces'
+  | 'doubleSpaces'
+  | 'nonPrinting'
+  | 'emptyText'
+  | 'numbersAsText'
+  | 'datesAsText'
+  | 'mixedCase';
 
 /**
  * `fix`: Fix all applies it without being asked. `suggest`: listed unticked, because applying it could change what
@@ -10,12 +25,24 @@ export type IssueKind = 'edgeSpaces' | 'doubleSpaces' | 'nonPrinting' | 'emptyTe
  */
 export type IssueSeverity = 'fix' | 'suggest' | 'info';
 
-export interface IssueFix {
+/** A fix is a step added after the node, or a change to the source's read options (a banner skipped at the top). */
+export type IssueFix = StepFix | ReadOptionsFix;
+
+export interface StepFix {
   /** The step type that clears the issue. */
   type: string;
   /** Settings the step needs beyond its columns, e.g. the case to change to. */
   params?: Record<string, unknown>;
 }
+
+export interface ReadOptionsFix {
+  readOptions: ParseOptions;
+  /** What it does, in words: "Skip 5 lines at the top". */
+  label: string;
+}
+
+export const isStepFix = (fix: IssueFix | undefined): fix is StepFix => fix != null && 'type' in fix;
+export const isReadOptionsFix = (fix: IssueFix | undefined): fix is ReadOptionsFix => fix != null && 'readOptions' in fix;
 
 export interface Issue {
   /** Names the issue for ignoring: the kind and the column. */
@@ -41,6 +68,12 @@ export interface IssueKindDef {
 }
 
 export const ISSUE_KINDS: Record<IssueKind, IssueKindDef> = {
+  bannerRows: { label: () => 'Lines above the table', about: 'A title, a date or page headings before the header row.' },
+  footerRows: { label: () => 'Lines after the table', about: 'A row count, a signature or "End of report" after the last row.' },
+  repeatedHeader: { label: () => 'Header row repeated', about: 'The header appears again inside the data, as when two exports were pasted together.' },
+  narrowRows: { label: () => 'Separator and page-break rows', about: 'Rows with only the first column filled: lines of dashes, page breaks, headings on a later page.' },
+  blankRows: { label: () => 'Blank rows', about: 'Rows with nothing in any column.' },
+  totalRows: { label: () => 'Total rows inside the data', about: 'Rows that sum the rows above them; keeping them would count every value twice.' },
   edgeSpaces: { label: (c) => `Spaces at either end of ${c}`, about: 'Values start or end with a space, so equal values don’t match.' },
   doubleSpaces: { label: (c) => `Doubled spaces in ${c}`, about: 'Two or more spaces in a row inside a value.' },
   nonPrinting: { label: (c) => `Non-printing characters in ${c}`, about: 'Tabs, control characters, zero-width or no-break spaces hidden in the text.' },
@@ -56,7 +89,7 @@ export const issueKey = (kind: IssueKind, column?: string) => (column == null ? 
 export const issueLabel = (issue: Pick<Issue, 'kind' | 'column'>) => ISSUE_KINDS[issue.kind].label(issue.column);
 
 /** Issues in the order the panel lists them: the table first, then by column in the data's order, then by kind. */
-const KIND_ORDER: IssueKind[] = ['duplicateRows', 'nonPrinting', 'edgeSpaces', 'doubleSpaces', 'emptyText', 'mixedCase', 'numbersAsText', 'datesAsText'];
+const KIND_ORDER: IssueKind[] = ['bannerRows', 'footerRows', 'repeatedHeader', 'narrowRows', 'blankRows', 'totalRows', 'duplicateRows', 'nonPrinting', 'edgeSpaces', 'doubleSpaces', 'emptyText', 'mixedCase', 'numbersAsText', 'datesAsText'];
 export function sortIssues(issues: Issue[], columns: string[]): Issue[] {
   const col = (i: Issue) => (i.column == null ? -1 : columns.indexOf(i.column));
   return [...issues].sort((a, b) => col(a) - col(b) || KIND_ORDER.indexOf(a.kind) - KIND_ORDER.indexOf(b.kind));
