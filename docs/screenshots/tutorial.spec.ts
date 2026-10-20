@@ -41,9 +41,14 @@ async function selectColumn(page: Page, name: string) {
  * shows a query after it has run for a second, so give one that has just started the chance to show first.
  */
 async function quiet(page: Page) {
+  const from = Date.now();
   await page.waitForTimeout(1500);
-  // Polled for its text rather than its count, so a timeout names the query that was still running.
-  await expect.poll(() => page.getByTestId('activity').allTextContents(), SLOW).toEqual([]);
+  // How long each wait took, for the job log: a slow query shows up here before it times out.
+  const caller = new Error().stack?.split('\n')[2]?.trim();
+  void expect
+    .poll(() => page.getByTestId('activity').allTextContents(), SLOW)
+    .toEqual([])
+    .finally(() => console.log(`quiet after ${Math.round((Date.now() - from) / 100) / 10} s ${caller ?? ''}`));
 }
 
 async function addRule(page: Page, title: string) {

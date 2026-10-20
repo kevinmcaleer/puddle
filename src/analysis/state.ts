@@ -30,7 +30,7 @@ export const useAnalysisStore = create<{ nodes: Record<string, AnalysisEntry> }>
 /** How many rows of a table are looked at: its first this many, when it has more, so a big file is analysed in seconds. */
 export const ANALYSIS_ROWS = 500_000;
 
-const background = (nodeId: string) => ({ priority: 'background' as const, label: 'Analysing', supersede: `analyse:${nodeId}` });
+const background = (nodeId: string, what: string) => ({ priority: 'background' as const, label: `Analysing ${what}`, supersede: `analyse:${nodeId}` });
 
 /**
  * Count, profile and sniff a node's output (as the results table does), then one query for the exact counts, one
@@ -39,25 +39,25 @@ const background = (nodeId: string) => ({ priority: 'background' as const, label
  */
 export async function analyseNode(engine: EngineClient, project: Project, nodeId: string, columns: ColumnSchema[], sample = ANALYSIS_ROWS): Promise<NodeAnalysis> {
   const target = { nodeId };
-  const opts = background(nodeId);
-  const total = Number(Object.values(tableRows((await engine.query(compileCount(project, target), opts)).table)[0] ?? {})[0] ?? 0);
+  const opts = (what: string) => background(nodeId, what);
+  const total = Number(Object.values(tableRows((await engine.query(compileCount(project, target), opts('rows'))).table)[0] ?? {})[0] ?? 0);
   // A big table is looked at through its first rows: the whole of three million rows of trips took minutes.
   const limit = total > sample ? sample : undefined;
-  const profile = parseProfile(tableRows((await engine.query(compileProfile(project, target), opts)).table));
+  const profile = parseProfile(tableRows((await engine.query(compileProfile(project, target), opts('columns'))).table));
   const text = columns.filter((c) => columnKind(c.type) === 'text').map((c) => c.name);
   if (text.length) {
-    const looks = parseTypeSniff(tableRows((await engine.query(compileTypeSniff(project, target, text, limit), opts)).table)[0] ?? {}, text);
+    const looks = parseTypeSniff(tableRows((await engine.query(compileTypeSniff(project, target, text, limit), opts('text'))).table)[0] ?? {}, text);
     for (const [c, l] of Object.entries(looks)) if (profile[c]) profile[c] = { ...profile[c], ...l };
   }
   const checks = analysisChecks(columns, profile);
-  const row = tableRows((await engine.query(compileAnalysis(project, target, checks, columns.map((c) => c.name), limit), opts)).table)[0] ?? {};
+  const row = tableRows((await engine.query(compileAnalysis(project, target, checks, columns.map((c) => c.name), limit), opts('values'))).table)[0] ?? {};
   const facts = parseAnalysis(row, checks);
   facts.columnNames = project.settings.columnNames;
   if (limit) facts.sample = { rows: limit, total };
-  if (checks.length) parseDistinctFacts(tableRows((await engine.query(compileDistinctFacts(project, target, checks, limit), opts)).table), checks, facts.columns);
+  if (checks.length) parseDistinctFacts(tableRows((await engine.query(compileDistinctFacts(project, target, checks, limit), opts('distinct values'))).table), checks, facts.columns);
   const valued = checks.filter((c) => c.values).map((c) => c.column);
   if (valued.length) {
-    const counts = parseValueCounts(tableRows((await engine.query(compileValueCounts(project, target, valued, limit), opts)).table));
+    const counts = parseValueCounts(tableRows((await engine.query(compileValueCounts(project, target, valued, limit), opts('value counts'))).table));
     for (const c of valued) {
       const vc = counts[c] ?? [];
       facts.columns[c]!.valueCounts = vc;
@@ -67,7 +67,7 @@ export async function analyseNode(engine: EngineClient, project: Project, nodeId
   // A source read from delimited text: one more query for the rows around and inside the table that aren't data.
   const source = textSourceOf(project, nodeId);
   if (source && columns.length) {
-    const shapeRow = tableRows((await engine.query(compileShape(project, target, columns.map((c) => c.name), limit), opts)).table)[0] ?? {};
+    const shapeRow = tableRows((await engine.query(compileShape(project, target, columns.map((c) => c.name), limit), opts('rows that aren’t data'))).table)[0] ?? {};
     facts.shape = { facts: parseShape(shapeRow), options: source.parseOptions };
   }
   return { columns, profile, facts };
