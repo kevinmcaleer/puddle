@@ -1,5 +1,5 @@
 import { useSession } from '../app/session';
-import { addSource, createProject, newId, type Project, type Source } from '../model';
+import { addSource, createProject, newId, useProjectStore, type Project, type Source } from '../model';
 import { openNewProject, useWorkspace } from '../persistence/workspace';
 import { knownFormat } from '../sources/detect';
 import { useUrlFetches } from '../sources/url';
@@ -59,7 +59,9 @@ export async function openSample(id: SampleId | string, base = pageBase()): Prom
   // The note says what's wrong with the data, so it's the first thing to read.
   useSession.getState().setInspectorTab('notes');
   await fetched(project.sources.map((s) => s.id));
-  return project;
+  // As it is now: reading a sample's text sets the read options its shape asks for (src/sources/url.ts).
+  const now = useProjectStore.getState().history.present;
+  return now.id === project.id ? now : project;
 }
 
 /** Open a sample, and if it can't be opened, say why on the home screen and in a notice rather than throwing. */

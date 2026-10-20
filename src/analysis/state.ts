@@ -6,7 +6,7 @@ import { useEffect } from 'react';
 import { create } from 'zustand';
 import { useEngineStore } from '../app/engine';
 import { useSession } from '../app/session';
-import { compileAnalysis, compileCount, compileProfile, compileTypeSniff, upstreamKey } from '../compiler';
+import { compileAnalysis, compileCount, compileProfile, compileShape, compileTypeSniff, upstreamKey } from '../compiler';
 import { tableRows, toEngineError, type EngineClient } from '../engine';
 import { useViewProject } from '../flow/sample';
 import { useFlowStore } from '../flow/status';
@@ -14,6 +14,7 @@ import { nodeById, useProject, type ColumnSchema, type GraphNode, type Project }
 import { parseProfile, parseTypeSniff, type ColumnProfile } from '../results/profile';
 import { columnKind } from '../ui/columnKind';
 import { analysisChecks, findIssues, parseAnalysis, type AnalysisFacts } from './columns';
+import { parseShape } from './shape';
 import { sortIssues, type Issue } from './issues';
 
 export interface NodeAnalysis {
@@ -41,7 +42,22 @@ export async function analyseNode(engine: EngineClient, project: Project, nodeId
   }
   const checks = analysisChecks(columns, profile);
   const row = tableRows((await engine.query(compileAnalysis(project, target, checks, columns.map((c) => c.name)), opts)).table)[0] ?? {};
-  return { columns, profile, facts: parseAnalysis(row, checks) };
+  const facts = parseAnalysis(row, checks);
+  // A source read from delimited text: one more query for the rows around and inside the table that aren't data.
+  const source = textSourceOf(project, nodeId);
+  if (source && columns.length) {
+    const shapeRow = tableRows((await engine.query(compileShape(project, target, columns.map((c) => c.name)), opts)).table)[0] ?? {};
+    facts.shape = { facts: parseShape(shapeRow), options: source.parseOptions };
+  }
+  return { columns, profile, facts };
+}
+
+/** The source a node reads, when it is delimited text (CSV or TSV from a file, an address or the clipboard). */
+export function textSourceOf(project: Project, nodeId: string) {
+  const node = nodeById(project, nodeId);
+  if (node?.type !== 'source') return undefined;
+  const source = project.sources.find((s) => s.id === node.sourceId);
+  return source && (source.format === 'csv' || source.format === 'tsv') && !source.url?.odata && !source.url?.table ? source : undefined;
 }
 
 /** Which nodes to analyse now: every source that runs, plus the viewed and the selected node. */

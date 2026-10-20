@@ -18,7 +18,7 @@ You can leave the tour at any point with **Skip**, and pick it up again later fr
 
 ## Samples
 
-**Try a sample** opens one of four deliberately messy datasets as a new project. Each comes with a project note saying what is wrong with the data and where to start.
+**Try a sample** opens one of six deliberately messy datasets as a new project. Each comes with a project note saying what is wrong with the data and where to start.
 
 ![The Try a sample dialog listing the four samples](_static/screenshots/start-samples.png)
 

@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { SourceError } from './detect';
-import { decodeHead, fixedWidthColumns, signatureOf, sniff, sniffDelimiter, sniffHeader, sniffPasted, sniffText } from './sniff';
+import { columnNames, decodeHead, fixedWidthColumns, signatureOf, sniff, sniffDelimiter, sniffHeader, sniffPasted, sniffShape, sniffText } from './sniff';
 
 const bytes = (...parts: (string | number[])[]) => new Uint8Array(parts.flatMap((p) => (typeof p === 'string' ? [...new TextEncoder().encode(p)] : p)));
 const messy = (name: string) => new Uint8Array(readFileSync(join(__dirname, '../../tests/fixtures/messy', name)));
@@ -90,6 +90,40 @@ describe('delimited text', () => {
     expect(sniffText('name\tcity\nAda\tLeeds\n')).toMatchObject({ format: 'tsv', confidence: 'sure', parseOptions: {} });
     expect(sniffText('name;city\nAda;Leeds\n')).toMatchObject({ format: 'csv', confidence: 'sure', parseOptions: { delimiter: ';' } });
     expect(sniffText('name,city\nAda,Leeds\n')).toMatchObject({ format: 'csv', confidence: 'sure', parseOptions: {} });
+  });
+
+  it('keeps a ragged row as a row: a header ending in a comma, or an unquoted comma in a value, skips nothing', () => {
+    // Regression: the bank statement's header has one more field than its rows, and one description has a comma in it.
+    const bank = sniffText(new TextDecoder().decode(fixture('bank-statement.csv')));
+    expect(bank).toMatchObject({ format: 'csv', parseOptions: {} });
+    expect(bank.reason).not.toContain('Skipped');
+    const wide = sniffText('a,b\n1,2\n3,4,5\n6,7\n', 'a,b\n1,2\n3,4,5\n6,7\n');
+    expect(wide.parseOptions).toEqual({});
+  });
+
+  it('counts a banner and comment lines above the header into the skip, and trailing narrower lines into the bottom skip', () => {
+    const head = ['Report of things', '', '# made by hand', 'id,name,qty', '1,Ada,3', '2,Bob,4'];
+    expect(sniffShape(head, undefined, ',', 3)).toEqual({ skip: 3, skipBottom: 0, notes: ['3 lines above the header (1 starting with #)'] });
+    expect(sniffShape(['id,name', '1,Ada'], ['1,Ada', '2,Bob', '', 'Total: 2', 'End', ''], ',', 2)).toEqual({ skip: 0, skipBottom: 2, notes: ['2 lines after the table'] });
+    // A comment prefix is only one when no line starting with it is a row of the table; dashes never are when they rule a pipe table.
+    expect(sniffShape(['--id|name', '-------', '|a|b|', '|c|d|'], undefined, '|', 3)).toMatchObject({ skip: 2 });
+    expect(sniffShape(['a,b', 'c,d'], ['c,d'], ',', 2)).toEqual({ skip: 0, skipBottom: 0, notes: [] });
+  });
+
+  it('names the columns from the header line as DuckDB would: trimmed, empties and repeats made distinct', () => {
+    expect(columnNames('id, name ,,name,', ',', 5)).toEqual(['id', 'name', 'column2', 'name_1', 'column4']);
+    expect(columnNames('|Doc. no.  |Vendor   |', '|', 4)).toEqual(['column0', 'Doc. no.', 'Vendor', 'column3']);
+    expect(columnNames(undefined, ',', 3)).toEqual(['column0', 'column1', 'column2']);
+    expect(columnNames('"a, b",c', ',', 2)).toEqual(['a, b', 'c']);
+  });
+
+  it('a skipped banner also names the columns, so DuckDB reads below it without its own detection', () => {
+    const banner = sniffText('Sales report\n\nid,name,qty\n1,Ada,3\n2,Bob,4\n3,Cy,5\n');
+    expect(banner.parseOptions).toEqual({ skip: 2, columns: ['id', 'name', 'qty'] });
+    expect(banner.reason).toContain('Skipped: 2 lines above the header.');
+    // With no header row below the banner, the columns are column0… and the first row is data.
+    expect(sniffText('Figures\n1,Ada,36\n2,Bob,41\n3,Cy,29\n').parseOptions).toEqual({ header: false, skip: 1, columns: ['column0', 'column1', 'column2'] });
+    expect(sniffText('id,name\n1,Ada\n2,Bob\n', 'id,name\n1,Ada\n2,Bob\nRows: 2\n').parseOptions).toEqual({ skipBottom: 1 });
   });
 
   it('says the first row is data when its numbers line up with the numbers below', () => {

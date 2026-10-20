@@ -14,7 +14,7 @@ import { detectDateFormats } from '../../src/dates';
 import { schemaCacheFor } from '../../src/flow/status';
 import { useProjectStore, type Project, type Source } from '../../src/model';
 import { gatherSuggestionFacts, suggestRules } from '../../src/rules';
-import { SAMPLES, TAXI_TUTORIAL } from '../../src/samples/catalog';
+import { SAMPLES, TAXI_TUTORIAL, type SampleFile } from '../../src/samples/catalog';
 import { openSample } from '../../src/samples/open';
 import { useAttachments } from '../../src/sources/attachments';
 import { useUrlFetches } from '../../src/sources/url';
@@ -67,7 +67,7 @@ describe('opening a sample', () => {
       expect(useAttachments.getState().sources[s.id]).toBe('attached');
       const node = project.nodes.find((n) => n.type === 'source' && n.sourceId === s.id)!;
       const lines = readFileSync(join(dir, s.url!.sample!), 'utf8').trim().split('\n').length - 1;
-      expect(await count(project, node.id)).toBe(lines);
+      expect(await count(project, node.id)).toBe((sample.files as readonly SampleFile[]).find((f) => f.file === s.url!.sample)!.rows ?? lines);
     }
   });
 

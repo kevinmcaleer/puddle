@@ -8,6 +8,8 @@ import { fileURLToPath } from 'node:url';
 import * as XLSX from 'xlsx';
 
 const out = fileURLToPath(new URL('../tests/fixtures/messy', import.meta.url));
+// The two text files are also Try a sample datasets (src/samples/catalog.ts), shipped with the app.
+const samples = fileURLToPath(new URL('../public/samples', import.meta.url));
 mkdirSync(out, { recursive: true });
 let seed = 2026;
 const rnd = () => ((seed = (seed * 1103515245 + 12345) % 2147483648) / 2147483648);
@@ -63,6 +65,7 @@ const vendors = ['Acme Supplies Ltd', 'Northwind Traders', 'Müller GmbH', 'Init
     '',
   ].join('\r\n');
   writeFileSync(join(out, 'sap-extract.txt'), text, 'latin1');
+  writeFileSync(join(samples, 'sap-extract.txt'), text, 'latin1');
 }
 
 // 2. messy.txt: a text export that went through several hands. A UTF-8 BOM, mixed line endings, comment lines,
@@ -100,6 +103,7 @@ const vendors = ['Acme Supplies Ltd', 'Northwind Traders', 'Müller GmbH', 'Init
   // Mixed line endings: the first export's lines end in CRLF, the pasted second half in LF.
   const joined = text.map((l, i) => l + (i < 24 ? '\r\n' : '\n')).join('');
   writeFileSync(join(out, 'messy.txt'), joined, 'utf8');
+  writeFileSync(join(samples, 'messy.txt'), joined, 'utf8');
 }
 
 /** A date cell from a UTC date: an Excel serial with a date format, so no time zone is involved. */

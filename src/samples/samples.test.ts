@@ -15,7 +15,7 @@ describe('the sample catalogue', () => {
   it('gives each sample a distinct id, a title, a blurb and a note that says what’s wrong and that it’s a sample', () => {
     expect(new Set(SAMPLES.map((s) => s.id)).size).toBe(SAMPLES.length);
     for (const s of SAMPLES) {
-      expect(s.title).toMatch(/^[A-Z][a-z ]+$/);
+      expect(s.title).toMatch(/^[A-Z][A-Za-z ]+$/);
       expect(s.blurb.length).toBeGreaterThan(10);
       expect(s.note).toContain('What’s wrong with it');
       expect(s.note).toContain('This is a sample project.');

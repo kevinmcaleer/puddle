@@ -14,6 +14,15 @@ export const ParseOptionsZ = z
     encoding: z.string(),
     quote: z.string(),
     nullStrings: z.array(z.string()),
+    /** Delimited text: lines skipped at the top (a banner or comment lines above the header), as DuckDB's `skip`; blank lines count. */
+    skip: z.number().int().nonnegative(),
+    /** Delimited text: rows dropped from the end (a footer, a row count). */
+    skipBottom: z.number().int().nonnegative(),
+    /**
+     * Delimited text: the column names, with every column read as text and DuckDB's own detection off. Set with
+     * `skip`, whose detection DuckDB gets wrong on ragged rows; the names come from the header line (or column0…).
+     */
+    columns: z.array(z.string()),
     sheet: z.string(),
     headerRow: z.number().int().nonnegative(),
     /** Excel: an A1 cell range to read, such as B3:F200. */

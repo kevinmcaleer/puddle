@@ -25,6 +25,8 @@ export interface SniffInput {
   /** The first megabyte (or the whole file when smaller). */
   head: Uint8Array;
   size?: number;
+  /** The last few lines' worth of the file, when the head doesn't reach the end: for the footer. */
+  tail?: Uint8Array;
 }
 
 const ascii = (bytes: Uint8Array, at: number, text: string) => bytes.length >= at + text.length && text.split('').every((ch, i) => bytes[at + i] === ch.charCodeAt(0));
@@ -216,11 +218,100 @@ export function sniffHeader(lines: string[], delimiter: string): false | undefin
   return undefined;
 }
 
+
+/** What surrounds the table in a text file: lines to skip at the top and bottom. */
+export interface Shape {
+  skip: number;
+  skipBottom: number;
+  /** In plain words, for the reason. */
+  notes: string[];
+}
+
+const COMMENT_PREFIXES = ['#', '//', ';;', '--', "'"];
+
+/**
+ * The lines around a delimited table, from the raw head lines (blank ones included) and the tail: a banner of lines
+ * narrower than the table above the header, comment lines among them (DuckDB's `comment` option keeps the header
+ * as a row, so they are skipped by count instead); a footer of narrower lines at the end.
+ */
+export function sniffShape(headLines: string[], tailLines: string[] | undefined, delimiter: string, fields: number): Shape {
+  const width = (l: string) => countOutsideQuotes(l, delimiter) + 1;
+  // A line as wide as the table, or wider: a ragged row (a header ending in a comma, an unquoted comma in a value) is
+  // still a row of the table, where a banner or footer line is narrower.
+  const full = (l: string) => l.trim().length > 0 && width(l) >= fields;
+  const notes: string[] = [];
+  // A comment prefix: lines starting with it, none of them as wide as the table, among the first lines.
+  const first = headLines.slice(0, 50);
+  let comment: string | undefined;
+  for (const prefix of COMMENT_PREFIXES) {
+    const marked = first.filter((l) => l.startsWith(prefix));
+    if (marked.length && marked.every((l) => !full(l)) && (prefix !== '--' || !first.some(full) || !first.some((l) => l.startsWith('---') && /^-+$/.test(l.trim())))) {
+      comment = prefix;
+      break;
+    }
+  }
+  const isComment = (l: string) => comment != null && l.startsWith(comment);
+  // The banner: everything before the first line as wide as the table.
+  let headerAt = headLines.findIndex((l) => full(l) && !isComment(l));
+  if (headerAt < 0) headerAt = 0;
+  const skip = headerAt;
+  if (skip) {
+    const comments = headLines.slice(0, headerAt).filter(isComment).length;
+    notes.push(`${skip} ${skip === 1 ? 'line' : 'lines'} above the header${comments ? ` (${comments} starting with ${comment})` : ''}`);
+  }
+  // The footer: trailing lines narrower than the table, blank ones aside (DuckDB never reads those as rows).
+  let skipBottom = 0;
+  if (tailLines) {
+    const rows = tailLines.filter((l) => l.trim().length > 0);
+    let i = rows.length - 1;
+    while (i >= 0 && !full(rows[i]!)) i--;
+    skipBottom = i >= 0 ? rows.length - 1 - i : 0;
+    if (skipBottom) notes.push(`${skipBottom} ${skipBottom === 1 ? 'line' : 'lines'} after the table`);
+  }
+  return { skip, skipBottom, notes };
+}
+
+/**
+ * Column names from a header line, as DuckDB would name them: trimmed, an empty one `column<i>`, a repeat suffixed
+ * `_1`, `_2`. With no header, every column is `column<i>`.
+ */
+export function columnNames(headerLine: string | undefined, delimiter: string, fields: number): string[] {
+  const cells = headerLine == null ? [] : splitLine(headerLine, delimiter).map((c) => c.trim());
+  const seen = new Map<string, number>();
+  return Array.from({ length: Math.max(fields, cells.length) }, (_, i) => {
+    const base = cells[i] || `column${i}`;
+    const n = seen.get(base) ?? 0;
+    seen.set(base, n + 1);
+    return n ? `${base}_${n}` : base;
+  });
+}
+
+const rawLines = (text: string) => text.split(/\r\n|\r|\n/);
+
 const nonEmptyLines = (text: string) => text.split(/\r\n|\r|\n/).filter((l) => l.trim().length > 0);
 
+
+/**
+ * The read options a shape asks for: only what is there. A skipped banner also names the columns from the header
+ * line, since DuckDB's own detection fails below a skip when a row is ragged (every column is then read as text).
+ */
+function shapeOptions(shape: Shape, headLines: string[], delimiter: string, fields: number, header: boolean | undefined): ParseOptions {
+  const out: ParseOptions = {};
+  if (shape.skip) {
+    out.skip = shape.skip;
+    out.columns = columnNames(header === false ? undefined : headLines[shape.skip], delimiter, fields);
+  }
+  if (shape.skipBottom) out.skipBottom = shape.skipBottom;
+  return out;
+}
+
+const withNotes = (reason: string, shape: Shape) => (shape.notes.length ? `${reason} Skipped: ${shape.notes.join(', ')}.` : reason);
+
 /** What a text looks like, before the file name has its say. */
-export function sniffText(text: string): Omit<Sniffed, 'confidence'> & { confidence: Confidence } {
+export function sniffText(text: string, tail?: string): Sniffed {
   const t = text.replace(/^\uFEFF/, '').trimStart();
+  const raw = rawLines(text.replace(/^\uFEFF/, ''));
+  const tailRaw = tail != null ? rawLines(tail) : undefined;
   const lines = nonEmptyLines(t).slice(0, LINES);
   const first = lines[0] ?? '';
   const none = { parseOptions: {}, alternatives: [] as SourceFormat[] };
@@ -241,20 +332,27 @@ export function sniffText(text: string): Omit<Sniffed, 'confidence'> & { confide
   // A pipe table (an SAP list, a Markdown table): rows between pipes, with rules of dashes.
   const piped = lines.filter((l) => /^\s*\|.*\|\s*$/.test(l)).length;
   if (lines.length >= 3 && piped >= lines.length * 0.5) {
-    return { format: 'csv', confidence: 'likely', parseOptions: { delimiter: '|' }, alternatives: [], reason: 'Rows between pipes, as an SAP list or a pipe table has them.' };
+    // The header is the widest line's count; its leading and trailing pipes make an empty first and last column, which
+    // DuckDB's own header detection then refuses, so the header is said outright.
+    const fields = Math.max(...lines.filter((l) => /^\s*\|.*\|\s*$/.test(l)).map((l) => countOutsideQuotes(l, '|') + 1));
+    const shape = sniffShape(raw, tailRaw, '|', fields);
+    return { format: 'csv', confidence: 'likely', parseOptions: { delimiter: '|', header: true, ...shapeOptions(shape, raw, '|', fields, true) }, alternatives: [], reason: withNotes('Rows between pipes, as an SAP list or a pipe table has them.', shape) };
   }
 
   const found = sniffDelimiter(lines);
   if (found && found.fields >= 2) {
-    const header = sniffHeader(lines, found.delimiter);
-    const parseOptions: ParseOptions = { ...(found.delimiter === ',' ? {} : found.delimiter === '\t' ? {} : { delimiter: found.delimiter }), ...(header === false ? { header: false } : {}) };
+    const shape = sniffShape(raw, tailRaw, found.delimiter, found.fields);
+    // The header question is asked of the table itself, not of the banner above it.
+    const table = lines.filter((l) => countOutsideQuotes(l, found.delimiter) + 1 >= found.fields);
+    const header = sniffHeader(table, found.delimiter);
+    const parseOptions: ParseOptions = { ...(found.delimiter === ',' ? {} : found.delimiter === '\t' ? {} : { delimiter: found.delimiter }), ...(header === false ? { header: false } : {}), ...shapeOptions(shape, raw, found.delimiter, found.fields, header) };
     const label = { ',': 'commas', '\t': 'tabs', ';': 'semicolons', '|': 'pipes' }[found.delimiter] ?? found.delimiter;
     return {
       format: found.delimiter === '\t' ? 'tsv' : 'csv',
       confidence: found.share >= 0.9 ? 'sure' : 'likely',
       parseOptions,
       alternatives: [],
-      reason: `${found.fields} values a line, separated by ${label}${header === false ? '; the first row is data, not a header' : ''}.`,
+      reason: withNotes(`${found.fields} values a line, separated by ${label}${header === false ? '; the first row is data, not a header' : ''}.`, shape),
     };
   }
 
@@ -291,7 +389,7 @@ export function fixedWidthColumns(lines: string[]): number {
  * The format and read options a file wants, from its name, its first megabyte and its size. Throws a SourceError, in
  * plain words, for a file Puddle can name but not read.
  */
-export function sniff({ name, head, size }: SniffInput): Sniffed {
+export function sniff({ name, head, size, tail }: SniffInput): Sniffed {
   const byName = knownFormat(name);
   const signature = signatureOf(head);
   if (signature) {
@@ -310,7 +408,10 @@ export function sniff({ name, head, size }: SniffInput): Sniffed {
     throw refusal(name, 'binary');
   }
   const encoding: ParseOptions = decoded.encoding ? { encoding: decoded.encoding } : {};
-  const content = sniffText(decoded.text);
+  const whole = size == null || size <= head.length;
+  const tailText = whole ? undefined : tail ? decodeTail(tail, decoded.encoding) : undefined;
+  // The head is the whole file, so its lines are the tail too: the footer is read from them.
+  const content = sniffText(decoded.text, whole ? decoded.text : tailText);
   const parseOptions = { ...content.parseOptions, ...encoding };
   // Content and name agree, or the name says nothing: the content's word, with its confidence.
   if (!byName || byName === content.format || (byName === 'tsv' && content.format === 'csv' && content.parseOptions.delimiter == null && content.confidence === 'unsure')) {
@@ -324,5 +425,14 @@ export function sniff({ name, head, size }: SniffInput): Sniffed {
   return { format: byName, confidence: 'likely', parseOptions: encoding, alternatives: [], reason: `${content.reason} Read as ${byName.toUpperCase()}, as the file name says.` };
 }
 
+/** The last bytes of a file as text, in the encoding the head settled; a UTF-16 cut on an odd byte starts one later. */
+function decodeTail(tail: Uint8Array, encoding: Decoded['encoding']): string {
+  if (encoding === 'utf-16') return new TextDecoder('utf-16le').decode(tail.length % 2 ? tail.subarray(1) : tail);
+  return new TextDecoder(encoding === 'latin-1' ? 'windows-1252' : 'utf-8').decode(tail);
+}
+
+/** How many bytes of the end of a file the sniff wants, for the footer. */
+export const TAIL_BYTES = 64 * 1024;
+
 /** The sniff for pasted text, which has no name: TSV from a spreadsheet, JSON, XML or CSV. */
-export const sniffPasted = (text: string): Sniffed => sniffText(text);
+export const sniffPasted = (text: string): Sniffed => sniffText(text, text);

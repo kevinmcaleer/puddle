@@ -33,6 +33,9 @@ export function withOption<K extends keyof ParseOptions>(options: ParseOptions, 
   return next;
 }
 
+/** A count of lines or rows to skip: a whole number, or "auto" (nothing to skip) for empty, 0 or anything else. */
+export const parseCount = (text: string): number | 'auto' => (/^\s*\d+\s*$/.test(text) && Number(text) > 0 ? Number(text) : 'auto');
+
 /** "NA, n/a ,-" to ["NA", "n/a", "-"]. */
 export const parseNullStrings = (text: string) =>
   text

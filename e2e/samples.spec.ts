@@ -11,7 +11,7 @@ test('a sample opens from the empty canvas as a new project, with its data and i
   await openApp(page);
   await page.getByRole('button', { name: 'Try a sample' }).click();
   const dialog = page.getByRole('dialog', { name: 'Try a sample' });
-  await expect(dialog.getByRole('listitem')).toHaveCount(4);
+  await expect(dialog.getByRole('listitem')).toHaveCount(6);
   await dialog.getByTestId('sample-contacts').click();
 
   await expect(dialog).toHaveCount(0);
@@ -36,7 +36,7 @@ test('the home screen offers the samples; a sample is listed and deleted like an
   await openApp(page);
   await projectMenu(page, 'All projects');
   const samples = page.getByTestId('home-samples');
-  await expect(samples.getByRole('listitem')).toHaveCount(4);
+  await expect(samples.getByRole('listitem')).toHaveCount(6);
   await samples.getByTestId('sample-orders').click();
 
   await expect(page.getByTestId('project-name')).toHaveText('Sample: orders and customers');

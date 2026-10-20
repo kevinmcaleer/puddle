@@ -1,9 +1,10 @@
 // The column detectors: what the profile and one query of exact counts say is wrong with each column.
 import type { AnalysisCheck } from '../compiler';
-import type { ColumnSchema } from '../model';
+import type { ColumnSchema, ParseOptions } from '../model';
 import { LOOKS_LIKE_SHARE, type ColumnProfile } from '../results/profile';
 import { columnKind } from '../ui/columnKind';
 import { issueKey, type Issue, type IssueKind } from './issues';
+import { findShapeIssues, type ShapeFacts } from './shape';
 
 /** Columns with at most about this many distinct values are read in full, to find the same value written several ways. */
 export const FEW_VALUES = 50;
@@ -36,6 +37,8 @@ export interface AnalysisFacts {
   rows: number;
   dups?: number;
   columns: Record<string, ColumnFacts>;
+  /** For a source read from delimited text: the rows around and inside the table that aren't data, and the read options it had. */
+  shape?: { facts: ShapeFacts; options: ParseOptions };
 }
 
 const list = (v: unknown): string[] | undefined => (v != null && typeof v === 'object' && Symbol.iterator in v ? Array.from(v as Iterable<unknown>).filter((x) => x != null).map(String) : undefined);
@@ -104,6 +107,7 @@ export function findIssues(columns: ColumnSchema[], profile: Record<string, Colu
     if (!ignored.includes(key)) out.push({ key, kind, column, ...issue });
   };
   if (!facts.rows) return out;
+  if (facts.shape) out.push(...findShapeIssues(columns.map((c) => c.name), facts.shape.facts, facts.shape.options, ignored));
   if (facts.dups) add('duplicateRows', undefined, { count: facts.dups, share: facts.dups / facts.rows, examples: [], severity: 'fix', fix: { type: 'duplicateRows', params: { columns: [], keep: 'first' } } });
   for (const c of columns) {
     const column = c.name;

@@ -4,8 +4,7 @@ import { useState } from 'react';
 import { useProject, type GraphNode } from '../model';
 import { SplitButton, type CheckItem } from '../ui';
 import { applyFixes } from './apply';
-import { fixName } from './fixName';
-import { defaultTicked, fixGroup } from './fixes';
+import { defaultTicked, fixGroup, fixLabel } from './fixes';
 import { issueLabel, type Issue } from './issues';
 import { useAnalysisEntry, issuesOf } from './state';
 
@@ -20,7 +19,7 @@ export function FixAll({ node, align = 'end' }: { node: GraphNode; align?: 'star
   const of = fixable.map((i) => i.key).join('\n');
   const ticked = ticks?.of === of ? ticks.keys : defaultTicked(fixable, suggestions);
   const chosen = fixable.filter((i) => ticked.includes(i.key));
-  const items: CheckItem[] = fixable.map((i) => ({ id: i.key, label: issueLabel(i), group: fixGroup(i), hint: fixName(i.fix?.type), checked: ticked.includes(i.key) }));
+  const items: CheckItem[] = fixable.map((i) => ({ id: i.key, label: issueLabel(i), group: fixGroup(i), hint: fixLabel(i), checked: ticked.includes(i.key) }));
   const run = (issues: Issue[]) => {
     if (!issues.length || busy) return;
     setBusy(true);
