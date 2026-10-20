@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { addStepWithT, fixture, node, openApp } from './helpers/app';
+import { addStepWithT, fixture, node, openApp, selectNode } from './helpers/app';
 
 /** The node is selected on the canvas (the inspector shows it). */
 const isSelected = (page: Page, name: string) => expect(node(page, name).locator('.ui-node')).toHaveClass(/is-selected/);
@@ -175,8 +175,8 @@ test('G groups the selected nodes into one card; with too few selected it says h
     await page.getByRole('main', { name: 'Canvas' }).focus();
   }
   await expect(node(page, 'Transform 2')).toHaveAttribute('data-status', 'ok');
-  await node(page, 'Transform 1').click();
-  await node(page, 'Transform 2').click({ modifiers: ['Shift'] });
+  await selectNode(page, 'Transform 1');
+  await selectNode(page, 'Transform 2', ['Shift']);
   await page.keyboard.press('g');
   await expect(page.getByTestId('group-Group 1')).toBeVisible();
   await expect(node(page, 'Transform 2')).not.toBeAttached();

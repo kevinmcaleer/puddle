@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { addFiles, expectRows, fixture, node, openApp } from './helpers/app';
+import { addFiles, expectRows, fixture, node, openApp, selectNode } from './helpers/app';
 
 /**
  * Orders and customers on the canvas, joined: select orders, then Shift+click customers, then Add node › Join
@@ -10,8 +10,8 @@ async function joinShop(page: Page, via: 'menu' | 'selection bar' = 'menu') {
   await addFiles(page, [fixture('shop-orders.csv'), fixture('shop-customers.csv')]);
   await expect(node(page, 'shop-customers.csv')).toHaveAttribute('data-status', 'ok');
   await expect(node(page, 'shop-orders.csv')).toHaveAttribute('data-status', 'ok');
-  await node(page, 'shop-orders.csv').click();
-  await node(page, 'shop-customers.csv').click({ modifiers: ['Shift'] });
+  await selectNode(page, 'shop-orders.csv');
+  await selectNode(page, 'shop-customers.csv', ['Shift']);
   if (via === 'menu') {
     await page.getByRole('button', { name: 'Add', exact: true }).click();
     await page.getByRole('menuitem', { name: /Join/ }).click();
@@ -199,8 +199,8 @@ test('grouping the nodes before a join and ungrouping them keep it working', asy
   await page.getByRole('button', { name: 'Fit View' }).click();
   await expectOnCanvas(page, 'Upper');
   await expectOnCanvas(page, 'Trim');
-  await node(page, 'Upper').click();
-  await node(page, 'Trim').click({ modifiers: ['Shift'] });
+  await selectNode(page, 'Upper');
+  await selectNode(page, 'Trim', ['Shift']);
   // Merging is on the group's menu; the group is opened first so its nodes and wires stay in view.
   await page.keyboard.press('g');
   await page.getByTestId('group-Group 1').dblclick();

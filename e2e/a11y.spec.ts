@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { expect, test, type Page } from '@playwright/test';
 import { expectAccessible } from './helpers/axe';
-import { addFiles, addStep, addStepNode, expectRows, fixture, node, openApp } from './helpers/app';
+import { addFiles, addStep, addStepNode, expectRows, fixture, node, openApp, selectNode } from './helpers/app';
 
 const projectMenu = async (page: Page, item: string) => {
   await page.getByTestId('project-menu').click();
@@ -116,8 +116,8 @@ for (const theme of ['light', 'dark'] as const) {
       await openApp(page);
       await addFiles(page, [fixture('shop-customers.csv'), fixture('shop-orders.csv')]);
       await expect(node(page, 'shop-orders.csv')).toHaveAttribute('data-status', 'ok', { timeout: 20_000 });
-      await node(page, 'shop-customers.csv').click();
-      await node(page, 'shop-orders.csv').click({ modifiers: ['Shift'] });
+      await selectNode(page, 'shop-customers.csv');
+      await selectNode(page, 'shop-orders.csv', ['Shift']);
       await page.getByRole('button', { name: 'Add', exact: true }).click();
       await page.getByRole('menuitem', { name: /Query/ }).click();
       await expect(page.getByTestId('query-designer')).toBeVisible();
@@ -131,8 +131,8 @@ for (const theme of ['light', 'dark'] as const) {
       await page.getByRole('button', { name: 'Back to canvas' }).click();
       await expect(page.getByTestId('canvas')).toBeVisible();
 
-      await node(page, 'shop-customers.csv').click();
-      await node(page, 'shop-orders.csv').click({ modifiers: ['Shift'] });
+      await selectNode(page, 'shop-customers.csv');
+      await selectNode(page, 'shop-orders.csv', ['Shift']);
       await page.getByRole('button', { name: 'Join these two' }).click();
       await expect(node(page, 'Join 1')).toHaveAttribute('data-status', 'ok', { timeout: 20_000 });
       await expectAccessible(page, 'the Join inspector');

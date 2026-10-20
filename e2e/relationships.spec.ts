@@ -1,13 +1,13 @@
 import { expect, test } from '@playwright/test';
-import { addFiles, fixture, node, openApp } from './helpers/app';
+import { addFiles, fixture, node, openApp, selectNode } from './helpers/app';
 
 test('the relationships view shows a join’s key between the tables, relates two columns by dragging, and downloads DBML', async ({ page }) => {
   await openApp(page);
   await addFiles(page, [fixture('shop-orders.csv'), fixture('shop-customers.csv')]);
   await expect(node(page, 'shop-orders.csv')).toHaveAttribute('data-status', 'ok');
   await expect(node(page, 'shop-customers.csv')).toHaveAttribute('data-status', 'ok');
-  await node(page, 'shop-orders.csv').click();
-  await node(page, 'shop-customers.csv').click({ modifiers: ['Shift'] });
+  await selectNode(page, 'shop-orders.csv');
+  await selectNode(page, 'shop-customers.csv', ['Shift']);
   await page.getByTestId('group-bar').getByRole('button', { name: 'Join these two' }).click();
   await expect(node(page, 'Join 1')).toHaveAttribute('data-status', 'ok');
 

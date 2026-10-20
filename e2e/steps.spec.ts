@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { addFiles, addStep, addStepNode, cell, fixture, node, openApp } from './helpers/app';
+import { addFiles, addStep, addStepNode, cell, fixture, node, openApp, selectNode } from './helpers/app';
 
 const steps = (page: Page) => page.getByRole('listbox', { name: 'Applied steps' }).getByRole('option');
 
@@ -84,8 +84,8 @@ test('a group of nodes in a line merges into one node and splits back; a node sp
 
   // Merging is on a group's menu: a group is the one way to bundle nodes. A source in the group can't merge, so
   // the group's menu doesn't offer it.
-  await node(page, 'customers.csv').click();
-  await node(page, 'Transform 1').click({ modifiers: ['Shift'] });
+  await selectNode(page, 'customers.csv');
+  await selectNode(page, 'Transform 1', ['Shift']);
   await expect(page.getByRole('button', { name: 'Merge into one node' })).toHaveCount(0);
   await page.keyboard.press('g');
   const mixed = page.getByTestId('group-Group 1');
