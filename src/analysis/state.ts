@@ -68,7 +68,7 @@ export async function analyseNode(engine: EngineClient, project: Project, nodeId
   }
   // Rows whose cells sit a column to the left or right of where they belong: the kinds of every row, grouped.
   if (columns.length >= 2 && facts.rows >= 4) {
-    const groups = parseSkew(tableRows((await engine.query(compileSkew(project, target, columns, limit), opts)).table));
+    const groups = parseSkew(tableRows((await engine.query(compileSkew(project, target, columns, limit), opts('rows out of line'))).table));
     const skew = findSkew(columns.map((c) => c.name), groups);
     if (skew) {
       // Dates moved into a column come as text: from a date column as ISO, from a text column in whatever way it writes them.
