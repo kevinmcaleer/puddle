@@ -70,12 +70,13 @@ export async function analyseNode(engine: EngineClient, project: Project, nodeId
 /** What an analysis stands for: the node's output, and the column-name style the issues are judged by. */
 const analysisKey = (project: Project, nodeId: string) => `${upstreamKey(project, { nodeId })}|${project.settings.columnNames}`;
 
-/** The source a node reads, when it is delimited text (CSV or TSV from a file, an address or the clipboard). */
+/** The source a node reads, when it is text (CSV, TSV, fixed width or a pipe table from a file, an address or the clipboard). */
 export function textSourceOf(project: Project, nodeId: string) {
   const node = nodeById(project, nodeId);
   if (node?.type !== 'source') return undefined;
   const source = project.sources.find((s) => s.id === node.sourceId);
-  return source && (source.format === 'csv' || source.format === 'tsv') && !source.url?.odata && !source.url?.table ? source : undefined;
+  const text = source && (source.format === 'csv' || source.format === 'tsv' || source.format === 'fixed' || source.format === 'pipes');
+  return text && !source.url?.odata && !source.url?.table ? source : undefined;
 }
 
 /** Which nodes to analyse now: every source that runs, plus the viewed and the selected node. */

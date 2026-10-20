@@ -27,6 +27,7 @@ import { useAccessSources } from '../sources/access';
 import { useExcelSources } from '../sources/excel';
 import { useSchemaTableSync } from '../schemaTables/state';
 import { LOAD_FAILURES, projectSchema } from '../compiler';
+import { useRewrittenSources } from '../sources/rewrite';
 import { useXmlSources } from '../sources/xml';
 import { SamplesDialog } from '../samples/SamplePicker';
 import { openUserGuide, startTaxiTutorial } from '../samples/open';
@@ -270,6 +271,7 @@ export function AppShell() {
   useExcelSources();
   useAccessSources();
   useXmlSources();
+  useRewrittenSources();
   useSchemaTableSync();
   useFlowEvaluation();
   useAnalysisEvaluation();

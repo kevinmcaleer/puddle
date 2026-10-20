@@ -32,6 +32,7 @@ import { XmlPanel } from '../sources/XmlPanel';
 import { hasParseOptions, LOCALES, parseNullStrings } from './options';
 import { changeSourceFormat } from '../sources/add';
 import { CsvOptions } from '../sources/CsvOptions';
+import { FixedWidthOptions, PipesOptions } from '../sources/TextPanels';
 import { FORMAT_OPTIONS } from '../sources/formats';
 
 function SourceOptions({ source }: { source: Source }) {
@@ -41,6 +42,8 @@ function SourceOptions({ source }: { source: Source }) {
       <div className="flex flex-col gap-3">
         <FormatField source={source} />
         {(source.format === 'csv' || source.format === 'tsv') && <CsvOptions format={source.format} options={source.parseOptions} onChange={(o) => apply((p) => setParseOptions(p, source.id, o))} />}
+        {source.format === 'fixed' && <FixedWidthOptions source={source} onChange={(o) => apply((p) => setParseOptions(p, source.id, o))} />}
+        {source.format === 'pipes' && <PipesOptions source={source} onChange={(o) => apply((p) => setParseOptions(p, source.id, o))} />}
       </div>
     </Section>
   );

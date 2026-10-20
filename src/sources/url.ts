@@ -13,6 +13,7 @@ import type { HtmlTable } from './html';
 import { fetchTable, tableFetched } from './webpage';
 import { fetchFeed, type FeedSpec, type ReadOptions } from './odata';
 import { rememberSignIn, signInFor } from './odataSignIn';
+import { rememberRewriteInput } from './rewrite';
 import { rememberXml } from './xml';
 
 /**
@@ -190,6 +191,7 @@ export function addressOf(source: Source): URL | string {
 /** Hand what was fetched to DuckDB under the source's file name, replacing what was there. XML is read into rows first (./xml). */
 async function register(source: Source, fetched: Fetched) {
   if (source.format === 'xml') return void rememberXml(source.id, fetched.data!);
+  if (source.format === 'fixed' || source.format === 'pipes') return void rememberRewriteInput(source.id, fetched.data!);
   const engine = await whenEngine();
   const name = sourceFileName(source);
   await engine.dropFile(name).catch(() => undefined);
@@ -276,7 +278,8 @@ function sniffSample(source: Source, fetched: Fetched) {
   if (!data || !source.url?.sample || Object.keys(source.parseOptions).length || (source.format !== 'csv' && source.format !== 'tsv')) return;
   const tail = data.length > HEAD_BYTES ? data.subarray(data.length - TAIL_BYTES) : undefined;
   const sniffed = sniff({ name: source.name, head: data.subarray(0, HEAD_BYTES), size: data.length, tail });
-  if ((sniffed.format !== 'csv' && sniffed.format !== 'tsv') || sniffed.confidence === 'unsure') return;
+  const text = sniffed.format === 'csv' || sniffed.format === 'tsv' || sniffed.format === 'fixed' || sniffed.format === 'pipes';
+  if (!text || sniffed.confidence === 'unsure') return;
   if (sniffed.format === source.format && !Object.keys(sniffed.parseOptions).length) return;
   useProjectStore.getState().amend((p) => setSourceFormat(p, source.id, sniffed.format, sniffed.parseOptions));
 }
@@ -303,8 +306,9 @@ export function loadUrlSource(source: Source, opts: FetchOptions & { refresh?: b
         : await fetchAddress(addressOf(source), { ...opts, format: source.format, shipped: isShippedFile(source.url.sample) });
       // Sniffed before the bytes go to the engine, which takes the buffer with them.
       sniffSample(source, fetched);
-      await register(source, fetched);
+      // Registered as the sniff left it: a sample read as a pipe table goes to Puddle's reader, not to DuckDB as CSV.
       const current = useProjectStore.getState().history.present.sources.find((s) => s.id === source.id);
+      await register(current ?? source, fetched);
       const before = current?.url?.headHash ?? source.url.headHash;
       const changed = before != null && before !== fetched.headHash;
       if (current?.url && (current.url.headHash !== fetched.headHash || current.url.size !== fetched.size))

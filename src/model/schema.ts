@@ -5,7 +5,7 @@ export const FORMAT_VERSION = 2;
 
 export const ColumnSchemaZ = z.object({ name: z.string(), type: z.string() });
 
-export const SourceFormatZ = z.enum(['csv', 'tsv', 'json', 'ndjson', 'parquet', 'xlsx', 'xml', 'access']);
+export const SourceFormatZ = z.enum(['csv', 'tsv', 'json', 'ndjson', 'parquet', 'xlsx', 'xml', 'access', 'fixed', 'pipes']);
 
 export const ParseOptionsZ = z
   .object({
@@ -33,6 +33,8 @@ export const ParseOptionsZ = z
     expand: z.string(),
     /** Access: the table of the database read. */
     table: z.string(),
+    /** Fixed width: the character offsets at which each column after the first starts; found from the text when unset. */
+    boundaries: z.array(z.number().int().positive()),
   })
   .partial();
 

@@ -1,6 +1,6 @@
 import { whenEngine } from '../app/engine';
 import { useSession } from '../app/session';
-import { sourceFileName } from '../compiler';
+import { isRewritten, sourceFileName } from '../compiler';
 import { updateSource, useProjectStore, type Project, type Source } from '../model';
 import { registerSourceFile, rememberFile, sourceFile } from './add';
 import { markAttached, useAttachments, type Attachment } from './attachments';
@@ -45,7 +45,7 @@ async function offerStoredHandles(project: Project, detached: string[]) {
 export async function attachProject(project: Project): Promise<void> {
   const next: Record<string, Attachment> = {};
   for (const s of project.sources) next[s.id] = s.kind === 'clipboard' || sourceFile(s.id) || (s.kind === 'url' && urlFetched(s.id)) ? 'attached' : 'detached';
-  const clipboard = project.sources.filter((s) => s.kind === 'clipboard' && s.clipboard && s.format !== 'xml');
+  const clipboard = project.sources.filter((s) => s.kind === 'clipboard' && s.clipboard && !isRewritten(s.format));
   if (clipboard.length) {
     const engine = await whenEngine();
     for (const s of clipboard) await engine.registerText(sourceFileName(s), s.clipboard!.text);

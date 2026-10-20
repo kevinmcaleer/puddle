@@ -5,18 +5,22 @@ import { bool, ident, num, str, strList } from './sql';
 const ROW = ident('__puddle_row');
 const TOTAL = ident('__puddle_total');
 
-const EXT: Record<Source['format'], string> = { csv: 'csv', tsv: 'tsv', json: 'json', ndjson: 'ndjson', parquet: 'parquet', xlsx: 'xlsx', xml: 'csv', access: 'accdb' };
+const EXT: Record<Source['format'], string> = { csv: 'csv', tsv: 'tsv', json: 'json', ndjson: 'ndjson', parquet: 'parquet', xlsx: 'xlsx', xml: 'csv', access: 'accdb', fixed: 'csv', pipes: 'csv' };
+
+/** Formats Puddle reads into rows itself and hands DuckDB as CSV: XML, fixed-width text and pipe tables. */
+export const isRewritten = (format: Source['format']) => format === 'xml' || format === 'fixed' || format === 'pipes';
 
 /**
- * The name a source's file is registered under in DuckDB's virtual file system. XML is registered as the CSV its
- * records were read into, under a name that follows the file and the read options (as sourceTableName does for
- * Excel), so rows read with other options are never mistaken for them.
+ * The name a source's file is registered under in DuckDB's virtual file system. XML, fixed-width text and a pipe
+ * table are registered as the CSV their rows were read into, under a name that follows the file and the read
+ * options (as sourceTableName does for Excel), so rows read with other options are never mistaken for them.
  */
 export function sourceFileName(source: Source): string {
-  if (source.format === 'xml') {
-    const o = source.parseOptions;
-    return `src_${source.id}_${hashValue([source.file?.headHash ?? source.url?.headHash ?? null, o.record ?? null, o.expand ?? null]).slice(0, 12)}.csv`;
-  }
+  const o = source.parseOptions;
+  const hash = source.file?.headHash ?? source.url?.headHash ?? null;
+  if (source.format === 'xml') return `src_${source.id}_${hashValue([hash, o.record ?? null, o.expand ?? null]).slice(0, 12)}.csv`;
+  if (source.format === 'fixed') return `src_${source.id}_${hashValue([hash, 'fixed', o.boundaries ?? null, o.header ?? null, o.skip ?? null, o.skipBottom ?? null, o.encoding ?? null]).slice(0, 12)}.csv`;
+  if (source.format === 'pipes') return `src_${source.id}_${hashValue([hash, 'pipes', o.header ?? null, o.encoding ?? null]).slice(0, 12)}.csv`;
   return `src_${source.id}.${EXT[source.format]}`;
 }
 
@@ -102,6 +106,13 @@ export function sourceRelation(source: Source): string {
     case 'xml':
       // Written by Puddle from the XML (see src/xml), always with a header row, commas and double quotes.
       return `read_csv(${file}, header = true, delim = ',', quote = '"', escape = '"', null_padding = true)`;
+    case 'fixed':
+    case 'pipes': {
+      // Written by Puddle from the text (src/sources/fixedWidth.ts, pipes.ts) the same way; the words for empty apply as on any text.
+      const args = [file, 'header = true', `delim = ','`, `quote = '"'`, `escape = '"'`, 'null_padding = true'];
+      if (o.nullStrings?.length) args.push(`nullstr = ${strList([...new Set(['', ...o.nullStrings])])}`);
+      return `read_csv(${args.join(', ')})`;
+    }
     default:
       throw new CompileError(`Unsupported source format: ${String((source as Source).format)}.`);
   }
