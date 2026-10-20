@@ -187,9 +187,12 @@ describe('Excel sources', () => {
     expect(s.id).not.toBe('r1');
   });
 
-  it('shows a file that isn’t a workbook as a read failure in plain words', async () => {
-    const s = await addFileSource(workbook('book.xlsx', new TextEncoder().encode('a,b\n1,2')));
+  it('shows a workbook that can’t be read as a read failure in plain words', async () => {
+    // A zip whose first entry is under xl/ but holds nothing: the sniff calls it a workbook, SheetJS can't read it.
+    // (A CSV named .xlsx no longer gets here: its content wins, and it opens as CSV.)
+    const entry = 'xl/workbook.xml';
+    const s = await addFileSource(workbook('book.xlsx', new Uint8Array([0x50, 0x4b, 0x03, 0x04, 0x14, 0, 0, 0, 8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, entry.length, 0, 0, 0, ...new TextEncoder().encode(entry)])));
     await sync();
-    expect(useExcelReads.getState().reads[s.id]).toMatchObject({ state: 'failed', message: 'This file isn’t an Excel workbook. Save it from Excel as .xlsx, or add it as a CSV.' });
+    expect(useExcelReads.getState().reads[s.id]).toMatchObject({ state: 'failed', message: expect.stringMatching(/^This workbook can’t be read \(.+\)\. Open it in Excel, save it again as \.xlsx, and add it again\.$/) });
   });
 });

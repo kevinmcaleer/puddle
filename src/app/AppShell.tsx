@@ -33,6 +33,7 @@ import { openUserGuide, startTaxiTutorial } from '../samples/open';
 import { Tour } from '../tour/Tour';
 import { TOUR_STOPS } from '../tour/stops';
 import { canResume, readProgress, startTourSafely, useTour } from '../tour/tour';
+import { FormatDialog } from '../sources/FormatDialog';
 import { UrlDialog } from '../sources/UrlDialog';
 import { openUrlDialog } from '../sources/urlDialog';
 import { WebPageDialog } from '../sources/WebPageDialog';
@@ -448,6 +449,7 @@ export function AppShell() {
         <Strip />
       </div>
       <UrlDialog onChooseFile={chooseFiles} />
+      <FormatDialog />
       <WebPageDialog />
       <ODataDialog />
       <SamplesDialog />

@@ -187,10 +187,12 @@ describe('Access sources', () => {
     expect(await rows(waiting[1]!.id)).toHaveLength(4);
   });
 
-  it('shows a file that isn’t a database as a read failure in plain words, and doesn’t retry it until something changes', async () => {
-    const s = await addFileSource(database('shop.accdb', new TextEncoder().encode('a,b\n1,2')));
+  it('shows a database that can’t be read as a read failure in plain words, and doesn’t retry it until something changes', async () => {
+    // A file with the Access signature and nothing else: the sniff sends it to the Access reader, which can't read it.
+    // (A CSV named .accdb no longer gets here: its content wins, and it opens as CSV.)
+    const s = await addFileSource(database('shop.accdb', new Uint8Array([0, 1, 0, 0, ...new TextEncoder().encode('Standard ACE DB'), ...new Array(64).fill(0)])));
     await sync();
-    expect(useAccessReads.getState().reads[s.id]).toMatchObject({ state: 'failed', message: 'This file isn’t an Access database. Save it from Access as .accdb or .mdb, or export the tables as CSV.' });
+    expect(useAccessReads.getState().reads[s.id]).toMatchObject({ state: 'failed', message: expect.stringMatching(/^This database can’t be read \(.+\)\. Open it in Access, run Compact and Repair, and add it again\.$/) });
     const reads = client.reads;
     await sync();
     expect(client.reads).toBe(reads);
