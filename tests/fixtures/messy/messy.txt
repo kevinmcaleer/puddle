@@ -1,0 +1,53 @@
+﻿# Export from CRM, do not edit
+# Generated 2026-03-20 by crm-export 2.1
+Customer ID;Customer Name;City;Status;Signed up;Balance;Phone;Notes
+CU1000;kofi jones;Cardiff;lapsed;2025-02-07;(4923.54);+44 7700 900565;Called back
+CU1001;MATEO ALI;Leeds;Active;2025-10-22;166.24 ;07700900544;see ticket #12
+CU1002;hana evans;Leeds;Active;16/11/2025;n/a;07700 900381;VIP​
+CU1003;Jade Murphy;Leeds;?;2 Mar 2025;n/a;;Called back
+CU1004;fatima ali;Bristol;?;;943.67;;
+CU1005;Fatima Jones ;Manchester;Active;9 Sep 2025;2980.18;07700 900838;
+CU1006;Kofi  Garcia;Cardiff;n/a;;(3905.94);+44 7700 900224;VIP​
+
+CU1004;fatima ali;Bristol;?;;943.67;;
+CU1007;Nora Ali;Manchestr;Active;8 Feb 2025;3025.93;07700900859;Owes money, chase
+CU1008;Jade  Chen;Leeds;-;;418.87 
+CU1009;Hana Nguyen ;Cardiff;NULL;06/10/2025;3519.50;;Prefers “email”
+CU1010;ISAAC MURPHY;Glasgow ;n/a;2 Jun 2025;n/a;07700 900611;Owes money, chase
+CU1011;alice murphy;Bristol;Active;19/02/2025;£4,718.02;07700900298;Owes money, chase
+CU1012;Omar Nguyen ;Manchestr;n/a;;4574.05;07700900813;
+CU1013;Omar Kowalski;Leeds;Active;2025-04-12;2632.98 ;;Called back
+CU1011;alice murphy;Bristol;Active;19/02/2025;£4,718.02;07700900298;Owes money, chase
+CU1014;Kofi Patel;cardiff;Lapsed;2025-05-01;2363.35;07700 900465;Owes money, chase
+CU1015;Leila  Kowalski;Manchester;ACTIVE;;3567.25;+44 7700 900536;VIP​
+CU1016;OMAR GARCIA;Bristol ;lapsed;21/07/2025;n/a;;Prefers “email”
+CU1017;Kofi Ali;Manchester;-;13 Feb 2025;n/a;07700 900128;Called back
+Customer ID;Customer Name;City;Status;Signed up;Balance;Phone;Notes
+CU1018;Mateo Ali;leeds;N/A;;£3,007.47;;VIP​
+CU1019;LEILA NGUYEN;Leeds;N/A;2025-12-25;3945.08;;;extra
+CU1020;Chloe Jones;London;Active;11/04/2025;£4,194.79;07700 900714;Prefers “email”
+CU1021;Isaac Kowalski;london;-;2025-10-24;3624.70 ;;Prefers “email”
+CU1022;Hana  Okafor;Cardiff;?;3 Aug 2025;21.11 ;07700 900120;Prefers “email”
+CU1023;NORA CHEN;Manchester;NULL;;3670.88;07700 900302;VIP​
+CU1024;Hana Chen;London;active;2025-09-01;1439.48 ;07700 900644;Prefers “email”
+CU1025;mateo patel;Cardiff;-;2025-02-19;(648.22);+44 7700 900215;Moved	flat
+
+CU1023;NORA CHEN;Manchester;NULL;;3670.88;07700 900302;VIP​
+CU1026;Omar  Brown;Bristol;Lapsed;6 Dec 2025;432.08;07700 900891;Called back
+CU1027;Alice Brown;Leeds;Active;;n/a;07700900980;Called back
+CU1028;ewan brown;Manchestr;lapsed;;£4,765.05;07700900817;VIP​
+CU1029;Alice Evans ;london;active;24/10/2025;4573.26;;Moved	flat
+CU1030;KOFI BROWN;Leeds ;n/a;18/02/2025;2473.86 ;+44 7700 900649;Moved	flat
+CU1031;Chloe Nguyen ;cardiff;Lapsed;;(4543.71);;Prefers “email”
+CU1032;Fatima Patel ;Cardiff;Active;15 May 2025;3668.33 ;+44 7700 900401;Called back
+CU1030;KOFI BROWN;Leeds ;n/a;18/02/2025;2473.86 ;+44 7700 900649;Moved	flat
+CU1033;George Patel ;cardiff;ACTIVE;18 Dec 2025;(4565.64);;VIP​
+CU1034;Bob Brown;Manchester;lapsed;2 Dec 2025;3113.81 ;07700900386;Owes money, chase
+CU1035;george garcia;Manchestr;N/A;21/06/2025;£363.92;+44 7700 900927;Prefers “email”
+CU1036;Leila Patel ;Manchester;ACTIVE;10 Apr 2025;1122.50 ;07700 900417;Owes money, chase
+CU1037;Jade Evans;Leeds;?;;n/a;+44 7700 900885;
+CU1038;George Patel;London;Lapsed;28/07/2025;4573.93;;see ticket #12
+CU1039;dev smith;Leeds ;NULL;16 Oct 2025;£3,285.57;+44 7700 900105;
+
+Rows: 40
+
