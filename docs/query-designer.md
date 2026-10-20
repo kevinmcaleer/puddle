@@ -8,7 +8,7 @@ To make one, select the tables on the canvas and choose **Query these** on the s
 
 ## Tables and joins
 
-Each table shows its fields with their types. Drag a field onto a field of another table to join them: a line connects the two. The inspector lists the joins, and for each one which rows it keeps (matching rows only, every row of the first table, or every row of the second). Tables with no join line would pair every row with every row, and the designer warns about it. **Add table** brings in another node.
+Each table shows its fields with their types. Drag a field onto a field of another table to join them: a line connects the two. The inspector lists the joins, and for each one which rows it keeps (matching rows only, every row of the first table, or every row of the second). Tables with no join line would pair every row with every row, and the designer warns about it. **Add table** brings in another node. As in Access, a table comes joined to the tables already there on any relationship the project has between them (see {doc}`relationships`), and so do the tables of a new Query, so a relationship is drawn once rather than again in every query.
 
 ## The grid
 

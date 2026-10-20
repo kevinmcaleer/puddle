@@ -3,11 +3,11 @@ import { useSession } from '../app/session';
 import { cardKind } from '../canvas/kind';
 import { CRITERIA_OPS, crossJoinedTables, defaultNames, designSql, fieldTotal, queryProblems, querySqlProblem, readQuerySql, TOTALS, totalsProblems } from '../compiler';
 import { useFlowStore, useNodeStatus } from '../flow/status';
+import { addRelatedTable } from '../relationships/joins';
 import {
   addQueryField,
   addQueryJoin,
   addQueryOrRow,
-  addQueryTable,
   criteriaCell,
   moveQueryField,
   moveQueryTable,
@@ -689,7 +689,11 @@ export function QueryDesigner({ node }: { node: QueryNode }) {
             hint: tables.some((t) => t.fromId === n.id) ? 'Again' : undefined,
             onSelect: () => {
               try {
-                apply((p) => addQueryTable(p, node.id, n.id));
+                // Joined at once on the relationships the project states, as Access does.
+                apply((p) => addRelatedTable(p, node.id, n.id, (id) => {
+                  const s = statuses[id]?.status;
+                  return s?.state === 'ok' ? s.columns : undefined;
+                }));
                 setError(null);
               } catch (e) {
                 setError(e instanceof Error ? e.message : String(e));

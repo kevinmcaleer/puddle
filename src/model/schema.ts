@@ -429,6 +429,8 @@ export const SchemaDocZ = z.object({
   view: z.string().optional(),
   /** Saved versions, newest first; as many as the user keeps. */
   versions: z.array(SchemaVersionZ).default([]),
+  /** Leave out the canvas's tables, queries and views, which the Schema view otherwise documents next to the DBML. */
+  hideCanvas: z.boolean().optional(),
 });
 
 export const DEFAULT_SCHEMA_DOC = { dbml: '', positions: {}, detail: 'full' as const, views: [], versions: [] };
