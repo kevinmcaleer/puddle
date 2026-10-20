@@ -7,9 +7,12 @@ import { create } from 'zustand';
 export interface ConnectionDialogState {
   mode: 'add' | 'manage' | null;
   editId?: string;
+  /** Open straight on the table picker of this connection (a database file just dropped in). */
+  pickId?: string;
 }
 
 export const useConnectionDialog = create<ConnectionDialogState>(() => ({ mode: null }));
 
-export const openConnectionDialog = (mode: 'add' | 'manage' = 'add', editId?: string) => useConnectionDialog.setState({ mode, editId });
-export const closeConnectionDialog = () => useConnectionDialog.setState({ mode: null, editId: undefined });
+export const openConnectionDialog = (mode: 'add' | 'manage' = 'add', editId?: string) => useConnectionDialog.setState({ mode, editId, pickId: undefined });
+export const openTablePicker = (pickId: string) => useConnectionDialog.setState({ mode: 'add', editId: undefined, pickId });
+export const closeConnectionDialog = () => useConnectionDialog.setState({ mode: null, editId: undefined, pickId: undefined });

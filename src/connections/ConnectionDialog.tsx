@@ -318,15 +318,14 @@ function TablePicker({ connectionId, onBack }: { connectionId: string; onBack: (
   useEffect(() => {
     if (!ready || tried.current === attempt) return;
     tried.current = attempt;
-    let live = true;
-    readCatalog(connection).then(
-      (c) => live && (setCatalog(c), setState('ok')),
-      (e) => live && (setError(e instanceof Error ? e.message : String(e)), setState('failed')),
+    // The connection is read from the store here, not closed over: reading the catalogue amends it, which must not restart the read.
+    const current = useProjectStore.getState().history.present.connections.find((c) => c.id === connectionId);
+    if (!current) return;
+    readCatalog(current).then(
+      (c) => (setCatalog(c), setState('ok')),
+      (e) => (setError(e instanceof Error ? e.message : String(e)), setState('failed')),
     );
-    return () => {
-      live = false;
-    };
-  }, [ready, attempt, connection]);
+  }, [ready, attempt, connectionId]);
   if (!connection || !d) return null;
   const tables = catalog?.tables ?? [];
   const toggle = (key: string, on: boolean) =>
@@ -403,10 +402,11 @@ function TablePicker({ connectionId, onBack }: { connectionId: string; onBack: (
   );
 }
 
-function ConnectionsDialogBody({ mode, editId }: { mode: 'add' | 'manage'; editId?: string }) {
+function ConnectionsDialogBody({ mode, editId, pickId }: { mode: 'add' | 'manage'; editId?: string; pickId?: string }) {
   const project = useProject();
   const editing = editId ? project.connections.find((c) => c.id === editId) : undefined;
-  const [view, setView] = useState<View>(editing ? { kind: 'form', connection: editing, isNew: false } : { kind: 'list' });
+  const picking = pickId ? project.connections.find((c) => c.id === pickId) : undefined;
+  const [view, setView] = useState<View>(editing ? { kind: 'form', connection: editing, isNew: false } : picking ? { kind: 'pick', connection: picking } : { kind: 'list' });
   useEffect(() => void refreshReach(), []);
   if (view.kind === 'grid') {
     return (
@@ -432,6 +432,6 @@ function ConnectionsDialogBody({ mode, editId }: { mode: 'add' | 'manage'; editI
 
 /** Add source › From database and Project › Databases. */
 export function ConnectionDialog() {
-  const { mode, editId } = useConnectionDialog();
-  return mode ? <ConnectionsDialogBody key={`${mode}-${editId ?? ''}`} mode={mode} editId={editId} /> : null;
+  const { mode, editId, pickId } = useConnectionDialog();
+  return mode ? <ConnectionsDialogBody key={`${mode}-${editId ?? ''}-${pickId ?? ''}`} mode={mode} editId={editId} pickId={pickId} /> : null;
 }

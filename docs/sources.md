@@ -152,7 +152,7 @@ Puddle reads the database in your browser; nothing is uploaded. When you open th
 
 **Add › From database** reads tables from a database into sources. Pick a saved connection, or make one from the grid of databases; a connection needs the database's address and user name, and its password or token, which is kept in this tab only and never saved in the project, a recipe or a shared link. **Test** opens the connection and says what answered.
 
-Database files are read in your browser; nothing is uploaded:
+Database files are read in your browser; nothing is uploaded. A database file chosen from **Add › Choose files** (or dropped on the canvas) becomes a connection named after the file, and its table picker opens at once:
 
 SQLite
 : A `.sqlite` or `.db` file (a LibSQL file is one too). Choose the file in the connection form.

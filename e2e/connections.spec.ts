@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { cell, expectRows, fixture, node, openApp, saved, selectNode } from './helpers/app';
+import { addFiles, cell, expectRows, fixture, node, openApp, saved, selectNode } from './helpers/app';
 
 // A database connection: made from the driver grid, tested (no service runs here, so the test says what to start),
 // saved in the project without its password, signed in for this tab, listed under Project › Databases and on the
@@ -83,7 +83,8 @@ test('a SQLite file is read in the browser: tables and a query become sources, a
   await form.getByRole('button', { name: 'Save connection' }).click();
 
   const picker = page.getByRole('dialog', { name: 'Read from SQLite' });
-  await expect(picker.getByTestId('table-picker')).toContainText('order_totals (view)');
+  // The tables are read in the SQLite worker; under a loaded CI runner that takes a moment.
+  await expect(picker.getByTestId('table-picker')).toContainText('order_totals (view)', { timeout: 20_000 });
   await expect(picker.getByTestId('pick-orders')).toContainText('4 columns · 4 rows');
   await picker.getByRole('checkbox', { name: 'orders' }).check();
   await picker.getByLabel('Or a query').fill('SELECT name, orders FROM order_totals ORDER BY name');
@@ -119,4 +120,19 @@ test('a SQLite file is read in the browser: tables and a query become sources, a
   await banner.locator('[data-testid^="connection-file-"]').setInputFiles(fixture('db/shop.sqlite'));
   await expect(node(page, 'orders')).toHaveAttribute('data-status', 'ok', { timeout: 20_000 });
   await expectRows(page, 4);
+});
+
+// A DuckDB file chosen like any other file is a connection, not a source: its table picker opens at once.
+test('a DuckDB file chosen from Add › Choose files opens its table picker, and the table is attached read-only', async ({ page }) => {
+  await openApp(page);
+  await addFiles(page, [fixture('db/shop.duckdb')]);
+  const picker = page.getByRole('dialog', { name: 'Read from shop' });
+  await expect(picker.getByTestId('table-picker')).toContainText('order_totals (view)', { timeout: 20_000 });
+  await expect(picker.getByTestId('pick-customers')).toContainText('5 columns');
+  await picker.getByRole('checkbox', { name: 'customers' }).check();
+  await picker.getByRole('button', { name: 'Add 1 source' }).click();
+  await expect(node(page, 'customers')).toHaveAttribute('data-status', 'ok', { timeout: 20_000 });
+  await expectRows(page, 3);
+  await expect(cell(page, 1, 0)).toHaveText('Ada Lovelace');
+  await expect(page.getByTestId('connection-panel')).toContainText('shop (DuckDB)');
 });
