@@ -123,10 +123,14 @@ const selectedNodes = (page: Page) =>
 export async function selectNode(page: Page, name: string, modifiers: Array<'Shift'> = []) {
   const shift = modifiers.includes('Shift');
   const want = shift ? [...new Set([...(await selectedNodes(page)), name])] : [name];
+  // A plain click always happens, since it also views the node, even one already selected; a Shift+click only
+  // adds what is missing, since on a selected node it would toggle it off.
+  let clicked = false;
   await expect(async () => {
     const have = await selectedNodes(page);
-    const right = shift ? want.every((n) => have.includes(n)) : have.length === 1 && have[0] === name;
-    if (!right) for (const n of shift ? want.filter((n) => !have.includes(n)) : [name]) await node(page, n).click({ modifiers });
+    const missing = shift ? want.filter((n) => !have.includes(n)) : clicked && have.length === 1 && have[0] === name ? [] : [name];
+    for (const n of missing) await node(page, n).click({ modifiers });
+    clicked = true;
     await expect.poll(() => selectedNodes(page), { timeout: 2_000 }).toEqual(shift ? expect.arrayContaining(want) : [name]);
   }).toPass({ timeout: 20_000 });
 }
