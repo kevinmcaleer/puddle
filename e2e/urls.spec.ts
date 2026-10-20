@@ -14,6 +14,7 @@ test.beforeAll(async () => {
   for (const s of [open, closed]) {
     s.files.set('/customers.csv', { body: readFileSync(fixture('customers.csv')), type: 'text/csv' });
     s.files.set('/download', { body: readFileSync(fixture('orders.tsv')), type: 'text/plain' });
+    s.files.set('/sales.xlsx', { body: readFileSync(fixture('sales.xlsx')), type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
   }
 });
 test.afterAll(async () => {
@@ -54,6 +55,25 @@ test('a CSV added from a web address loads, shows its host, and re-fetches on re
   await node(page, 'customers.csv').click();
   await expect(page.getByTestId('url-panel')).toHaveAttribute('data-attachment', 'attached');
   await expect(page.getByTestId('attachment-banner')).toHaveCount(0);
+});
+
+test('an Excel workbook from a web address is fetched whole, read like a chosen file, and read again on reopening', async ({ page }) => {
+  await openApp(page);
+  const dialog = await addFromUrl(page, open.url('/sales.xlsx'));
+  await expect(dialog).toHaveCount(0);
+  const source = node(page, 'sales.xlsx');
+  await expect(source).toHaveAttribute('data-status', 'ok', { timeout: 20_000 });
+  await expect(source).toContainText(`${new URL(open.url('/')).host} · Excel`);
+  await expectRows(page, 4);
+  await node(page, 'sales.xlsx').click();
+  await expect(page.getByLabel('Sheet').locator('option')).toHaveText(['Sales (7 rows, 8 columns)', 'Visits (3 rows, 4 columns)', 'Empty (empty)']);
+
+  await expect.poll(() => page.evaluate(() => localStorage.getItem('puddle.lastProject'))).not.toBeNull();
+  await page.waitForTimeout(800);
+  await page.reload();
+  await expect(page.getByTestId('engine-ready')).toBeVisible({ timeout: 45_000 });
+  await expect(node(page, 'sales.xlsx')).toHaveAttribute('data-status', 'ok', { timeout: 20_000 });
+  await expectRows(page, 4);
 });
 
 test('Refresh fetches the file again and says when it has changed', async ({ page }) => {

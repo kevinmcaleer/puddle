@@ -17,6 +17,9 @@ import { gatherSuggestionFacts, suggestRules } from '../../src/rules';
 import { SAMPLES, TAXI_TUTORIAL, type SampleFile } from '../../src/samples/catalog';
 import { openSample } from '../../src/samples/open';
 import { useAttachments } from '../../src/sources/attachments';
+import { resetExcelSources, syncExcelSources } from '../../src/sources/excel';
+import { inProcessClient, setExcelClient } from '../../src/excel/client';
+import { ExcelService } from '../../src/excel/service';
 import { syncRewrites } from '../../src/sources/rewrite';
 import { useUrlFetches } from '../../src/sources/url';
 import { startFileServer, type FileServer } from '../helpers/fileServer';
@@ -42,6 +45,11 @@ afterAll(async () => {
   await server.close();
   await engine.close();
 });
+beforeEach(() => {
+  setExcelClient(inProcessClient(new ExcelService()));
+  resetExcelSources();
+});
+afterEach(() => setExcelClient(undefined));
 
 /** Open a sample as the app does, from a Puddle served at /app/. */
 const open = (id: string) => openSample(id, server.url('/app/'));
@@ -57,8 +65,9 @@ const cleaned = (source: Source, steps: ReturnType<typeof step>[]) =>
 describe('opening a sample', () => {
   it.each(SAMPLES.map((s) => [s.id, s] as const))('%s opens as a new project with each file read and its note', async (_id, sample) => {
     const project = await open(sample.id);
-    // A pipe table is read by Puddle before DuckDB sees it, as the editor does when the project opens.
+    // A pipe table is read by Puddle before DuckDB sees it, and a workbook by the Excel worker, as the editor does when the project opens.
     await syncRewrites(engine, useProjectStore.getState().history.present);
+    await syncExcelSources(engine, useProjectStore.getState().history.present);
     expect(useProjectStore.getState().history.present.id).toBe(project.id);
     expect(project.name).toMatch(/^Sample: /);
     expect(project.notes).toBe(sample.note);
@@ -69,7 +78,7 @@ describe('opening a sample', () => {
       expect(useUrlFetches.getState().fetches[s.id]).toMatchObject({ state: 'ok' });
       expect(useAttachments.getState().sources[s.id]).toBe('attached');
       const node = project.nodes.find((n) => n.type === 'source' && n.sourceId === s.id)!;
-      const lines = readFileSync(join(dir, s.url!.sample!), 'utf8').trim().split('\n').length - 1;
+      const lines = s.format === 'xlsx' ? NaN : readFileSync(join(dir, s.url!.sample!), 'utf8').trim().split('\n').length - 1;
       expect(await count(project, node.id)).toBe((sample.files as readonly SampleFile[]).find((f) => f.file === s.url!.sample)!.rows ?? lines);
     }
   });
@@ -198,6 +207,7 @@ describe('each sample has the problems its note describes, and the suggested fix
   it.each(SAMPLES.map((s) => s.id))('%s gives the suggested rules something to say', async (id) => {
     const [first] = (await open(id)).sources;
     await syncRewrites(engine, useProjectStore.getState().history.present);
+    await syncExcelSources(engine, useProjectStore.getState().history.present);
     const project = cleaned(first!, []);
     const columns = await engine.describe(compile(project, { nodeId: 'out' }).sql);
     const facts = await gatherSuggestionFacts(engine, project, 'out', columns);

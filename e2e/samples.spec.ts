@@ -11,7 +11,7 @@ test('a sample opens from the empty canvas as a new project, with its data and i
   await openApp(page);
   await page.getByRole('button', { name: 'Try a sample' }).click();
   const dialog = page.getByRole('dialog', { name: 'Try a sample' });
-  await expect(dialog.getByRole('listitem')).toHaveCount(6);
+  await expect(dialog.getByRole('listitem')).toHaveCount(8);
   await dialog.getByTestId('sample-contacts').click();
 
   await expect(dialog).toHaveCount(0);
@@ -32,11 +32,28 @@ test('a sample opens from the empty canvas as a new project, with its data and i
   await expect(page.getByRole('region', { name: 'Sample data' })).toBeVisible();
 });
 
+test('an Excel sample reads the workbook from beside the app, shows its issues, and reads it again on reload', async ({ page }) => {
+  await openApp(page);
+  await page.getByRole('button', { name: 'Try a sample' }).click();
+  await page.getByRole('dialog', { name: 'Try a sample' }).getByTestId('sample-merged').click();
+  await expect(page.getByTestId('project-name')).toHaveText('Sample: merged report');
+  await expect(node(page, 'merged.xlsx')).toHaveAttribute('data-status', 'ok', { timeout: 20_000 });
+  await expect(node(page, 'merged.xlsx')).toContainText('Sample · Excel');
+  await expectRows(page, 16);
+  await node(page, 'merged.xlsx').click();
+  await expect(page.getByTestId('issues').getByTestId('issue-totalRows')).toBeVisible({ timeout: 20_000 });
+  await expect(page.getByLabel('Table').locator('option')).toHaveCount(2);
+
+  await page.reload();
+  await expect(node(page, 'merged.xlsx')).toHaveAttribute('data-status', 'ok', { timeout: 45_000 });
+  await expectRows(page, 16);
+});
+
 test('the home screen offers the samples; a sample is listed and deleted like any project', async ({ page }) => {
   await openApp(page);
   await projectMenu(page, 'All projects');
   const samples = page.getByTestId('home-samples');
-  await expect(samples.getByRole('listitem')).toHaveCount(6);
+  await expect(samples.getByRole('listitem')).toHaveCount(8);
   await samples.getByTestId('sample-orders').click();
 
   await expect(page.getByTestId('project-name')).toHaveText('Sample: orders and customers');

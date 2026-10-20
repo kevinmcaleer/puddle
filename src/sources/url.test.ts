@@ -79,8 +79,8 @@ describe('format', () => {
     expect(() => formatFromAddress(new URL('https://x.org/download'), 'application/octet-stream')).toThrow(/Choose the format/);
   });
 
-  it('asks for Excel workbooks to be downloaded and dropped in', () => {
-    expect(() => formatFromAddress(new URL('https://x.org/book.xlsx'))).toThrow('Excel workbooks can’t be read from a web address yet. Download the file and drop it here instead.');
+  it('reads .xlsx workbooks, and asks for old .xls ones to be saved as .xlsx', () => {
+    expect(formatFromAddress(new URL('https://x.org/book.xlsx'))).toBe('xlsx');
     expect(() => formatFromAddress(new URL('https://x.org/book.xls'))).toThrow(/old Excel format \(\.xls\)/);
   });
 });

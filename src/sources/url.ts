@@ -3,6 +3,7 @@ import { whenEngine } from '../app/engine';
 import { sourceFileName } from '../compiler';
 import { invalidateCaches } from '../flow/status';
 import { addSource, newId, setSourceFormat, updateSource, useProjectStore, type Source, type SourceFormat } from '../model';
+import { rememberFile } from './add';
 import { markAttached } from './attachments';
 import { formatFromName, knownFormat } from './detect';
 import { parseAddress, UrlSourceError, type UrlErrorKind } from './address';
@@ -78,7 +79,6 @@ export function formatFromContentType(contentType: string | null | undefined): S
 export function formatFromAddress(url: URL, contentType?: string | null): SourceFormat {
   const name = nameFromAddress(url);
   const byName = knownFormat(name);
-  if (byName === 'xlsx') throw new UrlSourceError('Excel workbooks can’t be read from a web address yet. Download the file and drop it here instead.', 'format');
   if (byName) return byName;
   if (/\.xls$/i.test(name)) formatFromName(name);
   const byType = formatFromContentType(contentType);
@@ -188,9 +188,13 @@ export function addressOf(source: Source): URL | string {
   return sampleAddress(sample, base);
 }
 
-/** Hand what was fetched to DuckDB under the source's file name, replacing what was there. XML is read into rows first (./xml). */
+/**
+ * Hand what was fetched to DuckDB under the source's file name, replacing what was there. XML is read into rows
+ * first (./xml); a workbook, fetched whole, goes to the Excel worker as a chosen file would (./excel).
+ */
 async function register(source: Source, fetched: Fetched) {
   if (source.format === 'xml') return void rememberXml(source.id, fetched.data!);
+  if (source.format === 'xlsx') return void rememberFile(source.id, new File([fetched.data! as Uint8Array<ArrayBuffer>], source.name));
   if (source.format === 'fixed' || source.format === 'pipes') return void rememberRewriteInput(source.id, fetched.data!);
   const engine = await whenEngine();
   const name = sourceFileName(source);

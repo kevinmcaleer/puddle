@@ -4,7 +4,7 @@ import { setParseOptions, useProject, useProjectStore, type ParseOptions, type S
 import { CommitInput } from '../steps/CommitInput';
 import { Banner, Button, Field, Section, Select, Switch } from '../ui';
 import { useAttachments } from './attachments';
-import { addExcelTables, formatBytes, isLargeWorkbook, parseHeaderRow, parseHeaderRows, sheetLabel, sheetTableLabel, sheetTableOf, sheetTablesNotAdded, useExcelReads, withSheet } from './excel';
+import { addExcelTables, formatBytes, isLargeWorkbook, workbookSize, parseHeaderRow, parseHeaderRows, sheetLabel, sheetTableLabel, sheetTableOf, sheetTablesNotAdded, useExcelReads, withSheet } from './excel';
 
 /** Why an Excel sheet can't be shown yet: being read, or what went wrong. Shared by the inspector and the results. */
 export function ExcelProblemBanner({ source }: { source: Source }) {
@@ -18,7 +18,7 @@ function LargeWorkbook({ source }: { source: Source }) {
   if (!isLargeWorkbook(source)) return null;
   return (
     <div data-testid="excel-large">
-      <Banner tone="warn" title={`Large workbook (${formatBytes(source.file!.size)})`}>
+      <Banner tone="warn" title={`Large workbook (${formatBytes(workbookSize(source))})`}>
         Unlike CSV, a workbook is read into memory whole, so this can be slow and use a lot of memory. For files this size, save the sheet as CSV and add that instead.
       </Banner>
     </div>

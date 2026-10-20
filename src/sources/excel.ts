@@ -20,12 +20,16 @@ import { markAttached, useAttachments } from './attachments';
 /** Workbooks above this size get a warning: they are read into memory whole, several times over while parsing. */
 export const LARGE_WORKBOOK_BYTES = 20 * 1024 * 1024;
 
-export const isLargeWorkbook = (source: Source) => source.format === 'xlsx' && (source.file?.size ?? 0) > LARGE_WORKBOOK_BYTES;
+/** A workbook's size: the chosen file's, or what the server said when it was fetched. */
+export const workbookSize = (source: Source) => source.file?.size ?? source.url?.size ?? 0;
+
+export const isLargeWorkbook = (source: Source) => source.format === 'xlsx' && workbookSize(source) > LARGE_WORKBOOK_BYTES;
 
 /** "34 MB". */
 export const formatBytes = (n: number) => (n >= 1024 * 1024 ? `${Math.round(n / (1024 * 1024))} MB` : `${Math.max(1, Math.round(n / 1024))} KB`);
 
-export const isExcelSource = (s: Source) => s.format === 'xlsx' && s.kind === 'file';
+/** A workbook from a chosen file or a web address (fetched whole and handed over like a file; see ./url). */
+export const isExcelSource = (s: Source) => s.format === 'xlsx' && (s.kind === 'file' || s.kind === 'url');
 
 /** The options SheetJS needs, from a source's parse options. */
 export const sheetOptions = (o: ParseOptions): SheetReadOptions => ({ sheet: o.sheet, headerRow: o.headerRow, range: o.range, headerRows: o.headerRows, fillMerges: o.fillMerges });
@@ -230,7 +234,7 @@ export function sheetTablesNotAdded(project: Project, source: Source, read: Exce
  */
 export function addExcelTables(source: Source, tables: SheetTable[]): Source[] {
   const file = sourceFile(source.id);
-  if (!file || !source.file) return [];
+  if (!file || !(source.file || source.url)) return [];
   const project = useProjectStore.getState().history.present;
   const node = project.nodes.find((n) => n.type === 'source' && n.sourceId === source.id);
   const at = node?.position ?? { x: 80, y: 80 };
@@ -240,9 +244,10 @@ export function addExcelTables(source: Source, tables: SheetTable[]): Source[] {
     (t): Source => ({
       id: newId('s'),
       name: `${source.name} ${t.range}`,
-      kind: 'file',
+      kind: source.kind,
       format: 'xlsx',
-      file: { ...source.file! },
+      ...(source.file ? { file: { ...source.file } } : {}),
+      ...(source.url ? { url: { ...source.url } } : {}),
       parseOptions: { ...(sheet ? { sheet } : {}), range: t.range },
       detectedSchema: [],
     }),
