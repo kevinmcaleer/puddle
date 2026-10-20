@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { addFiles, addStepNode, expectRows, fixture, node, openApp } from './helpers/app';
+import { addFiles, addStepNode, expectRows, fixture, node, openApp, selectNode } from './helpers/app';
 
 const settings = (page: Page) => page.getByTestId('rule-settings');
 const ruleRow = (page: Page, type: string) => page.getByTestId(`rule-${type}`).locator('.ui-rule');
@@ -15,7 +15,7 @@ async function shop(page: Page) {
   await addFiles(page, [fixture('shop-orders.csv'), fixture('shop-customers.csv')]);
   await expect(node(page, 'shop-orders.csv')).toHaveAttribute('data-status', 'ok', { timeout: 20_000 });
   await expect(node(page, 'shop-customers.csv')).toHaveAttribute('data-status', 'ok', { timeout: 20_000 });
-  await node(page, 'shop-customers.csv').click();
+  await selectNode(page, 'shop-customers.csv');
   await addStepNode(page, 'Remove blank rows');
   await expect(node(page, 'Transform 1')).toHaveAttribute('data-status', 'ok');
   await node(page, 'shop-orders.csv').click();
