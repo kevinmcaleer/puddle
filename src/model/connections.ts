@@ -1,5 +1,5 @@
 // Pure edits to a project's database connections. Secrets never pass through here: they live in src/connections/secrets.
-import type { Connection, Project } from './schema';
+import type { Connection, ConnectionSource, Project } from './schema';
 
 /** Add a connection, or replace the one with its id. */
 export function addConnection(project: Project, connection: Connection): Project {
@@ -25,4 +25,9 @@ export function nextConnectionName(project: Project, base: string): string {
   const used = new Set(project.connections.map((c) => c.name));
   if (!used.has(base)) return base;
   for (let i = 2; ; i++) if (!used.has(`${base} ${i}`)) return `${base} ${i}`;
+}
+
+/** Change what a connection source reads: its table, query or row limit. Its loaded table follows (sourceTableName). */
+export function updateConnectionSource(project: Project, sourceId: string, patch: Partial<Omit<ConnectionSource, 'connectionId'>>): Project {
+  return { ...project, sources: project.sources.map((s) => (s.id === sourceId && s.connection ? { ...s, connection: { ...s.connection, ...patch } } : s)) };
 }

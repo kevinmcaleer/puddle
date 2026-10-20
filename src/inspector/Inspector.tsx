@@ -25,6 +25,8 @@ import { ReattachButton } from '../sources/ReattachButton';
 import { UrlPanel } from '../sources/UrlPanel';
 import { isAccessSource } from '../sources/access';
 import { AccessPanel } from '../sources/AccessPanel';
+import { isConnectionSource } from '../sources/connection';
+import { ConnectionPanel } from '../sources/ConnectionPanel';
 import { isExcelSource } from '../sources/excel';
 import { ExcelPanel } from '../sources/ExcelPanel';
 import { isXmlSource } from '../sources/xml';
@@ -329,6 +331,7 @@ function NodeInspector({ node }: { node: GraphNode }) {
       {source && isExcelSource(source) && <ExcelPanel source={source} />}
       {source && isXmlSource(source) && <XmlPanel source={source} />}
       {source && isAccessSource(source) && <AccessPanel source={source} />}
+      {source && isConnectionSource(source) && <ConnectionPanel key={source.id} source={source} />}
       {source && hasParseOptions(source) && <SourceOptions source={source} />}
       {source && source.kind === 'file' && <RunnerPath source={source} />}
       {node.type === 'output' && <OutputPanel node={node} />}
