@@ -58,3 +58,19 @@ test('the SQL view: the design as SQL, edited SQL back into the design, and SQL 
   await designer.getByLabel('Top values').selectOption('All');
   await expectRows(page, 2);
 });
+
+// Regression: SQL kept before the grid could show it (a LIMIT, before Top values) kept the Design tab greyed out.
+test('kept SQL the grid can show now opens in the design', async ({ page }) => {
+  await shopQuery(page);
+  const designer = page.getByTestId('query-designer');
+  const sql = 'SELECT o.order_id, c.name, o.total FROM "shop-customers.csv" AS c JOIN "shop-orders.csv" AS o ON c.customer_id = o.customer_id limit 2';
+  await page.evaluate((sql) => {
+    const { store } = globalThis.__puddle as unknown as { store: { getState(): { apply(edit: (p: { nodes: Array<{ type: string; querySpec?: object }> }) => unknown): void } } };
+    store.getState().apply((p) => ({ ...p, nodes: p.nodes.map((n) => (n.type === 'query' ? { ...n, querySpec: { ...n.querySpec, sql } } : n)) }));
+  }, sql);
+  await expect(designer.getByRole('tab', { name: 'SQL' })).toHaveAttribute('aria-selected', 'true');
+  await expectRows(page, 2);
+  await designer.getByRole('tab', { name: 'Design' }).click();
+  await expect(designer.getByLabel('Top values')).toHaveValue('2');
+  await expectRows(page, 2);
+});
