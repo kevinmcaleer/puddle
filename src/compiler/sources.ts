@@ -5,7 +5,7 @@ import { bool, ident, num, str, strList } from './sql';
 const ROW = ident('__puddle_row');
 const TOTAL = ident('__puddle_total');
 
-const EXT: Record<Source['format'], string> = { csv: 'csv', tsv: 'tsv', json: 'json', ndjson: 'ndjson', parquet: 'parquet', xlsx: 'xlsx', xml: 'csv', access: 'accdb' };
+const EXT: Record<Source['format'], string> = { csv: 'csv', tsv: 'tsv', json: 'json', ndjson: 'ndjson', parquet: 'parquet', xlsx: 'xlsx', xml: 'csv', access: 'accdb', connection: 'table' };
 
 /**
  * The name a source's file is registered under in DuckDB's virtual file system. XML is registered as the CSV its
@@ -27,7 +27,10 @@ export function sourceFileName(source: Source): string {
  */
 export function sourceTableName(source: Source): string {
   const o = source.parseOptions;
-  const key = source.format === 'access' ? [source.file?.headHash ?? null, 'access', o.table ?? null] : [source.file?.headHash ?? null, o.sheet ?? null, o.headerRow ?? null, o.range ?? null];
+  const c = source.connection;
+  const key = c
+    ? [c.connectionId, c.table?.schema ?? null, c.table?.name ?? null, c.query ?? null, c.limit ?? null]
+    : source.format === 'access' ? [source.file?.headHash ?? null, 'access', o.table ?? null] : [source.file?.headHash ?? null, o.sheet ?? null, o.headerRow ?? null, o.range ?? null];
   return `src_${source.id}_${hashValue(key).slice(0, 12)}`;
 }
 
@@ -98,6 +101,7 @@ export function sourceRelation(source: Source): string {
       return `read_parquet(${file})`;
     case 'xlsx':
     case 'access':
+    case 'connection':
       return ident(sourceTableName(source));
     case 'xml':
       // Written by Puddle from the XML (see src/xml), always with a header row, commas and double quotes.

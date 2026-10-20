@@ -28,6 +28,14 @@ describe('project files', () => {
     expect(back.nodes.map((n) => n.notes)).toEqual(['Sent weekly by finance.', 'Drops test rows.', '<b>for</b> the board']);
   });
 
+  it('upgrades a format 2 project to format 3 with no connections', () => {
+    const v2 = { ...JSON.parse(writeProjectFile(createProject('Two'))), formatVersion: 2 };
+    delete v2.connections;
+    const p = migrate(v2);
+    expect(p.formatVersion).toBe(3);
+    expect(p.connections).toEqual([]);
+  });
+
   it('opens a project written before files were versioned (fixture)', () => {
     const p = readProjectFile(fixture('unversioned.puddle.json'));
     expect(p.formatVersion).toBe(FORMAT_VERSION);

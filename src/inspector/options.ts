@@ -17,7 +17,7 @@ export const ENCODINGS = [
 ];
 
 /** File and pasted sources show Read options (the Format field at least); URL sources have their own panel. */
-export const hasParseOptions = (source: Source) => (source.kind !== 'url' && !source.url?.odata) || ((source.format === 'csv' || source.format === 'tsv') && !source.url?.odata && !source.url?.table);
+export const hasParseOptions = (source: Source) => source.kind !== 'connection' && ((source.kind !== 'url' && !source.url?.odata) || ((source.format === 'csv' || source.format === 'tsv') && !source.url?.odata && !source.url?.table));
 
 /** The delimiter select's value for a source. */
 export function delimiterValue(source: Source): string {

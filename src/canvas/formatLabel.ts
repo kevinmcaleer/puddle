@@ -1,4 +1,4 @@
-const FORMAT_LABEL: Record<string, string> = { csv: 'CSV', tsv: 'TSV', json: 'JSON', ndjson: 'NDJSON', parquet: 'Parquet', xlsx: 'Excel', xml: 'XML', access: 'Access' };
+const FORMAT_LABEL: Record<string, string> = { csv: 'CSV', tsv: 'TSV', json: 'JSON', ndjson: 'NDJSON', parquet: 'Parquet', xlsx: 'Excel', xml: 'XML', access: 'Access', connection: 'Database' };
 
 /** How a source format is named in the UI. */
 export const formatLabel = (f: string) => FORMAT_LABEL[f] ?? f;

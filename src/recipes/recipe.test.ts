@@ -73,6 +73,23 @@ const pipeline = (r: Recipe) => {
   return r;
 };
 
+describe('recipe connections', () => {
+  it('keeps a connection’s driver and database, never its host, user or catalogue', () => {
+    const p = {
+      ...createProject('Db'),
+      connections: [{ id: 'c1', name: 'Shop', driver: 'postgres' as const, via: 'pi' as const, auth: 'password' as const, settings: { host: 'db.internal', port: 5432, database: 'shop', user: 'kev', ssl: true }, catalog: { tables: [{ name: 'orders', kind: 'table' as const, columns: [] }] }, catalogAt: '2026-10-20' }],
+    };
+    const text = writeRecipe(recipeFromProject(p, { name: 'r', description: '' }));
+    expect(text).not.toContain('db.internal');
+    expect(text).not.toContain('kev');
+    expect(text).not.toContain('orders');
+    const back = readRecipe(text);
+    if (back.kind !== 'pipeline') throw new Error('pipeline expected');
+    expect(back.project.connections).toEqual([{ id: 'c1', name: 'Shop', driver: 'postgres', via: 'pi', auth: 'password', settings: { database: 'shop', ssl: true } }]);
+    expect(projectFromRecipe(back).connections).toHaveLength(1);
+  });
+});
+
 describe('exporting a recipe', () => {
   const text = writeRecipe(recipeFromProject(sensitive(), { name: 'Payroll recipe', description: 'Tidies a payroll export.' }));
 

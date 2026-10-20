@@ -4,7 +4,7 @@ A source is data read into Puddle: a file on your computer, a file at a web addr
 
 ## Adding a source
 
-**Add** in the toolbar offers five ways in under **Sources**; an empty project also has an **Add source** button on the canvas.
+**Add** in the toolbar offers six ways in under **Sources**; an empty project also has an **Add source** button on the canvas.
 
 ![The Add menu's Sources group: Choose files, From URL, From web page, From OData feed and Paste from clipboard](_static/screenshots/sources-menu.png)
 
@@ -19,6 +19,9 @@ From web page
 
 From OData feed
 : Read an entity set from an OData service, such as SAP, Dynamics or SharePoint lists. See [OData feeds](#odata-feeds).
+
+From database
+: Make or pick a saved connection to a database (shortcut: D). Connections are saved in the project without their password or token, which stays in this tab; **Project › Databases** lists them. Reading tables from a connection is being built (Phase 6), so for now a connection can be made, tested and kept.
 
 Paste from clipboard
 : Paste rows copied from a spreadsheet or a web page, or XML text, as a new source (shortcut: Ctrl+V on the canvas). Pasted rows are the one kind of data a project keeps, because there is no file to read them from again.

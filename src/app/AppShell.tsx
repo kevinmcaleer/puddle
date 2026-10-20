@@ -39,6 +39,8 @@ import { openUrlDialog } from '../sources/urlDialog';
 import { WebPageDialog } from '../sources/WebPageDialog';
 import { openWebPageDialog } from '../sources/webPageDialog';
 import { ODataDialog } from '../sources/ODataDialog';
+import { ConnectionDialog } from '../connections/ConnectionDialog';
+import { openConnectionDialog } from '../connections/dialog';
 import { openODataDialog } from '../sources/odataDialog';
 import { cardKind } from '../canvas/kind';
 import { Button, Menu, ResultsBar, StatusBadge, StatusStrip, Toolbar, useDisplayFormat, type NodeKind } from '../ui';
@@ -289,6 +291,7 @@ export function AppShell() {
     redo,
     'toggle-inspector': () => session().setInspectorOpen(!session().inspectorOpen),
     'add-source': chooseFiles,
+    'add-database': () => openConnectionDialog('add'),
     'add-transform': onCanvas(() => session().requestAddMenu()),
     'add-output': onCanvas(() => addNodeAfterSelection('output')),
     layout: onCanvas(() => project.nodes.length > 0 && layoutFlow()),
@@ -325,6 +328,7 @@ export function AppShell() {
             { label: 'Rename', icon: 'text', onSelect: () => openProjectDialog({ kind: 'rename', id: project.id, name: project.name }) },
             { label: 'Relationships', icon: 'relationships', hint: 'Tables and keys, DBML', onSelect: () => session().setRelationshipsOpen(true) },
             { label: 'Schema', icon: 'schema', hint: 'Design tables in DBML', onSelect: () => session().setSchemaOpen(true) },
+            { label: 'Databases', icon: 'database', hint: 'Connections', onSelect: () => openConnectionDialog('manage') },
             { label: 'Save project file', icon: 'export', hint: '.puddle.json', onSelect: exportProject },
             { label: 'Open project file', icon: 'source', onSelect: () => importInput.current?.click() },
             { label: 'Share as recipe', icon: 'template', hint: 'Steps, no data', onSelect: () => openExportRecipe() },
@@ -349,6 +353,7 @@ export function AppShell() {
               { label: 'From URL', icon: 'link', hint: 'https address', group: 'Sources', onSelect: () => openUrlDialog() },
               { label: 'From web page', icon: 'web', hint: 'Its tables', group: 'Sources', onSelect: () => openWebPageDialog() },
               { label: 'From OData feed', icon: 'database', hint: 'Its entity sets', group: 'Sources', onSelect: () => openODataDialog() },
+              { label: 'From database', icon: 'database', hint: 'A connection', shortcut: shortcutText('add-database'), group: 'Sources', onSelect: () => openConnectionDialog('add') },
               { label: 'Paste from clipboard', icon: 'paste', group: 'Sources', onSelect: () => void pasteFromClipboard() },
               { label: 'From template', icon: 'template', hint: 'Saved steps', group: 'Nodes', onSelect: openTemplates },
               // Every table designed in the Schema view, as a node holding its rows (the selected node, if any, loads into it).
@@ -452,6 +457,7 @@ export function AppShell() {
       <FormatDialog />
       <WebPageDialog />
       <ODataDialog />
+      <ConnectionDialog />
       <SamplesDialog />
       <ShortcutsDialog />
       <TemplateDialogs />

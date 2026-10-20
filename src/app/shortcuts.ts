@@ -37,6 +37,7 @@ export const SHORTCUTS = [
   { id: 'toggle-inspector', area: 'General', label: 'Show or hide the inspector', keys: [k('i')] },
 
   { id: 'add-source', area: 'Canvas', label: 'Add source from files', keys: [k('a')] },
+  { id: 'add-database', area: 'Canvas', label: 'Add source from a database', keys: [k('d')] },
   { id: 'add-transform', area: 'Canvas', label: 'Add a step after the selected node (opens the Add menu)', keys: [k('t')] },
   { id: 'add-output', area: 'Canvas', label: 'Add Output after the selected node', keys: [k('o')] },
   { id: 'show-canvas', area: 'Canvas', label: 'Show the canvas', keys: [k('1')] },

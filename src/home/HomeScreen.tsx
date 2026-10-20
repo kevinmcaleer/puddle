@@ -9,9 +9,39 @@ import { PROVIDER_IDS, PROVIDERS } from '../sync';
 import { openSyncDialog } from '../sync/dialogs';
 import { openRecipeFile } from '../recipes/actions';
 import { RecipeGallery } from '../recipes/RecipeGallery';
+import { driver, VIA_LABEL } from '../connections/drivers';
+import { forgetAllSecrets, useSecrets } from '../connections/secrets';
 
 
 const plural = (n: number, one: string) => `${n} ${one}${n === 1 ? '' : 's'}`;
+
+/** Every project's database connections, with whether this tab is signed in to each, and one button to forget every secret. */
+function HomeConnections() {
+  const projects = useWorkspace((s) => s.projects).filter((p) => p.connections.length);
+  const signedIn = useSecrets((s) => s.ids);
+  if (!projects.length) return null;
+  return (
+    <div className="rounded-md border border-line bg-surface-panel" data-testid="home-connections">
+      <div className="flex items-center justify-between px-4 pt-3">
+        <h2 className="ui-eyebrow">Connections</h2>
+        <Button size="sm" variant="ghost" icon="cross" disabled={!signedIn.length} onClick={forgetAllSecrets}>Forget all secrets</Button>
+      </div>
+      <ul className="flex flex-col divide-y divide-line px-4 py-2" aria-label="Connections">
+        {projects.flatMap((p) =>
+          p.connections.map((c) => (
+            <li key={`${p.id}-${c.id}`} className="flex items-center gap-3 py-2" data-testid={`home-connection-${c.name}`}>
+              <div className="min-w-0 flex-1">
+                <div className="truncate text-body-strong">{c.name}</div>
+                <div className="truncate text-label text-ink-muted">{driver(c.driver).label} · {VIA_LABEL[c.via].toLowerCase()} · in {p.name}</div>
+              </div>
+              <span className="ui-metric">{signedIn.includes(c.id) ? 'signed in' : 'not signed in'}</span>
+            </li>
+          )),
+        )}
+      </ul>
+    </div>
+  );
+}
 
 /** The projects home screen: every project saved in this browser, with create, open, rename, duplicate, delete, the samples to try and the recipe gallery. */
 export function HomeScreen() {
@@ -99,6 +129,7 @@ export function HomeScreen() {
               ))}
             </ul>
           )}
+          <HomeConnections />
           <div className="rounded-md border border-line bg-surface-panel" data-testid="home-samples">
             <SamplePicker />
           </div>

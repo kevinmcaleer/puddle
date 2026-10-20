@@ -23,6 +23,8 @@ export const MIGRATIONS: Record<number, Migration> = {
     const { stepsAsNodes: _, ...settings } = p.settings;
     return { ...p, settings, formatVersion: 2 };
   },
+  // Format 3 adds the project's database connections (saved without their secrets). A format 2 file has none.
+  2: (p) => ({ ...p, connections: [], formatVersion: 3 }),
 };
 
 const isObject = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v);
