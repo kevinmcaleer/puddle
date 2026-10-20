@@ -25,7 +25,14 @@ test('a sheet whose rows shift a column part way down lists the skew as one issu
   await page.getByTestId('inspector-source').getByTestId('fix-all').getByRole('button', { name: /^Fix \d+ issues?$/ }).click();
   await expectRows(page, 36);
   await expect(page.getByTestId('results-table')).toHaveAttribute('data-columns', 'Invoice,Customer,Issued,Due,Net,VAT,Gross', { timeout: 20_000 });
-  await expect(cell(page, 1, 17)).toHaveText('');
+  // The first moved row is the 18th, below the rows the grid draws at first: scroll down to it.
+  const box = (await page.getByTestId('results-table').boundingBox())!;
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await expect(async () => {
+    await page.mouse.wheel(0, 200);
+    await expect(cell(page, 1, 17)).toBeAttached({ timeout: 1_000 });
+  }).toPass({ timeout: 10_000 });
+  await expect(cell(page, 1, 17)).toHaveText('null');
   await expect(cell(page, 6, 17)).toHaveText(/^\d+(\.\d+)?$/);
   await expect(page.getByTestId('issues').getByTestId('issue-skewedRows:Customer:left')).toHaveCount(0, { timeout: 20_000 });
 });
