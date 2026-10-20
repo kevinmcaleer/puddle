@@ -356,7 +356,7 @@ export function compileProfile(project: Project, target: Target): string {
  * them read as a number (`num<i>`) or a date (`date<i>`), allowing for currency symbols, thousands separators,
  * brackets and day-first dates, so a column of numbers stored as text can say so.
  */
-export function compileTypeSniff(project: Project, target: Target, columns: string[]): string {
+export function compileTypeSniff(project: Project, target: Target, columns: string[], limit?: number): string {
   if (!columns.length) throw new RangeError('No columns to look at.');
   const parts = columns.flatMap((c, i) => {
     // Placeholders for empty (n/a, -) and the column's own name (a header pasted in again) are neither numbers nor words: they don't count against a column.
@@ -364,7 +364,8 @@ export function compileTypeSniff(project: Project, target: Target, columns: stri
     const real = `${v} IS NOT NULL AND NOT ${isPlaceholder(v)} AND lower(${v}) <> ${str(c.trim().toLowerCase())}`;
     return [`count(*) FILTER (WHERE ${real}) AS ${ident(`n${i}`)}`, `count(*) FILTER (WHERE ${real} AND ${looksLikeNumber(v)}) AS ${ident(`num${i}`)}`, `count(*) FILTER (WHERE ${real} AND ${looksLikeDate(v)}) AS ${ident(`date${i}`)}`];
   });
-  return `SELECT ${parts.join(', ')} FROM (${compile(project, target).sql})`;
+  const source = limit ? `SELECT * FROM (${compile(project, target).sql}) LIMIT ${num(limit)}` : compile(project, target).sql;
+  return `SELECT ${parts.join(', ')} FROM (${source})`;
 }
 
 /**

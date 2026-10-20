@@ -3,7 +3,7 @@
 import type { Project } from '../model';
 import { compile, type Target } from './compile';
 import { isPlaceholder, looksLikeDate, looksLikeNumber, MOJIBAKE_PATTERN } from './patterns';
-import { ident, str } from './sql';
+import { ident, num, str } from './sql';
 
 /** Control characters, zero-width characters, a no-break space and a byte-order mark: the same set Remove non-printing characters strips, plus NBSP. */
 export const NON_PRINTING_PATTERN = '[\\x00-\\x1F\\x7F\\x{00A0}\\x{200B}-\\x{200D}\\x{2060}\\x{FEFF}]';
@@ -32,6 +32,9 @@ export const VALUES_LIMIT = 60;
 
 const ROW_NUMBER = '__puddle_rn';
 
+/** The node's rows, or its first `limit` rows in file order when a table is too big to look at whole. */
+const nodeSql = (project: Project, target: Target, limit?: number) => (limit ? `SELECT * FROM (${compile(project, target).sql}) LIMIT ${num(limit)}` : compile(project, target).sql);
+
 /** SQL for a value's shape: digits as 9, capitals as A, small letters as a, everything else as it is. */
 const shapeOf = (trimmed: string) => `regexp_replace(regexp_replace(regexp_replace(${trimmed}, '[0-9]', '9', 'g'), '[A-Z]', 'A', 'g'), '[a-z]', 'a', 'g')`;
 
@@ -51,7 +54,7 @@ const KEY_VALUE_PATTERN = '^[A-Za-z][^:=]{0,39}[:=]\\s*\\S';
  * Nothing here needs the distinct values: those facts come from compileDistinctFacts, one grouped query per column,
  * because dozens of DISTINCT aggregates in one query exhaust the browser's memory.
  */
-export function compileAnalysis(project: Project, target: Target, checks: AnalysisCheck[], all: string[] = []): string {
+export function compileAnalysis(project: Project, target: Target, checks: AnalysisCheck[], all: string[] = [], limit?: number): string {
   const parts = ['count(*) AS "rows"'];
   if (all.length) parts.push(`count(*) - count(DISTINCT (${all.map(ident).join(', ')})) AS dups`);
   checks.forEach((c, i) => {
@@ -101,7 +104,7 @@ export function compileAnalysis(project: Project, target: Target, checks: Analys
       parts.push(`count(*) ${where(`${num} = ${ident(ROW_NUMBER)}`)} AS ${n('seq1')}`, `count(*) ${where(`${num} = ${ident(ROW_NUMBER)} - 1`)} AS ${n('seq0')}`);
     }
   });
-  const source = checks.some((c) => c.index) ? `SELECT *, row_number() OVER () AS ${ident(ROW_NUMBER)} FROM (${compile(project, target).sql})` : compile(project, target).sql;
+  const source = checks.some((c) => c.index) ? `SELECT *, row_number() OVER () AS ${ident(ROW_NUMBER)} FROM (${nodeSql(project, target, limit)})` : nodeSql(project, target, limit);
   return `SELECT ${parts.join(', ')} FROM (${source})`;
 }
 
@@ -111,12 +114,12 @@ export function compileAnalysis(project: Project, target: Target, checks: Analys
  * placeholders for empty seen (up to 12), `nonNumEx` and `nonDateEx` a few values that aren't numbers or dates,
  * `shapes` how many shapes the values take (digits as 9, letters as A or a) and `shapesEx` the first few.
  */
-export function compileDistinctFacts(project: Project, target: Target, checks: AnalysisCheck[]): string {
+export function compileDistinctFacts(project: Project, target: Target, checks: AnalysisCheck[], limit?: number): string {
   if (!checks.length) throw new RangeError('No columns to look at.');
   const columns = checks.map((c) => {
     const col = ident(c.column);
     const t = 't';
-    const few = (expr: string, cond: string, limit: number) => `list_slice(list_sort(list(${expr}) FILTER (WHERE ${cond})), 1, ${limit})`;
+    const few = (expr: string, cond: string, max: number) => `list_slice(list_sort(list(${expr}) FILTER (WHERE ${cond})), 1, ${max})`;
     const parts = [`${str(c.column)} AS c`, 'count(*) AS dist', 'arg_max(t, n) AS mode'];
     if (c.text) {
       const filled = `${t} <> ''`;
@@ -132,20 +135,20 @@ export function compileDistinctFacts(project: Project, target: Target, checks: A
     } else parts.push('NULL AS "phEx"', 'NULL AS "nonNumEx"', 'NULL AS "nonDateEx"', 'NULL AS shapes', 'NULL AS "shapesEx"');
     return `SELECT ${parts.join(', ')} FROM (SELECT trim(CAST(${col} AS VARCHAR)) AS t, count(*) AS n FROM src WHERE ${col} IS NOT NULL GROUP BY 1)`;
   });
-  return `WITH src AS (${compile(project, target).sql}) ${columns.join(' UNION ALL ')}`;
+  return `WITH src AS (${nodeSql(project, target, limit)}) ${columns.join(' UNION ALL ')}`;
 }
 
 /**
  * The distinct values of these columns with how often each occurs, the most frequent first and at most
  * VALUES_LIMIT per column: rows of `c` (the column), `v` (the value, trimmed) and `n`. Empty values are left out.
  */
-export function compileValueCounts(project: Project, target: Target, columns: string[]): string {
+export function compileValueCounts(project: Project, target: Target, columns: string[], limit?: number): string {
   if (!columns.length) throw new RangeError('No columns to count.');
   const counts = columns.map((c) => {
     const v = `trim(CAST(${ident(c)} AS VARCHAR))`;
     return `SELECT ${str(c)} AS c, ${v} AS v, count(*) AS n FROM src WHERE ${ident(c)} IS NOT NULL AND ${v} <> '' GROUP BY 2`;
   });
-  return `WITH src AS (${compile(project, target).sql}) SELECT c, v, n FROM (${counts.join(' UNION ALL ')}) QUALIFY row_number() OVER (PARTITION BY c ORDER BY n DESC, v) <= ${VALUES_LIMIT} ORDER BY c, n DESC, v`;
+  return `WITH src AS (${nodeSql(project, target, limit)}) SELECT c, v, n FROM (${counts.join(' UNION ALL ')}) QUALIFY row_number() OVER (PARTITION BY c ORDER BY n DESC, v) <= ${VALUES_LIMIT} ORDER BY c, n DESC, v`;
 }
 
 /**
@@ -156,7 +159,7 @@ export function compileValueCounts(project: Project, target: Target, columns: st
  * filled of the first three columns starts with "Total", "Sum", "Subtotal" or "*", `totalEx` the words seen and
  * `totalCol` where); `top` leading and `bottom` trailing rows that are blank or narrow, for the skip options.
  */
-export function compileShape(project: Project, target: Target, columns: string[]): string {
+export function compileShape(project: Project, target: Target, columns: string[], limit?: number): string {
   const text = (c: string) => `trim(CAST(${ident(c)} AS VARCHAR))`;
   const filled = (c: string) => `coalesce(${text(c)}, '') <> ''`;
   const [first, ...rest] = columns;
@@ -173,7 +176,7 @@ export function compileShape(project: Project, target: Target, columns: string[]
   const totalWord = `regexp_extract(lower(${firstFilled}), '^(\\*+|grand total|sub ?totals?|totals?|sum)(\\s|:|$)', 1)`;
   const total = `${totalWord} <> ''`;
   const totalCol = `CASE ${leading.map((c) => `WHEN ${filled(c)} THEN ${str(c)}`).join(' ')} END`;
-  const flags = `SELECT row_number() OVER () AS rn, ${blank} AS blank, ${narrow} AS narrow, ${separator} AS separator, ${header} AS header, ${total} AS total, ${totalWord} AS word, ${totalCol} AS col, ${text(first)} AS first FROM (${compile(project, target).sql})`;
+  const flags = `SELECT row_number() OVER () AS rn, ${blank} AS blank, ${narrow} AS narrow, ${separator} AS separator, ${header} AS header, ${total} AS total, ${totalWord} AS word, ${totalCol} AS col, ${text(first)} AS first FROM (${nodeSql(project, target, limit)})`;
   return [
     'SELECT count(*) AS "rows"',
     'count(*) FILTER (WHERE blank) AS blank',

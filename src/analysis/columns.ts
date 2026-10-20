@@ -100,6 +100,8 @@ export interface AnalysisFacts {
   shape?: { facts: ShapeFacts; options: ParseOptions };
   /** The project's style for column names, as it was when the node was analysed. */
   columnNames?: ColumnNamesMode;
+  /** When the table was too big to look at whole: the rows looked at (its first ones) and how many it has. */
+  sample?: { rows: number; total: number };
 }
 
 const list = (v: unknown): string[] | undefined => (v != null && typeof v === 'object' && Symbol.iterator in v ? Array.from(v as Iterable<unknown>).filter((x) => x != null).map(String) : undefined);
