@@ -1,13 +1,13 @@
 import { expect, test, type Page } from '@playwright/test';
-import { addFiles, expectRows, fixture, node, openApp } from './helpers/app';
+import { addFiles, expectRows, fixture, node, openApp, selectNode } from './helpers/app';
 
 /** Customers and orders joined in a new Query, with order_id, name and total in the grid. */
 async function shopQuery(page: Page) {
   await openApp(page);
   await addFiles(page, [fixture('shop-customers.csv'), fixture('shop-orders.csv')]);
   await expect(node(page, 'shop-orders.csv')).toHaveAttribute('data-status', 'ok');
-  await node(page, 'shop-customers.csv').click();
-  await node(page, 'shop-orders.csv').click({ modifiers: ['Shift'] });
+  await selectNode(page, 'shop-customers.csv');
+  await selectNode(page, 'shop-orders.csv', ['Shift']);
   await page.getByRole('button', { name: 'Add', exact: true }).click();
   await page.getByRole('menuitem', { name: /Query/ }).click();
   const field = (table: number, column: string) => page.getByTestId(`query-field-${table}-${column}`);

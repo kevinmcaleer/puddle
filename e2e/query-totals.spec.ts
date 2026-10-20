@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { addFiles, cell, expectRows, fixture, node, openApp } from './helpers/app';
+import { addFiles, cell, expectRows, fixture, node, openApp, selectNode } from './helpers/app';
 
 // Headless Chromium hides scrollbars; Firefox and WebKit on Linux draw classic ones that take room from the page.
 // Showing them makes Chromium lay the query grid out the way they do.
@@ -11,8 +11,8 @@ async function queryShop(page: Page) {
   await addFiles(page, [fixture('shop-customers.csv'), fixture('shop-orders.csv')]);
   await expect(node(page, 'shop-customers.csv')).toHaveAttribute('data-status', 'ok');
   await expect(node(page, 'shop-orders.csv')).toHaveAttribute('data-status', 'ok');
-  await node(page, 'shop-customers.csv').click();
-  await node(page, 'shop-orders.csv').click({ modifiers: ['Shift'] });
+  await selectNode(page, 'shop-customers.csv');
+  await selectNode(page, 'shop-orders.csv', ['Shift']);
   await page.getByRole('button', { name: 'Add', exact: true }).click();
   await page.getByRole('menuitem', { name: /Query/ }).click();
   await expect(page.getByTestId('query-designer')).toBeVisible();
