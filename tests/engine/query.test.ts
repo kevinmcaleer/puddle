@@ -334,6 +334,17 @@ ORDER BY spent DESC`;
     expect(design.rows).toEqual([['Ada', '15.75', '2', '31.5']]);
   });
 
+  it('Top values keeps the first rows of the sorted result, and LIMIT read back from SQL does the same', async () => {
+    const p = shop('inner', [[1, 'order_id'], [1, 'total', { sort: 'desc' }]]);
+    const top = setQuerySpec(p, 'q', { limit: 2 });
+    expect((await run(top)).rows).toEqual([['100', '12.5'], ['101', '8.0']]);
+    const sql = designSql(spec(top), await sqlTables(top));
+    expect(sql).toMatch(/\nLIMIT 2$/);
+    const reading = readQuerySql(sql.replace('LIMIT 2', 'limit 3'), await sqlTables(top), spec(top));
+    if ('reason' in reading) throw new Error(reading.reason);
+    expect((await run(setQueryDesign(p, 'q', reading.spec))).rows).toHaveLength(3);
+  });
+
   it('SQL the grid can’t show runs as written, and discarding it brings back the design', async () => {
     const p = shop();
     const kept = setQuerySql(p, 'q', 'SELECT order_id, total FROM o ORDER BY total DESC LIMIT 2');

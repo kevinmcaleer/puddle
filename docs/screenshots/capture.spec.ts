@@ -291,7 +291,7 @@ test('query designer', async ({ page }) => {
   await designer.evaluate((el) => el.scrollTo(0, 0));
   await shot(page, 'query-designer');
   await designer.getByRole('tab', { name: 'SQL' }).click();
-  await expect(designer.getByLabel('SQL', { exact: true })).toHaveValue(/WHERE t2.total > 5/);
+  await expect(designer.getByLabel('SQL', { exact: true })).toHaveValue(/WHERE "shop-orders.csv".total > 5/);
   await shot(page, 'query-sql-view');
 });
 

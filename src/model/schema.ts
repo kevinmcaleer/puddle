@@ -278,6 +278,8 @@ export const QuerySpecZ = z.object({
   distinct: z.boolean().default(false),
   /** The Totals row: group the rows by some fields and summarise the others. */
   totals: z.boolean().default(false),
+  /** Top values: only the first this many rows of the result, as in Access. Unset keeps every row. */
+  limit: z.number().int().positive().optional(),
   /** How many "or" rows the grid has below Criteria: each row's conditions are ANDed, and the rows ORed. */
   orRows: z.number().int().nonnegative().default(0),
   /**
