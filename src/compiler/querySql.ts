@@ -465,10 +465,10 @@ export function readQuerySql(sql: string, tables: QueryTable[], current: QuerySp
 }
 
 /** The clauses the grid has, in the order SQL writes them. */
-const CLAUSES = ['select', 'from', 'where', 'group', 'having', 'order'] as const;
+const CLAUSES = ['select', 'from', 'where', 'group', 'having', 'order', 'limit'] as const;
 type Clause = (typeof CLAUSES)[number];
 /** Clauses with no place in the grid. */
-const OTHER_CLAUSES = ['limit', 'offset', 'qualify', 'window', 'union', 'intersect', 'except', 'fetch', 'using', 'sample', 'tablesample'];
+const OTHER_CLAUSES = ['offset', 'qualify', 'window', 'union', 'intersect', 'except', 'fetch', 'using', 'sample', 'tablesample'];
 
 function read(sql: string, tables: QueryTable[], current: QuerySpec, ids: { field: () => string; join: () => string }): QuerySpec {
   const all = lexSql(sql).filter((t) => t.kind !== 'comment');
@@ -757,6 +757,16 @@ function read(sql: string, tables: QueryTable[], current: QuerySpec, ids: { fiel
     }
   }
 
+  // LIMIT: Top values, a count of rows. LIMIT ALL keeps every row.
+  let limit: number | undefined;
+  if (clauses.has('limit')) {
+    const [a, b] = clauses.get('limit')!;
+    const t = all[a];
+    if (b - a !== 1 || !t || !(t.kind === 'number' ? /^\d+$/.test(t.text) && Number(t.text) > 0 : t.value === 'all'))
+      refuse(`LIMIT ${text([a, b])} has no place in the design grid, whose Top values is a number of rows`);
+    if (t!.kind === 'number') limit = Number(t!.text);
+  }
+
   // Keep the ids of fields and join lines that are still there, so the grid keeps track of them.
   const spec: QuerySpec = {
     tables: current.tables,
@@ -768,6 +778,7 @@ function read(sql: string, tables: QueryTable[], current: QuerySpec, ids: { fiel
     distinct,
     totals,
     orRows: Math.max(0, rows.length - 1),
+    ...(limit ? { limit } : {}),
   };
   // A new name that's the one the field gets anyway isn't kept.
   const defaults = defaultNames(spec);

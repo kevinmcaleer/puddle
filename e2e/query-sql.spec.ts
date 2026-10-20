@@ -38,13 +38,23 @@ test('the SQL view: the design as SQL, edited SQL back into the design, and SQL 
   await designer.getByRole('tab', { name: 'SQL' }).click();
   await expect(sql).toHaveValue(/^SELECT "shop-orders\.csv"\.order_id, "shop-customers\.csv"\.name AS customer, .*\nFROM "shop-customers\.csv"\n {2}INNER JOIN "shop-orders\.csv" ON /);
 
-  // SQL the grid can't show runs as written, and says why; going back to the design discards it.
-  await sql.fill('SELECT name, total FROM "shop-customers.csv" c JOIN "shop-orders.csv" o ON c.customer_id = o.customer_id ORDER BY total DESC LIMIT 1');
+  // LIMIT is the grid's Top values, both ways.
+  await sql.fill('SELECT name, total FROM "shop-customers.csv" c JOIN "shop-orders.csv" o ON c.customer_id = o.customer_id WHERE total > 5 ORDER BY total DESC LIMIT 1');
   await sql.press('Control+Enter');
-  await expect(designer.getByTestId('query-sql-kept')).toContainText('LIMIT has no place in the design grid');
+  await expectRows(page, 1);
+  await designer.getByRole('tab', { name: 'Design' }).click();
+  await expect(designer.getByLabel('Top values')).toHaveValue('1');
+
+  // SQL the grid can't show runs as written, and says why; going back to the design discards it.
+  await designer.getByRole('tab', { name: 'SQL' }).click();
+  await sql.fill('SELECT name, total FROM "shop-customers.csv" c JOIN "shop-orders.csv" o ON c.customer_id = o.customer_id ORDER BY total DESC LIMIT 1 OFFSET 1');
+  await sql.press('Control+Enter');
+  await expect(designer.getByTestId('query-sql-kept')).toContainText('OFFSET has no place in the design grid');
   await expect(designer.getByRole('tab', { name: 'Design' })).toBeDisabled();
   await expectRows(page, 1);
   await designer.getByTestId('query-sql-kept').getByRole('button', { name: 'Back to the design' }).click();
   await expect(page.getByLabel('Criteria value for total')).toHaveValue('5');
+  await expectRows(page, 1);
+  await designer.getByLabel('Top values').selectOption('All');
   await expectRows(page, 2);
 });

@@ -56,6 +56,9 @@ const SORTS = [
 const OPS = [{ value: '', label: 'No criteria' }, ...Object.entries(CRITERIA_OPS).map(([value, o]) => ({ value, label: o.label }))];
 
 const TOTAL_OPTIONS = Object.entries(TOTALS).map(([value, t]) => ({ value, label: t.label }));
+/** Top values as Access offers them, and the query's own when it's another number, such as one read from LIMIT. */
+const TOP_VALUES = [5, 10, 25, 100, 500, 1000];
+const topOptions = (limit: number | undefined) => [{ value: '', label: 'All' }, ...[...new Set([...TOP_VALUES, ...(limit ? [limit] : [])])].sort((a, b) => a - b).map((n) => ({ value: String(n), label: String(n) }))];
 
 interface Line {
   id: string;
@@ -594,7 +597,7 @@ function SqlView({ node, tables, onDiscard }: { node: QueryNode; tables: Designe
         onCommit={commit}
       />
       <p className="text-label text-ink-muted">
-        Edit the SQL, then press Ctrl+Enter or click away, and the design grid follows. Tables are read by their node’s name, or as input1, input2. SQL the grid can’t show, such as LIMIT or UNION, runs as written.
+        Edit the SQL, then press Ctrl+Enter or click away, and the design grid follows. Tables are read by their node’s name, or as input1, input2. SQL the grid can’t show, such as OFFSET or UNION, runs as written.
       </p>
     </div>
   );
@@ -664,6 +667,10 @@ export function QueryDesigner({ node }: { node: QueryNode }) {
               Totals
             </Button>
             <Switch id="query-distinct" label="Unique values" checked={node.querySpec.distinct} onChange={(distinct) => apply((p) => setQuerySpec(p, node.id, { distinct }))} />
+            <label className="puddle-qd-top">
+              <span>Top values</span>
+              <Select options={topOptions(node.querySpec.limit)} value={String(node.querySpec.limit ?? '')} onChange={(e) => apply((p) => setQuerySpec(p, node.id, { limit: e.target.value ? Number(e.target.value) : undefined }))} />
+            </label>
           </>
         )}
         <Menu

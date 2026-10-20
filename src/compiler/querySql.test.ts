@@ -126,6 +126,7 @@ describe('round trip: design to SQL and back', () => {
     ['every join kind, seen from either end', spec({ joins: [line('j1', [1, 'customer_id'], [0, 'customer_id'], 'left')], fields: [field('f1', 0, 'name'), field('f2', 1, 'total', { sort: 'desc' })] })],
     ['a full join', spec({ joins: [line('j1', [0, 'customer_id'], [1, 'customer_id'], 'full')], fields: [field('f1', 0, '*'), field('f2', 1, 'total')] })],
     ['no join line: every row with every row', spec({ fields: [field('f1', 0, 'name'), field('f2', 1, 'order_id')] })],
+    ['top values', spec({ joins: [line('j1', [0, 'customer_id'], [1, 'customer_id'])], fields: [field('f1', 1, 'total', { sort: 'desc' })], limit: 5 })],
     ['renames, hidden fields and unique values', spec({ distinct: true, joins: [line('j1', [0, 'customer_id'], [1, 'customer_id'])], fields: [field('f1', 0, 'name', { alias: 'Customer' }), field('f2', 1, 'status', { show: false, criteria: { op: '<>', value: 'cancelled' } })] })],
     [
       'every kind of criterion, and or rows',
@@ -243,6 +244,16 @@ describe('hand-written SQL into the design', () => {
     expect(reason('SELECT o.status, (SELECT 1) + sum(o.total) AS x FROM orders o, "shop-customers.csv" c GROUP BY o.status')).toMatch(/subquery has no place/);
   });
 
+  // Regression: LIMIT was refused, so a query with one kept running as SQL and the Design tab was shut.
+  it('LIMIT is Top values, on one table read by a short name; LIMIT ALL keeps every row', () => {
+    const films: QueryTable[] = [{ port: 0, label: 'All Bond Movies', columns: [{ name: 'Title', type: 'VARCHAR' }, { name: 'Box office (millions) Actual $', type: 'DOUBLE' }] }];
+    const s = spec_('SELECT t1.Title, t1."Box office (millions) Actual $"\nFROM "All Bond Movies" AS t1 limit 5', films);
+    expect(s.limit).toBe(5);
+    expect(s.fields.map((f) => f.column)).toEqual(['Title', 'Box office (millions) Actual $']);
+    expect(designSql(s, films)).toBe(['SELECT "All Bond Movies".Title, "All Bond Movies"."Box office (millions) Actual $"', 'FROM "All Bond Movies"', 'LIMIT 5'].join('\n'));
+    expect(spec_('SELECT t1.Title FROM "All Bond Movies" AS t1 LIMIT ALL', films).limit).toBeUndefined();
+  });
+
   it('GROUP BY ALL groups every plain field', () => {
     const s = spec_('SELECT status, max(total) FROM orders o, "shop-customers.csv" c GROUP BY ALL'.replace('SELECT status', 'SELECT o.status'));
     expect(s.fields.map((f) => f.total)).toEqual(['group', 'max']);
@@ -251,7 +262,8 @@ describe('hand-written SQL into the design', () => {
 
 describe('SQL the grid can’t show', () => {
   it.each([
-    ['LIMIT', 'SELECT name FROM orders, "shop-customers.csv" LIMIT 5', /LIMIT has no place/],
+    ['OFFSET', 'SELECT name FROM orders, "shop-customers.csv" LIMIT 5 OFFSET 2', /OFFSET has no place/],
+    ['a LIMIT that isn’t a number of rows', 'SELECT name FROM orders, "shop-customers.csv" LIMIT 10%', /LIMIT 10% has no place in the design grid, whose Top values is a number of rows/],
     ['UNION', 'SELECT name FROM "shop-customers.csv", orders UNION SELECT name FROM "shop-customers.csv", orders', /UNION has no place/],
     ['a CTE', 'WITH x AS (SELECT 1) SELECT * FROM orders, "shop-customers.csv"', /WITH has no place/],
     ['a calculation without totals', 'SELECT total * 2 AS double FROM orders, "shop-customers.csv"', /total \* 2 is a calculation/],
