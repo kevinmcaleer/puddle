@@ -1,13 +1,13 @@
 import { expect, test, type Page } from '@playwright/test';
-import { addFiles, expectRows, fixture, node, openApp } from './helpers/app';
+import { addFiles, expectRows, fixture, node, openApp, selectNode } from './helpers/app';
 
 /** Add the files, select them in order (click, then Shift+click), and append them from the menu or the selection bar. */
 async function appendFiles(page: Page, files: string[], via: 'menu' | 'selection bar' = 'menu') {
   await openApp(page);
   await addFiles(page, files.map(fixture));
   for (const f of files) await expect(node(page, f)).toHaveAttribute('data-status', 'ok');
-  await node(page, files[0]!).click();
-  for (const f of files.slice(1)) await node(page, f).click({ modifiers: ['Shift'] });
+  await selectNode(page, files[0]!);
+  for (const f of files.slice(1)) await selectNode(page, f, ['Shift']);
   if (via === 'menu') {
     await page.getByRole('button', { name: 'Add', exact: true }).click();
     await page.getByRole('menuitem', { name: /Append/ }).click();
