@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { createProject, editSchema, parseProject, setSchemaDbml, type Project } from '../model';
 import { layoutDiagram } from './diagram/geometry';
 import { parseDbml } from './parse';
-import { addSchemaView, addToSchemaView, currentView, deleteSchemaView, duplicateSchemaView, hideFromSchemaView, moveInSchemaView, openSchemaView, renameSchemaView, setSchemaDetail, setSchemaZoom, viewPositions, viewTables } from './views';
+import { addSchemaView, addToSchemaView, currentView, deleteSchemaView, duplicateSchemaView, hideFromSchemaView, moveInSchemaView, openSchemaView, renameSchemaView, setSchemaDetail, setSchemaZoom, showCanvasInSchema, viewPositions, viewTables } from './views';
 
 // Ten tables: orders refs users and products, and each of t1 to t7 refs users.
 const TEN = [
@@ -114,5 +114,14 @@ describe('diagram views', () => {
     p = setSchemaDetail(moveInSchemaView(p, { [T('orders')]: { x: 300, y: 40 } }), 'keys');
     p = setSchemaZoom(p, { x: 1, y: 2, k: 1.5 });
     expect(reopen(p).schema).toEqual(p.schema);
+  });
+
+  it('turns the canvas’s tables off and on, saved with the project, and leaves the project alone when nothing changes', () => {
+    const p = project();
+    expect(p.schema.hideCanvas).toBeUndefined();
+    expect(showCanvasInSchema(p, true)).toBe(p);
+    const off = showCanvasInSchema(p, false);
+    expect(reopen(off).schema.hideCanvas).toBe(true);
+    expect(reopen(showCanvasInSchema(off, true)).schema.hideCanvas).toBeUndefined();
   });
 });

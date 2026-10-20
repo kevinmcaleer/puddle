@@ -1,15 +1,13 @@
 import { useEffect, useLayoutEffect, useRef, useState, type DragEvent, type KeyboardEvent as ReactKeyboardEvent, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent } from 'react';
 import { create } from 'zustand';
-import { useEngineStore } from '../app/engine';
 import { useSession } from '../app/session';
 import { copyText, saveBlob } from '../export/deliver';
-import { checkKeys } from '../flow/keys';
-import { useFlowStore } from '../flow/status';
 import { nodeById, setSchemaDbml, useProject, useProjectStore, type Project } from '../model';
 import { Banner, Button, columnKind, cx, Dialog, Field, Icon, NODE_KIND, Select, TypeTag } from '../ui';
 import { intoSchema, toDbml } from './dbml';
+import { useRelationships } from './useRelationships';
 import { relate } from './relate';
-import { cardinality, declaredKeys, describeCardinality, findRelationships, keyColumns, keyEnds, relationshipTables, type End, type Relationship, type RelTable, type Uniqueness } from './model';
+import { cardinality, describeCardinality, keyEnds, type End, type Relationship, type RelTable, type Uniqueness } from './model';
 import '../query/query.css';
 import './relationships.css';
 
@@ -340,30 +338,6 @@ function RelationshipList({ project, tables, relationships, unique, selected, on
   );
 }
 
-/** Which key columns repeat, checked in the background for every table whose columns are known. */
-function useUniqueness(project: Project, tables: RelTable[], relationships: Relationship[]): Uniqueness {
-  const engine = useEngineStore((s) => s.engine);
-  const [unique, setUnique] = useState<Uniqueness>({});
-  const keys = keyColumns(relationships);
-  const ask = tables.flatMap((t) => (t.columns && keys.has(t.nodeId) ? [{ nodeId: t.nodeId, columns: keys.get(t.nodeId)!.filter((c) => t.columns!.some((x) => x.name === c)) }] : [])).filter((a) => a.columns.length);
-  const signature = JSON.stringify(ask);
-  useEffect(() => {
-    if (!engine) return;
-    let live = true;
-    for (const a of ask)
-      checkKeys(engine, project, a.nodeId, a.columns).then(
-        (u) => live && setUnique((s) => ({ ...s, [a.nodeId]: { ...s[a.nodeId], ...u } })),
-        () => undefined,
-      );
-    return () => {
-      live = false;
-    };
-    // The project is read as it is when the asked-for columns change; a change upstream changes them or their status.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [engine, signature, project.nodes]);
-  return unique;
-}
-
 /**
  * The relationships view, in place of the canvas while it's open, as in Access's Relationships window: every table
  * of the project with its columns, and lines between the columns that the project matches, with "1" or "∞" at each
@@ -371,18 +345,7 @@ function useUniqueness(project: Project, tables: RelTable[], relationships: Rela
  */
 export function Relationships() {
   const project = useProject();
-  const statuses = useFlowStore((s) => s.nodes);
-  const columnsOf = (id: string) => {
-    const s = statuses[id]?.status;
-    return s?.state === 'ok' ? s.columns : undefined;
-  };
-  const relationships = findRelationships(project, columnsOf);
-  const tables = relationshipTables(project, relationships, columnsOf);
-  const checked = useUniqueness(project, tables, relationships);
-  // A schema table's declared keys are unique by design: its load is refused otherwise.
-  const declared = declaredKeys(project);
-  const unique: Uniqueness = { ...checked };
-  for (const [id, cols] of Object.entries(declared)) unique[id] = { ...checked[id], ...cols };
+  const { tables, relationships, unique } = useRelationships(project);
   const [selected, setSelected] = useState<string | null>(null);
   const [message, setMessage] = useState<{ tone: 'info' | 'fail'; text: string } | null>(null);
   const dbml = () => toDbml(project, tables, relationships, unique);

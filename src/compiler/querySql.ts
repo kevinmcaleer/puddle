@@ -4,7 +4,7 @@
 // with OR. Anything the grid can't show is refused with the reason, and the Query keeps the SQL and runs it as written.
 import { criteriaCell, newId, type QueryCriteria, type QueryCriteriaOp, type QueryField, type QueryJoin, type QueryJoinKind, type QuerySpec, type QueryTotal } from '../model';
 import { cleanCustomSql, customSqlProblem, INPUT_NAME, lexSql, SqlRefusal, type SqlToken } from './customSql';
-import { defaultNames, joinPlan, queryClauses, queryProblems, type QueryTable } from './query';
+import { defaultNames, joinPlan, queryClauses, queryProblems, tableAlias, type QueryTable } from './query';
 import { ident } from './sql';
 import { CUSTOM_SQL_OPENER } from './steps/advanced';
 
@@ -69,13 +69,29 @@ function unquote(sql: string): string {
 }
 
 /**
- * The design as the SQL view shows it: one clause to a line, each join on a line of its own, tables read by their
- * node's names and called t1, t2... as numbered in the designer. Assumes queryProblems found nothing.
+ * The design as the SQL view shows it: one clause to a line, each join on a line of its own, and tables read and
+ * qualified by their node's names, as Access writes them. Assumes queryProblems found nothing.
  */
 export function designSql(spec: QuerySpec, tables: QueryTable[]): string {
   const names = querySqlNames(tables);
-  const clauses = queryClauses(spec, tables.map((t) => ({ ...t, cte: ident(displayName(names.get(t.port)!)) })));
-  return unquote(clauses.map((c) => c.join('\n  ')).join('\n'));
+  const shown = new Map(tables.map((t) => [t.port, ident(displayName(names.get(t.port)!))]));
+  const clauses = queryClauses(spec, tables.map((t) => ({ ...t, cte: shown.get(t.port)! })));
+  // The design's SQL calls its tables t1, t2...; here each is read by its own name, which is never another's.
+  const from = clauses[1]!.map((part) => tables.reduce((p, t) => p.replace(`${shown.get(t.port)} AS ${tableAlias(t.port)}`, () => shown.get(t.port)!), part));
+  return unquote(byTableNames([clauses[0]!, from, ...clauses.slice(2)].map((c) => c.join('\n  ')).join('\n'), shown));
+}
+
+/** The SQL with each t1, t2... before a dot, as the design's SQL qualifies columns, called by its table's name instead. */
+function byTableNames(sql: string, shown: Map<number, string>): string {
+  let out = sql;
+  const all = lexSql(sql);
+  for (let i = all.length - 2; i >= 0; i--) {
+    const t = all[i]!;
+    const port = (t.kind === 'word' || t.kind === 'quoted') && all[i + 1]!.text === '.' ? /^t(\d+)$/.exec(t.value)?.[1] : undefined;
+    const name = port == null ? undefined : shown.get(Number(port) - 1);
+    if (name) out = out.slice(0, t.start) + name + out.slice(t.start + t.text.length);
+  }
+  return out;
 }
 
 /** What the SQL view makes of some SQL: the design it stands for, or why the grid can't show it. */
@@ -449,10 +465,10 @@ export function readQuerySql(sql: string, tables: QueryTable[], current: QuerySp
 }
 
 /** The clauses the grid has, in the order SQL writes them. */
-const CLAUSES = ['select', 'from', 'where', 'group', 'having', 'order'] as const;
+const CLAUSES = ['select', 'from', 'where', 'group', 'having', 'order', 'limit'] as const;
 type Clause = (typeof CLAUSES)[number];
 /** Clauses with no place in the grid. */
-const OTHER_CLAUSES = ['limit', 'offset', 'qualify', 'window', 'union', 'intersect', 'except', 'fetch', 'using', 'sample', 'tablesample'];
+const OTHER_CLAUSES = ['offset', 'qualify', 'window', 'union', 'intersect', 'except', 'fetch', 'using', 'sample', 'tablesample'];
 
 function read(sql: string, tables: QueryTable[], current: QuerySpec, ids: { field: () => string; join: () => string }): QuerySpec {
   const all = lexSql(sql).filter((t) => t.kind !== 'comment');
@@ -606,7 +622,7 @@ function read(sql: string, tables: QueryTable[], current: QuerySpec, ids: { fiel
   };
   /**
    * An expression's text with each table it names called as the designer calls it, t1 for input 1, since that's how
-   * the design's SQL reads them.
+   * the query it runs reads them (the SQL view writes them back by name).
    */
   const designText = ([a, b]: Range) => {
     if (all.slice(a, b).some((t) => t.kind === 'word' && t.value === 'select')) refuse('a subquery has no place in the design grid');
@@ -741,6 +757,16 @@ function read(sql: string, tables: QueryTable[], current: QuerySpec, ids: { fiel
     }
   }
 
+  // LIMIT: Top values, a count of rows. LIMIT ALL keeps every row.
+  let limit: number | undefined;
+  if (clauses.has('limit')) {
+    const [a, b] = clauses.get('limit')!;
+    const t = all[a];
+    if (b - a !== 1 || !t || !(t.kind === 'number' ? /^\d+$/.test(t.text) && Number(t.text) > 0 : t.value === 'all'))
+      refuse(`LIMIT ${text([a, b])} has no place in the design grid, whose Top values is a number of rows`);
+    if (t!.kind === 'number') limit = Number(t!.text);
+  }
+
   // Keep the ids of fields and join lines that are still there, so the grid keeps track of them.
   const spec: QuerySpec = {
     tables: current.tables,
@@ -752,6 +778,7 @@ function read(sql: string, tables: QueryTable[], current: QuerySpec, ids: { fiel
     distinct,
     totals,
     orRows: Math.max(0, rows.length - 1),
+    ...(limit ? { limit } : {}),
   };
   // A new name that's the one the field gets anyway isn't kept.
   const defaults = defaultNames(spec);

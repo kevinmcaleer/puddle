@@ -103,6 +103,19 @@ export async function addFiles(page: Page, files: string[] | { name: string; mim
 
 export const node = (page: Page, name: string) => page.getByTestId(`node-${name}`);
 
+/**
+ * Click a node on the canvas (Shift adds it to the selection) and wait until it is selected. Firefox can take a click
+ * on a canvas still settling as a drag that selects nothing, so a click that didn't select is tried again; a node
+ * already selected isn't clicked, so Shift never toggles it off.
+ */
+export async function selectNode(page: Page, name: string, modifiers: Array<'Shift'> = []) {
+  const selected = page.locator('.react-flow__node.selected').filter({ has: node(page, name) });
+  await expect(async () => {
+    if (!(await selected.count())) await node(page, name).click({ modifiers });
+    await expect(selected).toHaveCount(1, { timeout: 2_000 });
+  }).toPass({ timeout: 20_000 });
+}
+
 /** The rows the results table says it has, once the background count lands. */
 export async function expectRows(page: Page, rows: number) {
   await expect(page.getByTestId('results-table')).toHaveAttribute('data-rows', String(rows), { timeout: 20_000 });
@@ -112,7 +125,10 @@ export async function expectRows(page: Page, rows: number) {
 export async function columnsOf(page: Page, nodeName: string): Promise<string[]> {
   await expect(node(page, nodeName)).toHaveAttribute('data-status', 'ok', { timeout: 20_000 });
   await node(page, nodeName).click();
-  return page.getByTestId('inspector-columns').locator('.ui-col').allTextContents();
+  // The inspector lists the columns a moment after the click; read them once the first is there (Firefox is slower).
+  const columns = page.getByTestId('inspector-columns').locator('.ui-col');
+  await expect(columns.first()).toBeVisible({ timeout: 10_000 });
+  return columns.allTextContents();
 }
 
 /** A visible results cell by data column and row (both from 0), as Glide mirrors it for screen readers. */

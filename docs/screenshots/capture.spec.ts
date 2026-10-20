@@ -291,7 +291,7 @@ test('query designer', async ({ page }) => {
   await designer.evaluate((el) => el.scrollTo(0, 0));
   await shot(page, 'query-designer');
   await designer.getByRole('tab', { name: 'SQL' }).click();
-  await expect(designer.getByLabel('SQL', { exact: true })).toHaveValue(/WHERE t2.total > 5/);
+  await expect(designer.getByLabel('SQL', { exact: true })).toHaveValue(/WHERE "shop-orders.csv".total > 5/);
   await shot(page, 'query-sql-view');
 });
 
@@ -305,6 +305,13 @@ test('relationships', async ({ page }) => {
   await view.getByTestId('rel-field-shop-orders.csv-status').dragTo(view.getByTestId('rel-field-shop-customers.csv-status'));
   await expect(view.getByTestId('relationship-cardinality')).toHaveText(['many to many', 'many to many']);
   await shot(page, 'relationships');
+  // The Schema view documents the same tables, the Join as a query, and the relationships between them.
+  await projectMenu(page, 'Schema');
+  await expect(page.getByTestId('schema-canvas-counts')).toHaveText('3 from the canvas');
+  await page.getByRole('button', { name: 'Hide inspector' }).click();
+  await page.getByRole('button', { name: 'Hide results' }).click();
+  await page.getByRole('button', { name: 'Auto-arrange' }).click();
+  await shot(page, 'schema-canvas');
 });
 
 test('reshaping', async ({ page }) => {

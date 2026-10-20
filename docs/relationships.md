@@ -22,8 +22,14 @@ Puddle checks each key column for repeated values, as the node that states the r
 
 Drag a column onto the matching column of another table, or press Enter on a column and pick one. Puddle adds an "Exists in another node" rule to the first column's table, so the relationship is saved with the project and checked like any other rule (see {doc}`quality-rules`). Remove the rule in the inspector to remove the relationship. Drag a table's header, or focus it and use the arrow keys, to move it.
 
+## Relationships in queries
+
+As in Access, a relationship carries into every query that uses its tables, read through the Transform nodes that clean them. A table added to a Query's designer comes joined to the tables already there, and a new Query, Join or Lookup of two related tables starts matching on their keys. You can still change or remove the join in the query: the relationship stays.
+
+The Schema view draws the same relationships between the canvas's tables (see {doc}`schema`).
+
 ## DBML
 
 **Copy DBML** and **Download DBML** write the tables and relationships as [DBML](https://dbml.dbdiagram.io), which tools such as dbdiagram.io draw as a diagram: a `Table` for each table with its columns and DuckDB types, and a `Ref` for each relationship, many-to-one (`>`), one-to-many (`<`), one-to-one (`-`) or many-to-many (`<>`) as the checks found. A column that is the "one" end of a relationship is marked `[unique]`.
 
-**Open in Schema** writes the same DBML into the project's schema, adding it to what is there or replacing it, and opens the Schema view, where you can carry on designing the tables, export them as SQL and load data into them. See {doc}`schema`.
+**Open in Schema** writes the same DBML into the project's schema, adding it to what is there or replacing it, and opens the Schema view, where you can carry on designing the tables, export them as SQL and load data into them. The Schema view shows the canvas's tables without this step; writing them into the DBML is for when you want to edit their design. See {doc}`schema`.

@@ -25,7 +25,7 @@ function tableNames(tables: RelTable[]): Map<string, string> {
  * The ref's operator: `>` many-to-one, `<` one-to-many, `-` one-to-one, `<>` many-to-many. A relationship whose keys
  * haven't been checked is written many-to-one, from the column that refers to the one it refers to.
  */
-function operator(from: 'one' | 'many' | undefined, to: 'one' | 'many' | undefined): string {
+export function operator(from: 'one' | 'many' | undefined, to: 'one' | 'many' | undefined): string {
   if (from === 'one' && to === 'one') return '-';
   if (from === 'one' && to === 'many') return '<';
   if (from === 'many' && to === 'many') return '<>';

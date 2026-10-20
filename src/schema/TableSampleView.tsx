@@ -6,7 +6,8 @@ import { SAMPLE_ROWS, tableSample, type TableSample } from '../schemaTables/samp
 import { useProject } from '../model';
 import type { DbmlSchema, Table } from './model';
 
-export function TableSampleView({ schema, table }: { schema: DbmlSchema; table: Table }) {
+/** `nodeId` names the node whose rows to show, for a table drawn from the canvas; else it's the table's Schema table node. */
+export function TableSampleView({ schema, table, nodeId }: { schema: DbmlSchema; table: Table; nodeId?: string }) {
   const project = useProject();
   const engine = useEngineStore((s) => s.engine);
   // A rebuilt schema can change what the node holds.
@@ -15,14 +16,14 @@ export function TableSampleView({ schema, table }: { schema: DbmlSchema; table: 
   const [problem, setProblem] = useState<string | null>(null);
   useEffect(() => {
     let live = true;
-    tableSample(engine, project, schema, table).then(
+    tableSample(engine, project, schema, table, nodeId).then(
       (s) => live && (setSample(s), setProblem(null)),
       (e: Error) => live && setProblem(e.message),
     );
     return () => {
       live = false;
     };
-  }, [engine, project, schema, table, built]);
+  }, [engine, project, schema, table, nodeId, built]);
 
   if (problem) return <p className="puddle-schema-sample__note">No sample: {problem}</p>;
   if (!sample) return <p className="puddle-schema-sample__note">Reading a sample…</p>;
