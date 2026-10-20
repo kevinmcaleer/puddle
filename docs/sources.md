@@ -28,7 +28,7 @@ Puddle reads these formats:
 | Format | Extensions | Notes |
 | --- | --- | --- |
 | CSV and TSV | `.csv`, `.tsv`, `.tab`, `.txt` | The delimiter, header row, encoding and quoting are detected, and can be changed in the inspector. Ragged rows are padded rather than rejected. |
-| Excel | `.xlsx` | Choose the sheet and, when it holds several tables, which one; the header row and how many rows it takes; an optional cell range; and whether merged cells are filled. |
+| Spreadsheets | `.xlsx`, `.xlsm`, `.xls`, `.xlsb`, `.ods`, `.fods`, `.numbers`, `.dbf`, `.dif`, `.slk`, `.wk1` | Excel in every format since 97 (macros in an `.xlsm` are ignored), OpenDocument, Apple Numbers, dBase and FoxPro tables (also the data part of a Shapefile), and the old SYLK, DIF and Lotus 1-2-3 formats, all read the same way. Choose the sheet and, when it holds several tables, which one; the header row and how many rows it takes; an optional cell range; and whether merged cells are filled. |
 | JSON and NDJSON | `.json`, `.ndjson`, `.jsonl` | An array of objects, or one object per line. |
 | Parquet | `.parquet`, `.pq` | Read directly, with its column types. |
 | XML | `.xml` | The repeating element is read as rows. See [XML](#xml). |

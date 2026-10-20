@@ -26,7 +26,7 @@ describe('placing a project’s sources for the runner', () => {
     expect(places.map((p) => [p.source.id, p.path ?? p.reason])).toEqual([
       ['a', '/p/sources/customers.csv'],
       ['b', 'was not found at /p/orders.csv or /p/sources/orders.csv'],
-      ['x', 'is an Excel workbook, which the runner can’t read yet'],
+      ['x', 'was not found at /p/sales.xlsx or /p/sources/sales.xlsx'],
       ['u', 'https://example.com/items.json'],
       ['c', ''],
       ['w', 'is a table on a web page, which the runner can’t read yet'],

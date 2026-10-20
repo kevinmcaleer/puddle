@@ -1,3 +1,4 @@
+import { SPREADSHEET_EXTENSIONS } from '../excel/formats';
 import type { SourceFormat } from '../model';
 
 export class SourceError extends Error {
@@ -16,13 +17,17 @@ const BY_EXTENSION: Record<string, SourceFormat> = {
   jsonl: 'ndjson',
   parquet: 'parquet',
   pq: 'parquet',
-  xlsx: 'xlsx',
   xml: 'xml',
   mdb: 'access',
   accdb: 'access',
+  // Every spreadsheet format SheetJS reads is the one source format 'xlsx' (src/excel/formats.ts).
+  ...Object.fromEntries(SPREADSHEET_EXTENSIONS.map((ext) => [ext, 'xlsx' as const])),
 };
 
-export const ACCEPT = '.csv,.txt,.tsv,.tab,.json,.ndjson,.jsonl,.parquet,.pq,.xlsx,.xml,.mdb,.accdb,.dat,.log,.text,.prn';
+export const ACCEPT = `.csv,.txt,.tsv,.tab,.json,.ndjson,.jsonl,.parquet,.pq,${SPREADSHEET_EXTENSIONS.map((e) => `.${e}`).join(',')},.xml,.mdb,.accdb,.dat,.log,.text,.prn`;
+
+/** What Puddle reads, for the refusals. */
+export const READS = 'Add a CSV, TSV, JSON, NDJSON, Parquet, spreadsheet (.xlsx, .xls, .ods, .numbers, .dbf), XML or Access (.accdb, .mdb) file.';
 
 /** Plain-text extensions that say nothing about the shape inside; `sniff` reads it from the bytes. */
 export const TEXT_EXTENSIONS = new Set(['txt', 'dat', 'log', 'text', 'prn']);
@@ -41,8 +46,7 @@ export function formatFromName(name: string): SourceFormat {
   if (format) return format;
   const ext = extensionOf(name);
   if (TEXT_EXTENSIONS.has(ext)) return 'csv';
-  if (ext === 'xls') throw new SourceError(`${name} is in the old Excel format (.xls), which Puddle doesn’t read. Open it in Excel and save it as .xlsx or CSV, then add that.`);
-  throw new SourceError(`${name} isn't a format Puddle reads. Add a CSV, TSV, JSON, NDJSON, Parquet, Excel (.xlsx), XML or Access (.accdb, .mdb) file.`);
+  throw new SourceError(`${name} isn't a format Puddle reads. ${READS}`);
 }
 
 /** Guess the format of pasted text: XML, JSON, NDJSON, tab-separated (spreadsheets paste as TSV) or CSV. */

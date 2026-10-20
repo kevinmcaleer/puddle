@@ -11,17 +11,54 @@ const file = (name: string, head: Uint8Array) => sniff({ name, head, size: head.
 
 /** A zip whose first local header names `entry` (enough for the signature; nothing reads the data). */
 const zip = (entry: string) => bytes([0x50, 0x4b, 0x03, 0x04, 0x14, 0x00, 0x00, 0x00, 0x08, 0x00, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, entry.length, 0, 0, 0], entry);
+/** An OLE file header followed by a stream name as its directory writes it, in UTF-16. */
+const ole = (stream: string) => bytes([0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1, ...new Array(24).fill(0)], [...stream].flatMap((ch) => [ch.charCodeAt(0), 0]));
+/** A dBase header: version III, last updated 5 January 2026, two fields (a 65-byte header), 20-byte records. */
+const dbf = () => bytes([0x03, 26, 1, 5, 4, 0, 0, 0, 65, 0, 20, 0, ...new Array(20).fill(0)]);
+const formats = (name: string) => new Uint8Array(readFileSync(join(__dirname, '../../tests/fixtures/formats', name)));
 
 describe('binary signatures', () => {
   it.each([
     ['xl/workbook.xml', 'xlsx'],
-    ['xl/workbook.bin', 'xlsb'],
-    ['mimetype', 'ods'],
+    ['xl/workbook.bin', 'xlsx'],
+    ['mimetype', 'xlsx'],
+    ['Index/Document.iwa', 'xlsx'],
     ['word/document.xml', 'word'],
     ['ppt/presentation.xml', 'powerpoint'],
     ['data/orders.csv', 'zip'],
   ])('a zip holding %s is %s', (entry, format) => {
     expect(signatureOf(zip(entry))).toBe(format);
+  });
+
+  it('tells an old Excel workbook from a Word or PowerPoint file by the streams in the OLE file', () => {
+    expect(signatureOf(ole('Workbook'))).toBe('xlsx');
+    expect(signatureOf(ole('Book'))).toBe('xlsx');
+    expect(signatureOf(ole('WordDocument'))).toBe('word');
+    expect(signatureOf(ole('PowerPoint Document'))).toBe('powerpoint');
+    expect(signatureOf(ole('SummaryInformation'))).toBe('ole');
+  });
+
+  it('knows a dBase table, a Lotus 1-2-3 sheet, SYLK and DIF as spreadsheets', () => {
+    expect(signatureOf(dbf())).toBe('xlsx');
+    // Not dBase: a month of 13, a header length that isn't 32n + 1.
+    expect(signatureOf(bytes([0x03, 26, 13, 5, 4, 0, 0, 0, 65, 0, 20, 0, ...new Array(20).fill(0)]))).toBeUndefined();
+    expect(signatureOf(bytes([0x03, 26, 1, 5, 4, 0, 0, 0, 64, 0, 20, 0, ...new Array(20).fill(0)]))).toBeUndefined();
+    expect(signatureOf(bytes([0x00, 0x00, 0x02, 0x00, 0x06, 0x04, 0x06, 0x00]))).toBe('xlsx');
+    expect(signatureOf(bytes('ID;PWXL;N;E\r\n'))).toBe('xlsx');
+    expect(signatureOf(bytes('TABLE\r\n0,1\r\n"EXCEL"\r\n'))).toBe('xlsx');
+    expect(signatureOf(bytes('TABLE,ROUND\n'))).toBeUndefined();
+  });
+
+  it.each(['sales.xls', 'sales-biff5.xls', 'sales.xlsb', 'sales.xlsm', 'sales.ods', 'sales.numbers', 'sales.dbf', 'sales.wk1', 'sales.slk', 'sales.dif'])('reads the %s fixture as a spreadsheet by its bytes', (name) => {
+    expect(file(name, formats(name))).toMatchObject({ format: 'xlsx', confidence: 'sure' });
+  });
+
+  it('reads a flat OpenDocument file (.fods, XML) as a spreadsheet by its name', () => {
+    expect(file('sales.fods', formats('sales.fods'))).toMatchObject({ format: 'xlsx' });
+  });
+
+  it('takes an old Office file whose streams are out of reach as a workbook when the name says so', () => {
+    expect(file('book.xls', bytes([0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1]))).toMatchObject({ format: 'xlsx', confidence: 'likely' });
   });
 
   it.each([
@@ -49,11 +86,11 @@ describe('binary signatures', () => {
   });
 
   it('refuses what it can name but not read, saying what it is and what to do', () => {
-    expect(() => file('book.xls', bytes([0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1]))).toThrow('book.xls is in the old Excel format (.xls), which Puddle doesn’t read. Open it in Excel and save it as .xlsx or CSV, then add that.');
-    expect(() => file('book.ods', zip('mimetype'))).toThrow('book.ods is an OpenDocument spreadsheet (.ods), which Puddle doesn’t read yet. Save it as .xlsx or CSV, then add that.');
+    expect(() => file('letter.doc', bytes([0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1]))).toThrow('letter.doc is an old Office file that isn’t a workbook, which Puddle doesn’t read. Add a CSV, TSV, JSON, NDJSON, Parquet, spreadsheet (.xlsx, .xls, .ods, .numbers, .dbf), XML or Access (.accdb, .mdb) file.');
+    expect(() => file('letter.doc', ole('WordDocument'))).toThrow('letter.doc is a Word document, which Puddle doesn’t read.');
     expect(() => file('orders.csv.gz', bytes([0x1f, 0x8b, 0x08]))).toThrow('orders.csv.gz is a gzip-compressed file, which Puddle doesn’t open yet. Unpack it and add the file inside.');
     expect(() => file('report.pdf', bytes('%PDF-1.4'))).toThrow(/report\.pdf is a PDF, which Puddle doesn’t read\. Add a CSV/);
-    expect(() => file('photo.png', bytes([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0]))).toThrow('photo.png is a binary file, which Puddle doesn’t read. Add a CSV, TSV, JSON, NDJSON, Parquet, Excel (.xlsx), XML or Access (.accdb, .mdb) file.');
+    expect(() => file('photo.png', bytes([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0]))).toThrow('photo.png is a binary file, which Puddle doesn’t read. Add a CSV, TSV, JSON, NDJSON, Parquet, spreadsheet (.xlsx, .xls, .ods, .numbers, .dbf), XML or Access (.accdb, .mdb) file.');
     expect(() => file('empty.dat', bytes(''))).toThrow(SourceError);
   });
 });

@@ -73,10 +73,10 @@ test('header row and cell range re-read the sheet, and a header row outside the 
   await expect(page.getByTestId('excel-panel')).toContainText('Write a range like A1:F200.');
 });
 
-test('an old .xls workbook is refused with a plain reason', async ({ page }) => {
+test('an old Office file that isn’t a workbook is refused with a plain reason', async ({ page }) => {
   await openApp(page);
-  await addFiles(page, [{ name: 'book.xls', mimeType: 'application/vnd.ms-excel', buffer: Buffer.from([0xd0, 0xcf, 0x11, 0xe0]) }]);
-  await expect(page.getByTestId('canvas-notice')).toContainText('book.xls is in the old Excel format (.xls), which Puddle doesn’t read. Open it in Excel and save it as .xlsx or CSV, then add that.');
+  await addFiles(page, [{ name: 'letter.doc', mimeType: 'application/msword', buffer: Buffer.from([0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1]) }]);
+  await expect(page.getByTestId('canvas-notice')).toContainText('letter.doc is an old Office file that isn’t a workbook, which Puddle doesn’t read.');
 });
 
 test('a CSV named .xlsx opens as the CSV it is, and a broken workbook shows why on its node', async ({ page }) => {
@@ -91,7 +91,7 @@ test('a CSV named .xlsx opens as the CSV it is, and a broken workbook shows why 
   const broken = Buffer.from([0x50, 0x4b, 0x03, 0x04, 0x14, 0, 0, 0, 8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, entry.length, 0, 0, 0, ...Buffer.from(entry)]);
   await addFiles(page, [{ name: 'book.xlsx', mimeType, buffer: broken }]);
   await expect(node(page, 'book.xlsx')).toHaveAttribute('data-sheet', 'failed', { timeout: 20_000 });
-  await expect(node(page, 'book.xlsx')).toContainText('This workbook can’t be read');
+  await expect(node(page, 'book.xlsx')).toContainText('This spreadsheet can’t be read');
 });
 
 /** The sheet the last project saved to IndexedDB reads, once it has been saved. */

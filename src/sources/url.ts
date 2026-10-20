@@ -5,7 +5,7 @@ import { invalidateCaches } from '../flow/status';
 import { addSource, newId, setSourceFormat, updateSource, useProjectStore, type Source, type SourceFormat } from '../model';
 import { rememberFile } from './add';
 import { markAttached } from './attachments';
-import { formatFromName, knownFormat } from './detect';
+import { knownFormat } from './detect';
 import { parseAddress, UrlSourceError, type UrlErrorKind } from './address';
 import { HEAD_BYTES, headHash } from './hash';
 import { sniff, TAIL_BYTES } from './sniff';
@@ -80,7 +80,6 @@ export function formatFromAddress(url: URL, contentType?: string | null): Source
   const name = nameFromAddress(url);
   const byName = knownFormat(name);
   if (byName) return byName;
-  if (/\.xls$/i.test(name)) formatFromName(name);
   const byType = formatFromContentType(contentType);
   if (byType) return byType;
   throw new UrlSourceError('Puddle can’t tell this file’s format from its address or the server’s reply. Choose the format and add it again.', 'format');

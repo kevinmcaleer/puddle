@@ -170,6 +170,52 @@ describe('puddle-run', () => {
     expect(await db.describe(`SELECT * FROM "${sourceTableName(p.sources[0]!)}"`)).toContainEqual({ name: 'Amount', type: 'DECIMAL(19,4)' });
   });
 
+  it('reads spreadsheets in every format with the sheet options the browser saved: an old .xls and a dBase table', async () => {
+    writeFileSync(join(folder, 'sales.xls'), readFileSync(join(__dirname, '../fixtures/formats/sales.xls')));
+    writeFileSync(join(folder, 'sales.dbf'), readFileSync(join(__dirname, '../fixtures/formats/sales.dbf')));
+    const sheet = (id: string, name: string, parseOptions: Source['parseOptions'] = {}) => ({ ...src({ id, format: 'xlsx' }), name, parseOptions, file: { originalName: name, size: 1, lastModified: 0, headHash: 'h' } });
+    const p = flow({
+      sources: [sheet('x', 'sales.xls', { sheet: 'Visits' }), sheet('d', 'sales.dbf')],
+      nodes: [
+        { id: 'x', type: 'source', sourceId: 'x' },
+        { id: 'd', type: 'source', sourceId: 'd' },
+        { id: 'out', type: 'output', outputSpec: { format: 'csv', options: {} } },
+        { id: 'out2', type: 'output', outputSpec: { format: 'csv', options: {} } },
+      ],
+      wires: [
+        ['x', 'out', 0],
+        ['d', 'out2', 0],
+      ],
+    });
+    p.name = 'Sheets';
+    const outDir = join(folder, 'out-sheets');
+    const { log } = await runProject(p, { folder, outDir, db, now: () => new Date('2026-10-17T03:00:00Z') });
+    expect(log.sources.map((s) => s.problem)).toEqual([undefined, undefined]);
+    expect(log.outputs.map((o) => [o.nodeName, o.status, o.rows])).toEqual([
+      ['out', 'written', 2],
+      ['out2', 'written', 4],
+    ]);
+    // The Visits sheet, with its date-times, through the same reader as the browser's, typed by DuckDB.
+    expect(readFileSync(join(outDir, 'out.csv'), 'utf8').trim().split('\n')).toEqual(['Visitor,Arrived,Count,Mixed', 'Ann,2026-01-05 09:30:00,3,1', 'Bob,2026-01-06 14:00:00,5,two']);
+    expect(await db.describe(`SELECT * FROM "${sourceTableName(p.sources[0]!)}"`)).toEqual([
+      { name: 'Visitor', type: 'VARCHAR' },
+      { name: 'Arrived', type: 'TIMESTAMP' },
+      { name: 'Count', type: 'BIGINT' },
+      { name: 'Mixed', type: 'VARCHAR' },
+    ]);
+    const dbf = readFileSync(join(outDir, 'out2.csv'), 'utf8').trim().split('\n');
+    expect(dbf[0]).toBe('Region,Order date,Amount,Paid,Notes');
+    expect(dbf[1]).toBe('North,2026-01-05,120.5,true,First order');
+    expect(dbf[2]).toBe('South,2026-02-10,80.0,false,');
+    expect(await db.describe(`SELECT * FROM "${sourceTableName(p.sources[1]!)}"`)).toEqual([
+      { name: 'Region', type: 'VARCHAR' },
+      { name: 'Order date', type: 'DATE' },
+      { name: 'Amount', type: 'DOUBLE' },
+      { name: 'Paid', type: 'BOOLEAN' },
+      { name: 'Notes', type: 'VARCHAR' },
+    ]);
+  });
+
   it('reads a text file with the skip options and column names the browser’s sniff set, the same rows as the browser', async () => {
     writeFileSync(join(folder, 'messy.txt'), readFileSync(join(__dirname, '../fixtures/messy/messy.txt')));
     const parseOptions = { delimiter: ';', skip: 2, skipBottom: 1, columns: ['Customer ID', 'Customer Name', 'City', 'Status', 'Signed up', 'Balance', 'Phone', 'Notes'] };
