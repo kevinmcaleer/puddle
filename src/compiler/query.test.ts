@@ -80,6 +80,11 @@ describe('query SQL', () => {
     );
   });
 
+  it('Top values keeps the first rows of the sorted result', () => {
+    const s = spec({ ...shop, fields: [field('f1', 1, 'total', { sort: 'desc' })], limit: 10 });
+    expect(compileQuery(s, tables(CUSTOMERS, ORDERS))).toMatch(/ ORDER BY "t2"."total" DESC LIMIT 10$/);
+  });
+
   it.each([
     [{ op: '=', value: "O'Brien" }, `"t1"."name" = 'O''Brien'`],
     [{ op: '<>', value: '3' }, `"t1"."customer_id" <> 3`],

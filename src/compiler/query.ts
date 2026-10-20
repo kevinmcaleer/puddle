@@ -407,8 +407,8 @@ export function criteriaClauses(spec: QuerySpec, sqlOf: (f: QueryField, c: Query
 export const compileQuery = (spec: QuerySpec, tables: Array<QueryTable & { cte: string }>): string => queryClauses(spec, tables).map((c) => c.join(' ')).join(' ');
 
 /**
- * The query's clauses, each as its parts: SELECT, FROM with a part per join, then WHERE, GROUP BY, HAVING and ORDER
- * BY when it has them. Assumes queryProblems found nothing.
+ * The query's clauses, each as its parts: SELECT, FROM with a part per join, then WHERE, GROUP BY, HAVING, ORDER BY
+ * and LIMIT when it has them. Assumes queryProblems found nothing.
  */
 export function queryClauses(spec: QuerySpec, tables: Array<QueryTable & { cte: string }>): string[][] {
   const plan = joinPlan(spec, tables.map((t) => t.port))!;
@@ -434,5 +434,6 @@ export function queryClauses(spec: QuerySpec, tables: Array<QueryTable & { cte: 
     ...(group.length ? [[`GROUP BY ${group.join(', ')}`]] : []),
     ...(having.length ? [[`HAVING ${having.join(' AND ')}`]] : []),
     ...(order.length ? [[`ORDER BY ${order.join(', ')}`]] : []),
+    ...(spec.limit ? [[`LIMIT ${spec.limit}`]] : []),
   ];
 }

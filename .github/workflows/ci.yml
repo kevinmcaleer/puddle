@@ -83,7 +83,10 @@ jobs:
           path: docs/_data
           key: tutorial-data-${{ hashFiles('scripts/fetch-tutorial-data.mjs') }}
       - run: npm run docs:tutorial-data
+      # The browser's warnings and the page at a failure go in the log, as in the e2e jobs.
       - run: npm run docs:screenshots
+        env:
+          E2E_BROWSER_LOGS: '1'
       - run: npm run docs
       - uses: actions/upload-artifact@v4
         if: always()

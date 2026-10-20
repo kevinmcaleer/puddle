@@ -3,11 +3,11 @@ import { useSession } from '../app/session';
 import { cardKind } from '../canvas/kind';
 import { CRITERIA_OPS, crossJoinedTables, defaultNames, designSql, fieldTotal, queryProblems, querySqlProblem, readQuerySql, TOTALS, totalsProblems } from '../compiler';
 import { useFlowStore, useNodeStatus } from '../flow/status';
+import { addRelatedTable } from '../relationships/joins';
 import {
   addQueryField,
   addQueryJoin,
   addQueryOrRow,
-  addQueryTable,
   criteriaCell,
   moveQueryField,
   moveQueryTable,
@@ -56,6 +56,9 @@ const SORTS = [
 const OPS = [{ value: '', label: 'No criteria' }, ...Object.entries(CRITERIA_OPS).map(([value, o]) => ({ value, label: o.label }))];
 
 const TOTAL_OPTIONS = Object.entries(TOTALS).map(([value, t]) => ({ value, label: t.label }));
+/** Top values as Access offers them, and the query's own when it's another number, such as one read from LIMIT. */
+const TOP_VALUES = [5, 10, 25, 100, 500, 1000];
+const topOptions = (limit: number | undefined) => [{ value: '', label: 'All' }, ...[...new Set([...TOP_VALUES, ...(limit ? [limit] : [])])].sort((a, b) => a - b).map((n) => ({ value: String(n), label: String(n) }))];
 
 interface Line {
   id: string;
@@ -594,7 +597,7 @@ function SqlView({ node, tables, onDiscard }: { node: QueryNode; tables: Designe
         onCommit={commit}
       />
       <p className="text-label text-ink-muted">
-        Edit the SQL, then press Ctrl+Enter or click away, and the design grid follows. Tables are read by their node’s name, or as input1, input2. SQL the grid can’t show, such as LIMIT or UNION, runs as written.
+        Edit the SQL, then press Ctrl+Enter or click away, and the design grid follows. Tables are read by their node’s name, or as input1, input2. SQL the grid can’t show, such as OFFSET or UNION, runs as written.
       </p>
     </div>
   );
@@ -615,9 +618,16 @@ export function QueryDesigner({ node }: { node: QueryNode }) {
   const { totals } = node.querySpec;
   const problems = totalsProblems(node.querySpec, tables.map((t) => ({ ...t, columns: t.columns ?? [] })));
   const kept = node.querySpec.sql != null;
+  // Kept SQL the grid can show now (written before the grid could, such as a LIMIT) opens in the design.
+  const keptDesign = kept && tables.every((t) => t.columns) ? readQuerySql(node.querySpec.sql!, tables.map((t) => ({ port: t.port, label: t.label, columns: t.columns ?? [] })), node.querySpec) : undefined;
+  const readable = !!keptDesign && 'spec' in keptDesign;
   const [chosen, setView] = useState<'design' | 'sql'>(kept ? 'sql' : 'design');
   // SQL the grid can't show is all there is to see until it's discarded.
   const view = kept ? 'sql' : chosen;
+  const choose = (v: 'design' | 'sql') => {
+    if (v === 'design' && keptDesign && 'spec' in keptDesign) apply((p) => setQueryDesign(p, node.id, keptDesign.spec));
+    setView(v);
+  };
 
   // The node's rows show below while it's being designed, unless the results table is pinned.
   useEffect(() => {
@@ -642,9 +652,9 @@ export function QueryDesigner({ node }: { node: QueryNode }) {
         <Tabs
           label="View"
           value={view}
-          onChange={(v) => setView(v as 'design' | 'sql')}
+          onChange={(v) => choose(v as 'design' | 'sql')}
           items={[
-            { id: 'design', label: 'Design', disabled: kept, title: kept ? 'The grid can’t show this SQL: go back to the design to discard it' : undefined },
+            { id: 'design', label: 'Design', disabled: kept && !readable, title: kept && !readable ? 'The grid can’t show this SQL: go back to the design to discard it' : undefined },
             { id: 'sql', label: 'SQL' },
           ]}
         />
@@ -664,6 +674,10 @@ export function QueryDesigner({ node }: { node: QueryNode }) {
               Totals
             </Button>
             <Switch id="query-distinct" label="Unique values" checked={node.querySpec.distinct} onChange={(distinct) => apply((p) => setQuerySpec(p, node.id, { distinct }))} />
+            <label className="puddle-qd-top">
+              <span>Top values</span>
+              <Select options={topOptions(node.querySpec.limit)} value={String(node.querySpec.limit ?? '')} onChange={(e) => apply((p) => setQuerySpec(p, node.id, { limit: e.target.value ? Number(e.target.value) : undefined }))} />
+            </label>
           </>
         )}
         <Menu
@@ -675,7 +689,11 @@ export function QueryDesigner({ node }: { node: QueryNode }) {
             hint: tables.some((t) => t.fromId === n.id) ? 'Again' : undefined,
             onSelect: () => {
               try {
-                apply((p) => addQueryTable(p, node.id, n.id));
+                // Joined at once on the relationships the project states, as Access does.
+                apply((p) => addRelatedTable(p, node.id, n.id, (id) => {
+                  const s = statuses[id]?.status;
+                  return s?.state === 'ok' ? s.columns : undefined;
+                }));
                 setError(null);
               } catch (e) {
                 setError(e instanceof Error ? e.message : String(e));

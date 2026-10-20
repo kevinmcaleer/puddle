@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { addFiles, addStep, addStepNode, addStepWithT, cell, expectRows, fixture, fixtureText, node } from '../../e2e/helpers/app';
+import { addFiles, addStep, addStepNode, addStepWithT, cell, expectRows, fixture, fixtureText, node, selectNode } from '../../e2e/helpers/app';
 import { annotate, openSample, projectMenu, selectColumnsAt, settings, shot, shotClip, shotPanel, start, steps } from './helpers';
 
 // Each test captures the pictures for one page of the docs. Pictures are named <page>-<what>.png.
@@ -21,7 +21,7 @@ test('samples and the screen', async ({ page }) => {
   await expect(node(page, 'contacts.csv')).toHaveAttribute('data-status', 'ok', { timeout: 20_000 });
   await expectRows(page, 53);
   await shot(page, 'start-sample-open');
-  await node(page, 'contacts.csv').click();
+  await selectNode(page, 'contacts.csv');
   await shot(page, 'screen-overview');
   // The toolbar, canvas, inspector, results and status strip, numbered as the page about the screen lists them.
   await annotate(page, [
@@ -82,7 +82,7 @@ async function reselect(page: Page) {
 test('quick fixes and steps', async ({ page }) => {
   await start(page);
   await openSample(page, 'contacts');
-  await node(page, 'contacts.csv').click();
+  await selectNode(page, 'contacts.csv');
   // name and city.
   await selectColumnsAt(page, 90, 450);
   await expect(page.getByTestId('quick-fixes')).toHaveAttribute('data-columns', 'name,city');
@@ -125,7 +125,7 @@ async function rightClickAt(page: Page, x: number, row?: number) {
 test('the column menu', async ({ page }) => {
   await start(page);
   await openSample(page, 'contacts');
-  await node(page, 'contacts.csv').click();
+  await selectNode(page, 'contacts.csv');
   const menu = page.getByTestId('context-menu');
   // city.
   await rightClickAt(page, 450);
@@ -151,12 +151,12 @@ test('the column menu', async ({ page }) => {
 test('groups', async ({ page }) => {
   await start(page);
   await openSample(page, 'contacts');
-  await node(page, 'contacts.csv').click();
+  await selectNode(page, 'contacts.csv');
   await addStepWithT(page, 'Trim whitespace');
   await expect(node(page, 'Transform 1')).toHaveAttribute('data-status', 'ok');
   await page.keyboard.press('o');
   await expect(node(page, 'Output 1')).toHaveAttribute('data-status', 'ok');
-  await node(page, 'contacts.csv').click();
+  await selectNode(page, 'contacts.csv');
   await node(page, 'Transform 1').click({ modifiers: ['Shift'] });
   await page.keyboard.press('g');
   await expect(page.getByTestId('group-Group 1')).toBeVisible();
@@ -171,7 +171,7 @@ test('groups', async ({ page }) => {
 test('rules, outputs and export', async ({ page }) => {
   await start(page);
   await openSample(page, 'contacts');
-  await node(page, 'contacts.csv').click();
+  await selectNode(page, 'contacts.csv');
   const rulesSection = page.locator('section[aria-label="Rules"]');
   await expect(page.getByTestId('rule-suggestions')).toBeVisible({ timeout: 20_000 });
   await shotPanel(page, 'rules-suggestions', rulesSection);
@@ -197,11 +197,11 @@ test('rules, outputs and export', async ({ page }) => {
   await expect(page.getByTestId('column-profile')).toContainText('email');
   await shot(page, 'rules-status-strip', page.locator('footer.ui-strip'), { pad: 0 });
 
-  await node(page, 'contacts.csv').click();
+  await selectNode(page, 'contacts.csv');
   await page.getByRole('button', { name: 'Add', exact: true }).click();
   await shot(page, 'canvas-add-node-menu', page.getByRole('menu'));
   await page.getByRole('menuitem', { name: 'Output' }).click();
-  await node(page, 'Output 1').click();
+  await selectNode(page, 'Output 1');
   await expect(node(page, 'Output 1')).toHaveAttribute('data-export', 'blocked');
   await shot(page, 'export-blocked');
 
@@ -218,10 +218,10 @@ test('rules, outputs and export', async ({ page }) => {
 test('the export as menu', async ({ page }) => {
   await start(page);
   await openSample(page, 'contacts');
-  await node(page, 'contacts.csv').click();
+  await selectNode(page, 'contacts.csv');
   await page.getByRole('button', { name: 'Add', exact: true }).click();
   await page.getByRole('menuitem', { name: 'Output' }).click();
-  await node(page, 'Output 1').click();
+  await selectNode(page, 'Output 1');
   await expect(node(page, 'Output 1')).toHaveAttribute('data-status', 'ok', { timeout: 20_000 });
   const bar = page.locator('.ui-resultsbar');
   await bar.getByRole('button', { name: 'Export as', exact: true }).click();
@@ -232,7 +232,7 @@ test('the export as menu', async ({ page }) => {
 async function combine(page: Page, files: string[], item: RegExp, made: string) {
   await addFiles(page, files.map(fixture));
   for (const f of files) await expect(node(page, f)).toHaveAttribute('data-status', 'ok', { timeout: 20_000 });
-  await node(page, files[0]!).click();
+  await selectNode(page, files[0]!);
   for (const f of files.slice(1)) await node(page, f).click({ modifiers: ['Shift'] });
   if (made === 'selection') return;
   await page.getByRole('button', { name: 'Add', exact: true }).click();
@@ -248,7 +248,7 @@ test('combining data', async ({ page }) => {
   await page.getByTestId('group-bar').getByRole('button', { name: 'Join these two' }).click();
   await expect(node(page, 'Join 1')).toHaveAttribute('data-status', 'ok');
   await page.getByRole('button', { name: 'Auto layout' }).click();
-  await node(page, 'Join 1').click();
+  await selectNode(page, 'Join 1');
   await expectRows(page, 6);
   await shot(page, 'combine-join');
   await shotPanel(page, 'combine-join-settings', page.getByTestId('inspector-join'));
@@ -258,7 +258,7 @@ test('appending and looking up', async ({ page }) => {
   await start(page);
   await combine(page, ['customers.csv', 'customers-more.csv'], /Append/, 'Append 1');
   await page.getByRole('button', { name: 'Auto layout' }).click();
-  await node(page, 'Append 1').click();
+  await selectNode(page, 'Append 1');
   await expectRows(page, 6);
   await shot(page, 'combine-append');
 
@@ -266,7 +266,7 @@ test('appending and looking up', async ({ page }) => {
   await page.getByRole('button', { name: 'New project' }).click();
   await combine(page, ['shop-orders.csv', 'shop-customers.csv'], /Lookup/, 'Lookup 1');
   await page.getByRole('button', { name: 'Auto layout' }).click();
-  await node(page, 'Lookup 1').click();
+  await selectNode(page, 'Lookup 1');
   await expectRows(page, 5);
   await shotPanel(page, 'combine-lookup-settings', page.getByTestId('inspector-lookup'));
 });
@@ -291,7 +291,7 @@ test('query designer', async ({ page }) => {
   await designer.evaluate((el) => el.scrollTo(0, 0));
   await shot(page, 'query-designer');
   await designer.getByRole('tab', { name: 'SQL' }).click();
-  await expect(designer.getByLabel('SQL', { exact: true })).toHaveValue(/WHERE t2.total > 5/);
+  await expect(designer.getByLabel('SQL', { exact: true })).toHaveValue(/WHERE "shop-orders.csv".total > 5/);
   await shot(page, 'query-sql-view');
 });
 
@@ -305,13 +305,20 @@ test('relationships', async ({ page }) => {
   await view.getByTestId('rel-field-shop-orders.csv-status').dragTo(view.getByTestId('rel-field-shop-customers.csv-status'));
   await expect(view.getByTestId('relationship-cardinality')).toHaveText(['many to many', 'many to many']);
   await shot(page, 'relationships');
+  // The Schema view documents the same tables, the Join as a query, and the relationships between them.
+  await projectMenu(page, 'Schema');
+  await expect(page.getByTestId('schema-canvas-counts')).toHaveText('3 from the canvas');
+  await page.getByRole('button', { name: 'Hide inspector' }).click();
+  await page.getByRole('button', { name: 'Hide results' }).click();
+  await page.getByRole('button', { name: 'Auto-arrange' }).click();
+  await shot(page, 'schema-canvas');
 });
 
 test('reshaping', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 1100 });
   await start(page);
   await openSample(page, 'monthly');
-  await node(page, 'monthly-sales.csv').click();
+  await selectNode(page, 'monthly-sales.csv');
   await addStepNode(page, 'Unpivot columns');
   for (const m of ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec']) {
     await settings(page).getByRole('button', { name: `${m}_2024`, exact: true }).click();
@@ -325,7 +332,7 @@ test('reshaping', async ({ page }) => {
   await page.getByRole('button', { name: 'New project' }).click();
   await addFiles(page, [fixture('sales.csv')]);
   await expect(node(page, 'sales.csv')).toHaveAttribute('data-status', 'ok', { timeout: 20_000 });
-  await node(page, 'sales.csv').click();
+  await selectNode(page, 'sales.csv');
   await addStepNode(page, 'Pivot or group by');
   const editor = page.getByTestId('pivot-editor');
   for (const [field, zone] of [['region', 'Rows'], ['month', 'Columns'], ['revenue', 'Values']] as const) {
@@ -347,7 +354,7 @@ test('projects, templates and recipes', async ({ page }) => {
   await page.getByRole('tab', { name: 'Write' }).click();
   await shot(page, 'projects-notes');
 
-  await node(page, 'contacts.csv').click();
+  await selectNode(page, 'contacts.csv');
   await addStepNode(page, 'Trim whitespace');
   await addStepNode(page, 'Change case', 'Transform 2');
   await node(page, 'Transform 1').click({ button: 'right' });
@@ -399,7 +406,7 @@ test('sync, settings and help', async ({ page }) => {
   await shot(page, 'settings-shortcuts', page.getByRole('dialog'));
   await page.keyboard.press('Escape');
 
-  await node(page, 'sales.csv').click();
+  await selectNode(page, 'sales.csv');
   await page.emulateMedia({ colorScheme: 'dark' });
   await shot(page, 'settings-dark');
 });
@@ -555,7 +562,7 @@ test('schema tables', async ({ page }) => {
   await shot(page, 'schema-load-into', page.getByTestId('context-menu'));
   await page.getByTestId('context-menu').getByRole('menuitem', { name: 'Load into customers' }).click();
   await expect(node(page, 'customers')).toHaveAttribute('data-status', 'error', { timeout: 20_000 });
-  await node(page, 'customers').click();
+  await selectNode(page, 'customers');
   await expect(page.getByTestId('table-failures')).toBeVisible();
   await page.getByRole('button', { name: 'Auto layout' }).click();
   await shot(page, 'schema-table-node');
@@ -569,7 +576,7 @@ test('schema check', async ({ page }) => {
   await page.getByRole('button', { name: 'Back to canvas' }).click();
   await addFiles(page, [fixture('schema-rules-customers.csv')]);
   await expect(node(page, 'schema-rules-customers.csv')).toHaveAttribute('data-status', 'ok', { timeout: 20_000 });
-  await node(page, 'schema-rules-customers.csv').click();
+  await selectNode(page, 'schema-rules-customers.csv');
   await page.getByLabel('Check against the schema').selectOption('public.customers');
   const rules = page.getByTestId('rules');
   await expect(rules.locator('.ui-rule').filter({ hasText: 'id is unique' }).first()).toHaveAttribute('data-status', 'fail', { timeout: 20_000 });

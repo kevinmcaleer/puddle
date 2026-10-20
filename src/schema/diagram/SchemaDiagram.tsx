@@ -52,6 +52,8 @@ export interface SchemaDiagramProps {
   sample?: (table: Table) => ReactNode;
   /** More actions on a table's menu (its data: open its rows, fill it with sample rows). */
   tableActions?: (table: Table) => MenuItem[];
+  /** Tables, by diagram id, that aren't in the DBML (drawn from the canvas): they move, but can't be edited. Their menu has only `tableActions`. */
+  locked?: Set<string>;
 }
 
 /** A table's menu with more actions, put before its Delete. */
@@ -158,7 +160,7 @@ const Detail = ({ term, children }: { term: string; children: ReactNode }) => (
  * links to the columns that use them, group frames and sticky notes. Pans and zooms with the wheel, a trackpad, the
  * toolbar or the keyboard; a search box finds a table and centres it.
  */
-export function SchemaDiagram({ schema, positions, detail = 'full', current, onMove, onPick, onEdit, only, initialView, onViewChange, onSelectionChange, onHide, choose, sample, tableActions }: SchemaDiagramProps) {
+export function SchemaDiagram({ schema, positions, detail = 'full', current, onMove, onPick, onEdit, only, initialView, onViewChange, onSelectionChange, onHide, choose, sample, tableActions, locked }: SchemaDiagramProps) {
   const [moving, setMoving] = useState<Record<string, Point>>();
   const shown = useMemo(() => (moving ? { ...positions, ...moving } : positions), [positions, moving]);
   const diagram = useMemo(() => layoutDiagram(schema, shown, { detail, only }), [schema, shown, detail, only]);
@@ -402,7 +404,7 @@ export function SchemaDiagram({ schema, positions, detail = 'full', current, onM
   };
   const boxOf = (id: string) => diagram.tables.find((t) => t.id === id);
   const selection = (): TableRef[] => selected.flatMap((id) => {
-    const b = boxOf(id);
+    const b = locked?.has(id) ? undefined : boxOf(id);
     return b ? [tableRef(b.table)] : [];
   });
   const askAt = (el: Element, table: TableRef) => (kind: Ask['kind'], value: string, extra: Partial<Ask> = {}) => {
@@ -410,9 +412,16 @@ export function SchemaDiagram({ schema, positions, detail = 'full', current, onM
     setAsk({ kind, table, value, at: spotOf(el), ...extra });
   };
   const openMenu = (x: number, y: number, el: Element, box: TableBox, column?: string) => {
+    const t = box.table;
+    if (locked?.has(box.id)) {
+      const items = column ? [] : (tableActions?.(t) ?? []);
+      if (!items.length) return;
+      setPop(null);
+      setMenu({ x, y, label: `Actions for ${box.label}`, items });
+      return;
+    }
     if (!onEdit) return;
     setPop(null);
-    const t = box.table;
     const items = column ? columnMenu(t, column, onEdit, askAt(el, tableRef(t))) : withActions(tableMenu(schema, t, onEdit, askAt(el, tableRef(t)), selection(), onHide && (() => onHide([...new Set([box.id, ...selected])]))), tableActions?.(t) ?? []);
     setMenu({ x, y, label: column ? `Actions for ${box.label}.${column}` : `Actions for ${box.label}`, items });
   };
@@ -421,7 +430,7 @@ export function SchemaDiagram({ schema, positions, detail = 'full', current, onM
 
   /** Drag from a column to another table's column to add a ref between them. */
   const startLink = (box: TableBox, column: string, e: ReactPointerEvent) => {
-    if (!onEdit || e.button !== 0) return;
+    if (!onEdit || locked?.has(box.id) || e.button !== 0) return;
     e.stopPropagation();
     const f = frame.current!.getBoundingClientRect();
     const row = box.rows.find((r) => r.column === column)!;
@@ -440,7 +449,7 @@ export function SchemaDiagram({ schema, positions, detail = 'full', current, onM
         const target = document.elementFromPoint(pointer.x, pointer.y)?.closest<SVGGElement>('[data-column]');
         const toBox = target ? boxOf(target.dataset.table ?? '') : undefined;
         const toColumn = target?.dataset.column;
-        if (!toBox || !toColumn || (toBox.id === box.id && toColumn === column)) return;
+        if (!toBox || !toColumn || locked?.has(toBox.id) || (toBox.id === box.id && toColumn === column)) return;
         setRefAsk({ from: { ...tableRef(box.table), column }, to: { ...tableRef(toBox.table), column: toColumn }, at: spotOf(target!) });
       },
     );
@@ -482,14 +491,18 @@ export function SchemaDiagram({ schema, positions, detail = 'full', current, onM
   const drawTable = (box: TableBox) => {
     const t = box.table;
     const label = box.label;
+    // A table drawn from the canvas has no DBML to edit; its menu still opens, with its actions.
+    const fixed = !!locked?.has(box.id);
+    const edit = fixed ? undefined : onEdit;
+    const menus = !!edit || fixed;
     return (
       <g
         key={box.id}
-        className={cx('puddle-schema-table', box.tone && `tone-${box.tone}`, box.id === current && 'is-current', box.id === found && 'is-found', selected.includes(box.id) && 'is-selected', moving?.[box.id] && 'is-moving', dim(box.id) && 'is-dim')}
+        className={cx('puddle-schema-table', fixed && 'is-derived', box.tone && `tone-${box.tone}`, box.id === current && 'is-current', box.id === found && 'is-found', selected.includes(box.id) && 'is-selected', moving?.[box.id] && 'is-moving', dim(box.id) && 'is-dim')}
         transform={`translate(${box.x},${box.y})`}
         tabIndex={0}
         role="group"
-        aria-label={`Table ${label}, ${t.columns.length} columns${selected.includes(box.id) ? ', selected' : ''}. Arrow keys move it, Enter shows it in the DBML.${onEdit ? ' F2 renames it; the menu key opens its actions.' : ''}`}
+        aria-label={`Table ${label}, ${t.columns.length} columns${selected.includes(box.id) ? ', selected' : ''}. Arrow keys move it, ${fixed ? 'From the canvas: write it in the DBML to edit it.' : 'Enter shows it in the DBML.'}${edit ? ' F2 renames it; the menu key opens its actions.' : fixed ? ' The menu key opens its actions.' : ''}`}
         aria-describedby={pop?.table === box.id ? popId : undefined}
         data-testid={`schema-table-${label}`}
         onPointerDown={(e) => startMove([{ id: box.id, x: box.x, y: box.y }], e)}
@@ -501,12 +514,12 @@ export function SchemaDiagram({ schema, positions, detail = 'full', current, onM
         onFocus={(e) => e.target === e.currentTarget && showPop(e.currentTarget, box.id)}
         onBlur={() => setPop(null)}
         onKeyDown={(e) => {
-          if (onEdit && e.target === e.currentTarget && e.key === 'F2') {
+          if (edit && e.target === e.currentTarget && e.key === 'F2') {
             e.preventDefault();
             askAt(e.currentTarget, tableRef(t))('rename-table', t.name);
             return;
           }
-          if (onEdit && e.target === e.currentTarget && menuKey(e)) {
+          if (menus && e.target === e.currentTarget && menuKey(e)) {
             e.preventDefault();
             const r = e.currentTarget.getBoundingClientRect();
             openMenu(r.left + 16, r.top + ROW, e.currentTarget, box);
@@ -515,7 +528,7 @@ export function SchemaDiagram({ schema, positions, detail = 'full', current, onM
           elementKeys(box, () => onPick?.(box.id))(e);
         }}
         onContextMenu={(e) => {
-          if (!onEdit || (e.target as Element).closest('[data-column]')) return;
+          if (!menus || (e.target as Element).closest('[data-column]')) return;
           e.preventDefault();
           openMenu(e.clientX, e.clientY, e.currentTarget, box);
         }}
@@ -530,7 +543,7 @@ export function SchemaDiagram({ schema, positions, detail = 'full', current, onM
           onPick?.(box.id);
         }}
         onDoubleClick={(e) => {
-          if (!onEdit || (e.target as Element).closest('[data-column]')) return;
+          if (!edit || (e.target as Element).closest('[data-column]')) return;
           askAt(e.currentTarget, tableRef(t))('rename-table', t.name);
         }}
       >
@@ -551,7 +564,7 @@ export function SchemaDiagram({ schema, positions, detail = 'full', current, onM
               key={c.name}
               data-column={c.name}
               data-table={box.id}
-              className={cx('puddle-schema-col', c.pk && 'is-pk', onEdit && 'is-linkable')}
+              className={cx('puddle-schema-col', c.pk && 'is-pk', edit && 'is-linkable')}
               data-testid={`schema-col-${label}-${c.name}`}
               onPointerEnter={(e) => !linking && showPop(e.currentTarget, box.id, c.name)}
               onPointerLeave={() => setPop(null)}
@@ -561,12 +574,12 @@ export function SchemaDiagram({ schema, positions, detail = 'full', current, onM
                 onPick?.(box.id, c.name);
               }}
               onDoubleClick={(e) => {
-                if (!onEdit) return;
+                if (!edit) return;
                 e.stopPropagation();
                 askAt(e.currentTarget, tableRef(t))('rename-column', c.name, { column: c.name });
               }}
               onContextMenu={(e) => {
-                if (!onEdit) return;
+                if (!edit) return;
                 e.preventDefault();
                 e.stopPropagation();
                 openMenu(e.clientX, e.clientY, e.currentTarget, box, c.name);

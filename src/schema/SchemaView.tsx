@@ -3,7 +3,9 @@ import { nodeFor } from '../schemaTables/sample';
 import { addAllSchemaTables } from '../schemaTables/place';
 import { useSession } from '../app/session';
 import { editSchema, setSchemaDbml, useProject, useProjectStore, type Project } from '../model';
-import { Banner, Button, Menu } from '../ui';
+import { useRelationships } from '../relationships/useRelationships';
+import { Banner, Button, Menu, Switch } from '../ui';
+import { canvasSchema, withCanvas } from './canvas';
 import { tableId, type Point } from './diagram/geometry';
 import { SchemaDiagram } from './diagram/SchemaDiagram';
 import type { DiagramEdit } from './diagram/editing';
@@ -22,7 +24,7 @@ import { layoutDiagram } from './diagram/geometry';
 import { SchemaViews } from './SchemaViews';
 import { ShareDialog } from './ShareDialog';
 import { VersionsDialog } from './VersionsDialog';
-import { currentView, hideFromSchemaView, openSchemaView, moveInSchemaView, setSchemaZoom, viewPositions, viewTables } from './views';
+import { currentView, hideFromSchemaView, openSchemaView, moveInSchemaView, setSchemaZoom, showCanvasInSchema, viewPositions, viewTables } from './views';
 import './schema.css';
 
 const apply = (edit: (p: Project) => Project) => useProjectStore.getState().apply(edit);
@@ -54,12 +56,31 @@ const MIN_PANE = 240;
 /** The editor's share of the width, as a fraction, while this tab is open. */
 let editorShare = 0.4;
 
-/** The Schema view, in place of the canvas: DBML on the left, the diagram it draws on the right. */
+/**
+ * The canvas's tables, queries and views as a schema, with the relationships the project states as refs; the same
+ * object while what it says stays the same, so the diagram isn't laid out again on every status change.
+ */
+function useCanvasSchema(project: Project, designed: ReturnType<typeof parseDbml>['schema']) {
+  const { columnsOf, unique } = useRelationships(project);
+  const canvas = project.schema.hideCanvas ? null : canvasSchema(project, designed, columnsOf, unique);
+  const signature = canvas ? JSON.stringify([canvas.schema, [...canvas.nodeOf]]) : '';
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  return useMemo(() => canvas, [signature, designed]);
+}
+
+/**
+ * The Schema view, in place of the canvas: DBML on the left, the diagram it draws on the right, and with it, unless
+ * turned off, every table, query and view on the canvas and the relationships between them, as Access documents a
+ * database.
+ */
 export function SchemaView() {
   const project = useProject();
   const dbml = project.schema.dbml;
   const deferred = useDeferredValue(dbml);
   const { schema, errors } = useMemo(() => parseDbml(deferred), [deferred]);
+  const canvas = useCanvasSchema(project, schema);
+  /** What the diagram draws and the exports write: the DBML's tables, then the canvas's. */
+  const shown = useMemo(() => (canvas ? withCanvas(schema, canvas.schema) : schema), [schema, canvas]);
   const typing = useTypingSession();
   const editor = useRef<DbmlEditorHandle>(null);
   const split = useRef<HTMLDivElement>(null);
@@ -77,7 +98,7 @@ export function SchemaView() {
   const only = useMemo(() => viewTables(view), [view]);
   /** The tables to fill: the selected ones, else every table on show. */
   const fillTargets = () => {
-    const picked = selected.filter((id) => id.startsWith('table:'));
+    const picked = selected.filter((id) => id.startsWith('table:') && !canvas?.derived.has(id));
     return picked.length ? picked : schema.tables.map(tableId).filter((id) => !only || only.has(id));
   };
 
@@ -147,6 +168,17 @@ export function SchemaView() {
         <span className="ui-metric" data-testid="schema-counts">
           {schema.tables.length} {schema.tables.length === 1 ? 'table' : 'tables'}, {schema.refs.length} {schema.refs.length === 1 ? 'ref' : 'refs'}
         </span>
+        {canvas && (
+          <span className="ui-metric" data-testid="schema-canvas-counts">
+            {canvas.schema.tables.length} from the canvas
+          </span>
+        )}
+        <Switch
+          id="schema-show-canvas"
+          label="Canvas"
+          checked={!project.schema.hideCanvas}
+          onChange={(show) => useProjectStore.getState().amend((p) => showCanvasInSchema(p, show))}
+        />
         <span className="flex-1" />
         <Button
           size="sm"
@@ -176,7 +208,7 @@ export function SchemaView() {
         </Button>
         <Menu
           label="Export"
-          button={{ size: 'sm', variant: 'ghost', icon: 'export', disabled: !schema.tables.length }}
+          button={{ size: 'sm', variant: 'ghost', icon: 'export', disabled: !shown.tables.length }}
           items={[
             { label: 'Image…', hint: 'SVG, PNG or PDF of this view', onSelect: () => setExporting('image') },
             { label: 'Mermaid…', hint: 'An erDiagram for a README', onSelect: () => setExporting('mermaid') },
@@ -245,13 +277,14 @@ export function SchemaView() {
           onKeyDown={dividerKeys}
         />
         <section className="puddle-schema__pane" aria-label="Diagram">
-          {schema.tables.length > 0 && <SchemaViews project={project} schema={schema} selected={selected} />}
+          {shown.tables.length > 0 && <SchemaViews project={project} schema={shown} selected={selected} />}
           <div className="puddle-schema__stage">
-            {schema.tables.length ? (
+            {shown.tables.length ? (
               <SchemaDiagram
                 // A view opens where it was left: its own pan and zoom.
                 key={view?.id ?? 'all'}
-                schema={schema}
+                schema={shown}
+                locked={canvas?.derived}
                 positions={viewPositions(project.schema, view)}
                 detail={view?.detail ?? project.schema.detail}
                 only={only}
@@ -264,30 +297,33 @@ export function SchemaView() {
                 onSelectionChange={setSelected}
                 onHide={view && ((ids) => apply((p) => hideFromSchemaView(p, view.id, ids)))}
                 choose={choose}
-                sample={(t) => <TableSampleView schema={schema} table={t} />}
+                sample={(t) => <TableSampleView schema={schema} table={t} nodeId={canvas?.nodeOf.get(tableId(t))} />}
                 tableActions={(t) => {
-                  const node = nodeFor(project, t);
-                  const id = `table:${t.schema}.${t.name}`;
+                  const id = tableId(t);
+                  const node = nodeFor(project, t) ?? project.nodes.find((n) => n.id === canvas?.nodeOf.get(id));
+                  const open = node && {
+                    label: 'Open in results',
+                    icon: 'eye' as const,
+                    group: 'Data',
+                    onSelect: () => {
+                      useSession.getState().setSchemaOpen(false);
+                      useSession.getState().select(node.id);
+                    },
+                  };
+                  if (canvas?.derived.has(id))
+                    return [
+                      ...(open ? [open] : []),
+                      ...(node?.type === 'query'
+                        ? [{ label: 'Open in the query designer', icon: 'query' as const, group: 'Data', onSelect: () => (useSession.getState().setSchemaOpen(false), useSession.getState().openDesigner(node.id)) }]
+                        : []),
+                    ];
                   const fill = { label: 'Fill with sample data…', icon: 'template' as const, group: 'Data', onSelect: () => setFilling(selected.includes(id) ? fillTargets() : [id]) };
-                  return node
-                    ? [
-                        fill,
-                        {
-                          label: 'Open in results',
-                          icon: 'eye',
-                          group: 'Data',
-                          onSelect: () => {
-                            useSession.getState().setSchemaOpen(false);
-                            useSession.getState().select(node.id);
-                          },
-                        },
-                      ]
-                    : [fill];
+                  return open ? [fill, open] : [fill];
                 }}
               />
             ) : (
               <div className="puddle-schema__empty">
-                <p>Write a Table in the editor to see it here, or insert the example.</p>
+                <p>Write a Table in the editor to see it here, or insert the example. Tables, queries and views on the canvas show here too while the Canvas switch is on.</p>
                 <Button size="sm" variant="secondary" icon="plus" onClick={() => edit((d) => addTable(d, { schema: 'public', table: 'new_table' }))}>
                   Add a table
                 </Button>
@@ -321,14 +357,14 @@ export function SchemaView() {
           }}
         />
       )}
-      {exporting === 'docs' && <ExportDocsDialog schema={schema} doc={project.schema} title={project.name || 'Schema'} onClose={() => setExporting(null)} />}
+      {exporting === 'docs' && <ExportDocsDialog schema={shown} doc={project.schema} title={project.name || 'Schema'} onClose={() => setExporting(null)} />}
       {versioning && <VersionsDialog project={project} apply={apply} onClose={() => setVersioning(false)} />}
       {sharing && <ShareDialog doc={project.schema} onClose={() => setSharing(false)} />}
       {exporting === 'sql' && <ExportSqlDialog schema={schema} onClose={() => setExporting(null)} />}
-      {exporting === 'mermaid' && <ExportMermaidDialog schema={schema} detail={view?.detail ?? project.schema.detail} only={only} onClose={() => setExporting(null)} />}
+      {exporting === 'mermaid' && <ExportMermaidDialog schema={shown} detail={view?.detail ?? project.schema.detail} only={only} onClose={() => setExporting(null)} />}
       {exporting === 'image' && (
         <ExportImageDialog
-          diagram={layoutDiagram(schema, viewPositions(project.schema, view), { detail: view?.detail ?? project.schema.detail, only })}
+          diagram={layoutDiagram(shown, viewPositions(project.schema, view), { detail: view?.detail ?? project.schema.detail, only })}
           selected={selected}
           fileName={view ? `${project.name || 'schema'} - ${view.name}` : project.name || 'schema'}
           onClose={() => setExporting(null)}

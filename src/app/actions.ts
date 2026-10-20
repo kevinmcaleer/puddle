@@ -2,6 +2,7 @@ import { autoLayout } from '../canvas/layout';
 import { neighbour, type Direction } from '../canvas/navigate';
 import { suggestJoinKey, suggestLookupColumns } from '../compiler';
 import { useFlowStore } from '../flow/status';
+import { relatedKeys, withRelatedJoins } from '../relationships/joins';
 import { addNode, canConnect, canMakeGroup, connect, disconnect, freePort, groupOf, inputEdges, makeGroup, setGroupCollapsed, moveQueryTable, newId, nodeById, setJoinSpec, setLookupSpec, setSchemaCheck, setTableSpec, useProjectStore, type AddableNodeType, type ColumnSchema, type Port, type Project, type Source, type SourceFormat } from '../model';
 import { useEngineStore } from './engine';
 import { buildStep } from '../inspector/addStep';
@@ -105,6 +106,11 @@ const columnsOf = (nodeId: string) => {
   const status = useFlowStore.getState().nodes[nodeId]?.status;
   return status?.state === 'ok' ? status.columns : NO_COLUMNS;
 };
+/** The columns a node is known to have, or undefined while they aren't known, as relationships read them. */
+const knownColumns = (nodeId: string) => {
+  const status = useFlowStore.getState().nodes[nodeId]?.status;
+  return status?.state === 'ok' ? status.columns : undefined;
+};
 
 /** Where a new node fed by these nodes goes: right of them (level with them), or right of everything when there are none, so new nodes never stack. */
 export function positionAfter(project: Project, feeds: string[]) {
@@ -139,12 +145,16 @@ export function addNodeAfterSelection(type: AddableNodeType, init?: (project: Pr
     added = next.nodes[next.nodes.length - 1]!.id;
     // A Join wired to two nodes starts matching on a column they share, such as customer_id.
     const pair = Array.isArray(feeds) && feeds.length === 2 ? ([columnsOf(feeds[0]!), columnsOf(feeds[1]!)] as const) : undefined;
-    const key = pair && (type === 'join' || type === 'lookup') ? suggestJoinKey(...pair) : undefined;
-    if (key && type === 'join') next = setJoinSpec(next, added, { keys: [key] });
+    // The relationships the project states come first, as in Access; else a column the two share.
+    const related = pair && Array.isArray(feeds) && (type === 'join' || type === 'lookup') ? relatedKeys(next, feeds[0]!, feeds[1]!, knownColumns) : [];
+    const key = related[0] ?? (pair && (type === 'join' || type === 'lookup') ? suggestJoinKey(...pair) : undefined);
+    if (key && type === 'join') next = setJoinSpec(next, added, { keys: related.length ? related : [key] });
     // A Lookup also starts bringing across the lookup's other columns that the main input doesn't have yet.
-    if (key && type === 'lookup') next = setLookupSpec(next, added, { keys: [{ main: key.left, lookup: key.right }], columns: suggestLookupColumns(pair![0], pair![1], key.right) });
+    if (key && type === 'lookup') next = setLookupSpec(next, added, { keys: (related.length ? related : [key]).map((k) => ({ main: k.left, lookup: k.right })), columns: suggestLookupColumns(pair![0], pair![1], key.right) });
     // A Query's tables start side by side in the designer, in input order.
     if (type === 'query') for (const [i, e] of inputEdges(next, added).entries()) next = moveQueryTable(next, added, e.to.port as number, { x: 24 + i * 264, y: 24 });
+    // ...joined on the relationships between them.
+    if (type === 'query') next = withRelatedJoins(next, added, knownColumns);
     return init ? init(next, added) : next;
   });
   if (!added) return;
