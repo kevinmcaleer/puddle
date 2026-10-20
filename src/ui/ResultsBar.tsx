@@ -94,6 +94,8 @@ export interface StatusStripProps {
   cols?: number;
   ms?: number;
   rules?: { pass: number; warn: number; fail: number };
+  /** Issues analysis found in the viewed node's data; 0 says it looked and found none. */
+  issues?: number;
   sample?: number;
   /** Memory used by every kept result, in bytes. */
   kept?: number;
@@ -116,7 +118,7 @@ const SYNC_BADGE: Record<SyncState, { status: Status; text: string }> = {
   error: { status: 'fail', text: 'Sync failed' },
 };
 
-export function StatusStrip({ rows, cols, ms, rules, sample, kept, detail, end, sync, syncTitle }: StatusStripProps) {
+export function StatusStrip({ rows, cols, ms, rules, issues, sample, kept, detail, end, sync, syncTitle }: StatusStripProps) {
   const display = useDisplayFormat();
   const parts: ReactNode[] = [];
   if (rows != null) parts.push(<span key="rows">{fullCount(rows, display)} rows</span>);
@@ -128,6 +130,12 @@ export function StatusStrip({ rows, cols, ms, rules, sample, kept, detail, end, 
         <StatusBadge status="pass">{rules.pass} pass</StatusBadge>
         {rules.warn > 0 && <StatusBadge status="warn">{rules.warn} warn</StatusBadge>}
         <StatusBadge status={rules.fail ? 'fail' : 'neutral'}>{rules.fail} fail</StatusBadge>
+      </span>,
+    );
+  if (issues != null)
+    parts.push(
+      <span key="issues" data-testid="strip-issues" data-count={issues}>
+        <StatusBadge status={issues ? 'warn' : 'pass'}>{issues ? `${fullCount(issues, display)} ${issues === 1 ? 'issue' : 'issues'}` : 'No issues'}</StatusBadge>
       </span>,
     );
   if (detail) parts.push(<span key="detail">{detail}</span>);

@@ -157,6 +157,8 @@ const NodeBase = {
   rules: z.array(RuleZ).default([]),
   /** Suggested rules dismissed for this node, by suggestion key (rule type and column), so they stay dismissed. */
   dismissedSuggestions: z.array(z.string()).optional(),
+  /** Issues found by analysis and ignored for this node, by issue key (kind and column), so they stay ignored. */
+  ignoredIssues: z.array(z.string()).optional(),
   /** Materialise as a table for reuse (Phase 2). */
   pinnedResult: z.boolean().optional(),
   schemaCheck: SchemaCheckZ.optional(),

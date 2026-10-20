@@ -1,3 +1,4 @@
+export { compileAnalysis, NON_PRINTING_PATTERN, VALUES_LIMIT, type AnalysisCheck } from './analysis';
 export {
   compile,
   compileCount,

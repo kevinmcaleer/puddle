@@ -20,6 +20,7 @@ export { FieldChip, PivotZone } from './Pivot';
 export { ColumnHeader, QualityBar, type Quality } from './QualityBar';
 export { QuickFixBar, ResultsBar, StatusStrip, type QuickFix, type StatusStripProps, type SyncState } from './ResultsBar';
 export { RuleRow } from './RuleRow';
+export { IssueRow, type IssueRowSeverity } from './IssueRow';
 export { SchemaPopover } from './SchemaPopover';
 export { Section, Tabs, type TabItem } from './Section';
 export { StatusBadge, type Status } from './StatusBadge';

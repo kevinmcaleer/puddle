@@ -14,6 +14,7 @@ import { KeepPanel } from './KeepPanel';
 import { NodeNotes } from './NodeNotes';
 import { OutputPanel } from './OutputPanel';
 import { QueryPanel } from './QueryPanel';
+import { IssuesPanel } from './IssuesPanel';
 import { RulesPanel } from './RulesPanel';
 import { SqlPanel } from './SqlPanel';
 import { TablePanel } from './TablePanel';
@@ -231,6 +232,7 @@ function NodeInspector({ node }: { node: GraphNode }) {
     return (
       <>
         <TransformPanel node={node} />
+        <IssuesPanel node={node} />
         <KeepPanel key={node.id} node={node} />
         <Columns nodeId={node.id} />
         <RulesPanel node={node} />
@@ -320,6 +322,7 @@ function NodeInspector({ node }: { node: GraphNode }) {
       {source && hasParseOptions(source) && <SourceOptions source={source} />}
       {source && source.kind === 'file' && <RunnerPath source={source} />}
       {node.type === 'output' && <OutputPanel node={node} />}
+      {node.type === 'source' && <IssuesPanel node={node} />}
       {node.type === 'source' && <KeepPanel key={node.id} node={node} />}
       <Columns nodeId={node.id} />
       <RulesPanel node={node} />
