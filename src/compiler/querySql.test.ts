@@ -57,13 +57,43 @@ describe('the design as SQL', () => {
   it('writes a clause to a line, a join to a line, tables by their node names and names bare where they can be', () => {
     expect(designSql(shop, two)).toBe(
       [
-        'SELECT t2.order_id, t1.name, t2.total, t2.status',
-        'FROM "shop-customers.csv" AS t1',
-        '  INNER JOIN orders AS t2 ON t1.customer_id = t2.customer_id',
-        "WHERE t2.status = 'shipped'",
-        'ORDER BY t2.order_id ASC',
+        'SELECT orders.order_id, "shop-customers.csv".name, orders.total, orders.status',
+        'FROM "shop-customers.csv"',
+        '  INNER JOIN orders ON "shop-customers.csv".customer_id = orders.customer_id',
+        "WHERE orders.status = 'shipped'",
+        'ORDER BY orders.order_id ASC',
       ].join('\n'),
     );
+  });
+
+  // Regression: tables on inputs 2 and 3 were written as t2 and t3, and a design read back from SQL kept the letters.
+  it('qualifies by table name whatever inputs the tables are on, and stays the same through SQL and back', () => {
+    const tables: QueryTable[] = [
+      { port: 1, label: 'customers.csv', columns: [{ name: 'customer_id', type: 'BIGINT' }, { name: 'country', type: 'VARCHAR' }] },
+      { port: 2, label: 'orders.csv', columns: [{ name: 'order_id', type: 'BIGINT' }, { name: 'customer_id', type: 'BIGINT' }] },
+    ];
+    const sql = [
+      'SELECT "customers.csv".country, count("orders.csv".order_id) AS orders',
+      'FROM "customers.csv"',
+      '  INNER JOIN "orders.csv" ON "customers.csv".customer_id = "orders.csv".customer_id',
+      'GROUP BY "customers.csv".country',
+      'ORDER BY count("orders.csv".order_id) DESC',
+    ].join('\n');
+    const s = spec_(sql.replace(/"customers\.csv"\./g, 'c.').replace('FROM "customers.csv"', 'FROM "customers.csv" c'), tables);
+    expect(designSql(s, tables)).toBe(sql);
+    expect(designSql(spec_(designSql(s, tables), tables, s), tables)).toBe(sql);
+  });
+
+  it('writes an expression’s tables by name too, and leaves names that only look like t1 alone', () => {
+    const s = spec({
+      totals: true,
+      fields: [
+        field('f1', 1, 'status', { total: 'group', alias: 't1' }),
+        field('f2', 1, 'total', { total: 'expression', expression: "sum(t2.total) / count(t1.name) || 't1.x'", alias: 'per' }),
+      ],
+    });
+    expect(designSql(s, two).split('\n')[0]).toBe(`SELECT orders.status AS t1, (sum(orders.total) / count("shop-customers.csv".name) || 't1.x') AS per`);
+    expect(spec_(designSql(s, two), two, s).fields[1]!.expression).toBe("sum(t2.total) / count(t1.name) || 't1.x'");
   });
 
   it('quotes keywords and names with spaces, and nothing else', () => {

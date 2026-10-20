@@ -23,7 +23,7 @@ test('the SQL view: the design as SQL, edited SQL back into the design, and SQL 
 
   // The design as SQL.
   await designer.getByRole('tab', { name: 'SQL' }).click();
-  await expect(sql).toHaveValue(['SELECT t2.order_id, t1.name, t2.total', 'FROM "shop-customers.csv" AS t1', '  INNER JOIN "shop-orders.csv" AS t2 ON t1.customer_id = t2.customer_id'].join('\n'));
+  await expect(sql).toHaveValue(['SELECT "shop-orders.csv".order_id, "shop-customers.csv".name, "shop-orders.csv".total', 'FROM "shop-customers.csv"', '  INNER JOIN "shop-orders.csv" ON "shop-customers.csv".customer_id = "shop-orders.csv".customer_id'].join('\n'));
 
   // Edit it, and the grid follows: a criterion, a sort and a new name.
   await sql.fill('SELECT order_id, name AS customer, total\nFROM "shop-customers.csv" c JOIN "shop-orders.csv" o ON c.customer_id = o.customer_id\nWHERE total > 5\nORDER BY total DESC');
@@ -34,8 +34,11 @@ test('the SQL view: the design as SQL, edited SQL back into the design, and SQL 
   await expect(page.getByLabel('Sort total')).toHaveValue('desc');
   await expect(page.getByLabel('Name for name')).toHaveValue('customer');
 
-  // SQL the grid can't show runs as written, and says why; going back to the design discards it.
+  // Back in SQL, the design is written with its tables' own names, not the short names typed.
   await designer.getByRole('tab', { name: 'SQL' }).click();
+  await expect(sql).toHaveValue(/^SELECT "shop-orders\.csv"\.order_id, "shop-customers\.csv"\.name AS customer, .*\nFROM "shop-customers\.csv"\n {2}INNER JOIN "shop-orders\.csv" ON /);
+
+  // SQL the grid can't show runs as written, and says why; going back to the design discards it.
   await sql.fill('SELECT name, total FROM "shop-customers.csv" c JOIN "shop-orders.csv" o ON c.customer_id = o.customer_id ORDER BY total DESC LIMIT 1');
   await sql.press('Control+Enter');
   await expect(designer.getByTestId('query-sql-kept')).toContainText('LIMIT has no place in the design grid');
