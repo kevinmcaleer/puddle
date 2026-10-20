@@ -116,7 +116,7 @@ exports[`sources > parquet with {} 1`] = `"read_parquet('src_x.parquet')"`;
 
 exports[`sources > tsv with {} 1`] = `"read_csv('src_x.tsv', delim = '	', null_padding = true)"`;
 
-exports[`sources > xlsx with {} 1`] = `""src_x_87c4bb5369a4""`;
+exports[`sources > xlsx with {} 1`] = `""src_x_5fdeb3941a48""`;
 
 exports[`step snapshots > absoluteValue {"columns":["id"]} 1`] = `
 "WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv', null_padding = true)),

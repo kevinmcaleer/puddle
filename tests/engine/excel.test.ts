@@ -63,7 +63,7 @@ describe('Excel sources', () => {
       state: 'ok',
       sheet: 'Sales',
       headerRow: 3,
-      range: 'A1:H7',
+      range: 'A3:H7',
       rows: 4,
       sheets: [
         { name: 'Sales', rows: 7, columns: 8 },

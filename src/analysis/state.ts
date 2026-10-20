@@ -11,6 +11,7 @@ import { detectDateFormats } from '../dates';
 import { tableRows, toEngineError, type EngineClient } from '../engine';
 import { useViewProject } from '../flow/sample';
 import { useFlowStore } from '../flow/status';
+import { isExcelSource, useExcelReads } from '../sources/excel';
 import { nodeById, useProject, type ColumnSchema, type GraphNode, type Project } from '../model';
 import { parseProfile, parseTypeSniff, type ColumnProfile } from '../results/profile';
 import { columnKind } from '../ui/columnKind';
@@ -90,17 +91,29 @@ export async function analyseNode(engine: EngineClient, project: Project, nodeId
       facts.skew = { skew, fix: skewFix(columns, skew, formats) };
     }
   }
-  // A source read from delimited text: one more query for the rows around and inside the table that aren't data.
-  const source = textSourceOf(project, nodeId);
+  // A source read from delimited text or a sheet: one more query for the rows around and inside the table that aren't data.
+  const source = textSourceOf(project, nodeId) ?? sheetSourceOf(project, nodeId);
   if (source && columns.length) {
     const shapeRow = tableRows((await engine.query(compileShape(project, target, columns.map((c) => c.name), limit), opts('rows that aren’t data'))).table)[0] ?? {};
-    facts.shape = { facts: parseShape(shapeRow), options: source.parseOptions };
+    facts.shape = { facts: parseShape(shapeRow), options: source.parseOptions, ...(source.format === 'xlsx' ? { sheet: true } : {}) };
+  }
+  if (source?.format === 'xlsx') {
+    const read = useExcelReads.getState().reads[source.id];
+    if (read?.state === 'ok') facts.sheet = { merges: read.merges, filled: source.parseOptions.fillMerges !== false };
   }
   return { columns, profile, facts };
 }
 
 /** What an analysis stands for: the node's output, and the column-name style the issues are judged by. */
 const analysisKey = (project: Project, nodeId: string) => `${upstreamKey(project, { nodeId })}|${project.settings.columnNames}`;
+
+/** The source a node reads, when it is an Excel workbook. */
+export function sheetSourceOf(project: Project, nodeId: string) {
+  const node = nodeById(project, nodeId);
+  if (node?.type !== 'source') return undefined;
+  const source = project.sources.find((s) => s.id === node.sourceId);
+  return source && isExcelSource(source) ? source : undefined;
+}
 
 /** The source a node reads, when it is text (CSV, TSV, fixed width or a pipe table from a file, an address or the clipboard). */
 export function textSourceOf(project: Project, nodeId: string) {
