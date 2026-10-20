@@ -104,7 +104,14 @@ export async function addFiles(page: Page, files: string[] | { name: string; mim
 export const node = (page: Page, name: string) => page.getByTestId(`node-${name}`);
 
 /** The names of the nodes selected on the canvas, as the session has them (React Flow draws its `selected` class from the session). */
-const selectedNodes = (page: Page) => page.locator('.react-flow__node.selected > [data-testid^="node-"], .react-flow__node.selected [data-testid^="node-"]').evaluateAll((els) => [...new Set(els.map((e) => e.getAttribute('data-testid')!.slice('node-'.length)))]);
+const selectedNodes = (page: Page) =>
+  page.locator('.react-flow__node.selected').evaluateAll((els) =>
+    // The card's own test id (node-<name>) is the first inside each React Flow node; its pill and badges come after.
+    els.flatMap((el) => {
+      const id = el.querySelector('[data-testid^="node-"]')?.getAttribute('data-testid');
+      return id ? [id.slice('node-'.length)] : [];
+    }),
+  );
 
 /**
  * Click a node on the canvas (Shift adds it to the selection) and wait until the selection is what the click asked for:
