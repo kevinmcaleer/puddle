@@ -137,6 +137,8 @@ describe('step snapshots', () => {
     ['filterRows', { mode: 'keep', match: 'all', conditions: [{ column: 'email', op: 'contains', value: "O'Brien" }], matchCase: false }],
     ['filterRows', { mode: 'remove', match: 'any', conditions: [{ column: 'id', op: 'greater', value: '2' }, { column: 'name', op: 'empty', value: '' }], matchCase: true }],
     ['sortRows', { keys: [{ column: 'joined', descending: true }, { column: 'id', descending: false }] }],
+    ['realignRows', { rows: 'where', conditions: [{ column: 'email', op: 'empty', value: '' }], match: 'all', matchCase: false, columns: ['name', 'email', 'joined'], direction: 'right', by: 1 }],
+    ['realignRows', { rows: 'from', from: 19, columns: ['id', 'name', 'email', 'joined'], direction: 'left', by: 2 }],
     ['removeRows', { from: 'top', count: 2 }],
     ['removeRows', { from: 'bottom', count: 1 }],
     ['removeBlankRows', { columns: [] }],
@@ -381,6 +383,8 @@ describe('column step settings', () => {
     expect(invalid('filterRows', { conditions: [{ column: 'id', op: 'equals', value: '' }] })).toThrow(/value to compare/);
     expect(invalid('filterRows', { conditions: [{ column: 'id', op: 'empty' }] })).not.toThrow();
     expect(invalid('removeRows', { from: 'top', count: 0 })).toThrow(/at least one row/);
+    expect(invalid('realignRows', { rows: 'where', columns: ['id', 'name'] })).toThrow(/add a condition/);
+    expect(invalid('realignRows', { rows: 'from', from: 3, columns: ['id'] })).toThrow(/two at least/);
     expect(invalid('sortRows', { keys: [] })).toThrow(/sort by/);
   });
 });

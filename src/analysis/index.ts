@@ -5,3 +5,4 @@ export { defaultTicked, fixGroup, fixLabel, planFixes, type FixContext, type Pla
 export { findShapeIssues, parseShape, type ShapeFacts } from './shape';
 export { fixSteps, ISSUE_KINDS, isReadOptionsFix, isStepFix, isStepsFix, issueKey, issueLabel, sortIssues, type Issue, type IssueFix, type IssueKind, type IssueSeverity, type ReadOptionsFix, type StepFix, type StepsFix } from './issues';
 export { analyseNode, ANALYSIS_ROWS, evaluateAnalysis, issuesOf, nodesToAnalyse, useAnalysisEntry, useAnalysisEvaluation, useAnalysisStore, useIssues, textSourceOf, type AnalysisEntry, type NodeAnalysis } from './state';
+export { findSkew, parseSkew, skewFix, skewIssue, type Skew, type SkewFix, type SkewGroup } from './skew';

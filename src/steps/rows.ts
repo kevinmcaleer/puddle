@@ -38,6 +38,50 @@ defineStepForm({
 });
 
 defineStepForm({
+  type: 'realignRows',
+  title: 'Realign rows',
+  group: 'Rows',
+  fields: [
+    {
+      key: 'rows',
+      label: 'Rows to realign',
+      kind: 'select',
+      options: [
+        { value: 'where', label: 'Those matching the conditions' },
+        { value: 'from', label: 'From a row number down' },
+      ],
+    },
+    { key: 'from', label: 'From row', kind: 'number', min: 1, hint: 'Counted from 1, in the order the rows come in.' },
+    { key: 'conditions', label: 'Conditions', kind: 'conditions', hint: 'A column that is empty only on the shifted rows picks them out.' },
+    {
+      key: 'match',
+      label: 'Match',
+      kind: 'select',
+      options: [
+        { value: 'all', label: 'All conditions' },
+        { value: 'any', label: 'Any condition' },
+      ],
+    },
+    { key: 'columns', label: 'Columns that moved', kind: 'columns', hint: 'In table order, from the first column that moved to the last. Each takes the value of its neighbour; the moved columns are read as text, so add Change type after.' },
+    {
+      key: 'direction',
+      label: 'Move cells',
+      kind: 'select',
+      options: [
+        { value: 'right', label: 'Right (a cell was deleted)' },
+        { value: 'left', label: 'Left (a cell was inserted)' },
+      ],
+    },
+    { key: 'by', label: 'By', kind: 'number', min: 1, hint: 'Columns.' },
+  ],
+  defaults: (ctx) => {
+    const first = pickColumns(ctx)[0] ?? ctx.available[0]?.name ?? '';
+    const start = Math.max(0, ctx.available.findIndex((c) => c.name === first));
+    return { rows: 'where', from: 1, conditions: [{ column: ctx.available[ctx.available.length - 1]?.name ?? first, op: 'empty', value: '' }], match: 'all', matchCase: false, columns: ctx.available.slice(start).map((c) => c.name), direction: 'right', by: 1 };
+  },
+});
+
+defineStepForm({
   type: 'sortRows',
   title: 'Sort rows',
   group: 'Rows',

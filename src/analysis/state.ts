@@ -6,7 +6,8 @@ import { useEffect } from 'react';
 import { create } from 'zustand';
 import { useEngineStore } from '../app/engine';
 import { useSession } from '../app/session';
-import { compileAnalysis, compileCount, compileDistinctFacts, compileProfile, compileShape, compileTypeSniff, compileValueCounts, upstreamKey } from '../compiler';
+import { compileAnalysis, compileCount, compileDistinctFacts, compileProfile, compileShape, compileSkew, compileTypeSniff, compileValueCounts, upstreamKey } from '../compiler';
+import { detectDateFormats } from '../dates';
 import { tableRows, toEngineError, type EngineClient } from '../engine';
 import { useViewProject } from '../flow/sample';
 import { useFlowStore } from '../flow/status';
@@ -15,6 +16,7 @@ import { parseProfile, parseTypeSniff, type ColumnProfile } from '../results/pro
 import { columnKind } from '../ui/columnKind';
 import { analysisChecks, findIssues, parseAnalysis, parseDistinctFacts, parseValueCounts, type AnalysisFacts } from './columns';
 import { parseShape } from './shape';
+import { findSkew, parseSkew, skewFix } from './skew';
 import { sortIssues, type Issue } from './issues';
 
 export interface NodeAnalysis {
@@ -62,6 +64,30 @@ export async function analyseNode(engine: EngineClient, project: Project, nodeId
       const vc = counts[c] ?? [];
       facts.columns[c]!.valueCounts = vc;
       facts.columns[c]!.values = vc.map((v) => v.value).sort();
+    }
+  }
+  // Rows whose cells sit a column to the left or right of where they belong: the kinds of every row, grouped.
+  if (columns.length >= 2 && facts.rows >= 4) {
+    const groups = parseSkew(tableRows((await engine.query(compileSkew(project, target, columns, limit), opts('rows out of line'))).table));
+    const skew = findSkew(columns.map((c) => c.name), groups);
+    if (skew) {
+      // Dates moved into a column come as text: from a date column as ISO, from a text column in whatever way it writes them.
+      const { dateSources } = skewFix(columns, skew);
+      const formats: Record<string, string[]> = {};
+      for (const [column, sources] of Object.entries(dateSources)) {
+        const found = new Set<string>();
+        for (const name of sources) {
+          const type = columns.find((c) => c.name === name)?.type.toUpperCase() ?? 'VARCHAR';
+          if (type === 'DATE') found.add('%Y-%m-%d');
+          else if (type.startsWith('TIMESTAMP')) found.add('%Y-%m-%d %H:%M:%S');
+          else {
+            const detection = await detectDateFormats(engine, project, target, name, project.settings.locale);
+            for (const f of detection.formats ?? detection.ranked.slice(0, 1).map((r) => r.format)) found.add(f);
+          }
+        }
+        formats[column] = [...found];
+      }
+      facts.skew = { skew, fix: skewFix(columns, skew, formats) };
     }
   }
   // A source read from delimited text: one more query for the rows around and inside the table that aren't data.

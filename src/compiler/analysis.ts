@@ -192,3 +192,25 @@ export function compileShape(project: Project, target: Target, columns: string[]
     `FROM (${flags})`,
   ].join(', ').replace(', FROM', ' FROM');
 }
+
+/**
+ * The kind of value in every cell, row by row, for finding rows whose cells sit a column to the left or right of
+ * where they belong (src/analysis/skew.ts): each row's kinds as one string (`sig`: e empty, n number, d date, b
+ * boolean, t text, x other), grouped, with how many rows have it and the first and last row number (file order).
+ */
+export function compileSkew(project: Project, target: Target, columns: { name: string; type: string }[], limit?: number): string {
+  if (columns.length < 2) throw new RangeError('Too few columns to look at.');
+  const kinds = columns.map((c) => {
+    const col = ident(c.name);
+    const t = c.type.toUpperCase();
+    if (/INT|DOUBLE|FLOAT|DECIMAL|REAL/.test(t)) return `CASE WHEN ${col} IS NULL THEN 'e' ELSE 'n' END`;
+    if (t === 'DATE' || t.startsWith('TIMESTAMP') || t === 'TIME') return `CASE WHEN ${col} IS NULL THEN 'e' ELSE 'd' END`;
+    if (t === 'BOOLEAN') return `CASE WHEN ${col} IS NULL THEN 'e' ELSE 'b' END`;
+    if (t === 'VARCHAR') {
+      const v = `nullif(trim(CAST(${col} AS VARCHAR)), '')`;
+      return `CASE WHEN ${v} IS NULL THEN 'e' WHEN ${looksLikeNumber(v)} THEN 'n' WHEN ${looksLikeDate(v)} THEN 'd' ELSE 't' END`;
+    }
+    return `CASE WHEN ${col} IS NULL THEN 'e' ELSE 'x' END`;
+  });
+  return `SELECT sig, count(*) AS n, min(rn) AS first, max(rn) AS last FROM (SELECT row_number() OVER () AS rn, concat(${kinds.join(', ')}) AS sig FROM (${nodeSql(project, target, limit)})) GROUP BY sig ORDER BY n DESC, first LIMIT 40`;
+}

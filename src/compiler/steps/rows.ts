@@ -92,6 +92,47 @@ export const filterRows = defineStep({
   },
 });
 
+/**
+ * Realign rows: cells that sit one or more columns to the left or right of where they belong, because a cell was
+ * deleted or inserted in a spreadsheet. On the rows picked (from a row number, or matching conditions as Filter rows
+ * takes them), the values of the listed columns move left or right by `by` columns, the gap left empty and what
+ * moves past the end dropped. The moved columns are read as text, since a value changes type when it changes
+ * column; Change type, Parse numbers or Parse dates after it give them their types back (Fix all adds those).
+ */
+export const realignRows = defineStep({
+  type: 'realignRows',
+  params: z
+    .object({
+      /** Which rows: from a row number down, or the rows matching the conditions. */
+      rows: z.enum(['from', 'where']).default('where'),
+      from: z.number().int().positive().default(1),
+      conditions: z.array(Condition).default([]),
+      match: z.enum(['all', 'any']).default('all'),
+      matchCase: z.boolean().default(false),
+      /** The columns whose cells move, in table order from the first that moved to the last. */
+      columns: z.array(z.string().min(1)).min(2, 'pick the columns that moved, two at least'),
+      /** Which way the cells move to put them right. */
+      direction: z.enum(['left', 'right']).default('right'),
+      by: z.number().int().positive('move by one column at least').default(1),
+    })
+    .refine((p) => p.rows === 'from' || p.conditions.length > 0, { path: ['conditions'], message: 'add a condition, or move the rows from a row number' }),
+  label: (p) => {
+    const which = p.rows === 'from' ? `from row ${p.from}` : p.conditions.length === 1 ? `where ${p.conditions[0]!.column} ${FILTER_OPS[p.conditions[0]!.op]}${NO_VALUE.includes(p.conditions[0]!.op) ? '' : ` ${p.conditions[0]!.value}`}` : `matching ${p.match} of ${p.conditions.length} conditions`;
+    return `Moved cells ${p.direction} by ${p.by} from ${p.columns[0]} ${which}`;
+  },
+  compile: (p, { input }) => {
+    const picked = p.rows === 'from' ? `${ROW} >= ${num(p.from)}` : `coalesce(${p.conditions.map((c) => `(${condition(c, p.matchCase)})`).join(p.match === 'all' ? ' AND ' : ' OR ')}, false)`;
+    const text = (c: string) => `CAST(${ident(c)} AS VARCHAR)`;
+    const moved = p.columns.map((c, i) => {
+      // Moving right, a column takes the value of the one `by` to its left; moving left, of the one `by` to its right.
+      const from = p.direction === 'right' ? i - p.by : i + p.by;
+      const source = p.columns[from];
+      return `CASE WHEN ${picked} THEN ${source == null ? 'NULL' : text(source)} ELSE ${text(c)} END AS ${ident(c)}`;
+    });
+    return `SELECT * EXCLUDE (${ROW}) REPLACE (${list(moved)}) FROM ${numbered(input)}`;
+  },
+});
+
 export const sortRows = defineStep({
   type: 'sortRows',
   params: z.object({ keys: z.array(z.object({ column: z.string().min(1, 'pick a column'), descending: z.boolean().default(false) })).min(1, 'add a column to sort by') }),
