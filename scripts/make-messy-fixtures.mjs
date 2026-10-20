@@ -18,7 +18,7 @@ const p2 = (n) => String(n).padStart(2, '0');
 const first = ['Alice', 'Bob', 'Chloe', 'Dev', 'Ewan', 'Fatima', 'George', 'Hana', 'Isaac', 'Jade', 'Kofi', 'Leila', 'Mateo', 'Nora', 'Omar', 'Priya'];
 const last = ['Smith', 'Jones', 'Patel', 'Okafor', 'Nguyen', 'Garcia', 'Brown', 'Kowalski', 'Murphy', 'Ali', 'Evans', 'Chen'];
 const cities = ['London', 'Manchester', 'Leeds', 'Bristol', 'Glasgow', 'Cardiff'];
-const vendors = ['Acme Supplies Ltd', 'Northwind Traders', 'Globex GmbH', 'Initech', 'Umbrella Logistics', 'Stark Components', 'Wayne Industrial', 'Tyrell Parts'];
+const vendors = ['Acme Supplies Ltd', 'Northwind Traders', 'Müller GmbH', 'Initech', 'Umbrella Logistics', 'Stark Components', 'Wayne Industrial', 'Tyrell Parts'];
 
 // 1. sap-extract.txt: an SAP ALV list from a spool. Banner, separator lines, a pipe table, the header repeated on page
 // 2, German numbers (1.234,50 and a trailing minus), dates as 20.03.2026, a total row and an end-of-report footer.

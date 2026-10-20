@@ -22,8 +22,11 @@ describe('read options', () => {
     expect(delimiterValue(src({ id: 'a', format: 'csv', parseOptions: { delimiter: '|' } }))).toBe('|');
   });
 
-  it('offers read options only for delimited text', () => {
+  it('offers read options (the Format field at least) for every file, and for delimited text from a web address', () => {
     expect(hasParseOptions(src({ id: 'a', format: 'csv' }))).toBe(true);
-    expect(hasParseOptions(src({ id: 'a', format: 'parquet' }))).toBe(false);
+    expect(hasParseOptions(src({ id: 'a', format: 'parquet' }))).toBe(true);
+    expect(hasParseOptions({ ...src({ id: 'a', format: 'csv' }), kind: 'url', url: { href: 'https://x.example/a.csv', headHash: 'h' } })).toBe(true);
+    expect(hasParseOptions({ ...src({ id: 'a', format: 'parquet' }), kind: 'url', url: { href: 'https://x.example/a.parquet', headHash: 'h' } })).toBe(false);
+    expect(hasParseOptions({ ...src({ id: 'a', format: 'csv' }), kind: 'url', url: { href: 'https://x.example/', headHash: 'h', odata: { entitySet: 'People', version: 4 } } })).toBe(false);
   });
 });

@@ -9,7 +9,6 @@ export class SourceError extends Error {
 
 const BY_EXTENSION: Record<string, SourceFormat> = {
   csv: 'csv',
-  txt: 'csv',
   tsv: 'tsv',
   tab: 'tsv',
   json: 'json',
@@ -23,18 +22,25 @@ const BY_EXTENSION: Record<string, SourceFormat> = {
   accdb: 'access',
 };
 
-export const ACCEPT = '.csv,.txt,.tsv,.tab,.json,.ndjson,.jsonl,.parquet,.pq,.xlsx,.xml,.mdb,.accdb';
+export const ACCEPT = '.csv,.txt,.tsv,.tab,.json,.ndjson,.jsonl,.parquet,.pq,.xlsx,.xml,.mdb,.accdb,.dat,.log,.text,.prn';
 
-const extensionOf = (name: string) => /\.([^.]+)$/.exec(name)?.[1]?.toLowerCase() ?? '';
+/** Plain-text extensions that say nothing about the shape inside; `sniff` reads it from the bytes. */
+export const TEXT_EXTENSIONS = new Set(['txt', 'dat', 'log', 'text', 'prn']);
+
+export const extensionOf = (name: string) => /\.([^.]+)$/.exec(name)?.[1]?.toLowerCase() ?? '';
 
 /** The format a file name's extension names, or undefined when Puddle doesn't know it. */
 export const knownFormat = (name: string): SourceFormat | undefined => BY_EXTENSION[extensionOf(name)];
 
-/** Pick the format from a file name, or say plainly why it can't be loaded. */
+/**
+ * Pick the format from a file name alone (a file reconnected, or one at a web address), or say plainly why it can't
+ * be loaded. A .txt file is taken as CSV here; with the bytes to hand, `sniff` reads what it really is.
+ */
 export function formatFromName(name: string): SourceFormat {
   const format = knownFormat(name);
   if (format) return format;
   const ext = extensionOf(name);
+  if (TEXT_EXTENSIONS.has(ext)) return 'csv';
   if (ext === 'xls') throw new SourceError(`${name} is in the old Excel format (.xls), which Puddle doesn’t read. Open it in Excel and save it as .xlsx or CSV, then add that.`);
   throw new SourceError(`${name} isn't a format Puddle reads. Add a CSV, TSV, JSON, NDJSON, Parquet, Excel (.xlsx), XML or Access (.accdb, .mdb) file.`);
 }

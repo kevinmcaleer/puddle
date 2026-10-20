@@ -131,3 +131,8 @@ export function updateSource(project: Project, sourceId: string, patch: Partial<
 export function setParseOptions(project: Project, sourceId: string, parseOptions: ParseOptions): Project {
   return updateSource(project, sourceId, { parseOptions });
 }
+
+/** Read a source as another format: its read options start again from the ones given (the sniff's, or none). */
+export function setSourceFormat(project: Project, sourceId: string, format: Source['format'], parseOptions: ParseOptions = {}): Project {
+  return { ...project, sources: project.sources.map((s) => (s.id === sourceId ? { ...s, format, parseOptions } : s)) };
+}

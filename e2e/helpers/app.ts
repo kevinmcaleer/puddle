@@ -125,7 +125,10 @@ export async function expectRows(page: Page, rows: number) {
 export async function columnsOf(page: Page, nodeName: string): Promise<string[]> {
   await expect(node(page, nodeName)).toHaveAttribute('data-status', 'ok', { timeout: 20_000 });
   await node(page, nodeName).click();
-  return page.getByTestId('inspector-columns').locator('.ui-col').allTextContents();
+  // The inspector lists the columns a moment after the click; read them once the first is there (Firefox is slower).
+  const columns = page.getByTestId('inspector-columns').locator('.ui-col');
+  await expect(columns.first()).toBeVisible({ timeout: 10_000 });
+  return columns.allTextContents();
 }
 
 /** A visible results cell by data column and row (both from 0), as Glide mirrors it for screen readers. */

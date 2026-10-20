@@ -1,0 +1,4 @@
+id;customer;total
+1;Ada;12.50
+2;Bob;7.00
+3;Cy;99.99

@@ -10,6 +10,7 @@ import { QuickFixes } from '../quickfix/QuickFixes';
 import { showFailing } from '../rules';
 import { useKeptTotal } from '../flow/kept';
 import { issuesOf, useAnalysisEntry, useAnalysisEvaluation } from '../analysis';
+import { FixAll } from '../analysis/FixAll';
 import { ruleTally, useRuleStore } from '../flow/rules';
 import { sampledUpstream, useSample, useViewProject } from '../flow/sample';
 import { SampleBanner } from '../results/SampleBanner';
@@ -32,6 +33,7 @@ import { openUserGuide, startTaxiTutorial } from '../samples/open';
 import { Tour } from '../tour/Tour';
 import { TOUR_STOPS } from '../tour/stops';
 import { canResume, readProgress, startTourSafely, useTour } from '../tour/tour';
+import { FormatDialog } from '../sources/FormatDialog';
 import { UrlDialog } from '../sources/UrlDialog';
 import { openUrlDialog } from '../sources/urlDialog';
 import { WebPageDialog } from '../sources/WebPageDialog';
@@ -150,7 +152,12 @@ function ResultsTitle() {
           </Button>
         </div>
       ) : (
-        <QuickFixes />
+        <div className="flex items-start gap-2">
+          <QuickFixes />
+          <div className="ml-auto px-3 pb-2 empty:hidden">
+            <FixAll node={node} />
+          </div>
+        </div>
       )}
     </ResultsBar>
   );
@@ -442,6 +449,7 @@ export function AppShell() {
         <Strip />
       </div>
       <UrlDialog onChooseFile={chooseFiles} />
+      <FormatDialog />
       <WebPageDialog />
       <ODataDialog />
       <SamplesDialog />

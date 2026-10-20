@@ -2,9 +2,9 @@ import { whenEngine } from '../app/engine';
 import { useSession } from '../app/session';
 import { sourceFileName } from '../compiler';
 import { updateSource, useProjectStore, type Project, type Source } from '../model';
-import { rememberFile, sourceFile } from './add';
+import { registerSourceFile, rememberFile, sourceFile } from './add';
 import { markAttached, useAttachments, type Attachment } from './attachments';
-import { formatFromName, knownFormat, SourceError } from './detect';
+import { extensionOf, formatFromName, knownFormat, SourceError, TEXT_EXTENSIONS } from './detect';
 import { keepHandle, offerHandles, settleSource, supportsFileHandles, useReconnect, type FileHandle } from './handles';
 import { headHash } from './hash';
 import { deleteHandles, loadHandles } from '../persistence/db';
@@ -61,13 +61,15 @@ export async function attachProject(project: Project): Promise<void> {
  * attached to its first file the same way.
  */
 export async function reattachFile(source: Source, file: File, handle?: FileHandle): Promise<Attachment> {
-  const format = formatFromName(file.name);
-  if (format !== source.format) throw new SourceError(`${file.name} isn’t a ${source.format.toUpperCase()} file. Choose the file this source was built on.`);
+  // A name that says a different format is the wrong file; a plain-text name (.txt, .dat) says nothing, and the
+  // source keeps the format it was sniffed as.
+  const named = knownFormat(file.name) ?? (TEXT_EXTENSIONS.has(extensionOf(file.name)) ? undefined : formatFromName(file.name));
+  if (named && named !== source.format) throw new SourceError(`${file.name} isn’t a ${source.format.toUpperCase()} file. Choose the file this source was built on.`);
   const hash = await headHash(file);
   const same = source.file?.headHash === hash;
   const engine = await whenEngine();
   // Excel, Access and XML are read again once the file is remembered (see ./excel, ./access and ./xml).
-  if (format !== 'xlsx' && format !== 'xml' && format !== 'access') await engine.registerFile(sourceFileName(source), file);
+  await registerSourceFile(engine, source, file);
   rememberFile(source.id, file);
   keepHandle(source.id, handle);
   settleSource(source.id);

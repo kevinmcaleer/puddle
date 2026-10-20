@@ -6,7 +6,7 @@ User KMCALEER      Date 20.03.2026   Time 08:14:52
 |Doc. no.  |Vendor              |Doc. date |Pstng date|Crcy|    Amount in LC|Cost ctr|Text                    |
 ---------------------------------------------------------------------------------------------------------------
 |5100000000|Wayne Industrial    |02.02.2026|03.02.2026|EUR |         891,36 |CC3009  |Invoice                 |
-|5100000007|Globex GmbH         |23.03.2026|24.03.2026|EUR |       7.625,43 |CC2006  |Q1 maintenance          |
+|5100000007|Müller GmbH         |23.03.2026|24.03.2026|EUR |       7.625,43 |CC2006  |Q1 maintenance          |
 |5100000014|Acme Supplies Ltd   |25.01.2026|26.01.2026|GBP |       2.989,98 |CC8001  |Spares                  |
 |5100000021|Umbrella Logistics  |14.02.2026|15.02.2026|EUR |       9.509,39 |CC8008  |Freight                 |
 |5100000028|Tyrell Parts        |03.03.2026|05.03.2026|EUR |       6.757,79 |CC2002  |Q1 maintenance          |
@@ -17,7 +17,7 @@ User KMCALEER      Date 20.03.2026   Time 08:14:52
 |5100000063|Tyrell Parts        |05.01.2026|06.01.2026|EUR |         398,85 |CC6008  |Freight                 |
 |5100000070|Stark Components    |19.01.2026|19.01.2026|EUR |       7.984,02 |CC6002  |Q1 maintenance          |
 |5100000077|Stark Components    |27.01.2026|28.01.2026|EUR |       1.099,51 |CC6006  |                        |
-|5100000084|Globex GmbH         |01.03.2026|01.03.2026|EUR |       7.418,67 |CC7004  |Invoice                 |
+|5100000084|Müller GmbH         |01.03.2026|01.03.2026|EUR |       7.418,67 |CC7004  |Invoice                 |
 |5100000091|Wayne Industrial    |21.01.2026|22.01.2026|EUR |       8.388,08 |CC7001  |                        |
 |5100000098|Acme Supplies Ltd   |14.03.2026|17.03.2026|GBP |       6.727,94 |CC1002  |Invoice                 |
 |5100000105|Umbrella Logistics  |05.03.2026|08.03.2026|EUR |       7.375,64 |CC2008  |Freight                 |
@@ -29,7 +29,7 @@ User KMCALEER      Date 20.03.2026   Time 08:14:52
 |5100000147|Acme Supplies Ltd   |04.01.2026|07.01.2026|GBP |       9.783,95 |CC4003  |Credit memo             |
 |5100000154|Stark Components    |25.02.2026|27.02.2026|EUR |       2.240,68-|CC2007  |Invoice                 |
 |5100000161|Northwind Traders   |27.01.2026|28.01.2026|GBP |       1.297,64 |CC6007  |Consulting March        |
-|5100000168|Globex GmbH         |22.02.2026|24.02.2026|EUR |       8.517,98 |CC1009  |Invoice                 |
+|5100000168|Müller GmbH         |22.02.2026|24.02.2026|EUR |       8.517,98 |CC1009  |Invoice                 |
 |5100000175|Umbrella Logistics  |13.02.2026|13.02.2026|EUR |       2.639,29 |CC9009  |Consulting March        |
 |5100000182|Acme Supplies Ltd   |26.03.2026|26.03.2026|EUR |       6.421,19 |CC9002  |Credit memo             |
 |5100000189|Wayne Industrial    |13.01.2026|15.01.2026|EUR |       9.779,81-|CC4005  |Credit memo             |
@@ -57,8 +57,8 @@ User KMCALEER      Date 20.03.2026   Time 08:14:52
 |5100000280|Umbrella Logistics  |23.03.2026|25.03.2026|EUR |       5.924,72 |CC9009  |Freight                 |
 |5100000287|Wayne Industrial    |27.03.2026|28.03.2026|EUR |       3.798,51 |CC5000  |Freight                 |
 |5100000294|Umbrella Logistics  |01.01.2026|03.01.2026|GBP |         269,94 |CC9003  |Q1 maintenance          |
-|5100000301|Globex GmbH         |10.01.2026|13.01.2026|EUR |       6.125,71-|CC9007  |Consulting March        |
-|5100000308|Globex GmbH         |15.03.2026|15.03.2026|EUR |       2.753,70 |CC2005  |                        |
+|5100000301|Müller GmbH         |10.01.2026|13.01.2026|EUR |       6.125,71-|CC9007  |Consulting March        |
+|5100000308|Müller GmbH         |15.03.2026|15.03.2026|EUR |       2.753,70 |CC2005  |                        |
 |5100000315|Initech             |06.03.2026|06.03.2026|GBP |       2.538,35 |CC7002  |Consulting March        |
 |5100000322|Initech             |26.03.2026|26.03.2026|EUR |         886,47 |CC4004  |Consulting March        |
 |5100000329|Northwind Traders   |04.01.2026|05.01.2026|EUR |       3.154,66 |CC4008  |Spares                  |
@@ -71,7 +71,7 @@ User KMCALEER      Date 20.03.2026   Time 08:14:52
 |5100000378|Stark Components    |14.01.2026|17.01.2026|GBP |       2.244,60 |CC5009  |Credit memo             |
 |5100000385|Wayne Industrial    |16.02.2026|18.02.2026|EUR |         431,93-|CC3008  |Spares                  |
 |5100000392|Acme Supplies Ltd   |01.02.2026|01.02.2026|EUR |       7.924,39 |CC8000  |Invoice                 |
-|5100000399|Globex GmbH         |22.02.2026|24.02.2026|EUR |       5.472,87 |CC7009  |Spares                  |
+|5100000399|Müller GmbH         |22.02.2026|24.02.2026|EUR |       5.472,87 |CC7009  |Spares                  |
 |5100000406|Initech             |26.01.2026|26.01.2026|GBP |       3.061,95 |CC3008  |Consulting March        |
 |5100000413|Tyrell Parts        |28.01.2026|28.01.2026|EUR |         176,25 |CC5007  |Invoice                 |
 ---------------------------------------------------------------------------------------------------------------

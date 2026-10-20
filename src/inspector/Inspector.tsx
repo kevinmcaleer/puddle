@@ -4,7 +4,7 @@ import { NotesPanel } from '../notes/NotesPanel';
 import { inspectorTabs, shownTab } from './tabs';
 import { useNodeStatus } from '../flow/status';
 import { sourceFormatLabel } from '../canvas/formatLabel';
-import { nodeById, setParseOptions, setRunnerPath, useProject, useProjectStore, type GraphNode, type ParseOptions, type ProjectSettings as ProjectSettingsT, type Source } from '../model';
+import { nodeById, setParseOptions, setRunnerPath, useProject, useProjectStore, type GraphNode, type ProjectSettings as ProjectSettingsT, type Source, type SourceFormat } from '../model';
 import { Banner, browserLocale, columnKind, DISPLAY_LOCALES, Field, formatDateText, formatNumberText, Icon, NODE_KIND, Section, Select, Switch, Tabs, TypeTag, useDisplay, useDisplayFormat, type DateDisplay } from '../ui';
 import { CommitInput } from '../steps/StepForm';
 import { AppendPanel } from './AppendPanel';
@@ -29,30 +29,29 @@ import { isExcelSource } from '../sources/excel';
 import { ExcelPanel } from '../sources/ExcelPanel';
 import { isXmlSource } from '../sources/xml';
 import { XmlPanel } from '../sources/XmlPanel';
-import { DELIMITERS, delimiterValue, ENCODINGS, hasParseOptions, LOCALES, parseNullStrings, withOption } from './options';
+import { hasParseOptions, LOCALES, parseNullStrings } from './options';
+import { changeSourceFormat } from '../sources/add';
+import { CsvOptions } from '../sources/CsvOptions';
+import { FORMAT_OPTIONS } from '../sources/formats';
 
 function SourceOptions({ source }: { source: Source }) {
   const apply = useProjectStore((s) => s.apply);
-  const o = source.parseOptions;
-  const set = <K extends keyof ParseOptions>(key: K, value: ParseOptions[K] | 'auto') => apply((p) => setParseOptions(p, source.id, withOption(o, key, value)));
   return (
     <Section title="Read options">
       <div className="flex flex-col gap-3">
-        <Field label="Delimiter" htmlFor="opt-delimiter">
-          <Select id="opt-delimiter" options={DELIMITERS} value={delimiterValue(source)} onChange={(e) => set('delimiter', e.target.value)} />
-        </Field>
-        <Switch id="opt-header" label="First row is the header" checked={o.header ?? true} onChange={(on) => set('header', on ? 'auto' : false)} />
-        <Field label="Encoding" htmlFor="opt-encoding">
-          <Select id="opt-encoding" options={ENCODINGS} value={o.encoding ?? 'utf-8'} onChange={(e) => set('encoding', e.target.value === 'utf-8' ? 'auto' : e.target.value)} />
-        </Field>
-        <Field label="Quote character" htmlFor="opt-quote" hint="Leave empty to detect it.">
-          <CommitInput key={o.quote ?? ''} id="opt-quote" value={o.quote ?? ''} onCommit={(v) => set('quote', v)} placeholder='"' />
-        </Field>
-        <Field label="Treat as empty" htmlFor="opt-nulls" hint="Values read as empty, separated by commas.">
-          <CommitInput key={(o.nullStrings ?? []).join(',')} id="opt-nulls" value={(o.nullStrings ?? []).join(', ')} onCommit={(v) => set('nullStrings', parseNullStrings(v))} placeholder="NA, n/a" />
-        </Field>
+        <FormatField source={source} />
+        {(source.format === 'csv' || source.format === 'tsv') && <CsvOptions format={source.format} options={source.parseOptions} onChange={(o) => apply((p) => setParseOptions(p, source.id, o))} />}
       </div>
     </Section>
+  );
+}
+
+/** Which format a file is read as; a wrong guess by the sniff is one change here. */
+function FormatField({ source }: { source: Source }) {
+  return (
+    <Field label="Format" htmlFor="opt-format">
+      <Select id="opt-format" options={FORMAT_OPTIONS} value={source.format} onChange={(e) => void changeSourceFormat(source.id, e.target.value as SourceFormat)} />
+    </Field>
   );
 }
 
@@ -127,6 +126,9 @@ function ProjectSettings() {
         </Field>
         <Field hint="Steps added from the Add menu and the results table (quick fixes and the column menu) each go in a new Transform node, so every step shows on the canvas. Off, they stack into the Transform being viewed.">
           <Switch label="Add each step as a new node" checked={settings.stepsAsNodes} onChange={(on) => set({ stepsAsNodes: on })} />
+        </Field>
+        <Field hint="Fix all also applies the fixes analysis only suggests, such as reading text as numbers when most of it is numbers. Off, those stay unticked until chosen from the list.">
+          <Switch label="Fix all applies suggestions" checked={settings.fixAllSuggestions} onChange={(on) => set({ fixAllSuggestions: on })} />
         </Field>
         <Field label="Run on a schedule" htmlFor="set-schedule" hint="Cron syntax for puddle-run on your own machine, e.g. 0 3 * * * for 03:00 every day. Empty: never.">
           <CommitInput key={settings.schedule ?? ''} id="set-schedule" value={settings.schedule ?? ''} placeholder="0 3 * * *" onCommit={(v) => set({ schedule: v.trim() || undefined })} />

@@ -1,0 +1,152 @@
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { describe, expect, it } from 'vitest';
+import { SourceError } from './detect';
+import { decodeHead, fixedWidthColumns, signatureOf, sniff, sniffDelimiter, sniffHeader, sniffPasted, sniffText } from './sniff';
+
+const bytes = (...parts: (string | number[])[]) => new Uint8Array(parts.flatMap((p) => (typeof p === 'string' ? [...new TextEncoder().encode(p)] : p)));
+const messy = (name: string) => new Uint8Array(readFileSync(join(__dirname, '../../tests/fixtures/messy', name)));
+const fixture = (name: string) => new Uint8Array(readFileSync(join(__dirname, '../../tests/fixtures', name)));
+const file = (name: string, head: Uint8Array) => sniff({ name, head, size: head.length });
+
+/** A zip whose first local header names `entry` (enough for the signature; nothing reads the data). */
+const zip = (entry: string) => bytes([0x50, 0x4b, 0x03, 0x04, 0x14, 0x00, 0x00, 0x00, 0x08, 0x00, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, entry.length, 0, 0, 0], entry);
+
+describe('binary signatures', () => {
+  it.each([
+    ['xl/workbook.xml', 'xlsx'],
+    ['xl/workbook.bin', 'xlsb'],
+    ['mimetype', 'ods'],
+    ['word/document.xml', 'word'],
+    ['ppt/presentation.xml', 'powerpoint'],
+    ['data/orders.csv', 'zip'],
+  ])('a zip holding %s is %s', (entry, format) => {
+    expect(signatureOf(zip(entry))).toBe(format);
+  });
+
+  it.each([
+    [[0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1], 'ole'],
+    ['PAR1', 'parquet'],
+    ['ARROW1', 'arrow'],
+    ['SQLite format 3\0', 'sqlite'],
+    [[0x00, 0x01, 0x00, 0x00, ...new TextEncoder().encode('Standard ACE DB')], 'access'],
+    [[0x00, 0x01, 0x00, 0x00, ...new TextEncoder().encode('Standard Jet DB')], 'access'],
+    [[0x1f, 0x8b, 0x08], 'gzip'],
+    ['BZh91AY', 'bzip2'],
+    [[0x28, 0xb5, 0x2f, 0xfd], 'zstd'],
+    ['%PDF-1.7', 'pdf'],
+    ['name,age\nAda,36\n', undefined],
+  ])('%j is %s', (sig, format) => {
+    expect(signatureOf(bytes(sig as never))).toBe(format);
+  });
+
+  it('reads the real fixtures: the workbooks, Parquet and both Access files', () => {
+    expect(file('skewed.xlsx', messy('skewed.xlsx')).format).toBe('xlsx');
+    expect(file('merged.xlsx', messy('merged.xlsx')).format).toBe('xlsx');
+    expect(file('customers.parquet', fixture('customers.parquet'))).toMatchObject({ format: 'parquet', confidence: 'sure' });
+    expect(file('shop.accdb', fixture('shop.accdb'))).toMatchObject({ format: 'access', confidence: 'sure' });
+    expect(file('shop.mdb', fixture('shop.mdb').subarray(0, 4096)).format).toBe('access');
+  });
+
+  it('refuses what it can name but not read, saying what it is and what to do', () => {
+    expect(() => file('book.xls', bytes([0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1]))).toThrow('book.xls is in the old Excel format (.xls), which Puddle doesn’t read. Open it in Excel and save it as .xlsx or CSV, then add that.');
+    expect(() => file('book.ods', zip('mimetype'))).toThrow('book.ods is an OpenDocument spreadsheet (.ods), which Puddle doesn’t read yet. Save it as .xlsx or CSV, then add that.');
+    expect(() => file('orders.csv.gz', bytes([0x1f, 0x8b, 0x08]))).toThrow('orders.csv.gz is a gzip-compressed file, which Puddle doesn’t open yet. Unpack it and add the file inside.');
+    expect(() => file('report.pdf', bytes('%PDF-1.4'))).toThrow(/report\.pdf is a PDF, which Puddle doesn’t read\. Add a CSV/);
+    expect(() => file('photo.png', bytes([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0]))).toThrow('photo.png is a binary file, which Puddle doesn’t read. Add a CSV, TSV, JSON, NDJSON, Parquet, Excel (.xlsx), XML or Access (.accdb, .mdb) file.');
+    expect(() => file('empty.dat', bytes(''))).toThrow(SourceError);
+  });
+});
+
+describe('text encodings', () => {
+  it('reads a UTF-8 BOM, UTF-16 by its BOM or its NUL bytes, and bytes that aren’t UTF-8 as latin-1', () => {
+    expect(decodeHead(bytes([0xef, 0xbb, 0xbf], 'a,b\n'))).toEqual({ text: 'a,b\n', bom: true });
+    expect(decodeHead(bytes([0xff, 0xfe], [0x61, 0, 0x2c, 0, 0x62, 0]))).toEqual({ text: 'a,b', encoding: 'utf-16', bom: true });
+    expect(decodeHead(bytes([0xfe, 0xff], [0, 0x61, 0, 0x2c, 0, 0x62]))).toEqual({ text: 'a,b', encoding: 'utf-16', bom: true });
+    const noBom = bytes(Array.from('name,city\nAda,Leeds\n').flatMap((c) => [c.charCodeAt(0), 0]));
+    expect(decodeHead(noBom)).toMatchObject({ text: 'name,city\nAda,Leeds\n', encoding: 'utf-16', bom: false });
+    expect(decodeHead(bytes('caf', [0xe9], ',1\n'))).toEqual({ text: 'café,1\n', encoding: 'latin-1', bom: false });
+    expect(decodeHead(bytes('café,1\n'))).toEqual({ text: 'café,1\n', bom: false });
+    expect(decodeHead(bytes('a', [0], 'b'))).toEqual({ binary: true });
+    // A PNG's signature has a control byte in it, and no NUL yet.
+    expect(decodeHead(bytes([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))).toEqual({ binary: true });
+  });
+
+  it('a megabyte cut inside a character is still UTF-8', () => {
+    const cut = bytes('x,café'.repeat(10)).subarray(0, 'x,café'.repeat(10).length - 1);
+    expect(decodeHead(cut, false)).toMatchObject({ bom: false });
+    expect('encoding' in decodeHead(cut, false)).toBe(false);
+  });
+});
+
+describe('delimited text', () => {
+  it('picks the delimiter whose count agrees across the most lines, and tells TSV from CSV', () => {
+    expect(sniffDelimiter(['a,b,c', 'd,e,f', 'g,h,i'])).toEqual({ delimiter: ',', share: 1, fields: 3 });
+    expect(sniffDelimiter(['a;b', 'c;d', 'e;f', 'g,h;i'])).toEqual({ delimiter: ';', share: 1, fields: 2 });
+    expect(sniffDelimiter(['a\tb,c', 'd\te,f'])).toMatchObject({ delimiter: ',' });
+    expect(sniffDelimiter(['one', 'two'])).toBeUndefined();
+    // Commas inside quotes don't count.
+    expect(sniffDelimiter(['name,notes', '"Ada, Countess",x', '"Bob",y'])).toEqual({ delimiter: ',', share: 1, fields: 2 });
+    expect(sniffText('name\tcity\nAda\tLeeds\n')).toMatchObject({ format: 'tsv', confidence: 'sure', parseOptions: {} });
+    expect(sniffText('name;city\nAda;Leeds\n')).toMatchObject({ format: 'csv', confidence: 'sure', parseOptions: { delimiter: ';' } });
+    expect(sniffText('name,city\nAda,Leeds\n')).toMatchObject({ format: 'csv', confidence: 'sure', parseOptions: {} });
+  });
+
+  it('says the first row is data when its numbers line up with the numbers below', () => {
+    expect(sniffHeader(['1,Ada,36', '2,Bob,41', '3,Cy,29'], ',')).toBe(false);
+    expect(sniffHeader(['id,name,age', '1,Ada,36', '2,Bob,41'], ',')).toBeUndefined();
+    expect(sniffHeader(['a,b', 'c,d', 'e,f'], ',')).toBeUndefined();
+    expect(sniffText('1,Ada,36\n2,Bob,41\n3,Cy,29\n').parseOptions).toEqual({ header: false });
+  });
+
+  it('reads a pipe table or SAP list as pipe-delimited, and names fixed-width and YAML without reading them', () => {
+    expect(sniffText('|a|b|\n|---|---|\n|1|2|\n')).toMatchObject({ format: 'csv', confidence: 'likely', parseOptions: { delimiter: '|' } });
+    const fixed = ['NAME      CITY     AGE', 'Ada       Leeds     36', 'Bob       York      41', 'Cy        Hull      29', 'Dee       Bath      33'];
+    expect(fixedWidthColumns(fixed)).toBe(2);
+    expect(sniffText(fixed.join('\n'))).toMatchObject({ format: 'csv', confidence: 'unsure', reason: expect.stringContaining('fixed positions') });
+    expect(sniffText('---\nname: Ada\ncity: Leeds\n')).toMatchObject({ confidence: 'unsure', reason: expect.stringContaining('YAML') });
+    expect(sniffText('Dear all,\n\nHere are the notes.\nThanks.\n')).toMatchObject({ format: 'csv', confidence: 'unsure' });
+  });
+
+  it('tells JSON, NDJSON, XML and a web page apart', () => {
+    expect(sniffText('[{"a":1}]')).toMatchObject({ format: 'json', confidence: 'sure' });
+    expect(sniffText('{"a":1}\n{"a":2}\n')).toMatchObject({ format: 'ndjson', confidence: 'sure' });
+    expect(sniffText('{\n  "a": 1\n}\n')).toMatchObject({ format: 'json', confidence: 'sure' });
+    expect(sniffText('<?xml version="1.0"?><rows><row/></rows>')).toMatchObject({ format: 'xml', confidence: 'sure' });
+    expect(sniffText('<!DOCTYPE html><html><body><table></table></body></html>')).toMatchObject({ format: 'xml', confidence: 'unsure', reason: expect.stringContaining('web page') });
+    expect(sniffPasted('a\tb\n1\t2\n').format).toBe('tsv');
+  });
+});
+
+describe('the file name and the content', () => {
+  it('agrees: a CSV named .csv is sure; a CSV named .txt or with no extension reads as CSV without a question', () => {
+    expect(file('orders.csv', bytes('a,b\n1,2\n3,4\n'))).toMatchObject({ format: 'csv', confidence: 'sure' });
+    expect(file('orders.txt', bytes('a;b\n1;2\n3;4\n'))).toMatchObject({ format: 'csv', confidence: 'sure', parseOptions: { delimiter: ';' } });
+    expect(file('README', bytes('a,b\n1,2\n3,4\n'))).toMatchObject({ format: 'csv', confidence: 'sure' });
+    expect(file('orders.txt', bytes('a\tb\n1\t2\n'))).toMatchObject({ format: 'tsv', confidence: 'sure' });
+  });
+
+  it('lets unambiguous content win over the name (D24): JSON named .csv reads as JSON', () => {
+    expect(file('items.csv', bytes('[{"a":1}]'))).toMatchObject({ format: 'json', confidence: 'sure', alternatives: ['csv'] });
+    expect(file('rows.json', bytes('a,b\n1,2\n3,4\n'))).toMatchObject({ format: 'csv', confidence: 'sure', alternatives: ['json'] });
+  });
+
+  it('asks when neither is sure, and takes the name’s word when the content says nothing', () => {
+    expect(file('notes.txt', bytes('Dear all,\n\nHere are the notes.\n'))).toMatchObject({ format: 'csv', confidence: 'unsure' });
+    expect(file('notes.csv', bytes('one\ntwo\nthree\n'))).toMatchObject({ format: 'csv', confidence: 'likely' });
+    expect(file('list.json', bytes('|a|b|\n|--|--|\n|1|2|\n'))).toMatchObject({ format: 'csv', confidence: 'unsure', alternatives: ['json'] });
+  });
+
+  it('sets the encoding from the bytes, and keeps a UTF-16 CSV as CSV', () => {
+    const utf16 = bytes([0xff, 0xfe], Array.from('a,b\n1,2\n3,4\n').flatMap((c) => [c.charCodeAt(0), 0]));
+    expect(file('orders.csv', utf16)).toMatchObject({ format: 'csv', confidence: 'sure', parseOptions: { encoding: 'utf-16' } });
+    expect(file('orders.csv', bytes('caf', [0xe9], ',1\nth', [0xe9], ',2\n'))).toMatchObject({ parseOptions: { encoding: 'latin-1' } });
+  });
+
+  it('reads the messy fixtures: the SAP extract as a pipe list in latin-1, the CRM export as semicolons', () => {
+    expect(file('sap-extract.txt', messy('sap-extract.txt'))).toMatchObject({ format: 'csv', parseOptions: { delimiter: '|', encoding: 'latin-1' } });
+    expect(file('messy.txt', messy('messy.txt'))).toMatchObject({ format: 'csv', parseOptions: { delimiter: ';' } });
+    expect(file('messy.csv', fixture('messy.csv'))).toMatchObject({ format: 'csv', confidence: 'sure', parseOptions: {} });
+    expect(file('bond-films.html', fixture('bond-films.html'))).toMatchObject({ format: 'xml', confidence: 'unsure' });
+  });
+});

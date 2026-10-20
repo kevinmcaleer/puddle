@@ -153,7 +153,7 @@ describe('skewed.xlsx: invoice rows shifted by a deleted or an inserted cell', (
   it('from the 18th row of the first sheet the cells sit one column to the left, so Customer holds dates and Gross is empty', () => {
     const data = readSheet(wb, { sheet: 'Deleted cell' });
     const col = (name: string) => data.columns.find((c) => c.name === name)!.values;
-    const vendors = ['Acme Supplies Ltd', 'Northwind Traders', 'Globex GmbH', 'Initech', 'Umbrella Logistics', 'Stark Components', 'Wayne Industrial', 'Tyrell Parts'];
+    const vendors = ['Acme Supplies Ltd', 'Northwind Traders', 'Müller GmbH', 'Initech', 'Umbrella Logistics', 'Stark Components', 'Wayne Industrial', 'Tyrell Parts'];
     const vendor = (v: unknown) => typeof v === 'string' && vendors.includes(v);
     expect(col('Customer').slice(0, 17).every(vendor)).toBe(true);
     expect(col('Customer').slice(17).some(vendor)).toBe(false);
