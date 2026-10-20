@@ -21,13 +21,18 @@ export function IssuesPanel({ node }: { node: GraphNode }) {
       <div className="flex flex-col" data-testid="issues" data-state={state}>
         {entry?.state === 'error' && <p className="text-label text-fail">Couldn’t analyse this node: {entry.message}</p>}
         {entry?.state === 'pending' && <p className="text-label text-ink-muted">Looking at the data…</p>}
+        {entry?.state === 'ok' && entry.analysis.facts.sample && (
+          <p className="text-label text-ink-muted" data-testid="issues-sample">
+            {`Checked on the first ${entry.analysis.facts.sample.rows.toLocaleString('en-GB')} of ${entry.analysis.facts.sample.total.toLocaleString('en-GB')} rows.`}
+          </p>
+        )}
         {entry?.state === 'ok' && !issues.length && (
           <p className="text-label text-ink-muted" data-testid="issues-none">
             {ignored.length ? 'Nothing else found.' : 'Nothing found. The data looks tidy.'}
           </p>
         )}
         {issues.map((issue) => (
-          <div key={issue.key} data-testid={`issue-${issue.key}`}>
+          <div key={issue.key} data-testid={`issue-${issue.key}`} data-severity={issue.severity}>
             <IssueRow
               name={issueLabel(issue)}
               severity={issue.severity}

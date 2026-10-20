@@ -1,4 +1,5 @@
-export { compileAnalysis, compileShape, NON_PRINTING_PATTERN, VALUES_LIMIT, type AnalysisCheck } from './analysis';
+export { compileAnalysis, compileDistinctFacts, compileShape, compileValueCounts, NON_PRINTING_PATTERN, VALUES_LIMIT, type AnalysisCheck } from './analysis';
+export { DATE_PATTERN, MOJIBAKE_FIXES, MOJIBAKE_PATTERN, NUMBER_PATTERN, PLACEHOLDERS } from './patterns';
 export {
   compile,
   compileCount,

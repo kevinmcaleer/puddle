@@ -20,12 +20,19 @@ export async function shot(page: Page, name: string, target?: Locator, { pad = 8
     await page.screenshot(options);
     return;
   }
-  const box = (await target.boundingBox())!;
-  const view = page.viewportSize()!;
-  const x = Math.max(0, box.x - pad);
-  const y = Math.max(0, box.y - pad);
-  const clip = { x, y, width: Math.min(view.width, box.x + box.width + pad) - x, height: Math.min(view.height, box.y + box.height + pad) - y };
-  await page.screenshot({ ...options, clip });
+  // The target can still be laying out, or sit outside the window for a moment after the window was resized: a clip
+  // that is empty or off screen is measured again after it is brought into view.
+  await expect(async () => {
+    await target.scrollIntoViewIfNeeded();
+    const box = (await target.boundingBox())!;
+    const view = page.viewportSize()!;
+    const x = Math.max(0, box.x - pad);
+    const y = Math.max(0, box.y - pad);
+    const clip = { x, y, width: Math.min(view.width, box.x + box.width + pad) - x, height: Math.min(view.height, box.y + box.height + pad) - y };
+    expect(clip.width).toBeGreaterThan(0);
+    expect(clip.height).toBeGreaterThan(0);
+    await page.screenshot({ ...options, clip });
+  }).toPass({ timeout: 10_000, intervals: [300] });
 }
 
 /**

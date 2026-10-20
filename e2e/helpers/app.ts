@@ -1,4 +1,4 @@
-import { expect, type Page } from '@playwright/test';
+import { expect, type Locator, type Page } from '@playwright/test';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
@@ -103,17 +103,62 @@ export async function addFiles(page: Page, files: string[] | { name: string; mim
 
 export const node = (page: Page, name: string) => page.getByTestId(`node-${name}`);
 
+/** The names of the nodes selected on the canvas, as the session has them (React Flow draws its `selected` class from the session). */
+const selectedNodes = (page: Page) =>
+  page.locator('.react-flow__node.selected').evaluateAll((els) =>
+    // The card's own test id (node-<name>) is the first inside each React Flow node; its pill and badges come after.
+    els.flatMap((el) => {
+      const id = el.querySelector('[data-testid^="node-"]')?.getAttribute('data-testid');
+      return id ? [id.slice('node-'.length)] : [];
+    }),
+  );
+
 /**
- * Click a node on the canvas (Shift adds it to the selection) and wait until it is selected. Firefox can take a click
- * on a canvas still settling as a drag that selects nothing, so a click that didn't select is tried again; a node
- * already selected isn't clicked, so Shift never toggles it off.
+ * Click a node on the canvas (Shift adds it to the selection) and wait until the selection is what the click asked for:
+ * just this node, or this node with the ones already selected. Firefox can take a click on a canvas still settling as
+ * a drag that selects nothing, and a Shift+click as a plain click that drops the rest, so a click that didn't leave the
+ * selection right is tried again (the dropped nodes added back); a node already selected isn't clicked, so Shift never
+ * toggles it off.
  */
 export async function selectNode(page: Page, name: string, modifiers: Array<'Shift'> = []) {
-  const selected = page.locator('.react-flow__node.selected').filter({ has: node(page, name) });
+  const shift = modifiers.includes('Shift');
+  const want = shift ? [...new Set([...(await selectedNodes(page)), name])] : [name];
+  // A plain click always happens, since it also views the node, even one already selected; a Shift+click only
+  // adds what is missing, since on a selected node it would toggle it off.
+  let clicked = false;
   await expect(async () => {
-    if (!(await selected.count())) await node(page, name).click({ modifiers });
-    await expect(selected).toHaveCount(1, { timeout: 2_000 });
+    const have = await selectedNodes(page);
+    const missing = shift ? want.filter((n) => !have.includes(n)) : clicked && have.length === 1 && have[0] === name ? [] : [name];
+    for (const n of missing) await node(page, n).click({ modifiers });
+    clicked = true;
+    await expect.poll(() => selectedNodes(page), { timeout: 2_000 }).toEqual(shift ? expect.arrayContaining(want) : [name]);
   }).toPass({ timeout: 20_000 });
+}
+
+/**
+ * Drag a wire from `from`'s output handle into the input handle `to` (a locator, or the name of the node whose first
+ * input it is), until `landed` holds (the wire is attached, or a notice says why not). React Flow measures each node's
+ * handles after the node settles, so a drag can start the moment the node is drawn and land before that measurement
+ * caught up, connecting nothing and saying nothing. Nobody drags that fast; the test tries again, as a person would.
+ */
+export async function dragWire(page: Page, from: string, to: string | Locator, landed: () => Promise<void>) {
+  const out = node(page, from).locator('.react-flow__handle.source');
+  const inp = typeof to === 'string' ? node(page, to).locator('.react-flow__handle.target').first() : to;
+  for (let attempt = 1; ; attempt++) {
+    // Press where the handle is now, measured just before, rather than where hover() last found it.
+    const start = (await out.boundingBox())!;
+    await page.mouse.move(start.x + start.width / 2, start.y + start.height / 2);
+    await page.mouse.down();
+    const box = (await inp.boundingBox())!;
+    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2, { steps: 8 });
+    await page.mouse.up();
+    try {
+      await landed();
+      return;
+    } catch (error) {
+      if (attempt === 3) throw error;
+    }
+  }
 }
 
 /** The rows the results table says it has, once the background count lands. */

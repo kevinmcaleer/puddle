@@ -67,12 +67,12 @@ test('messy.csv suggests only what holds, and every suggestion added passes', as
   await addFiles(page, [fixture('messy.csv')]);
   await expect(page.getByTestId('inspector-source')).toBeVisible();
   await expect(suggestion(page, 'notEmpty:id')).toBeVisible({ timeout: 20_000 });
-  expect(await keys(page)).toEqual(['notEmpty:id', 'inRange:id', 'notEmpty:price', 'noEdgeSpaces:price', 'notEmpty:joined', 'inRange:joined']);
+  expect(await keys(page)).toEqual(['notEmpty:id', 'inRange:id', 'notEmpty:price', 'readsAs:price', 'noEdgeSpaces:price', 'notEmpty:joined', 'inRange:joined']);
   await expect(suggestion(page, 'inRange:joined')).toContainText('joined runs from 2024-01-31 to 2024-12-25');
 
-  for (let i = 0; i < 6; i++) await suggestions(page).getByRole('button', { name: /^Add suggested rule:/ }).first().click();
+  for (let i = 0; i < 7; i++) await suggestions(page).getByRole('button', { name: /^Add suggested rule:/ }).first().click();
   await expect(suggestions(page)).toHaveCount(0);
   const rows = page.getByTestId('rules').locator('.ui-rule');
-  await expect(rows).toHaveCount(6);
-  for (let i = 0; i < 6; i++) await expect(rows.nth(i)).toHaveAttribute('data-status', 'pass', { timeout: 20_000 });
+  await expect(rows).toHaveCount(7);
+  for (let i = 0; i < 7; i++) await expect(rows.nth(i)).toHaveAttribute('data-status', 'pass', { timeout: 20_000 });
 });

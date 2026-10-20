@@ -69,6 +69,7 @@ describe('suggested rules on fixtures', () => {
       'id is never empty | id has no empty values',
       'id is between 1 and 4 | id runs from 1 to 4',
       'price is never empty | price has no empty values',
+      'price reads as a number | price is text, but every value reads as a number',
       'No leading or trailing spaces in price | price has no spaces at either end',
       'joined is never empty | joined has no empty values',
       'joined is between 2024-01-31 and 2024-12-25 | joined runs from 2024-01-31 to 2024-12-25',

@@ -159,6 +159,7 @@ describe('step snapshots', () => {
     ['parseDates', { columns: ['joined'], formats: ['%d/%m/%Y'], onError: 'empty' }],
     ['collapseSpaces', { columns: ['name', 'email'] }],
     ['removeNonPrinting', { columns: ['name'] }],
+    ['fixMojibake', { columns: ['name', 'email'] }],
     ['emptyToNull', { columns: ['name', 'id'] }],
     ['replaceValues', { columns: ['name', 'email'], match: 'null', replace: 'empty' }],
     ['replaceValues', { columns: ['id'], match: 'blank', replace: 'n/a', toText: true }],

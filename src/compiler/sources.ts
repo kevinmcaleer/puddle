@@ -69,7 +69,8 @@ export function sourceRelation(source: Source): string {
       if (o.header != null) args.push(`header = ${bool(o.header)}`);
       if (o.quote != null) args.push(`quote = ${str(o.quote)}`);
       if (o.encoding != null) args.push(`encoding = ${str(o.encoding)}`);
-      if (o.nullStrings?.length) args.push(`nullstr = ${strList(o.nullStrings)}`);
+      // An empty field stays empty: DuckDB's own null string is '', and naming others would otherwise drop it.
+      if (o.nullStrings?.length) args.push(`nullstr = ${strList([...new Set(['', ...o.nullStrings])])}`);
       if (o.skip) args.push(`skip = ${num(o.skip)}`);
       // With a banner skipped, DuckDB's sniffer fails on a ragged row below, so the columns are given outright: the
       // names the file's own sniff read from the header line, every one as text (the steps type them after).

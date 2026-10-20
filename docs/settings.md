@@ -18,6 +18,9 @@ Date formats
 Add each step as a new node
 : On for a new project. Steps added from the Add menu or the results table (by the column menu or a quick fix) each go in a Transform node of their own, so every step shows on the canvas. Off, they stack into the Transform being viewed. See {doc}`cleaning`.
 
+Column names
+: How **Fix all** tidies untidy column names: the words as they are (spaces trimmed, hidden characters out) or snake_case (`order_date`). Off by default: the words stay as they are.
+
 Run on a schedule
 : When `puddle-run` should run this project, in cron syntax (`0 3 * * *` is 03:00 every day). Only used by a runner that has the project file; the browser never runs anything on its own. See {doc}`self-hosting`.
 

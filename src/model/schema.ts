@@ -355,6 +355,8 @@ export const ProjectSettingsZ = z.object({
   stepsAsNodes: z.boolean().default(true),
   /** Fix all also applies the fixes analysis only suggests (ones that could change meaning, such as reading text as numbers). */
   fixAllSuggestions: z.boolean().default(false),
+  /** How Fix all tidies column names: the words as they are, trimmed, or snake_case. */
+  columnNames: z.enum(['words', 'snake']).default('words'),
   /** When the runner (puddle-run) runs this project's outputs, in cron syntax. Nothing runs until one is set. */
   schedule: z.string().optional(),
 });
@@ -451,7 +453,7 @@ export const ProjectZ = z.object({
   createdAt: z.string(),
   updatedAt: z.string(),
   notes: z.string().default(''),
-  settings: ProjectSettingsZ.default({ sampleThresholdRows: 5_000_000, locale: 'en-GB', defaultDateFormats: [], stepsAsNodes: true, fixAllSuggestions: false }),
+  settings: ProjectSettingsZ.default({ sampleThresholdRows: 5_000_000, locale: 'en-GB', defaultDateFormats: [], stepsAsNodes: true, fixAllSuggestions: false, columnNames: 'words' }),
   sources: z.array(SourceZ).default([]),
   nodes: z.array(NodeZ).default([]),
   edges: z.array(EdgeZ).default([]),
@@ -502,6 +504,7 @@ export type GraphNode = z.infer<typeof NodeZ>;
 export type NodeType = GraphNode['type'];
 export type Edge = z.infer<typeof EdgeZ>;
 export type ProjectSettings = z.infer<typeof ProjectSettingsZ>;
+export type ColumnNamesMode = ProjectSettings['columnNames'];
 export type NodeGroup = z.infer<typeof NodeGroupZ>;
 export type ProjectView = z.infer<typeof ProjectViewZ>;
 export type Project = z.infer<typeof ProjectZ>;

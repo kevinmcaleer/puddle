@@ -50,7 +50,8 @@ describe('rule types', () => {
     ['readsAs', cust, { column: 'joined', as: 'date' }, 1],
     ['readsAs', cust, { column: 'id', as: 'number' }, 0],
     ['readsAs', cust, { column: 'email', as: 'date' }, 3],
-    ['readsAs', messy, { column: 'price', as: 'number' }, 5],
+    // £1,234.50, $99, (12.00) and € 7,5 all read as numbers once symbols, brackets and a comma decimal are allowed for.
+    ['readsAs', messy, { column: 'price', as: 'number' }, 0],
   ] as const)('%s %j fails %#', async (type, source, params, expected) => {
     expect(await failures(source, type, params)).toEqual({ failures: expected, total: source === cust ? 4 : 5 });
   });

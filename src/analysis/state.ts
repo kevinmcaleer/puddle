@@ -6,14 +6,14 @@ import { useEffect } from 'react';
 import { create } from 'zustand';
 import { useEngineStore } from '../app/engine';
 import { useSession } from '../app/session';
-import { compileAnalysis, compileCount, compileProfile, compileShape, compileTypeSniff, upstreamKey } from '../compiler';
+import { compileAnalysis, compileCount, compileDistinctFacts, compileProfile, compileShape, compileTypeSniff, compileValueCounts, upstreamKey } from '../compiler';
 import { tableRows, toEngineError, type EngineClient } from '../engine';
 import { useViewProject } from '../flow/sample';
 import { useFlowStore } from '../flow/status';
 import { nodeById, useProject, type ColumnSchema, type GraphNode, type Project } from '../model';
 import { parseProfile, parseTypeSniff, type ColumnProfile } from '../results/profile';
 import { columnKind } from '../ui/columnKind';
-import { analysisChecks, findIssues, parseAnalysis, type AnalysisFacts } from './columns';
+import { analysisChecks, findIssues, parseAnalysis, parseDistinctFacts, parseValueCounts, type AnalysisFacts } from './columns';
 import { parseShape } from './shape';
 import { sortIssues, type Issue } from './issues';
 
@@ -27,30 +27,54 @@ export type AnalysisEntry = { key: string; state: 'pending' } | { key: string; s
 
 export const useAnalysisStore = create<{ nodes: Record<string, AnalysisEntry> }>(() => ({ nodes: {} }));
 
-const background = (nodeId: string) => ({ priority: 'background' as const, label: 'Analysing', supersede: `analyse:${nodeId}` });
+/** How many rows of a table are looked at: its first this many, when it has more, so a big file is analysed in seconds (three million taxi trips took minutes). */
+export const ANALYSIS_ROWS = 200_000;
 
-/** Count, profile and sniff a node's output (as the results table does), then one query for the exact counts. */
-export async function analyseNode(engine: EngineClient, project: Project, nodeId: string, columns: ColumnSchema[]): Promise<NodeAnalysis> {
+const background = (nodeId: string, what: string) => ({ priority: 'background' as const, label: `Analysing ${what}`, supersede: `analyse:${nodeId}` });
+
+/**
+ * Count, profile and sniff a node's output (as the results table does), then one query for the exact counts, one
+ * grouped per column for what the distinct values say, one for the values of columns with few of them, and for text
+ * sources one for the rows that aren't data.
+ */
+export async function analyseNode(engine: EngineClient, project: Project, nodeId: string, columns: ColumnSchema[], sample = ANALYSIS_ROWS): Promise<NodeAnalysis> {
   const target = { nodeId };
-  const opts = background(nodeId);
-  await engine.query(compileCount(project, target), opts);
-  const profile = parseProfile(tableRows((await engine.query(compileProfile(project, target), opts)).table));
+  const opts = (what: string) => background(nodeId, what);
+  const total = Number(Object.values(tableRows((await engine.query(compileCount(project, target), opts('rows'))).table)[0] ?? {})[0] ?? 0);
+  // A big table is looked at through its first rows: the whole of three million rows of trips took minutes.
+  const limit = total > sample ? sample : undefined;
+  const profile = parseProfile(tableRows((await engine.query(compileProfile(project, target, limit), opts('columns'))).table));
   const text = columns.filter((c) => columnKind(c.type) === 'text').map((c) => c.name);
   if (text.length) {
-    const looks = parseTypeSniff(tableRows((await engine.query(compileTypeSniff(project, target, text), opts)).table)[0] ?? {}, text);
-    for (const [c, l] of Object.entries(looks)) if (profile[c] && l) profile[c] = { ...profile[c], looksLike: l };
+    const looks = parseTypeSniff(tableRows((await engine.query(compileTypeSniff(project, target, text, limit), opts('text'))).table)[0] ?? {}, text);
+    for (const [c, l] of Object.entries(looks)) if (profile[c]) profile[c] = { ...profile[c], ...l };
   }
   const checks = analysisChecks(columns, profile);
-  const row = tableRows((await engine.query(compileAnalysis(project, target, checks, columns.map((c) => c.name)), opts)).table)[0] ?? {};
+  const row = tableRows((await engine.query(compileAnalysis(project, target, checks, columns.map((c) => c.name), limit), opts('values'))).table)[0] ?? {};
   const facts = parseAnalysis(row, checks);
+  facts.columnNames = project.settings.columnNames;
+  if (limit) facts.sample = { rows: limit, total };
+  if (checks.length) parseDistinctFacts(tableRows((await engine.query(compileDistinctFacts(project, target, checks, limit), opts('distinct values'))).table), checks, facts.columns);
+  const valued = checks.filter((c) => c.values).map((c) => c.column);
+  if (valued.length) {
+    const counts = parseValueCounts(tableRows((await engine.query(compileValueCounts(project, target, valued, limit), opts('value counts'))).table));
+    for (const c of valued) {
+      const vc = counts[c] ?? [];
+      facts.columns[c]!.valueCounts = vc;
+      facts.columns[c]!.values = vc.map((v) => v.value).sort();
+    }
+  }
   // A source read from delimited text: one more query for the rows around and inside the table that aren't data.
   const source = textSourceOf(project, nodeId);
   if (source && columns.length) {
-    const shapeRow = tableRows((await engine.query(compileShape(project, target, columns.map((c) => c.name)), opts)).table)[0] ?? {};
+    const shapeRow = tableRows((await engine.query(compileShape(project, target, columns.map((c) => c.name), limit), opts('rows that aren’t data'))).table)[0] ?? {};
     facts.shape = { facts: parseShape(shapeRow), options: source.parseOptions };
   }
   return { columns, profile, facts };
 }
+
+/** What an analysis stands for: the node's output, and the column-name style the issues are judged by. */
+const analysisKey = (project: Project, nodeId: string) => `${upstreamKey(project, { nodeId })}|${project.settings.columnNames}`;
 
 /** The source a node reads, when it is delimited text (CSV or TSV from a file, an address or the clipboard). */
 export function textSourceOf(project: Project, nodeId: string) {
@@ -79,7 +103,7 @@ export async function evaluateAnalysis(engine: EngineClient, project: Project, i
   for (const node of project.nodes) {
     const st = statuses[node.id]?.status;
     if (st?.state !== 'ok') continue;
-    const key = upstreamKey(project, { nodeId: node.id });
+    const key = analysisKey(project, node.id);
     if (prev[node.id]?.key === key) {
       next[node.id] = prev[node.id]!;
       continue;
@@ -104,7 +128,14 @@ async function analyseOne(engine: EngineClient, project: Project, nodeId: string
   }
 }
 
-/** Keep the analysis in step with the flow: whenever a node's output settles, or the viewed or selected node changes. */
+/** How long the project is left alone before a node is analysed, so a run of edits to it costs one analysis, not one per edit. */
+export const ANALYSIS_SETTLE_MS = 800;
+
+/**
+ * Keep the analysis in step with the flow: whenever a node's output settles, or the viewed or selected node changes.
+ * The analysis of a node being edited is a chain of queries over its whole output, so it waits until the edits
+ * have stopped for a moment rather than starting again on each one.
+ */
 export function useAnalysisEvaluation() {
   const view = useViewProject();
   const engine = useEngineStore((s) => s.engine);
@@ -113,7 +144,8 @@ export function useAnalysisEvaluation() {
   const selected = useSession((s) => s.selectedNodeId);
   useEffect(() => {
     if (!engine) return;
-    void evaluateAnalysis(engine, view, nodesToAnalyse(view, viewed, selected));
+    const timer = setTimeout(() => void evaluateAnalysis(engine, view, nodesToAnalyse(view, viewed, selected)), ANALYSIS_SETTLE_MS);
+    return () => clearTimeout(timer);
   }, [engine, view, statuses, viewed, selected]);
 }
 
@@ -124,7 +156,7 @@ export function useAnalysisEntry(nodeId: string): AnalysisEntry | undefined {
   const view = useViewProject();
   const entry = useAnalysisStore((s) => s.nodes[nodeId]);
   if (!entry || !nodeById(view, nodeId)) return undefined;
-  return entry.key === upstreamKey(view, { nodeId }) ? entry : undefined;
+  return entry.key === analysisKey(view, nodeId) ? entry : undefined;
 }
 
 /** Issues of a node from the facts gathered for its current output; the node's ignored issues are left out. */

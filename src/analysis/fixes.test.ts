@@ -45,6 +45,38 @@ describe('planning fixes', () => {
     expect(steps.every((s) => s.label.length > 0 && s.enabled)).toBe(true);
   });
 
+  it('expands a fix of several steps, adds up the values to read as empty across columns, and keeps a step’s own settings', async () => {
+    const planned = await planFixes(
+      [
+        issue('placeholders', 'city', { steps: [{ type: 'replaceValues', params: { match: 'value', find: 'n/a', replace: '', replaceWithNull: true, matchCase: false, toText: false } }, { type: 'replaceValues', params: { match: 'value', find: '-', replace: '', replaceWithNull: true, matchCase: false, toText: false } }], label: 'Replace values' }),
+        issue('placeholders', 'name', { steps: [{ type: 'replaceValues', params: { match: 'value', find: 'n/a', replace: '', replaceWithNull: true, matchCase: false, toText: false } }], label: 'Replace values' }),
+        issue('placeholders', 'amount', { readOptions: { nullStrings: ['n/a', '-'] }, label: 'Read as empty' }),
+        issue('placeholders', 'joined', { readOptions: { nullStrings: ['?', 'n/a'] }, label: 'Read as empty' }),
+        issue('untidyNames', undefined, { type: 'renameColumns', params: { renames: [{ from: 'name', to: 'Name' }] } }),
+        issue('keyValue', 'joined', { steps: [{ type: 'splitByDelimiter', params: { column: 'joined', delimiterKind: 'colon', delimiter: '', at: 'left', to: 'columns', quote: '', into: ['joined key', 'joined value'], keepOriginal: false } }, { type: 'trimWhitespace', params: { columns: ['joined key', 'joined value'] } }], label: 'Split by delimiter' }),
+        issue('serialDates', 'amount', { type: 'parseDates', params: { formats: ['excel serial'] } }, 'suggest'),
+        issue('emptyColumn', 'city', { type: 'removeColumns' }),
+      ],
+      { available, locale: 'en-GB', detectDates: async () => ({ formats: ['%d/%m/%Y'] }) as never },
+    );
+    expect(planned.readOptions).toEqual({ nullStrings: ['n/a', '-', '?'] });
+    // One Replace values per placeholder, over every column it was seen in; the column steps after the value steps, Rename last.
+    expect(planned.steps.map((s) => [s.type, s.params.columns ?? s.params.column ?? s.params.renames])).toEqual([
+      ['replaceValues', ['city', 'name']],
+      ['replaceValues', ['city']],
+      ['parseDates', ['amount']],
+      ['removeColumns', ['city']],
+      ['splitByDelimiter', 'joined'],
+      ['trimWhitespace', ['joined key', 'joined value']],
+      ['renameColumns', [{ from: 'name', to: 'Name' }]],
+    ]);
+    expect(planned.steps[0]!.params).toMatchObject({ find: 'n/a', replaceWithNull: true, matchCase: false });
+    // Formats the issue names are kept rather than detected; a step that names its own column gets no columns list.
+    expect(planned.steps[2]!.params.formats).toEqual(['excel serial']);
+    expect(planned.steps[4]!.params).not.toHaveProperty('columns');
+    expect(planned.steps[4]!.params.into).toEqual(['joined key', 'joined value']);
+  });
+
   it('reads the locale’s decimal mark into Parse numbers and the detected formats into Parse dates', async () => {
     const { steps } = await planFixes(issues, { available, locale: 'de-DE', detectDates: async () => ({ formats: ['%d.%m.%Y'] }) as never });
     expect(steps.find((s) => s.type === 'parseNumbers')?.params).toMatchObject({ decimal: ',' });

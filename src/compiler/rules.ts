@@ -2,6 +2,7 @@
 import { z } from 'zod';
 import type { Rule } from '../model';
 import { CompileError } from './errors';
+import { looksLikeNumber } from './patterns';
 import { ident, list, num, str } from './sql';
 import { expressionProblem } from './steps/columns';
 
@@ -192,9 +193,13 @@ export const inRange = defineRule({
   predicate: (p) => `${ident(p.column)} IS NULL OR (${[p.min && `${ident(p.column)} >= ${str(p.min)}`, p.max && `${ident(p.column)} <= ${str(p.max)}`].filter(Boolean).join(' AND ')})`,
 });
 
-/** How text is read as each type. Values are trimmed first, and empty values pass. */
+/**
+ * How text is read as each type. Values are trimmed first, and empty values pass. A number is what Parse
+ * numbers reads: symbols, thousands separators and brackets allowed. A date must be a real one: DuckDB reads day-first
+ * dates and month names itself, and rejects 30 February.
+ */
 const READS_AS = {
-  number: { label: 'a number', test: (v: string) => `TRY_CAST(${v} AS DOUBLE) IS NOT NULL` },
+  number: { label: 'a number', test: looksLikeNumber },
   // TRY_CAST to an integer rounds 1.5, so whole numbers are matched first.
   integer: { label: 'a whole number', test: (v: string) => `regexp_full_match(${v}, '[+-]?[0-9]+') AND TRY_CAST(${v} AS HUGEINT) IS NOT NULL` },
   // Digits with an optional point: no exponent, nan or inf, which DOUBLE accepts.
