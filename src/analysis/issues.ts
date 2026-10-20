@@ -10,6 +10,7 @@ export type IssueKind =
   | 'narrowRows'
   | 'blankRows'
   | 'totalRows'
+  | 'skewedRows'
   | 'duplicateRows'
   | 'edgeSpaces'
   | 'doubleSpaces'
@@ -104,6 +105,7 @@ export const ISSUE_KINDS: Record<IssueKind, IssueKindDef> = {
   narrowRows: { label: () => 'Separator and page-break rows', about: 'Rows with only the first column filled: lines of dashes, page breaks, headings on a later page.' },
   blankRows: { label: () => 'Blank rows', about: 'Rows with nothing in any column.' },
   totalRows: { label: () => 'Total rows inside the data', about: 'Rows that sum the rows above them; keeping them would count every value twice.' },
+  skewedRows: { label: (c, d) => `Rows shifted one column ${d.value ?? 'over'} from ${c}`, about: 'A cell was deleted or inserted, so from that column on the values sit under the wrong headers. Realign rows moves them back and gives the columns their types.' },
   edgeSpaces: { label: (c) => `Spaces at either end of ${c}`, about: 'Values start or end with a space, so equal values don’t match.' },
   doubleSpaces: { label: (c) => `Doubled spaces in ${c}`, about: 'Two or more spaces in a row inside a value.' },
   nonPrinting: { label: (c) => `Non-printing characters in ${c}`, about: 'Tabs, control characters, zero-width or no-break spaces hidden in the text.' },
@@ -134,7 +136,7 @@ export const issueLabel = (issue: Pick<Issue, 'kind' | 'column'> & Partial<Pick<
 
 /** Issues in the order the panel lists them: the table first, then by column in the data's order, then by kind. */
 const KIND_ORDER: IssueKind[] = [
-  'bannerRows', 'footerRows', 'repeatedHeader', 'narrowRows', 'blankRows', 'totalRows', 'duplicateRows', 'untidyNames', 'wideTable',
+  'bannerRows', 'footerRows', 'repeatedHeader', 'narrowRows', 'blankRows', 'totalRows', 'skewedRows', 'duplicateRows', 'untidyNames', 'wideTable',
   'emptyColumn', 'mojibake', 'nonPrinting', 'edgeSpaces', 'doubleSpaces', 'emptyText', 'placeholders', 'mixedCase', 'nearDuplicate', 'inconsistentShapes',
   'booleansAsText', 'numbersAsText', 'datesAsText', 'serialDates', 'mixedTypes', 'keyValue', 'idDuplicates', 'indexColumn', 'constantColumn',
 ];
