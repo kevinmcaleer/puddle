@@ -27,8 +27,8 @@ export type AnalysisEntry = { key: string; state: 'pending' } | { key: string; s
 
 export const useAnalysisStore = create<{ nodes: Record<string, AnalysisEntry> }>(() => ({ nodes: {} }));
 
-/** How many rows of a table are looked at: its first this many, when it has more, so a big file is analysed in seconds. */
-export const ANALYSIS_ROWS = 500_000;
+/** How many rows of a table are looked at: its first this many, when it has more, so a big file is analysed in seconds (three million taxi trips took minutes). */
+export const ANALYSIS_ROWS = 200_000;
 
 const background = (nodeId: string, what: string) => ({ priority: 'background' as const, label: `Analysing ${what}`, supersede: `analyse:${nodeId}` });
 
@@ -43,7 +43,7 @@ export async function analyseNode(engine: EngineClient, project: Project, nodeId
   const total = Number(Object.values(tableRows((await engine.query(compileCount(project, target), opts('rows'))).table)[0] ?? {})[0] ?? 0);
   // A big table is looked at through its first rows: the whole of three million rows of trips took minutes.
   const limit = total > sample ? sample : undefined;
-  const profile = parseProfile(tableRows((await engine.query(compileProfile(project, target), opts('columns'))).table));
+  const profile = parseProfile(tableRows((await engine.query(compileProfile(project, target, limit), opts('columns'))).table));
   const text = columns.filter((c) => columnKind(c.type) === 'text').map((c) => c.name);
   if (text.length) {
     const looks = parseTypeSniff(tableRows((await engine.query(compileTypeSniff(project, target, text, limit), opts('text'))).table)[0] ?? {}, text);
@@ -128,7 +128,14 @@ async function analyseOne(engine: EngineClient, project: Project, nodeId: string
   }
 }
 
-/** Keep the analysis in step with the flow: whenever a node's output settles, or the viewed or selected node changes. */
+/** How long the project is left alone before a node is analysed, so a run of edits to it costs one analysis, not one per edit. */
+export const ANALYSIS_SETTLE_MS = 800;
+
+/**
+ * Keep the analysis in step with the flow: whenever a node's output settles, or the viewed or selected node changes.
+ * The analysis of a node being edited is a chain of queries over its whole output, so it waits until the edits
+ * have stopped for a moment rather than starting again on each one.
+ */
 export function useAnalysisEvaluation() {
   const view = useViewProject();
   const engine = useEngineStore((s) => s.engine);
@@ -137,7 +144,8 @@ export function useAnalysisEvaluation() {
   const selected = useSession((s) => s.selectedNodeId);
   useEffect(() => {
     if (!engine) return;
-    void evaluateAnalysis(engine, view, nodesToAnalyse(view, viewed, selected));
+    const timer = setTimeout(() => void evaluateAnalysis(engine, view, nodesToAnalyse(view, viewed, selected)), ANALYSIS_SETTLE_MS);
+    return () => clearTimeout(timer);
   }, [engine, view, statuses, viewed, selected]);
 }
 
