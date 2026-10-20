@@ -7,8 +7,8 @@ test('a source shows the issues analysis found, on its card, in the strip and in
   await expectRows(page, 5);
 
   // The node card and the status strip carry the count.
-  await expect(node(page, 'messy.csv').getByTestId('node-issues')).toHaveText('6 issues', { timeout: 20_000 });
-  await expect(page.getByTestId('strip-issues')).toHaveAttribute('data-count', '6');
+  await expect(node(page, 'messy.csv').getByTestId('node-issues')).toHaveText('7 issues', { timeout: 20_000 });
+  await expect(page.getByTestId('strip-issues')).toHaveAttribute('data-count', '7');
 
   // The inspector lists each with its count, examples and fix.
   await node(page, 'messy.csv').click();
@@ -27,13 +27,13 @@ test('a source shows the issues analysis found, on its card, in the strip and in
   await spaces.getByRole('button', { name: 'Ignore issue: Spaces at either end of name' }).click();
   await expect(spaces).toHaveCount(0);
   await expect(issues.getByTestId('issues-ignored')).toContainText('1 issue ignored');
-  await expect(page.getByTestId('strip-issues')).toHaveAttribute('data-count', '5');
-  await expect(node(page, 'messy.csv').getByTestId('node-issues')).toHaveText('5 issues');
+  await expect(page.getByTestId('strip-issues')).toHaveAttribute('data-count', '6');
+  await expect(node(page, 'messy.csv').getByTestId('node-issues')).toHaveText('6 issues');
   await page.getByRole('button', { name: 'Undo' }).click();
   await expect(spaces).toBeVisible();
   await page.getByRole('button', { name: 'Redo' }).click();
   await expect(spaces).toHaveCount(0);
   await page.getByRole('button', { name: 'Show ignored' }).click();
   await expect(page.getByTestId('issue-edgeSpaces:name')).toBeVisible();
-  await expect(page.getByTestId('strip-issues')).toHaveAttribute('data-count', '6');
+  await expect(page.getByTestId('strip-issues')).toHaveAttribute('data-count', '7');
 });

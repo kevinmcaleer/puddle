@@ -6,14 +6,14 @@ import { useEffect } from 'react';
 import { create } from 'zustand';
 import { useEngineStore } from '../app/engine';
 import { useSession } from '../app/session';
-import { compileAnalysis, compileCount, compileProfile, compileShape, compileTypeSniff, upstreamKey } from '../compiler';
+import { compileAnalysis, compileCount, compileDistinctFacts, compileProfile, compileShape, compileTypeSniff, compileValueCounts, upstreamKey } from '../compiler';
 import { tableRows, toEngineError, type EngineClient } from '../engine';
 import { useViewProject } from '../flow/sample';
 import { useFlowStore } from '../flow/status';
 import { nodeById, useProject, type ColumnSchema, type GraphNode, type Project } from '../model';
 import { parseProfile, parseTypeSniff, type ColumnProfile } from '../results/profile';
 import { columnKind } from '../ui/columnKind';
-import { analysisChecks, findIssues, parseAnalysis, type AnalysisFacts } from './columns';
+import { analysisChecks, findIssues, parseAnalysis, parseDistinctFacts, parseValueCounts, type AnalysisFacts } from './columns';
 import { parseShape } from './shape';
 import { sortIssues, type Issue } from './issues';
 
@@ -29,7 +29,11 @@ export const useAnalysisStore = create<{ nodes: Record<string, AnalysisEntry> }>
 
 const background = (nodeId: string) => ({ priority: 'background' as const, label: 'Analysing', supersede: `analyse:${nodeId}` });
 
-/** Count, profile and sniff a node's output (as the results table does), then one query for the exact counts. */
+/**
+ * Count, profile and sniff a node's output (as the results table does), then one query for the exact counts, one
+ * grouped per column for what the distinct values say, one for the values of columns with few of them, and for text
+ * sources one for the rows that aren't data.
+ */
 export async function analyseNode(engine: EngineClient, project: Project, nodeId: string, columns: ColumnSchema[]): Promise<NodeAnalysis> {
   const target = { nodeId };
   const opts = background(nodeId);
@@ -38,11 +42,22 @@ export async function analyseNode(engine: EngineClient, project: Project, nodeId
   const text = columns.filter((c) => columnKind(c.type) === 'text').map((c) => c.name);
   if (text.length) {
     const looks = parseTypeSniff(tableRows((await engine.query(compileTypeSniff(project, target, text), opts)).table)[0] ?? {}, text);
-    for (const [c, l] of Object.entries(looks)) if (profile[c] && l) profile[c] = { ...profile[c], looksLike: l };
+    for (const [c, l] of Object.entries(looks)) if (profile[c]) profile[c] = { ...profile[c], ...l };
   }
   const checks = analysisChecks(columns, profile);
   const row = tableRows((await engine.query(compileAnalysis(project, target, checks, columns.map((c) => c.name)), opts)).table)[0] ?? {};
   const facts = parseAnalysis(row, checks);
+  facts.columnNames = project.settings.columnNames;
+  if (checks.length) parseDistinctFacts(tableRows((await engine.query(compileDistinctFacts(project, target, checks), opts)).table), checks, facts.columns);
+  const valued = checks.filter((c) => c.values).map((c) => c.column);
+  if (valued.length) {
+    const counts = parseValueCounts(tableRows((await engine.query(compileValueCounts(project, target, valued), opts)).table));
+    for (const c of valued) {
+      const vc = counts[c] ?? [];
+      facts.columns[c]!.valueCounts = vc;
+      facts.columns[c]!.values = vc.map((v) => v.value).sort();
+    }
+  }
   // A source read from delimited text: one more query for the rows around and inside the table that aren't data.
   const source = textSourceOf(project, nodeId);
   if (source && columns.length) {
@@ -51,6 +66,9 @@ export async function analyseNode(engine: EngineClient, project: Project, nodeId
   }
   return { columns, profile, facts };
 }
+
+/** What an analysis stands for: the node's output, and the column-name style the issues are judged by. */
+const analysisKey = (project: Project, nodeId: string) => `${upstreamKey(project, { nodeId })}|${project.settings.columnNames}`;
 
 /** The source a node reads, when it is delimited text (CSV or TSV from a file, an address or the clipboard). */
 export function textSourceOf(project: Project, nodeId: string) {
@@ -79,7 +97,7 @@ export async function evaluateAnalysis(engine: EngineClient, project: Project, i
   for (const node of project.nodes) {
     const st = statuses[node.id]?.status;
     if (st?.state !== 'ok') continue;
-    const key = upstreamKey(project, { nodeId: node.id });
+    const key = analysisKey(project, node.id);
     if (prev[node.id]?.key === key) {
       next[node.id] = prev[node.id]!;
       continue;
@@ -124,7 +142,7 @@ export function useAnalysisEntry(nodeId: string): AnalysisEntry | undefined {
   const view = useViewProject();
   const entry = useAnalysisStore((s) => s.nodes[nodeId]);
   if (!entry || !nodeById(view, nodeId)) return undefined;
-  return entry.key === upstreamKey(view, { nodeId }) ? entry : undefined;
+  return entry.key === analysisKey(view, nodeId) ? entry : undefined;
 }
 
 /** Issues of a node from the facts gathered for its current output; the node's ignored issues are left out. */

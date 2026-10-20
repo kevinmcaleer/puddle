@@ -5,6 +5,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { analyseNode, findIssues, isStepFix, planFixes, sortIssues, type Issue } from '../../src/analysis';
 import { compile, sourceFileName } from '../../src/compiler';
+import { detectDateFormats } from '../../src/dates';
 import { EngineClient, tableRows } from '../../src/engine/client';
 import { placeFixes, setParseOptions, type Project } from '../../src/model';
 import { sniff } from '../../src/sources/sniff';
@@ -35,7 +36,7 @@ const analyse = async (project: Project, nodeId: string) => {
 /** Apply the chosen issues' fixes as Fix all does: read options on the source first, then the steps after the node. */
 async function fixAll(project: Project, sourceId: string, chosen: (issues: Issue[]) => Issue[]) {
   const before = await analyse(project, 'in');
-  const { steps, readOptions } = await planFixes(chosen(before.issues), { available: before.columns, locale: project.settings.locale });
+  const { steps, readOptions } = await planFixes(chosen(before.issues), { available: before.columns, locale: project.settings.locale, detectDates: (column) => detectDateFormats(engine, project, { nodeId: 'in' }, column) });
   let fixed = project;
   if (Object.keys(readOptions).length) fixed = setParseOptions(fixed, sourceId, { ...fixed.sources[0]!.parseOptions, ...readOptions });
   const placed = placeFixes(fixed, 'in', steps);
@@ -69,15 +70,24 @@ describe('messy.txt: comment lines, a footer, a header pasted in again, blank an
     expect(issues.find((i) => i.key === 'duplicateRows')?.count).toBe(4);
   });
 
-  it('Fix all leaves the 40 customers clean; without Remove duplicates, the 44 rows', async () => {
+  it('Fix all leaves the 40 customers clean and typed; without Remove duplicates, the 44 rows', async () => {
     const { project, sourceId } = await open('messy.txt');
     const all = await fixAll(project, sourceId, (issues) => issues.filter((i) => i.severity === 'fix'));
-    expect(all.readOptions).toEqual({});
-    expect(all.steps.map((s) => s.type)).toEqual(['removeNonPrinting', 'trimWhitespace', 'collapseSpaces', 'filterRows', 'changeCase', 'changeCase', 'duplicateRows']);
+    // The five ways of writing empty are read as empty, so the balance and the status are whole columns.
+    expect(all.readOptions).toEqual({ nullStrings: ['-', '?', 'N/A', 'NULL', 'n/a'] });
+    expect(all.steps.map((s) => s.type)).toEqual(['removeNonPrinting', 'trimWhitespace', 'collapseSpaces', 'filterRows', 'changeCase', 'parseNumbers', 'parseDates', 'duplicateRows']);
     expect(all.rows).toHaveLength(40);
     expect(all.after.issues.filter((i) => i.severity === 'fix')).toEqual([]);
-    expect(all.rows[0]).toMatchObject({ 'Customer ID': 'CU1000', 'Customer Name': 'Kofi Jones', City: 'Cardiff' });
+    expect(all.rows[0]).toMatchObject({ 'Customer ID': 'CU1000', 'Customer Name': 'Kofi Jones', City: 'Cardiff', Balance: -4923.54 });
     expect(all.rows[39]).toMatchObject({ 'Customer ID': 'CU1039', 'Customer Name': 'Dev Smith' });
+    expect(all.after.columns.find((c) => c.name === 'Balance')?.type).toBe('DOUBLE');
+    expect(all.after.columns.find((c) => c.name === 'Signed up')?.type).toBe('DATE');
+    expect(all.rows.filter((r) => r['Status'] == null).length).toBeGreaterThan(0);
+    // The misspelt city is a suggestion; ticked, it is put right.
+    const withTypo = await fixAll(project, sourceId, (issues) => issues.filter((i) => i.severity === 'fix' || i.kind === 'nearDuplicate'));
+    expect(withTypo.steps.map((s) => s.type)).toContain('replaceValues');
+    expect(withTypo.rows.map((r) => r['City'])).not.toContain('Manchestr');
+    expect(withTypo.rows.filter((r) => r['City'] === 'Manchester').length).toBeGreaterThan(all.rows.filter((r) => r['City'] === 'Manchester').length);
 
     const keep = await fixAll(project, sourceId, (issues) => issues.filter((i) => i.severity === 'fix' && !(isStepFix(i.fix) && i.fix.type === 'duplicateRows')));
     expect(keep.rows).toHaveLength(44);
@@ -110,12 +120,19 @@ describe('sap-extract.txt: a banner, separator lines, a page break, a repeated h
     expect(total.fix).toEqual({ type: 'filterRows', params: { mode: 'remove', match: 'any', matchCase: false, conditions: [{ column: 'Doc. no.', op: 'startsWith', value: '*' }] } });
   });
 
-  it('Fix all with the total row leaves the 60 line items, umlauts intact', async () => {
+  it('Fix all with the total row leaves the 60 line items typed, umlauts intact, German amounts read with a comma', async () => {
     const { project, sourceId } = await open('sap-extract.txt');
-    const { rows, after } = await fixAll(project, sourceId, (issues) => issues.filter((i) => i.severity === 'fix' || i.kind === 'totalRows'));
+    const { before, steps, rows, after } = await fixAll(project, sourceId, (issues) => issues.filter((i) => i.severity === 'fix' || i.kind === 'totalRows'));
+    // The amounts are read with a comma for the decimal mark, as the column writes them, whatever the project's locale.
+    expect(before.issues.find((i) => i.key === 'numbersAsText:Amount in LC')).toMatchObject({ severity: 'fix', fix: { type: 'parseNumbers', params: { decimal: ',', locale: '' } } });
+    expect(steps.map((s) => s.type)).toEqual(['removeNonPrinting', 'trimWhitespace', 'collapseSpaces', 'filterRows', 'filterRows', 'filterRows', 'emptyToNull', 'parseNumbers', 'parseDates', 'duplicateRows', 'removeColumns']);
     expect(rows).toHaveLength(60);
     expect(rows.map((r) => r['Vendor'])).toContain('Müller GmbH');
-    // With the asterisk gone, the document numbers are all digits: that one is a fix now, for the next Fix all.
-    expect(keys(after.issues.filter((i) => i.severity === 'fix'))).toEqual(['numbersAsText:Doc. no.']);
+    expect(rows[0]).toMatchObject({ 'Amount in LC': 891.36 });
+    // A trailing minus is a negative, as SAP writes them.
+    expect(rows.some((r) => (r['Amount in LC'] as number) < 0)).toBe(true);
+    expect(Object.keys(rows[0]!)).not.toContain('column9');
+    // With the asterisk gone, the document numbers are all digits, and the first padding column is empty: fixes for the next Fix all.
+    expect(keys(after.issues.filter((i) => i.severity === 'fix'))).toEqual(['emptyColumn:column0', 'numbersAsText:Doc. no.']);
   });
 });

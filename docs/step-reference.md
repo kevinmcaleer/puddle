@@ -9,6 +9,7 @@ Every step a Transform node can hold, as the **Add** menu groups them. The same 
 | Trim whitespace | Removes spaces from both ends of each value. |
 | Collapse spaces | Turns runs of spaces inside a value into one space. |
 | Remove non-printing characters | Removes invisible characters, such as the zero-width spaces and control characters left by copying from a web page. |
+| Fix mangled characters | Puts back text that was saved in the wrong encoding, such as `Ã©` for `é` and `â€™` for `’`. |
 | Empty text to empty value | Treats empty text (and text that is only spaces) as a missing value. |
 | Replace values | Replaces whole values that match: a value you type, empty values, or blank text, with another value or with an empty value. A number or date column can be changed to text so a word such as `empty` fits. For text inside a value, use Find and replace. |
 

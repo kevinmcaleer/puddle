@@ -33,7 +33,7 @@ export async function gatherSuggestionFacts(engine: EngineClient, project: Proje
   const text = columns.filter((c) => columnKind(c.type) === 'text').map((c) => c.name);
   if (text.length) {
     const looks = parseTypeSniff(tableRows((await engine.query(compileTypeSniff(project, target, text), opts)).table)[0] ?? {}, text);
-    for (const [c, l] of Object.entries(looks)) if (profile[c] && l) profile[c] = { ...profile[c], looksLike: l };
+    for (const [c, l] of Object.entries(looks)) if (profile[c]) profile[c] = { ...profile[c], ...l };
   }
   const checks = suggestionChecks(columns, profile, rows);
   if (!checks.length) return { profile, checked: { rows, columns: {} } };

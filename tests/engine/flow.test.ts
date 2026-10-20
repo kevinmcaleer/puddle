@@ -100,7 +100,7 @@ describe('results pages and profiles', () => {
     const p = chain([], mixed);
     const cols = ['code', 'amount', 'when', 'label'];
     const row = tableRows((await engine.query(compileTypeSniff(p, { nodeId: 'out' }, cols))).table)[0]!;
-    expect(parseTypeSniff(row, cols)).toEqual({ amount: { kind: 'numbers', share: 0.8 }, when: { kind: 'dates', share: 0.8 } });
+    expect(parseTypeSniff(row, cols)).toEqual({ amount: { looksLike: { kind: 'numbers', share: 0.8 } }, when: { looksLike: { kind: 'dates', share: 0.8 } } });
   });
 
   it('reads with the chosen delimiter and treat-as-empty values', async () => {
@@ -109,6 +109,13 @@ describe('results pages and profiles', () => {
     expect(Object.keys((await page({ ...semi, parseOptions: { delimiter: ',' } }))[0]!)).toEqual(['id;city']);
     const nulls = await page({ ...semi, parseOptions: { delimiter: ';', nullStrings: ['N/A'] } });
     expect(nulls.map((r) => r.city)).toEqual(['Leeds', null, 'York']);
+  });
+
+  it('keeps an empty field empty when other values are treated as empty', async () => {
+    const gaps = src({ id: 'gaps', format: 'csv' });
+    await engine.registerText(sourceFileName(gaps), 'id,city\n1,Leeds\n2,\n3,n/a\n');
+    const rows = tableRows((await engine.query(compileDisplayPage(chain([], { ...gaps, parseOptions: { nullStrings: ['n/a'] } }), { nodeId: 'out' }, [], 0))).table);
+    expect(rows.map((r) => r.city)).toEqual(['Leeds', null, null]);
   });
 });
 

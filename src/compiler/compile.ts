@@ -12,6 +12,7 @@ import { compileSchemaTable, failingRows, failureCounts, heldTableRows, LOAD_FAI
 import { foreignKey, schemaDdl } from './ddl/duckdb';
 import { knownSchemas, type SchemaBook } from './schemaBook';
 import { sourceRelation } from './sources';
+import { isPlaceholder, looksLikeDate, looksLikeNumber } from './patterns';
 import { cteName, ident, num, str } from './sql';
 import { rulePredicate, ruleRefs, ruleScope, type RuleContext } from './rules';
 import { MAX_TRANSPOSE_ROWS, pivotValuesQuery, stepParams, type Condition } from './steps';
@@ -351,14 +352,17 @@ export function compileProfile(project: Project, target: Target): string {
 }
 
 /**
- * What text columns look like: per column i, `n<i>` non-empty values and how many of them read as a number
- * (`num<i>`) or a date (`date<i>`), so a column of numbers stored as text can say so.
+ * What text columns look like: per column i, `n<i>` non-empty values (placeholders for empty and the column's own name aside) and how many of
+ * them read as a number (`num<i>`) or a date (`date<i>`), allowing for currency symbols, thousands separators,
+ * brackets and day-first dates, so a column of numbers stored as text can say so.
  */
 export function compileTypeSniff(project: Project, target: Target, columns: string[]): string {
   if (!columns.length) throw new RangeError('No columns to look at.');
   const parts = columns.flatMap((c, i) => {
+    // Placeholders for empty (n/a, -) and the column's own name (a header pasted in again) are neither numbers nor words: they don't count against a column.
     const v = `nullif(trim(CAST(${ident(c)} AS VARCHAR)), '')`;
-    return [`count(${v}) AS ${ident(`n${i}`)}`, `count(TRY_CAST(${v} AS DOUBLE)) AS ${ident(`num${i}`)}`, `count(TRY_CAST(${v} AS DATE)) AS ${ident(`date${i}`)}`];
+    const real = `${v} IS NOT NULL AND NOT ${isPlaceholder(v)} AND lower(${v}) <> ${str(c.trim().toLowerCase())}`;
+    return [`count(*) FILTER (WHERE ${real}) AS ${ident(`n${i}`)}`, `count(*) FILTER (WHERE ${real} AND ${looksLikeNumber(v)}) AS ${ident(`num${i}`)}`, `count(*) FILTER (WHERE ${real} AND ${looksLikeDate(v)}) AS ${ident(`date${i}`)}`];
   });
   return `SELECT ${parts.join(', ')} FROM (${compile(project, target).sql})`;
 }

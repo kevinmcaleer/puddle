@@ -12,7 +12,12 @@ export interface ColumnProfile {
   kind?: ColumnKind;
   /** Set on a text column whose non-empty values mostly read as numbers or dates. */
   looksLike?: { kind: 'numbers' | 'dates'; share: number };
+  /** Set on a text column where only half or more of the values read as numbers or dates: mixed types. */
+  partly?: { kind: 'numbers' | 'dates'; share: number };
 }
+
+/** A text column is "partly" numbers or dates when at least half of its values, but fewer than LOOKS_LIKE_SHARE, read as one. */
+export const PARTLY_SHARE = 0.5;
 
 /** A text column "looks like" numbers or dates when at least this share of its non-empty values reads as one. */
 export const LOOKS_LIKE_SHARE = 0.8;
@@ -32,16 +37,20 @@ export function parseProfile(rows: Record<string, unknown>[], kinds: Record<stri
   return out;
 }
 
+/** What compileTypeSniff says about a column: mostly numbers or dates (`looksLike`), or only partly (`partly`). */
+export type TypeSniff = Pick<ColumnProfile, 'looksLike' | 'partly'>;
+
 /** Read compileTypeSniff's single row for the given columns. Numbers win over dates when both read. */
-export function parseTypeSniff(row: Record<string, unknown>, columns: string[]): Record<string, ColumnProfile['looksLike']> {
-  const out: Record<string, ColumnProfile['looksLike']> = {};
+export function parseTypeSniff(row: Record<string, unknown>, columns: string[]): Record<string, TypeSniff> {
+  const out: Record<string, TypeSniff> = {};
   columns.forEach((c, i) => {
     const n = Number(row[`n${i}`] ?? 0);
     if (!n) return;
     const num = Number(row[`num${i}`] ?? 0) / n;
     const date = Number(row[`date${i}`] ?? 0) / n;
-    if (num >= LOOKS_LIKE_SHARE && num >= date) out[c] = { kind: 'numbers', share: num };
-    else if (date >= LOOKS_LIKE_SHARE) out[c] = { kind: 'dates', share: date };
+    const [kind, share] = num >= date ? (['numbers', num] as const) : (['dates', date] as const);
+    if (share >= LOOKS_LIKE_SHARE) out[c] = { looksLike: { kind, share } };
+    else if (share >= PARTLY_SHARE) out[c] = { partly: { kind, share } };
   });
   return out;
 }

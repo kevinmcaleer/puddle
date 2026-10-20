@@ -12,6 +12,14 @@ defineStepForm({ type: 'collapseSpaces', title: 'Collapse spaces', group: 'Clean
 defineStepForm({ type: 'removeNonPrinting', title: 'Remove non-printing characters', group: 'Clean', fields: [columnsOnly], defaults: (ctx) => ({ columns: pickColumns(ctx) }) });
 
 defineStepForm({
+  type: 'fixMojibake',
+  title: 'Fix mangled characters',
+  group: 'Clean',
+  fields: [{ ...columnsOnly, hint: 'Text saved in the wrong encoding, such as Ã© for é and â€™ for ’, is put back.' }],
+  defaults: (ctx) => ({ columns: pickColumns(ctx) }),
+});
+
+defineStepForm({
   type: 'emptyToNull',
   title: 'Empty text to empty value',
   group: 'Clean',

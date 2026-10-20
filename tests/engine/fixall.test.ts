@@ -39,18 +39,20 @@ describe('Fix all on messy.csv', () => {
   it('leaves no fix-level issue, in a Fixes group of one node per step, with the rows that remain cleaned', async () => {
     const project = flow({ sources: [messy], nodes: [{ id: 'in', type: 'source', sourceId: messy.id }] });
     const { before, steps, placed, after } = await fixAll(project, (issues) => issues.filter((i) => i.severity === 'fix'));
-    expect(before.issues.map((i) => i.key)).toEqual(['duplicateRows', 'nonPrinting:name', 'edgeSpaces:name', 'doubleSpaces:name', 'emptyText:name', 'edgeSpaces:city']);
+    expect(before.issues.map((i) => i.key)).toEqual(['duplicateRows', 'nonPrinting:name', 'edgeSpaces:name', 'doubleSpaces:name', 'emptyText:name', 'edgeSpaces:city', 'numbersAsText:price']);
     expect(steps.map((s) => [s.type, s.params.columns])).toEqual([
       ['removeNonPrinting', ['name']],
       ['trimWhitespace', ['name', 'city']],
       ['collapseSpaces', ['name']],
       ['emptyToNull', ['name']],
+      ['parseNumbers', ['price']],
       ['duplicateRows', []],
     ]);
-    expect(placed.nodeIds).toHaveLength(5);
+    expect(placed.nodeIds).toHaveLength(6);
     expect(placed.project.groups).toEqual([expect.objectContaining({ name: 'Fixes', nodeIds: placed.nodeIds })]);
     expect(after.issues.filter((i) => i.severity === 'fix')).toEqual([]);
     expect(after.analysis.facts.rows).toBe(4);
+    expect(after.columns.find((c) => c.name === 'price')?.type).toBe('DOUBLE');
   });
 
   it('with Trim unticked, fixes the rest and leaves the spaces issues listed', async () => {

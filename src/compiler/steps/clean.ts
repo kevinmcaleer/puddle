@@ -1,6 +1,7 @@
 // More Clean steps, mostly reached from the quick-fix bar: spaces, non-printing characters, empty text, numbers.
 import { z } from 'zod';
 import { PARSE_LOCALE_IDS, parseLocale } from '../locales';
+import { MOJIBAKE_FIXES } from '../patterns';
 import { ident, list, str } from '../sql';
 import { defineStep } from './registry';
 
@@ -50,14 +51,22 @@ export const parseNumbers = defineStep({
     locale: z.preprocess((v) => (v === '' ? undefined : v), z.enum(PARSE_LOCALE_IDS, 'pick a locale Puddle knows').optional()),
   }),
   label: (p) => `Parsed numbers in ${names(p.columns)}${p.locale ? ` (${parseLocale(p.locale)!.label})` : ''}`,
-  // Keep digits, the decimal mark and a minus sign; (12.00) is negative, as accountants write it.
+  // Keep digits, the decimal mark and a minus sign; (12.00) and 12.00- are negative, as accountants and SAP write them.
   compile: (p, { input }) =>
     replaceEach(input, p.columns, (c) => {
       const decimal = parseLocale(p.locale)?.decimal ?? p.decimal;
-      const kept = `regexp_replace(${text(c)}, ${str(decimal === '.' ? '[^0-9.\\-]' : '[^0-9,\\-]')}, '', 'g')`;
+      const kept = `regexp_replace(regexp_replace(${text(c)}, ${str(decimal === '.' ? '[^0-9.\\-]' : '[^0-9,\\-]')}, '', 'g'), '-$', '')`;
       const n = `TRY_CAST(${decimal === ',' ? `replace(${kept}, ',', '.')` : kept} AS DOUBLE)`;
-      return `CASE WHEN regexp_matches(trim(${text(c)}), '^\\(.*\\)$') THEN -${n} ELSE ${n} END`;
+      return `CASE WHEN regexp_matches(trim(${text(c)}), '^\\(.*\\)$|-$') THEN -abs(${n}) ELSE ${n} END`;
     }),
+});
+
+export const fixMojibake = defineStep({
+  type: 'fixMojibake',
+  params: z.object({ columns: Columns }),
+  label: (p) => `Fixed mangled characters in ${names(p.columns)}`,
+  // UTF-8 read as Latin-1 and saved that way: each mangled sequence put back, the longer ones first.
+  compile: (p, { input }) => replaceEach(input, p.columns, (c) => [...MOJIBAKE_FIXES].sort((a, b) => b[0].length - a[0].length).reduce((expr, [from, to]) => `replace(${expr}, ${str(from)}, ${str(to)})`, text(c))),
 });
 
 /** What Replace values looks for: one value, empty values (null), or empty values and blank text. */

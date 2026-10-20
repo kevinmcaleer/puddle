@@ -7,9 +7,9 @@ describe('column profiles', () => {
     expect(qualityOf(undefined)).toBeUndefined();
   });
 
-  it('says a text column looks like numbers or dates only when most of it does', () => {
-    const row = { n0: 10, num0: 10, date0: 0, n1: 10, num1: 7, date1: 0, n2: 5, num2: 0, date2: 4, n3: 0, num3: 0, date3: 0 };
-    expect(parseTypeSniff(row, ['a', 'b', 'c', 'd'])).toEqual({ a: { kind: 'numbers', share: 1 }, c: { kind: 'dates', share: 0.8 } });
+  it('says a text column looks like numbers or dates when most of it does, and partly when half does', () => {
+    const row = { n0: 10, num0: 10, date0: 0, n1: 10, num1: 7, date1: 0, n2: 5, num2: 0, date2: 4, n3: 0, num3: 0, date3: 0, n4: 10, num4: 2, date4: 3 };
+    expect(parseTypeSniff(row, ['a', 'b', 'c', 'd', 'e'])).toEqual({ a: { looksLike: { kind: 'numbers', share: 1 } }, b: { partly: { kind: 'numbers', share: 0.7 } }, c: { looksLike: { kind: 'dates', share: 0.8 } } });
   });
 
   it('describes a column in one line', () => {

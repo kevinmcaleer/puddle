@@ -130,6 +130,9 @@ function ProjectSettings() {
         <Field hint="Fix all also applies the fixes analysis only suggests, such as reading text as numbers when most of it is numbers. Off, those stay unticked until chosen from the list.">
           <Switch label="Fix all applies suggestions" checked={settings.fixAllSuggestions} onChange={(on) => set({ fixAllSuggestions: on })} />
         </Field>
+        <Field label="Column names" htmlFor="set-column-names" hint="How Fix all tidies untidy column names: the words as they are, trimmed, or snake_case.">
+          <Select id="set-column-names" options={COLUMN_NAME_MODES} value={settings.columnNames} onChange={(e) => set({ columnNames: e.target.value as ProjectSettingsT['columnNames'] })} />
+        </Field>
         <Field label="Run on a schedule" htmlFor="set-schedule" hint="Cron syntax for puddle-run on your own machine, e.g. 0 3 * * * for 03:00 every day. Empty: never.">
           <CommitInput key={settings.schedule ?? ''} id="set-schedule" value={settings.schedule ?? ''} placeholder="0 3 * * *" onCommit={(v) => set({ schedule: v.trim() || undefined })} />
         </Field>
@@ -150,6 +153,11 @@ function RunnerPath({ source }: { source: Source }) {
     </Section>
   );
 }
+
+const COLUMN_NAME_MODES = [
+  { value: 'words', label: 'Words as they are' },
+  { value: 'snake', label: 'snake_case' },
+];
 
 const THEMES = [
   { value: 'system', label: 'Match the system' },

@@ -69,7 +69,7 @@ async function loadProfile(engine: EngineClient, project: Project, target: Targe
   if (!text.length) return;
   const sniff = await engine.query(compileTypeSniff(project, target, text), { priority: 'background', supersede, label: 'Profiling columns' });
   const looks = parseTypeSniff(tableRows(sniff.table)[0] ?? {}, text);
-  onUpdate(Object.fromEntries(Object.entries(profile).map(([c, p]) => [c, looks[c] ? { ...p, looksLike: looks[c] } : p])));
+  onUpdate(Object.fromEntries(Object.entries(profile).map(([c, p]) => [c, looks[c] ? { ...p, ...looks[c] } : p])));
 }
 
 /** Stop was pressed while this was being read. */
