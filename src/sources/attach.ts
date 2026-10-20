@@ -66,8 +66,8 @@ export async function reattachFile(source: Source, file: File, handle?: FileHand
   const hash = await headHash(file);
   const same = source.file?.headHash === hash;
   const engine = await whenEngine();
-  // Excel and XML are read again once the file is remembered (see ./excel and ./xml).
-  if (format !== 'xlsx' && format !== 'xml') await engine.registerFile(sourceFileName(source), file);
+  // Excel, Access and XML are read again once the file is remembered (see ./excel, ./access and ./xml).
+  if (format !== 'xlsx' && format !== 'xml' && format !== 'access') await engine.registerFile(sourceFileName(source), file);
   rememberFile(source.id, file);
   keepHandle(source.id, handle);
   settleSource(source.id);
@@ -89,7 +89,8 @@ export function filesNotKeptMessage(names: string[]): string {
 
 /**
  * Pair files chosen together with the detached sources they belong to: by the file's name first (ignoring case), then,
- * where only one source and one file of a format are left over, those two. Files that fit no source are left out.
+ * where only one source and one file of a format are left over, those two. A file named for several sources (the
+ * tables of one Access database, the sheets of one workbook) goes to them all. Files that fit no source are left out.
  */
 export function matchFiles<F extends { name: string }>(sources: Source[], files: F[]): { source: Source; file: F }[] {
   const pairs: { source: Source; file: F }[] = [];
@@ -98,17 +99,20 @@ export function matchFiles<F extends { name: string }>(sources: Source[], files:
   const take = (source: Source, file: F) => {
     pairs.push({ source, file });
     openSources.splice(openSources.indexOf(source), 1);
-    openFiles.splice(openFiles.indexOf(file), 1);
   };
   for (const source of [...openSources]) {
     const name = (source.file?.originalName ?? source.name).toLowerCase();
     const file = openFiles.find((f) => f.name.toLowerCase() === name);
     if (file) take(source, file);
   }
+  for (const { file } of pairs) if (openFiles.includes(file)) openFiles.splice(openFiles.indexOf(file), 1);
   for (const source of [...openSources]) {
     const sameFormat = openSources.filter((s) => s.format === source.format);
     const files = openFiles.filter((f) => knownFormat(f.name) === source.format);
-    if (sameFormat.length === 1 && files.length === 1) take(source, files[0]!);
+    if (sameFormat.length === 1 && files.length === 1) {
+      take(source, files[0]!);
+      openFiles.splice(openFiles.indexOf(files[0]!), 1);
+    }
   }
   return pairs;
 }

@@ -36,8 +36,9 @@ export async function addFileSource(file: File, position = { x: 80, y: 80 }, han
     parseOptions: {},
     detectedSchema: [],
   };
-  // Excel is read by SheetJS into a table (see ./excel), and XML into rows (see ./xml), not by DuckDB from the file.
-  if (format !== 'xlsx' && format !== 'xml') await engine.registerFile(sourceFileName(source), file);
+  // Excel is read by SheetJS into a table (see ./excel), Access by mdb-reader (see ./access), and XML into rows
+  // (see ./xml), not by DuckDB from the file.
+  if (format !== 'xlsx' && format !== 'xml' && format !== 'access') await engine.registerFile(sourceFileName(source), file);
   files.set(source.id, file);
   markAttached(source.id);
   useProjectStore.getState().apply((p) => addSource(p, source, position));

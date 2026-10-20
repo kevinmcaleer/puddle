@@ -1,5 +1,5 @@
 // Sheet columns to an Arrow IPC stream, which DuckDB loads as a table (insertArrowFromIPCStream).
-import { Bool, DateDay, Field, Float64, Int64, makeData, Schema, Table, tableToIPC, TimestampMicrosecond, Utf8, Vector, vectorFromArray, type DataType } from 'apache-arrow';
+import { Binary, Bool, DateDay, Field, Float64, Int64, makeData, Schema, Table, tableToIPC, TimestampMicrosecond, Utf8, Vector, vectorFromArray, type DataType } from 'apache-arrow';
 import type { SheetColumn } from './types';
 
 const ARROW: Record<SheetColumn['type'], () => DataType> = {
@@ -9,6 +9,7 @@ const ARROW: Record<SheetColumn['type'], () => DataType> = {
   TIMESTAMP: () => new TimestampMicrosecond(),
   BOOLEAN: () => new Bool(),
   VARCHAR: () => new Utf8(),
+  BLOB: () => new Binary(),
 };
 
 /** Microsecond timestamps built directly: vectorFromArray would read Date objects as milliseconds. */
@@ -39,6 +40,8 @@ function vectorOf(column: SheetColumn): Vector {
       return vectorFromArray(v as (number | null)[], new Float64());
     case 'BOOLEAN':
       return vectorFromArray(v as (boolean | null)[], new Bool());
+    case 'BLOB':
+      return vectorFromArray(v as (Uint8Array | null)[], new Binary());
     default:
       return vectorFromArray(v as (string | null)[], new Utf8());
   }

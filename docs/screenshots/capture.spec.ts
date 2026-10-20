@@ -64,6 +64,11 @@ test('sources', async ({ page }) => {
   await addFiles(page, [fixture('sales.xlsx')]);
   await page.waitForTimeout(500);
   await shot(page, 'sources-excel');
+  // An Access database: its table picker, and the button that adds its other tables.
+  await addFiles(page, [fixture('shop.accdb')]);
+  await expect(page.getByTestId('node-shop.accdb')).toHaveAttribute('data-status', 'ok', { timeout: 20_000 });
+  await expect(page.getByTestId('access-add-tables')).toBeVisible();
+  await shot(page, 'sources-access');
 });
 
 /** Each fix opens a new node, whose table may still be loading: click name and city until they are the selection. */

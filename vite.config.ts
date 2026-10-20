@@ -1,6 +1,7 @@
 /// <reference types="vitest/config" />
 import { readdirSync, statSync, writeFileSync } from 'node:fs';
 import { join, relative, sep } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { defineConfig, type Connect, type Plugin } from 'vite';
 import react from '@vitejs/plugin-react';
 import tokens from './src/design-system/tokens.json';
@@ -95,8 +96,19 @@ const ISOLATED = [
   'tests/engine/samples.test.ts',
 ];
 
+/**
+ * mdb-reader (Access databases, src/access) only needs these two for databases encrypted with a password, and they
+ * pull in Node's streams, which browsers lack: the browser build gets a stand-in that says such databases can't be
+ * opened. Tests run mdb-reader's Node build, which uses Node's own crypto.
+ */
+const noCrypto = [
+  { find: /^browserify-aes\/browser\.js$/, replacement: fileURLToPath(new URL('./src/access/noCrypto.ts', import.meta.url)) },
+  { find: /^create-hash$/, replacement: fileURLToPath(new URL('./src/access/noCrypto.ts', import.meta.url)) },
+];
+
 export default defineConfig({
   plugins: [react(), precache(), isolation()],
+  resolve: { alias: noCrypto },
   server: { proxy: tutorialData },
   preview: { proxy: tutorialData },
   define: { __PUDDLE_BUILD__: JSON.stringify(build) },
