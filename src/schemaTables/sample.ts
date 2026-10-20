@@ -32,8 +32,9 @@ export function recordsSample(schema: DbmlSchema, t: Table): TableSample {
 }
 
 /** The first rows of a table: from its node through DuckDB when there is one, else from its records. */
-export async function tableSample(engine: EngineClient | null, project: Project, schema: DbmlSchema, t: Table): Promise<TableSample> {
-  const node = nodeFor(project, t);
+export async function tableSample(engine: EngineClient | null, project: Project, schema: DbmlSchema, t: Table, nodeId?: string): Promise<TableSample> {
+  // A table drawn from the canvas names the node it documents.
+  const node = nodeId ? project.nodes.find((n) => n.id === nodeId) : nodeFor(project, t);
   if (!node || !engine) return recordsSample(schema, t);
   const cache = schemaCacheFor(engine);
   await cache.prepare(project, { nodeId: node.id });

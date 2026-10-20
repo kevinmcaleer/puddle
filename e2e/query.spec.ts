@@ -113,16 +113,19 @@ test('tables come and go from the designer, taking their fields and join lines, 
   await expect(page.getByTestId('query-join-line')).toHaveCount(1);
   await expectRows(page, 5);
 
-  // Add table offers the files again; a second orders table sits in input 3, not joined to anything yet.
+  // Add table offers the files again; a second orders table sits in input 3, joined to customers on the relationship
+  // the first join line states.
   await page.getByRole('button', { name: 'Add table' }).click();
   await page.getByRole('menuitem', { name: /shop-orders\.csv/ }).click();
   await expect(page.getByTestId('query-table-3')).toContainText('shop-orders.csv');
-  await expect(page.getByTestId('query-cross-join')).toBeVisible();
+  await expect(page.getByTestId('query-join-line')).toHaveCount(2);
+  await expect(page.getByTestId('query-cross-join')).toHaveCount(0);
 
   // Selecting a join line and pressing Delete removes it.
-  await page.getByTestId('query-join-line').locator('.puddle-qd-hit').click({ force: true });
+  await page.getByTestId('query-join-line').last().locator('.puddle-qd-hit').click({ force: true });
   await page.keyboard.press('Delete');
-  await expect(page.getByTestId('query-join-line')).toHaveCount(0);
+  await expect(page.getByTestId('query-join-line')).toHaveCount(1);
+  await expect(page.getByTestId('query-cross-join')).toBeVisible();
 });
 
 test('a table follows the pointer when the moves land outside its header', async ({ page }) => {
