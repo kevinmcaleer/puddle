@@ -27,7 +27,7 @@ export function IssuesPanel({ node }: { node: GraphNode }) {
           </p>
         )}
         {issues.map((issue) => (
-          <div key={issue.key} data-testid={`issue-${issue.key}`}>
+          <div key={issue.key} data-testid={`issue-${issue.key}`} data-severity={issue.severity}>
             <IssueRow
               name={issueLabel(issue)}
               severity={issue.severity}

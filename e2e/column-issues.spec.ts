@@ -34,5 +34,6 @@ test('a likely misspelling is listed with its fix; ticked in Choose fixes and ap
   // The result is viewed: no misspelling left, the balance a number.
   await expect(page.getByTestId('issues').getByTestId('issue-nearDuplicate:City:Manchestr')).toHaveCount(0, { timeout: 20_000 });
   await expect(page.getByTestId('issues')).toHaveAttribute('data-state', 'ok');
-  await expect(page.getByText('Replaced "Manchestr" with "Manchester" in City')).toBeVisible();
+  // Nine steps in the group: the eight fixes and the Replace values that was ticked.
+  await expect(page.getByRole('group', { name: 'Fixes, group of 9 nodes' })).toBeVisible();
 });
