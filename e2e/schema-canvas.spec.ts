@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { addFiles, fixture, node, openApp } from './helpers/app';
+import { addFiles, fixture, node, openApp, selectNode } from './helpers/app';
 
 test('a relationship drawn once shows in the Schema view with the canvas’s tables, and a new Query comes joined on it', async ({ page }) => {
   await openApp(page);
@@ -32,8 +32,8 @@ test('a relationship drawn once shows in the Schema view with the canvas’s tab
   await schema.getByRole('button', { name: 'Back to canvas' }).click();
 
   // A Query of the two tables starts joined on that relationship.
-  await node(page, 'shop-customers.csv').click();
-  await node(page, 'shop-orders.csv').click({ modifiers: ['Shift'] });
+  await selectNode(page, 'shop-customers.csv');
+  await selectNode(page, 'shop-orders.csv', ['Shift']);
   await page.getByRole('button', { name: 'Add', exact: true }).click();
   await page.getByRole('menuitem', { name: /Query/ }).click();
   const designer = page.getByTestId('query-designer');
