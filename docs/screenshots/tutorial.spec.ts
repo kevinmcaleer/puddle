@@ -1,7 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
-import { addFiles, addStep, bringIntoView, cell, node } from '../../e2e/helpers/app';
+import { addFiles, addStep, bringIntoView, cell, node, selectNode } from '../../e2e/helpers/app';
 import { selectColumnsAt, settings, shot, shotPanel, start, steps } from './helpers';
 
 // The pictures for the New York taxi tutorial (tutorial-taxi.md), taken on the real TLC files: January 2024's yellow
@@ -59,7 +59,7 @@ async function addNode(page: Page, item: string | RegExp, made: string, status: 
   await page.getByRole('menuitem', { name: item }).click();
   await bringIntoView(page, made);
   await expect(node(page, made)).toHaveAttribute('data-status', status, SLOW);
-  await node(page, made).click();
+  await selectNode(page, made);
 }
 
 test('tutorial: New York taxi trips', async ({ page }) => {
@@ -71,7 +71,7 @@ test('tutorial: New York taxi trips', async ({ page }) => {
   // The two files, side by side on the canvas.
   await addFiles(page, [join(DATA, TRIPS), join(DATA, ZONES)]);
   for (const f of [TRIPS, ZONES]) await expect(node(page, f)).toHaveAttribute('data-status', 'ok', SLOW);
-  await node(page, TRIPS).click();
+  await selectNode(page, TRIPS);
   await counted(page);
   await quiet(page);
   await shot(page, 'tutorial-sources');
@@ -83,7 +83,7 @@ test('tutorial: New York taxi trips', async ({ page }) => {
   await page.keyboard.press('Escape');
 
   // What the raw file breaks, each as a warning: it's the cleaned data that has to be right.
-  await node(page, TRIPS).click();
+  await selectNode(page, TRIPS);
   await addRule(page, 'In a range');
   await ruleSettings(page).getByRole('button', { name: 'fare_amount', exact: true }).click();
   await ruleSettings(page).getByLabel('Lowest').fill('0');
@@ -113,7 +113,7 @@ test('tutorial: New York taxi trips', async ({ page }) => {
   await page.getByRole('button', { name: 'Show all rows' }).click();
 
   // Clean: how long each trip took, the hour it started, and only the trips that make sense.
-  await node(page, TRIPS).click();
+  await selectNode(page, TRIPS);
   await addNode(page, /^Time between dates/, 'Transform 1');
   await settings(page).getByLabel('In', { exact: true }).selectOption('minutes');
   await settings(page).getByLabel('New column').fill('trip_minutes');
@@ -151,14 +151,14 @@ test('tutorial: New York taxi trips', async ({ page }) => {
   await shotPanel(page, 'tutorial-filter', settings(page));
 
   // Look up the borough and zone each trip started in.
-  await node(page, 'Transform 1').click();
+  await selectNode(page, 'Transform 1');
   await node(page, ZONES).click({ modifiers: ['Shift'] });
   await page.getByRole('button', { name: 'Add', exact: true }).click();
   await page.getByRole('menuitem', { name: /Lookup/ }).click();
   await expect(node(page, 'Lookup 1')).toHaveAttribute('data-status', /ok|error/, SLOW);
   await page.getByRole('button', { name: 'Auto layout' }).click();
   await bringIntoView(page, 'Lookup 1');
-  await node(page, 'Lookup 1').click();
+  await selectNode(page, 'Lookup 1');
   const lookup = page.getByTestId('inspector-lookup');
   if (!(await lookup.getByLabel('Main column 1').isVisible())) await lookup.getByRole('button', { name: 'Add key pair' }).click();
   await lookup.getByLabel('Main column 1').selectOption('PULocationID');
@@ -204,7 +204,7 @@ test('tutorial: New York taxi trips', async ({ page }) => {
   await shot(page, 'tutorial-pivot');
 
   // Save the cleaned trips, with their zones, as Parquet.
-  await node(page, 'Lookup 1').click();
+  await selectNode(page, 'Lookup 1');
   await addNode(page, 'Output', 'Output 1');
   await page.getByTestId('output-settings').getByLabel('Format').selectOption('parquet');
   await page.getByTestId('output-settings').getByLabel('File name').fill('taxi-trips-2024-01-clean');
