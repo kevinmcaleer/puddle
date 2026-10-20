@@ -1,31 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { addFiles, addStepNode, fixture, node, openApp, selectNode } from './helpers/app';
-
-/**
- * Drag a wire from `from`'s output into `to`'s input, until `landed` holds (the wire is attached, or a notice says
- * why not). React Flow measures each node's handles after the node settles, so a drag can start the moment the node
- * is drawn and land before that measurement caught up, connecting nothing and saying nothing. Nobody drags that
- * fast; the test tries again, as a person would.
- */
-async function dragWire(page: import('@playwright/test').Page, from: string, to: string, landed: () => Promise<void>) {
-  const out = node(page, from).locator('.react-flow__handle.source');
-  const inp = node(page, to).locator('.react-flow__handle.target').first();
-  for (let attempt = 1; ; attempt++) {
-    // Press where the handle is now, measured just before, rather than where hover() last found it.
-    const start = (await out.boundingBox())!;
-    await page.mouse.move(start.x + start.width / 2, start.y + start.height / 2);
-    await page.mouse.down();
-    const box = (await inp.boundingBox())!;
-    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2, { steps: 8 });
-    await page.mouse.up();
-    try {
-      await landed();
-      return;
-    } catch (error) {
-      if (attempt === 3) throw error;
-    }
-  }
-}
+import { addFiles, addStepNode, dragWire, fixture, node, openApp, selectNode } from './helpers/app';
 
 test('nodes are added after the selection, wired, and laid out', async ({ page }) => {
   await openApp(page);

@@ -1,4 +1,4 @@
-import { expect, type Page } from '@playwright/test';
+import { expect, type Locator, type Page } from '@playwright/test';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
@@ -129,6 +129,32 @@ export async function selectNode(page: Page, name: string, modifiers: Array<'Shi
     if (!right) for (const n of shift ? want.filter((n) => !have.includes(n)) : [name]) await node(page, n).click({ modifiers });
     await expect.poll(() => selectedNodes(page), { timeout: 2_000 }).toEqual(shift ? expect.arrayContaining(want) : [name]);
   }).toPass({ timeout: 20_000 });
+}
+
+/**
+ * Drag a wire from `from`'s output handle into the input handle `to` (a locator, or the name of the node whose first
+ * input it is), until `landed` holds (the wire is attached, or a notice says why not). React Flow measures each node's
+ * handles after the node settles, so a drag can start the moment the node is drawn and land before that measurement
+ * caught up, connecting nothing and saying nothing. Nobody drags that fast; the test tries again, as a person would.
+ */
+export async function dragWire(page: Page, from: string, to: string | Locator, landed: () => Promise<void>) {
+  const out = node(page, from).locator('.react-flow__handle.source');
+  const inp = typeof to === 'string' ? node(page, to).locator('.react-flow__handle.target').first() : to;
+  for (let attempt = 1; ; attempt++) {
+    // Press where the handle is now, measured just before, rather than where hover() last found it.
+    const start = (await out.boundingBox())!;
+    await page.mouse.move(start.x + start.width / 2, start.y + start.height / 2);
+    await page.mouse.down();
+    const box = (await inp.boundingBox())!;
+    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2, { steps: 8 });
+    await page.mouse.up();
+    try {
+      await landed();
+      return;
+    } catch (error) {
+      if (attempt === 3) throw error;
+    }
+  }
 }
 
 /** The rows the results table says it has, once the background count lands. */

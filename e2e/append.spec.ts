@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { addFiles, expectRows, fixture, node, openApp, selectNode } from './helpers/app';
+import { addFiles, dragWire, expectRows, fixture, node, openApp, selectNode } from './helpers/app';
 
 /** Add the files, select them in order (click, then Shift+click), and append them from the menu or the selection bar. */
 async function appendFiles(page: Page, files: string[], via: 'menu' | 'selection bar' = 'menu') {
@@ -81,12 +81,7 @@ test('a third file dragged onto the spare input is stacked last, and another spa
     last = now;
     expect(now).toBe(before);
   }).toPass({ intervals: [150] });
-  await node(page, 'shop-customers.csv').locator('.react-flow__handle.source').hover();
-  await page.mouse.down();
-  const box = (await port(page, 2).boundingBox())!;
-  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2, { steps: 8 });
-  await page.mouse.up();
-  await expect(page.getByTestId('wire-shop-customers.csv->Append 1')).toHaveAttribute('data-port', '2');
+  await dragWire(page, 'shop-customers.csv', port(page, 2), () => expect(page.getByTestId('wire-shop-customers.csv->Append 1')).toHaveAttribute('data-port', '2', { timeout: 2_000 }));
   await expect(port(page, 3)).toHaveText('4');
   await expect(node(page, 'Append 1')).toContainText('Append · 3 inputs');
 
