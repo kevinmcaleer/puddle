@@ -618,9 +618,16 @@ export function QueryDesigner({ node }: { node: QueryNode }) {
   const { totals } = node.querySpec;
   const problems = totalsProblems(node.querySpec, tables.map((t) => ({ ...t, columns: t.columns ?? [] })));
   const kept = node.querySpec.sql != null;
+  // Kept SQL the grid can show now (written before the grid could, such as a LIMIT) opens in the design.
+  const keptDesign = kept && tables.every((t) => t.columns) ? readQuerySql(node.querySpec.sql!, tables.map((t) => ({ port: t.port, label: t.label, columns: t.columns ?? [] })), node.querySpec) : undefined;
+  const readable = !!keptDesign && 'spec' in keptDesign;
   const [chosen, setView] = useState<'design' | 'sql'>(kept ? 'sql' : 'design');
   // SQL the grid can't show is all there is to see until it's discarded.
   const view = kept ? 'sql' : chosen;
+  const choose = (v: 'design' | 'sql') => {
+    if (v === 'design' && keptDesign && 'spec' in keptDesign) apply((p) => setQueryDesign(p, node.id, keptDesign.spec));
+    setView(v);
+  };
 
   // The node's rows show below while it's being designed, unless the results table is pinned.
   useEffect(() => {
@@ -645,9 +652,9 @@ export function QueryDesigner({ node }: { node: QueryNode }) {
         <Tabs
           label="View"
           value={view}
-          onChange={(v) => setView(v as 'design' | 'sql')}
+          onChange={(v) => choose(v as 'design' | 'sql')}
           items={[
-            { id: 'design', label: 'Design', disabled: kept, title: kept ? 'The grid can’t show this SQL: go back to the design to discard it' : undefined },
+            { id: 'design', label: 'Design', disabled: kept && !readable, title: kept && !readable ? 'The grid can’t show this SQL: go back to the design to discard it' : undefined },
             { id: 'sql', label: 'SQL' },
           ]}
         />
