@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { addFiles, expectRows, fixture, fixtureText, node, openApp } from './helpers/app';
+import { addFiles, expectRows, fixture, fixtureText, node, openApp, selectNode } from './helpers/app';
 
 test('a table designed in the schema becomes a node, refuses a load that breaks its key, and shows the rows it refuses', async ({ page }) => {
   await openApp(page);
@@ -17,7 +17,7 @@ test('a table designed in the schema becomes a node, refuses a load that breaks 
   // Added after a source, the table loads it: customer 5 is in the file twice, so those rows are refused.
   await addFiles(page, [fixture('shop-customers.csv')]);
   await expect(node(page, 'shop-customers.csv')).toHaveAttribute('data-status', 'ok', { timeout: 20_000 });
-  await node(page, 'shop-customers.csv').click();
+  await selectNode(page, 'shop-customers.csv');
   await page.getByRole('button', { name: 'Add', exact: true }).click();
   await page.getByRole('menuitem', { name: /^customers/ }).click();
   await expect(node(page, 'customers')).toHaveAttribute('data-status', 'error', { timeout: 20_000 });

@@ -1,36 +1,10 @@
 import { expect, test } from '@playwright/test';
-import { addFiles, addStepNode, fixture, node, openApp } from './helpers/app';
-
-/**
- * Drag a wire from `from`'s output into `to`'s input, until `landed` holds (the wire is attached, or a notice says
- * why not). React Flow measures each node's handles after the node settles, so a drag can start the moment the node
- * is drawn and land before that measurement caught up, connecting nothing and saying nothing. Nobody drags that
- * fast; the test tries again, as a person would.
- */
-async function dragWire(page: import('@playwright/test').Page, from: string, to: string, landed: () => Promise<void>) {
-  const out = node(page, from).locator('.react-flow__handle.source');
-  const inp = node(page, to).locator('.react-flow__handle.target').first();
-  for (let attempt = 1; ; attempt++) {
-    // Press where the handle is now, measured just before, rather than where hover() last found it.
-    const start = (await out.boundingBox())!;
-    await page.mouse.move(start.x + start.width / 2, start.y + start.height / 2);
-    await page.mouse.down();
-    const box = (await inp.boundingBox())!;
-    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2, { steps: 8 });
-    await page.mouse.up();
-    try {
-      await landed();
-      return;
-    } catch (error) {
-      if (attempt === 3) throw error;
-    }
-  }
-}
+import { addFiles, addStepNode, dragWire, fixture, node, openApp, selectNode } from './helpers/app';
 
 test('nodes are added after the selection, wired, and laid out', async ({ page }) => {
   await openApp(page);
   await addFiles(page, [fixture('customers.csv')]);
-  await node(page, 'customers.csv').click();
+  await selectNode(page, 'customers.csv');
   await addStepNode(page, 'Trim whitespace');
   await expect(node(page, 'Transform 1')).toHaveAttribute('data-status', 'ok');
   await expect(page.getByTestId('wire-customers.csv->Transform 1')).toBeAttached();
@@ -38,7 +12,7 @@ test('nodes are added after the selection, wired, and laid out', async ({ page }
   await page.getByRole('button', { name: 'Add', exact: true }).click();
   await page.getByRole('menuitem', { name: 'Output' }).click();
   await expect(page.getByTestId('wire-Transform 1->Output 1')).toBeAttached();
-  await node(page, 'Output 1').click();
+  await selectNode(page, 'Output 1');
   await expect(page.getByTestId('results-title')).toHaveText('Output 1');
   await expect(page.getByTestId('wire-Transform 1->Output 1')).toHaveAttribute('data-state', 'active');
 
@@ -55,7 +29,7 @@ test('the minimap appears only once a node runs off the visible canvas, and the 
   const minimap = page.locator('.react-flow__minimap');
   await expect(minimap).toHaveCount(0);
   await addFiles(page, [fixture('customers.csv')]);
-  await node(page, 'customers.csv').click();
+  await selectNode(page, 'customers.csv');
   await addStepNode(page, 'Trim whitespace');
   await expect(node(page, 'Transform 1')).toHaveAttribute('data-status', 'ok');
   await expect(minimap).toHaveCount(0);
@@ -92,7 +66,7 @@ test('dragging a wire connects nodes, and a wire that would make a loop is refus
   await expect(page.getByRole('menuitem', { name: /^Output/ })).toContainText('Select a node first');
   await page.keyboard.press('Escape');
   // A Transform added after the source, then unwired, to drag a wire into.
-  await node(page, 'customers.csv').click();
+  await selectNode(page, 'customers.csv');
   await addStepNode(page, 'Remove blank rows');
   await page.getByTestId('canvas').click({ position: { x: 20, y: 20 } });
   await page.getByTestId('wire-customers.csv->Transform 1').click({ force: true });
@@ -103,7 +77,7 @@ test('dragging a wire connects nodes, and a wire that would make a loop is refus
   await expect(node(page, 'Transform 1')).toHaveAttribute('data-status', 'ok');
 
   // Transform 2 after Transform 1, then unwired, to drag Transform 1 into it again.
-  await node(page, 'Transform 1').click();
+  await selectNode(page, 'Transform 1');
   await addStepNode(page, 'Remove blank rows', 'Transform 2');
   await page.getByTestId('canvas').click({ position: { x: 20, y: 20 } });
   await page.getByTestId('wire-Transform 1->Transform 2').click({ force: true });
@@ -122,7 +96,7 @@ test('dragging a wire connects nodes, and a wire that would make a loop is refus
 test('hovering a wire shows the columns it carries', async ({ page }) => {
   await openApp(page);
   await addFiles(page, [fixture('customers.csv')]);
-  await node(page, 'customers.csv').click();
+  await selectNode(page, 'customers.csv');
   await page.getByRole('button', { name: 'Add', exact: true }).click();
   await page.getByRole('menuitem', { name: 'Output' }).click();
   await expect(node(page, 'Output 1')).toHaveAttribute('data-status', 'ok');
@@ -137,7 +111,7 @@ test('hovering a wire shows the columns it carries', async ({ page }) => {
 test('a broken source breaks its node and dims everything downstream', async ({ page }) => {
   await openApp(page);
   await addFiles(page, [fixture('customers.csv')]);
-  await node(page, 'customers.csv').click();
+  await selectNode(page, 'customers.csv');
   await addStepNode(page, 'Trim whitespace');
   await page.getByRole('button', { name: 'Add', exact: true }).click();
   await page.getByRole('menuitem', { name: 'Output' }).click();
@@ -166,7 +140,7 @@ test('a broken source breaks its node and dims everything downstream', async ({ 
 test('a wire can be selected and deleted on its own, and undo brings it back', async ({ page }) => {
   await openApp(page);
   await addFiles(page, [fixture('customers.csv')]);
-  await node(page, 'customers.csv').click();
+  await selectNode(page, 'customers.csv');
   await page.getByRole('button', { name: 'Add', exact: true }).click();
   await page.getByRole('menuitem', { name: 'Output' }).click();
   await expect(node(page, 'Output 1')).toHaveAttribute('data-status', 'ok');
@@ -182,10 +156,10 @@ test('a wire can be selected and deleted on its own, and undo brings it back', a
 test('deleting a node removes it and its wires, and undo brings them back', async ({ page }) => {
   await openApp(page);
   await addFiles(page, [fixture('customers.csv')]);
-  await node(page, 'customers.csv').click();
+  await selectNode(page, 'customers.csv');
   await page.getByRole('button', { name: 'Add', exact: true }).click();
   await page.getByRole('menuitem', { name: 'Output' }).click();
-  await node(page, 'Output 1').click();
+  await selectNode(page, 'Output 1');
   await page.keyboard.press('Delete');
   await expect(node(page, 'Output 1')).not.toBeAttached();
   await expect(page.getByTestId('wire-customers.csv->Output 1')).not.toBeAttached();
@@ -212,7 +186,7 @@ test('nodes stay visible while the flow updates around them', async ({ page }) =
     };
     new MutationObserver(check).observe(document.body, { subtree: true, attributes: true, attributeFilter: ['style'] });
   });
-  await node(page, 'customers.csv').click();
+  await selectNode(page, 'customers.csv');
   await addStepNode(page, 'Trim whitespace');
   await expect(node(page, 'Transform 1')).toHaveAttribute('data-status', 'ok');
   await page.getByRole('button', { name: 'Add', exact: true }).click();

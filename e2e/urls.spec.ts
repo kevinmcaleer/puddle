@@ -1,7 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 import { readFileSync } from 'node:fs';
 import { startFileServer, type FileServer } from '../tests/helpers/fileServer';
-import { expectRows, fixture, node, openApp } from './helpers/app';
+import { expectRows, fixture, node, openApp, selectNode } from './helpers/app';
 
 // Fixtures come from local servers started here: one sends CORS headers and supports range requests, the other
 // sends neither, the way many servers on the web behave.
@@ -51,7 +51,7 @@ test('a CSV added from a web address loads, shows its host, and re-fetches on re
   expect(open.requests.filter((r) => r.path === '/customers.csv').length).toBeGreaterThan(before);
   await expect(page.getByTestId('results-detached')).toHaveCount(0);
   await expectRows(page, 4);
-  await node(page, 'customers.csv').click();
+  await selectNode(page, 'customers.csv');
   await expect(page.getByTestId('url-panel')).toHaveAttribute('data-attachment', 'attached');
   await expect(page.getByTestId('attachment-banner')).toHaveCount(0);
 });
