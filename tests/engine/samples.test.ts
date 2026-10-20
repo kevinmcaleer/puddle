@@ -8,11 +8,12 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { useEngineStore } from '../../src/app/engine';
 import { useSession } from '../../src/app/session';
+import { analyseNode, findIssues, planFixes, sortIssues, type Issue } from '../../src/analysis';
 import { compile, compileCount } from '../../src/compiler';
 import { EngineClient, tableRows } from '../../src/engine/client';
 import { detectDateFormats } from '../../src/dates';
 import { schemaCacheFor } from '../../src/flow/status';
-import { useProjectStore, type Project, type Source } from '../../src/model';
+import { placeFixes, useProjectStore, type Project, type Source } from '../../src/model';
 import { gatherSuggestionFacts, suggestRules } from '../../src/rules';
 import { SAMPLES, TAXI_TUTORIAL, type SampleFile } from '../../src/samples/catalog';
 import { openSample } from '../../src/samples/open';
@@ -61,6 +62,27 @@ const count = (p: Project, nodeId: string) => one(compileCount(p, { nodeId }));
 /** A source followed by a Transform with these steps; `out` is the Transform. */
 const cleaned = (source: Source, steps: ReturnType<typeof step>[]) =>
   flow({ sources: [source], nodes: [{ id: 'in', type: 'source', sourceId: source.id }, { id: 'out', type: 'transform', steps }], wires: [['in', 'out']] });
+
+/** The analysis of a node as the Issues panel reads it, and Fix all with the issues chosen, placed after the node. */
+const analyse = async (p: Project, nodeId: string) => {
+  const columns = await engine.describe(`SELECT * FROM (${compile(p, { nodeId }).sql}) LIMIT 0`);
+  const analysis = await analyseNode(engine, p, nodeId, columns);
+  return { columns, analysis, issues: sortIssues(findIssues(columns, analysis.profile, analysis.facts), columns.map((c) => c.name)) };
+};
+async function fixAll(p: Project, nodeId: string, chosen: (issues: Issue[]) => Issue[]) {
+  const before = await analyse(p, nodeId);
+  const { steps } = await planFixes(chosen(before.issues), { available: before.columns, locale: p.settings.locale, detectDates: (c) => detectDateFormats(engine, p, { nodeId }, c) });
+  const placed = placeFixes(p, nodeId, steps)!;
+  const after = await analyse(placed.project, placed.last.nodeId);
+  return { before, steps, after, rows: await rows(compile(placed.project, { nodeId: placed.last.nodeId }).sql) };
+}
+/** An Excel sample opened as the editor opens it: the workbook read by the Excel worker into DuckDB. */
+async function openSheetSample(id: string) {
+  await open(id);
+  await syncExcelSources(engine, useProjectStore.getState().history.present);
+  const p = useProjectStore.getState().history.present;
+  return { project: p, nodeId: p.nodes.find((n) => n.type === 'source')!.id };
+}
 
 describe('opening a sample', () => {
   it.each(SAMPLES.map((s) => [s.id, s] as const))('%s opens as a new project with each file read and its note', async (_id, sample) => {
@@ -202,6 +224,33 @@ describe('each sample has the problems its note describes, and the suggested fix
     const sql = compile(fixed, { nodeId: 'out' }).sql;
     expect(await count(fixed, 'out')).toBe(8 * 12);
     expect((await engine.describe(sql)).find((c) => c.name === 'sales')?.type).toBe('DOUBLE');
+  });
+
+  it('skewed invoices: from the 18th row the cells sit a column left; Fix all moves them back and types the dates and amounts', async () => {
+    const { project, nodeId } = await openSheetSample('skewed');
+    const { columns, issues } = await analyse(project, nodeId);
+    expect(columns.map((c) => c.name)).toEqual(['Invoice', 'Customer', 'Issued', 'Due', 'Net', 'VAT', 'Gross']);
+    expect(issues.filter((i) => i.severity === 'fix').map((i) => i.key)).toEqual(['skewedRows:Customer:left']);
+    const { steps, after, rows: fixed } = await fixAll(project, nodeId, (all) => all.filter((i) => i.severity === 'fix'));
+    expect(steps.map((s) => s.type)).toEqual(['realignRows', 'parseNumbers', 'parseDates', 'parseDates']);
+    expect(fixed).toHaveLength(36);
+    expect(['Issued', 'Due', 'Net', 'VAT', 'Gross'].map((c) => after.columns.find((x) => x.name === c)?.type)).toEqual(['DATE', 'DATE', 'DOUBLE', 'DOUBLE', 'DOUBLE']);
+    expect(fixed.every((r) => r.Issued != null && Math.abs((r.Net as number) + (r.VAT as number) - (r.Gross as number)) < 0.011)).toBe(true);
+    expect(after.issues.find((i) => i.kind === 'skewedRows')).toBeUndefined();
+  });
+
+  it('merged report: read as one table with the header rows joined and regions filled; the totals and the spacer column are issues Fix all clears', async () => {
+    const { project, nodeId } = await openSheetSample('merged');
+    const { columns, issues } = await analyse(project, nodeId);
+    expect(columns.map((c) => c.name)).toEqual(['Region', 'Store', 'Q1 Jan', 'Q1 Feb', 'Q1 Mar', 'Q2 Apr', 'Q2 May', 'Q2 Jun', 'Column I', 'Notes']);
+    expect(issues.find((i) => i.kind === 'totalRows')).toMatchObject({ severity: 'suggest', count: 5 });
+    expect(issues.find((i) => i.kind === 'emptyColumn')).toMatchObject({ column: 'Column I' });
+    expect(issues.find((i) => i.kind === 'mergedCells')).toBeUndefined();
+    const { after, rows: fixed } = await fixAll(project, nodeId, (all) => all.filter((i) => i.severity === 'fix' || i.kind === 'totalRows'));
+    expect(fixed).toHaveLength(11);
+    expect(after.columns.map((c) => c.name)).not.toContain('Column I');
+    expect(fixed.map((r) => r.Region)).toEqual(['North', 'North', 'North', 'South', 'South', 'South', 'South', 'Scotland', 'Scotland', 'Wales', 'Wales']);
+    expect(after.issues.find((i) => i.kind === 'totalRows' || i.kind === 'emptyColumn')).toBeUndefined();
   });
 
   it.each(SAMPLES.map((s) => s.id))('%s gives the suggested rules something to say', async (id) => {
