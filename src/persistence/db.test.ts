@@ -84,8 +84,8 @@ describe('IndexedDB project store', () => {
     await saveProject(a);
     await saveProject(b);
     expect(await listProjects()).toEqual([
-      { id: b.id, name: 'Newer', updatedAt: b.updatedAt, sources: 0, nodes: 0 },
-      { id: a.id, name: 'Older', updatedAt: a.updatedAt, sources: 0, nodes: 0 },
+      { id: b.id, name: 'Newer', updatedAt: b.updatedAt, sources: 0, nodes: 0, connections: [] },
+      { id: a.id, name: 'Older', updatedAt: a.updatedAt, sources: 0, nodes: 0, connections: [] },
     ]);
   });
 
