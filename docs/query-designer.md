@@ -8,7 +8,7 @@ To make one, select the tables on the canvas and choose **Query these** on the s
 
 ## Tables and joins
 
-Each table shows its fields with their types. Drag a field onto a field of another table to join them: a line connects the two. The inspector lists the joins, and for each one which rows it keeps (matching rows only, every row of the first table, or every row of the second). Tables with no join line would pair every row with every row, and the designer warns about it. **Add table** brings in another node.
+Each table shows its fields with their types. Drag a field onto a field of another table to join them: a line connects the two. The inspector lists the joins, and for each one which rows it keeps (matching rows only, every row of the first table, or every row of the second). Tables with no join line would pair every row with every row, and the designer warns about it. **Add table** brings in another node. As in Access, a table comes joined to the tables already there on any relationship the project has between them (see {doc}`relationships`), and so do the tables of a new Query, so a relationship is drawn once rather than again in every query.
 
 ## The grid
 
@@ -21,7 +21,7 @@ Drag a field into the grid, or double-click it, to add it to the result. For eac
 | Show | Whether the field is in the result. A hidden field can still sort or filter. |
 | Criteria | A condition on the field, such as "More than 5". Criteria on one row must all hold; each further "or" row is an alternative. |
 
-**Totals** adds a Total row for grouping and summarising, as in Access: each field is Group by, or a summary such as Sum, Average, Min, Max, Count, Count distinct, First, Last, StDev or Var. Where filters on a field before grouping, and Expression takes a calculation over the others. **Unique values** removes repeated rows from the result.
+**Totals** adds a Total row for grouping and summarising, as in Access: each field is Group by, or a summary such as Sum, Average, Min, Max, Count, Count distinct, First, Last, StDev or Var. Where filters on a field before grouping, and Expression takes a calculation over the others. **Unique values** removes repeated rows from the result. **Top values** keeps only the first 5, 10, 25 or more rows, after sorting, as in Access; All keeps every row.
 
 ## SQL view
 
@@ -38,5 +38,6 @@ The grid can show:
 - `WHERE` and `HAVING` conditions such as `total > 5`, `name ILIKE '%ada%'`, joined with `AND` and `OR`; a condition on a field the query doesn't show goes on a hidden field, as in Access
 - `GROUP BY` with `sum`, `avg`, `min`, `max`, `count`, `count(DISTINCT ...)`, `first`, `last`, `stddev` and `variance`, and other calculations over them as an Expression
 - `ORDER BY`
+- `LIMIT` with a number of rows, as Top values
 
-Some SQL has no place in the grid: `LIMIT`, `UNION`, subqueries, `CASE` and the like. Puddle says why, and keeps your SQL: the query runs it as written, and **Design** is unavailable until you choose **Back to the design**, which discards the SQL and brings back the design as it was.
+Some SQL has no place in the grid: `OFFSET`, `UNION`, subqueries, `CASE` and the like. Puddle says why, and keeps your SQL: the query runs it as written, and **Design** is unavailable until you choose **Back to the design**, which discards the SQL and brings back the design as it was.

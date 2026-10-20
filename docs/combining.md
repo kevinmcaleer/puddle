@@ -13,7 +13,7 @@ A Join puts two inputs side by side, matching rows on key columns, like a SQL jo
 In the inspector:
 
 - **Join type** chooses which rows to keep: a left, inner, right or full join, an anti join (left rows with no match) or a semi join (left rows with a match, without the right's columns).
-- **Match on** pairs a left column with a right column. Puddle starts with a column the two share. **Add key pair** matches on several columns at once.
+- **Match on** pairs a left column with a right column. Puddle starts with the keys of a relationship between the two inputs, if the project has one (see {doc}`relationships`), else a column the two share. **Add key pair** matches on several columns at once.
 - **Suffix for clashing columns** is added to a right column whose name the left already has.
 - **Swap inputs** exchanges left and right.
 

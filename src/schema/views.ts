@@ -43,6 +43,9 @@ function freeViewName(doc: SchemaDoc, base: string): string {
   for (let i = 2; ; i++) if (!names.has(`${base} ${i}`.toLowerCase())) return `${base} ${i}`;
 }
 
+/** Show the canvas's tables, queries and views with the DBML's, or only the DBML's. */
+export const showCanvasInSchema = (p: Project, show: boolean): Project => (!p.schema.hideCanvas === show ? p : withDoc(p, { hideCanvas: show ? undefined : true }));
+
 /** Show a view; undefined shows All tables. */
 export const openSchemaView = (p: Project, id: string | undefined): Project => (p.schema.view === id ? p : withDoc(p, { view: id }));
 

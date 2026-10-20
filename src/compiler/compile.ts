@@ -347,8 +347,9 @@ export function compileDisplayPage(project: Project, target: Target, columns: st
 }
 
 /** Per-column profile from SUMMARIZE: the share of empty values (the quality bars), about how many distinct values, and the smallest and largest. */
-export function compileProfile(project: Project, target: Target): string {
-  return `SELECT column_name, CAST(null_percentage AS DOUBLE) AS null_pct, approx_unique, CAST(min AS VARCHAR) AS min, CAST(max AS VARCHAR) AS max FROM (SUMMARIZE SELECT * FROM (${compile(project, target).sql}))`;
+export function compileProfile(project: Project, target: Target, limit?: number): string {
+  const source = limit ? `SELECT * FROM (${compile(project, target).sql}) LIMIT ${num(limit)}` : compile(project, target).sql;
+  return `SELECT column_name, CAST(null_percentage AS DOUBLE) AS null_pct, approx_unique, CAST(min AS VARCHAR) AS min, CAST(max AS VARCHAR) AS max FROM (SUMMARIZE SELECT * FROM (${source}))`;
 }
 
 /**

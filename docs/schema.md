@@ -4,7 +4,9 @@
 
 ![The Schema view: the DBML of a small shop on the left, and its diagram on the right with an enum, a table group, refs between the tables and a sticky note](_static/screenshots/schema-view.png)
 
-The toolbar says how many tables and refs the text holds. **Insert example** writes a short example with a comment on each line, which is a good place to start; **Clear** empties the editor. The divider between the editor and the diagram can be dragged, or moved with the arrow keys.
+The Schema view also documents the project as it is: every table, query and view on the canvas, with the relationships between them, as Access documents a database (see [The canvas in the schema](#the-canvas-in-the-schema)).
+
+The toolbar says how many tables and refs the text holds, and how many tables come from the canvas. **Insert example** writes a short example with a comment on each line, which is a good place to start; **Clear** empties the editor. The divider between the editor and the diagram can be dragged, or moved with the arrow keys.
 
 {doc}`schema-dbml` lists the DBML that Puddle reads.
 
@@ -37,6 +39,20 @@ The bar above the diagram has:
 - **Auto-arrange**, which lays the tables out so nothing overlaps.
 
 With the diagram focused, the arrow keys pan, + and - zoom, 0 shows it at 100% and Shift+1 fits it.
+
+## The canvas in the schema
+
+With **Canvas** on in the toolbar (it is, unless you turn it off), the diagram draws the canvas next to the DBML's tables, in three groups:
+
+- **Canvas tables**: each source, with its columns and DuckDB types,
+- **Canvas queries**: each Query, SQL, Join, Lookup and Append node, with the columns it gives,
+- **Canvas views**: the last Transform of each chain of steps, which is its table as cleaned.
+
+Lines join the columns of every relationship the project has, the same ones as the Relationships view (see {doc}`relationships`), with **1** and **∞** as Puddle checked them. Hover over a canvas table to see what it is (a source's file, a join's keys, a query's SQL or a view's steps) and the first rows of its data. Its menu opens it in the results, or a Query in the query designer.
+
+![The Schema view with the canvas on: two sources in Canvas tables, related on customer_id and status, and the Join of them in Canvas queries](_static/screenshots/schema-canvas.png)
+
+Canvas tables are drawn from the project as it is, so they can be moved but not edited here. A node with the name of a table written in the DBML is documented by that table instead, so writing a table into the DBML (with **Open in Schema** in the Relationships view, say) takes it over, and its relationships move with it. Schema table nodes are always their DBML table. The Docs, Image and Mermaid exports include the canvas's tables; the SQL export writes only the DBML's design.
 
 ## Editing on the diagram
 

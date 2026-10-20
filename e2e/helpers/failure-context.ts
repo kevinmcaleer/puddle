@@ -16,8 +16,9 @@ export default class FailureContext implements Reporter {
     } catch {
       return;
     }
+    // The first 400 lines and the last 60: the status strip, with the query still running, sits at the end.
     const lines = text.split('\n');
-    const shown = lines.slice(0, 400).join('\n') + (lines.length > 400 ? `\n… ${lines.length - 400} more lines` : '');
+    const shown = lines.length <= 460 ? text : `${lines.slice(0, 400).join('\n')}\n… ${lines.length - 460} more lines …\n${lines.slice(-60).join('\n')}`;
     console.log(`\n--- The page when "${test.titlePath().slice(1).join(' › ')}" failed ---\n${shown}\n--- end ---\n`);
   }
 }

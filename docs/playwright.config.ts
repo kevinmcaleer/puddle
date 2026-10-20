@@ -10,7 +10,8 @@ export default defineConfig({
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: 0,
-  reporter: [...(process.env.CI ? [['github'] as const] : []), ['list'] as const],
+  // In CI the page as it stood when a test failed goes in the job log, as the e2e suite's does.
+  reporter: [...(process.env.CI ? [['github'] as const, ['../e2e/helpers/failure-context.ts'] as const] : []), ['list'] as const],
   use: {
     baseURL: `http://localhost:${port}`,
     browserName: 'chromium',
