@@ -106,12 +106,15 @@ export class Scheduler {
         if (!job) break;
         this.running = job;
         this.setActivity({ label: job.label ?? 'Running a query', priority: job.priority, startedAt: this.clock() });
+        const began = this.clock();
+        const watchdog = setInterval(() => console.warn(`[scheduler] "${job.label}" (${job.priority}) has run for ${Math.round((this.clock() - began) / 1000)} s; aborted=${job.controller.signal.aborted} preempted=${job.preempted} queued=${this.preview.length}/${this.background.length}`), 15_000);
         try {
           const value = await job.run(job.controller.signal);
           if (job.controller.signal.aborted) throw job.stopped ? stopped() : cancelled();
           job.resolve(value);
         } catch (e) {
           if (job.preempted) {
+            console.warn(`[scheduler] "${job.label}" pre-empted after ${Math.round((this.clock() - began) / 1000)} s; requeued`);
             job.preempted = false;
             job.controller = new AbortController();
             this.background.unshift(job);
@@ -119,6 +122,7 @@ export class Scheduler {
             job.reject(job.stopped ? stopped() : job.controller.signal.aborted ? cancelled() : toEngineError(e));
           }
         } finally {
+          clearInterval(watchdog);
           this.running = null;
         }
         if (!this.preview.length && !this.background.length) this.setActivity(null);
