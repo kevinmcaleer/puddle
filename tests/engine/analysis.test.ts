@@ -50,6 +50,18 @@ describe('analysing a node', () => {
     expect(by['edgeSpaces:city']).toMatchObject({ count: 1, examples: ['  new york'] });
   });
 
+  it('looks at a big table through its first rows, and says so', async () => {
+    const project = flow({ sources: [messy], nodes: [{ id: 'in', type: 'source', sourceId: messy.id }] });
+    const columns = await engine.describe(`SELECT * FROM (${(await import('../../src/compiler')).compile(project, { nodeId: 'in' }).sql}) LIMIT 0`);
+    const analysis = await analyseNode(engine, project, 'in', columns, 3);
+    expect(analysis.facts.sample).toEqual({ rows: 3, total: 5 });
+    expect(analysis.facts.rows).toBe(3);
+    const issues = findIssues(columns, analysis.profile, analysis.facts);
+    expect(issues.every((i) => i.count <= 3)).toBe(true);
+    // A table within the limit is looked at whole.
+    expect((await analyseNode(engine, project, 'in', columns, 5)).facts.sample).toBeUndefined();
+  });
+
   it('finds the CRM export’s duplicate rows, spaces, hidden characters, mixed capitals, placeholders, a misspelt city and text-typed columns', async () => {
     const { issues } = await analyse(crm);
     const keys = issues.map((i) => i.key);

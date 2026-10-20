@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { compileAnalysis, compileDistinctFacts, compileValueCounts } from './analysis';
+import { compileAnalysis, compileDistinctFacts, compileShape, compileValueCounts } from './analysis';
 import { flow, src } from '../../tests/helpers/projects';
 
 const project = flow({ sources: [src({ id: 'a', format: 'csv' })], nodes: [{ id: 'in', type: 'source', sourceId: 'a' }] });
@@ -52,5 +52,15 @@ describe('compileAnalysis', () => {
 
   it('leaves the duplicate count out when no columns are named', () => {
     expect(compileAnalysis(project, { nodeId: 'in' }, [])).toBe(`SELECT count(*) AS "rows" FROM (${compileAnalysis(project, { nodeId: 'in' }, []).split('FROM (')[1]}`);
+  });
+});
+
+describe('a row limit', () => {
+  it('looks at the first rows only, in every analysis query, when one is given', () => {
+    const checks = [{ column: 'name', text: true }];
+    for (const sql of [compileAnalysis(project, { nodeId: 'in' }, checks, ['name'], 500), compileDistinctFacts(project, { nodeId: 'in' }, checks, 500), compileValueCounts(project, { nodeId: 'in' }, ['name'], 500), compileShape(project, { nodeId: 'in' }, ['name'], 500)]) {
+      expect(sql).toMatch(/\) LIMIT 500\)/);
+    }
+    expect(compileAnalysis(project, { nodeId: 'in' }, checks, ['name'])).not.toContain('LIMIT');
   });
 });
