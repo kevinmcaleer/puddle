@@ -61,8 +61,18 @@ export function editDistance(a: string, b: string, max = 2): number {
   return prev[b.length]!;
 }
 
-/** Whether two words are close enough for one to be a misspelling of the other: Jaro-Winkler, or one edit in a word of five or more. */
-export const alike = (a: string, b: string) => jaroWinkler(a, b) >= NEAR_DUPLICATE || (Math.min(a.length, b.length) >= 5 && editDistance(a, b, 1) <= 1);
+/**
+ * Whether two words are close enough for one to be a misspelling of the other: within one edit per five characters
+ * (so one in "Leeds", two in "Massachusetts"), and, for a word under five characters, Jaro-Winkler above the
+ * threshold too. The edit budget keeps two names with the same first word apart: "Fatima Patel" and "Fatima Ali"
+ * share a start, not a spelling, though Jaro-Winkler rates them alike.
+ */
+export function alike(a: string, b: string): boolean {
+  const shorter = Math.min(a.length, b.length);
+  const budget = Math.max(1, Math.floor(shorter / 5));
+  if (editDistance(a, b, budget) > budget) return false;
+  return shorter >= 5 || jaroWinkler(a, b) >= NEAR_DUPLICATE;
+}
 
 export interface ValueCount {
   value: string;

@@ -70,6 +70,8 @@ describe('analysing a node', () => {
     expect(by['placeholders:Balance']).toMatchObject({ examples: ['n/a'], fix: { readOptions: { nullStrings: ['n/a'] } } });
     // Manchestr, once; the common spelling is offered in its place.
     expect(by['nearDuplicate:City:Manchestr']).toMatchObject({ severity: 'suggest', examples: ['Manchestr', 'Manchester'], fix: { type: 'replaceValues', params: { find: 'Manchestr', replace: 'Manchester' } } });
+    // The customers' names are different people, not misspellings, though Fatima Patel and Fatima Ali share a start.
+    expect(keys.filter((k) => k.startsWith('nearDuplicate'))).toEqual(['nearDuplicate:City:Manchestr']);
     // Amounts with brackets and a pound sign, dates in three formats: whole columns once the placeholders and blanks are set aside.
     expect(by['numbersAsText:Balance']).toMatchObject({ severity: 'fix', fix: { type: 'parseNumbers', params: { decimal: '.' } } });
     expect(by['datesAsText:Signed up']).toMatchObject({ severity: 'fix', fix: { type: 'parseDates' } });

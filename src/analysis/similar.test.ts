@@ -42,4 +42,12 @@ describe('near-duplicates', () => {
     // Equal counts say nothing about which is right.
     expect(nearDuplicates([{ value: 'Grey', count: 5 }, { value: 'Gray', count: 5 }])).toEqual([]);
   });
+
+  it('keeps two names that share a first word apart: a shared start is not a misspelling', () => {
+    // Jaro-Winkler alone puts Fatima Patel within reach of Fatima Ali (the CRM export's customers).
+    expect(nearDuplicates([{ value: 'Fatima Ali', count: 2 }, { value: 'Fatima Patel', count: 1 }])).toEqual([]);
+    expect(nearDuplicates([{ value: 'MATEO ALI', count: 2 }, { value: 'mateo patel', count: 1 }])).toEqual([]);
+    // A second typo is allowed in a long word.
+    expect(nearDuplicates([{ value: 'Massachusetts', count: 5 }, { value: 'Masachusets', count: 1 }])).toEqual([{ value: 'Masachusets', count: 1, target: 'Massachusetts' }]);
+  });
 });

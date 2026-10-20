@@ -328,7 +328,8 @@ export function findIssues(columns: ColumnSchema[], profile: Record<string, Colu
       const n = x.nonNull - placeholderCount;
       if (looks && !serial) {
         const whole = looks.share >= 1;
-        const ex = [p?.min, p?.max].filter((v): v is string => v != null);
+        // The lowest and highest values, leaving out a header pasted in again (the column's own name sorts last among dates).
+        const ex = [p?.min, p?.max].filter((v): v is string => v != null && v.toLowerCase() !== column.toLowerCase());
         if (looks.kind === 'numbers') add('numbersAsText', column, { count: Math.round(looks.share * n), share: looks.share, examples: ex, severity: whole ? 'fix' : 'suggest', fix: { type: 'parseNumbers', ...decimalParams(x) } });
         else add('datesAsText', column, { count: Math.round(looks.share * n), share: looks.share, examples: ex, severity: whole ? 'fix' : 'suggest', fix: { type: 'parseDates' } });
       } else if (p?.partly && !serial) {
