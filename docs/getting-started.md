@@ -18,7 +18,7 @@ You can leave the tour at any point with **Skip**, and pick it up again later fr
 
 ## Samples
 
-**Try a sample** opens one of eight deliberately messy datasets as a new project. Each comes with a project note saying what is wrong with the data and where to start.
+**Try a sample** opens one of eight deliberately messy datasets as a new project. Each comes with a project note saying what is wrong with the data and where to start, and the Issues panel lists what Puddle found (see {doc}`analysing`).
 
 ![The Try a sample dialog listing the samples](_static/screenshots/start-samples.png)
 
@@ -54,4 +54,4 @@ With the contact list sample open:
 3. With the same columns selected, choose **Case**, then **Title Case**. That is a second Transform, wired after the first.
 4. Click `name`, then Shift+click `signed_up` to select every column, and choose **Remove duplicates**.
 
-Every click added a step, each a node on the canvas, that you can see, change, turn off or delete in the inspector. Carry on with {doc}`cleaning`.
+Every click added a step, each a node on the canvas, that you can see, change, turn off or delete in the inspector. Puddle had found the same problems itself: the **Issues** panel in the inspector lists them, and **Fix all** applies every fix in one go (see {doc}`analysing`). Carry on with {doc}`cleaning`.
