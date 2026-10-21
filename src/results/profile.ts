@@ -1,5 +1,9 @@
 // Column profiles for the viewed result: SUMMARIZE's counts, and what text columns look like.
-import { displayFormat, formatValue, fullCount, type ColumnKind, type DisplayFormat, type Quality } from '../ui';
+// Imported from the files themselves, not the kit's index, so the runner's bundle (which analyses files too) stays clear of the components.
+import type { ColumnKind } from '../ui/columnKind';
+import { formatValue, fullCount } from '../ui/format';
+import { displayFormat, type DisplayFormat } from '../ui/locale';
+import type { Quality } from '../ui/QualityBar';
 
 export interface ColumnProfile {
   /** Share of empty values, 0 to 1. */

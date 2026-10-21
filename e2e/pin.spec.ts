@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { addFiles, addStepNode, expectRows, fixture, node, openApp } from './helpers/app';
+import { addFiles, addStepNode, expectRows, fixture, node, openApp, selectNode } from './helpers/app';
 
 const title = (page: Page) => page.getByTestId('results-title');
 
@@ -9,8 +9,8 @@ async function joinShop(page: Page) {
   await addFiles(page, [fixture('shop-orders.csv'), fixture('shop-customers.csv')]);
   await expect(node(page, 'shop-customers.csv')).toHaveAttribute('data-status', 'ok');
   await expect(node(page, 'shop-orders.csv')).toHaveAttribute('data-status', 'ok');
-  await node(page, 'shop-orders.csv').click();
-  await node(page, 'shop-customers.csv').click({ modifiers: ['Shift'] });
+  await selectNode(page, 'shop-orders.csv');
+  await selectNode(page, 'shop-customers.csv', ['Shift']);
   await page.getByRole('button', { name: 'Add', exact: true }).click();
   await page.getByRole('menuitem', { name: /Join/ }).click();
   await expect(node(page, 'Join 1')).toHaveAttribute('data-status', 'ok');
@@ -38,7 +38,7 @@ test('a pinned table stays put while other nodes are clicked, and follows clicks
   await openApp(page);
   await addFiles(page, [fixture('shop-orders.csv'), fixture('shop-customers.csv')]);
   await expect(node(page, 'shop-customers.csv')).toHaveAttribute('data-status', 'ok');
-  await node(page, 'shop-orders.csv').click();
+  await selectNode(page, 'shop-orders.csv');
   await expect(title(page)).toHaveText('shop-orders.csv');
   await expectRows(page, 5);
 
@@ -50,7 +50,7 @@ test('a pinned table stays put while other nodes are clicked, and follows clicks
   await expect(node(page, 'shop-orders.csv').getByTestId('node-pill')).toHaveText('Pinned');
 
   // Clicking another node selects it (the inspector follows) but the table stays on orders.
-  await node(page, 'shop-customers.csv').click();
+  await selectNode(page, 'shop-customers.csv');
   await expect(page.getByTestId('inspector-columns').locator('.ui-col')).toHaveText(['customer_id', 'name', 'status']);
   await expect(title(page)).toHaveText('shop-orders.csv');
   await expectRows(page, 5);
@@ -61,14 +61,14 @@ test('a pinned table stays put while other nodes are clicked, and follows clicks
   await expect(pin).toHaveAttribute('aria-pressed', 'false');
   await expect(page.getByTestId('pin-offer')).not.toBeAttached();
   await expect(node(page, 'shop-orders.csv').getByTestId('node-pill')).toHaveText('Viewing');
-  await node(page, 'shop-customers.csv').click();
+  await selectNode(page, 'shop-customers.csv');
   await expect(title(page)).toHaveText('shop-customers.csv');
   await expect(page.getByTestId('results-table')).toHaveAttribute('data-columns', 'customer_id,name,status');
 
   // P pins again; View here moves the pin to the selected node.
   await page.keyboard.press('p');
   await expect(pin).toHaveAttribute('aria-pressed', 'true');
-  await node(page, 'shop-orders.csv').click();
+  await selectNode(page, 'shop-orders.csv');
   await expect(title(page)).toHaveText('shop-customers.csv');
   await page.getByTestId('pin-offer').getByRole('button', { name: 'View here' }).click();
   await expect(title(page)).toHaveText('shop-orders.csv');
@@ -84,9 +84,9 @@ test('a pinned table stays put while other nodes are clicked, and follows clicks
 
 test('comparing a source with the Join after it: two grids, each with its own counts, and the extra columns marked', async ({ page }) => {
   await joinShop(page);
-  await node(page, 'shop-orders.csv').click();
+  await selectNode(page, 'shop-orders.csv');
   await page.getByTestId('pin-toggle').click();
-  await node(page, 'Join 1').click();
+  await selectNode(page, 'Join 1');
   await page.getByTestId('pin-offer').getByRole('button', { name: 'Compare' }).click();
 
   const compare = page.getByTestId('results-compare');
@@ -126,9 +126,9 @@ test('comparing a source with the Join after it: two grids, each with its own co
 
 test('undo leaves the pin and the comparison alone', async ({ page }) => {
   await joinShop(page);
-  await node(page, 'shop-orders.csv').click();
+  await selectNode(page, 'shop-orders.csv');
   await page.getByTestId('pin-toggle').click();
-  await node(page, 'Join 1').click();
+  await selectNode(page, 'Join 1');
   await page.getByTestId('pin-offer').getByRole('button', { name: 'Compare' }).click();
   await expect(page.getByTestId('results-compare')).toBeVisible();
 
@@ -162,12 +162,12 @@ async function compareWide(page: Page) {
   await openApp(page);
   await addFiles(page, [wide()]);
   await expect(node(page, 'wide.csv')).toHaveAttribute('data-status', 'ok');
-  await node(page, 'wide.csv').click();
+  await selectNode(page, 'wide.csv');
   await addStepNode(page, 'Remove blank rows');
   await expect(node(page, 'Transform 1')).toHaveAttribute('data-status', 'ok');
-  await node(page, 'wide.csv').click();
+  await selectNode(page, 'wide.csv');
   await page.getByTestId('pin-toggle').click();
-  await node(page, 'Transform 1').click();
+  await selectNode(page, 'Transform 1');
   await page.getByTestId('pin-offer').getByRole('button', { name: 'Compare' }).click();
 
   const main = page.getByTestId('results-table');

@@ -1,6 +1,6 @@
 import { whenEngine } from '../app/engine';
 import { useSession } from '../app/session';
-import { sourceFileName } from '../compiler';
+import { isRewritten, sourceFileName } from '../compiler';
 import { updateSource, useProjectStore, type Project, type Source } from '../model';
 import { registerSourceFile, rememberFile, sourceFile } from './add';
 import { markAttached, useAttachments, type Attachment } from './attachments';
@@ -9,6 +9,7 @@ import { keepHandle, offerHandles, settleSource, supportsFileHandles, useReconne
 import { headHash } from './hash';
 import { deleteHandles, loadHandles } from '../persistence/db';
 import { loadUrlSource, urlFetched } from './url';
+import { attachArchive, isArchiveSource } from './archive';
 
 /** Connect a source of the open project to the file behind its stored handle. */
 export const connectHandle = async (sourceId: string, file: File, handle: FileHandle) => {
@@ -46,7 +47,7 @@ export async function attachProject(project: Project): Promise<void> {
   const next: Record<string, Attachment> = {};
   // A connection source is read through its connection (src/sources/connection.ts), so has nothing to attach.
   for (const s of project.sources) next[s.id] = s.kind === 'clipboard' || s.kind === 'connection' || sourceFile(s.id) || (s.kind === 'url' && urlFetched(s.id)) ? 'attached' : 'detached';
-  const clipboard = project.sources.filter((s) => s.kind === 'clipboard' && s.clipboard && s.format !== 'xml');
+  const clipboard = project.sources.filter((s) => s.kind === 'clipboard' && s.clipboard && !isRewritten(s.format));
   if (clipboard.length) {
     const engine = await whenEngine();
     for (const s of clipboard) await engine.registerText(sourceFileName(s), s.clipboard!.text);
@@ -64,14 +65,18 @@ export async function attachProject(project: Project): Promise<void> {
 export async function reattachFile(source: Source, file: File, handle?: FileHandle): Promise<Attachment> {
   // A name that says a different format is the wrong file; a plain-text name (.txt, .dat) says nothing, and the
   // source keeps the format it was sniffed as.
-  const named = knownFormat(file.name) ?? (TEXT_EXTENSIONS.has(extensionOf(file.name)) ? undefined : formatFromName(file.name));
+  // A source read from an archive takes the archive again: its name says nothing about the file inside.
+  const named = isArchiveSource(source) ? undefined : (knownFormat(file.name) ?? (TEXT_EXTENSIONS.has(extensionOf(file.name)) ? undefined : formatFromName(file.name)));
   if (named && named !== source.format) throw new SourceError(`${file.name} isn’t a ${source.format.toUpperCase()} file. Choose the file this source was built on.`);
   const hash = await headHash(file);
   const same = source.file?.headHash === hash;
   const engine = await whenEngine();
   // Excel, Access and XML are read again once the file is remembered (see ./excel, ./access and ./xml).
-  await registerSourceFile(engine, source, file);
-  rememberFile(source.id, file);
+  if (isArchiveSource(source)) await attachArchive(engine, source, file);
+  else {
+    await registerSourceFile(engine, source, file);
+    rememberFile(source.id, file);
+  }
   keepHandle(source.id, handle);
   settleSource(source.id);
   // Record the file now in use, so the upstream key (and every cached result) follows the new bytes.

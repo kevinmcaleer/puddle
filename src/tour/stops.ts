@@ -53,7 +53,7 @@ export const TOUR_STOPS: TourStop[] = [
   {
     id: 'quickfix',
     title: 'Quick fixes',
-    body: 'With columns selected, the quick-fix bar adds a cleaning step in one click, where the data you’re viewing is.',
+    body: 'With columns selected, the quick-fix bar adds a cleaning step in one click, where the data you’re viewing is. The Issues panel in the inspector lists what Puddle found wrong with the data, and Fix all applies every fix at once.',
     action: 'Apply a fix, for example Trim.',
     anchors: () => [testId('quick-fixes'), testId('results-table')],
     done: (now, start) => stepCount(now.project) > stepCount(start.project),

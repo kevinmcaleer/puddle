@@ -171,4 +171,21 @@ const book = (sheets) => {
   writeFileSync(join(out, 'merged.xlsx'), book([['H1 2026', ws]]));
 }
 
+// 5. fixed-width.txt: a customer master list printed from a mainframe. Columns at fixed offsets padded with spaces,
+// numbers right-aligned with thousands separators and a trailing minus, a few empty balances, dates as yyyymmdd.
+// Written last so the files above keep their random draws.
+{
+  const cols = [['CUSTNO', 8], ['NAME', 22], ['CITY', 12], ['BALANCE', 12, 'r'], ['SINCE', 10], ['ST', 2]];
+  const cell = (v, [, w, align]) => (align === 'r' ? String(v).padStart(w - 1) + ' ' : String(v).padEnd(w));
+  const line = (cells) => cells.map((v, i) => cell(v, cols[i])).join('').replace(/\s+$/, '');
+  const amount = (n) => `${Math.abs(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}${n < 0 ? '-' : ''}`;
+  const rows = [];
+  for (let i = 0; i < 30; i++) {
+    const n = Math.round((int(0, 20000) + rnd()) * 100) / 100 * (rnd() < 0.2 ? -1 : 1);
+    rows.push([String(100200 + i * 3), `${pick(first)} ${pick(last)}`, pick(cities), rnd() < 0.1 ? '' : amount(n), `2024${p2(int(1, 12))}${p2(int(1, 28))}`, pick(['A', 'A', 'A', 'L'])]);
+  }
+  const text = [line(cols.map((c) => c[0])), ...rows.map(line), ''].join('\n');
+  writeFileSync(join(out, 'fixed-width.txt'), text, 'utf8');
+}
+
 console.log(`Wrote the messy fixtures to ${out}`);

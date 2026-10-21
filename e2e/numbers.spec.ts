@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { addFiles, addStep, addStepNode, cell, fixture, node, openApp } from './helpers/app';
+import { addFiles, addStep, addStepNode, cell, fixture, openApp, selectNode } from './helpers/app';
 
 const steps = (page: Page) => page.getByRole('listbox', { name: 'Applied steps' }).getByRole('option');
 const settings = (page: Page) => page.getByTestId('step-settings');
@@ -13,7 +13,7 @@ async function commit(page: Page, label: string, value: string) {
 test.beforeEach(async ({ page }) => {
   await openApp(page);
   await addFiles(page, [fixture('numbers.csv')]);
-  await node(page, 'numbers.csv').click();
+  await selectNode(page, 'numbers.csv');
 });
 
 test('the Numbers group is in the Add menu', async ({ page }) => {

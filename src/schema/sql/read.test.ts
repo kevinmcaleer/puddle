@@ -142,6 +142,25 @@ Table order_items {
 Ref orders_customer_id_foreign: orders.customer_id > customers.id
 Ref order_items_order_id_foreign: order_items.order_id > orders.id [delete: cascade]
 Ref order_items_product_id_foreign: order_items.product_id > products.id
+
+records customers(id, email, name, created_at, updated_at) {
+  1, 'ada@example.com', 'Ada; Countess of Lovelace', '2024-01-02 10:00:00', null
+  2, 'grace@example.com', 'Grace O\\'Hopper', '2024-01-03 11:30:00', null
+}
+
+records products(id, sku, name, price, description) {
+  1, 'TEA-01', 'Breakfast tea', 4.50, 'Strong; malty'
+  2, 'MUG-02', 'Mug', 8.00, null
+}
+
+records orders(id, customer_id, status, placed_at) {
+  1, 1, 'new', '2024-02-01 09:00:00'
+}
+
+records order_items(order_id, product_id, quantity, unit_price) {
+  1, 1, 2, 4.50
+  1, 2, 1, 8.00
+}
 `);
   });
 
@@ -237,6 +256,10 @@ Table tags {
 Ref: books.author_id > authors.id [delete: cascade]
 Ref: reviews.book_id > books.id [delete: cascade, update: no action]
 Ref: tags.book_id > books.id
+
+records authors(id, name, email, born) {
+  1, 'Ursula K. Le Guin', 'ursula@example.org', 1929
+}
 `);
   });
 
@@ -312,9 +335,9 @@ Ref: daily.user_id > users.id
     expect(importSql(fixture('mysql.sql')).skipped).toEqual([
       { kind: 'DROP TABLE', count: 4 },
       { kind: 'LOCK TABLES', count: 4 },
-      { kind: 'INSERT', count: 4 },
       { kind: 'UNLOCK TABLES', count: 4 },
     ]);
+    expect(importSql(fixture('mysql.sql')).rows).toBe(7);
     expect(skippedText(importSql(fixture('postgres.sql')).skipped)).toBe(
       '28 statements skipped: 11 SET, 5 ALTER TABLE, 3 ALTER SEQUENCE, 2 CREATE SEQUENCE, 1 SELECT, 1 ALTER SCHEMA, 1 ALTER TYPE, 1 CREATE FUNCTION, 1 ALTER FUNCTION, 1 CREATE VIEW, 1 CREATE TRIGGER',
     );
@@ -324,6 +347,74 @@ Ref: daily.user_id > users.id
   it('keeps an asked-for dialect over the detected one', () => {
     expect(importSql(fixture('postgres.sql'), 'duckdb').dialect).toBe('duckdb');
     expect(importSql('CREATE TABLE t (id int);').dialect).toBe('postgres');
+  });
+});
+
+describe('a dump’s rows', () => {
+  it('reads INSERT rows into the table’s records: literals by kind, a column list or the table’s columns, several statements into one block', () => {
+    const sql = `CREATE TABLE t (id int, name text, ok boolean, price numeric(6,2), born date, note text);
+INSERT INTO t VALUES (1, 'Ada', true, 4.50, '1815-12-10', NULL);
+INSERT INTO t (id, name) VALUES (2, 'Grace'), (3, 'Linus');
+INSERT INTO t VALUES (-4, E'O\\'Brien', FALSE, DEFAULT, DATE '2000-01-01', now());
+insert into t (id, name, ok) values (5, 'Six', 'yes', 'too many');`;
+    const r = importSql(sql, 'postgres');
+    expect(r.rows).toBe(4);
+    expect(r.skipped).toEqual([]);
+    expect(r.warnings).toEqual([{ line: 5, message: 'Skipped a row of "t" with 4 values for 3 columns' }]);
+    expect(r.schema.records).toEqual([
+      {
+        schema: 'public',
+        table: 't',
+        columns: ['id', 'name', 'ok', 'price', 'born', 'note'],
+        implicit: false,
+        inline: false,
+        example: false,
+        rows: [
+          [{ kind: 'number', value: '1' }, { kind: 'string', value: 'Ada' }, { kind: 'boolean', value: 'true' }, { kind: 'number', value: '4.50' }, { kind: 'string', value: '1815-12-10' }, { kind: 'null', value: 'null' }],
+          [{ kind: 'number', value: '2' }, { kind: 'string', value: 'Grace' }, { kind: 'empty', value: '' }, { kind: 'empty', value: '' }, { kind: 'empty', value: '' }, { kind: 'empty', value: '' }],
+          [{ kind: 'number', value: '3' }, { kind: 'string', value: 'Linus' }, { kind: 'empty', value: '' }, { kind: 'empty', value: '' }, { kind: 'empty', value: '' }, { kind: 'empty', value: '' }],
+          [{ kind: 'number', value: '-4' }, { kind: 'string', value: "O'Brien" }, { kind: 'boolean', value: 'false' }, { kind: 'empty', value: '' }, { kind: 'string', value: '2000-01-01' }, { kind: 'expression', value: 'now()' }],
+        ],
+      },
+    ]);
+  });
+
+  it('skips an INSERT … SELECT, rows for a table the script doesn’t create, and a MySQL REPLACE goes in like an INSERT', () => {
+    const r = importSql("CREATE TABLE t (id int);\nINSERT INTO t SELECT 1;\nINSERT INTO other VALUES (1);\nREPLACE INTO t VALUES (9);\nINSERT IGNORE INTO t (id) VALUES (10);", 'mysql');
+    expect(r.rows).toBe(2);
+    expect(r.skipped).toEqual([{ kind: 'INSERT … SELECT', count: 1 }, { kind: 'INSERT', count: 1 }]);
+    expect(r.warnings).toEqual([{ line: 3, message: 'Skipped rows: there is no table "other" before it' }]);
+  });
+
+  it('reads a pg_dump COPY block: tab-separated rows up to the \\. line, \\N as null, escapes undone, booleans by the column type', () => {
+    const sql = `CREATE TABLE public.people (id integer, name text, active boolean, score numeric, code text);
+COPY public.people (id, name, active, score, code) FROM stdin;
+1\tAda\tt\t9.5\t007
+2\tO'Brien, Pat\tf\t\\N\tline\\nbreak
+\\.
+
+CREATE TABLE empty (id int);
+COPY empty FROM stdin;
+\\.
+SELECT 1;`;
+    const r = importSql(sql, 'postgres');
+    expect(r.rows).toBe(2);
+    expect(r.skipped).toEqual([{ kind: 'SELECT', count: 1 }]);
+    expect(r.schema.records).toEqual([
+      {
+        schema: 'public',
+        table: 'people',
+        columns: ['id', 'name', 'active', 'score', 'code'],
+        implicit: false,
+        inline: false,
+        example: false,
+        rows: [
+          [{ kind: 'number', value: '1' }, { kind: 'string', value: 'Ada' }, { kind: 'boolean', value: 'true' }, { kind: 'number', value: '9.5' }, { kind: 'string', value: '007' }],
+          [{ kind: 'number', value: '2' }, { kind: 'string', value: "O'Brien, Pat" }, { kind: 'boolean', value: 'false' }, { kind: 'null', value: 'null' }, { kind: 'string', value: 'line\nbreak' }],
+        ],
+      },
+    ]);
+    expect(r.schema.tables.map((t) => t.name)).toEqual(['people', 'empty']);
   });
 });
 

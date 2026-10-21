@@ -19,7 +19,7 @@ export {
   type DelimiterKind,
   type Transition,
 } from './columns';
-export { Condition, duplicateRows, FILTER_OPS, fillRows, filterRows, headerNames, promoteHeaders, removeBlankRows, removeRows, sortRows, type FilterOp } from './rows';
+export { Condition, duplicateRows, FILTER_OPS, fillRows, filterRows, headerNames, promoteHeaders, realignRows, removeBlankRows, removeRows, sortRows, type FilterOp } from './rows';
 export { escapeRegex, extractText, findReplace, padText, regexProblem, textLength } from './text';
 export {
   DATE_PARTS,
