@@ -71,6 +71,54 @@ test('sources', async ({ page }) => {
   await shot(page, 'sources-access');
 });
 
+// Databases, on the SQLite fixture, which needs no server: the grid, a connection, the table picker, a source, the
+// database browser, documenting, and Project › Databases.
+test('databases', async ({ page }) => {
+  await start(page);
+  await page.getByRole('button', { name: 'Add', exact: true }).click();
+  await page.getByRole('menuitem', { name: /From database/ }).click();
+  const list = page.getByRole('dialog', { name: 'Add source from a database' });
+  await list.getByRole('button', { name: 'New connection' }).click();
+  const grid = page.getByRole('dialog', { name: 'New connection' });
+  await shot(page, 'databases-grid', grid);
+  await grid.getByRole('listitem', { name: 'SQLite', exact: true }).click();
+  const form = page.getByRole('dialog', { name: 'New SQLite connection' });
+  await form.locator('[data-testid^="connection-file-"]').setInputFiles(fixture('db/shop.sqlite'));
+  await form.getByRole('button', { name: 'Test', exact: true }).click();
+  await expect(form.getByTestId('conn-test')).toHaveAttribute('data-ok', 'true');
+  await shot(page, 'databases-connection', form);
+  await form.getByRole('button', { name: 'Save connection' }).click();
+  const picker = page.getByRole('dialog', { name: 'Read from SQLite' });
+  await expect(picker.getByTestId('table-picker')).toContainText('order_totals (view)', { timeout: 20_000 });
+  await picker.getByRole('checkbox', { name: 'orders' }).check();
+  await shot(page, 'databases-picker', picker);
+  await picker.getByRole('button', { name: 'Add 1 source' }).click();
+  await expect(node(page, 'orders')).toHaveAttribute('data-status', 'ok', { timeout: 20_000 });
+  await selectNode(page, 'orders');
+  await expectRows(page, 4);
+  await shot(page, 'databases-source');
+  // The browser, with customers previewed.
+  await page.getByRole('button', { name: 'Add', exact: true }).click();
+  await page.getByRole('menuitem', { name: /From database/ }).click();
+  await list.getByTestId('connection-SQLite').getByRole('button', { name: 'Browse' }).click();
+  const browser = page.getByTestId('database-browser');
+  await expect(browser).toContainText('2 tables, 1 view');
+  await browser.getByTestId('browse-customers').getByRole('button', { name: 'customers', exact: true }).click();
+  await expect(browser.getByTestId('browse-preview')).toHaveAttribute('data-rows', '3', { timeout: 20_000 });
+  await shotPanel(page, 'databases-browser', browser);
+  await browser.getByRole('button', { name: 'Document the schema' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Document the schema' });
+  await expect(dialog.getByTestId('document-plan')).toContainText('3 tables, 1 ref and 0 enums', { timeout: 20_000 });
+  await shot(page, 'databases-document', dialog);
+  await dialog.getByRole('button', { name: 'Document', exact: true }).click();
+  await expect(dialog).toHaveCount(0);
+  await browser.getByRole('button', { name: 'Close the database browser' }).click();
+  await projectMenu(page, 'Databases');
+  const manage = page.getByRole('dialog', { name: 'Databases' });
+  await expect(manage.getByTestId('connection-SQLite')).toContainText('documented');
+  await shot(page, 'databases-manage', manage);
+});
+
 test('analysing a file', async ({ page }) => {
   await start(page);
   await openSample(page, 'crm');

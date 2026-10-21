@@ -1,6 +1,7 @@
 import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
+import { DRIVERS } from '../src/connections/drivers';
 import { ruleForms } from '../src/rules';
 import { stepForms } from '../src/steps';
 
@@ -41,6 +42,13 @@ describe('the user guide', () => {
     }
     const rows = [...text.matchAll(/^\| (?!Step |---)([^|]+) \|/gm)].map((m) => m[1]);
     expect(rows.sort()).toEqual(stepForms().map((f) => f.title).sort());
+  });
+
+  it('lists every database on the grid in the databases page’s support table, and no other', () => {
+    const text = page('databases.md');
+    const table = text.slice(text.indexOf('| Database | Where it runs |'));
+    const rows = [...table.matchAll(/^\| (?!Database |---)([^|]+) \|/gm)].map((m) => m[1]!.trim());
+    expect(rows.sort()).toEqual(DRIVERS.map((d) => d.label).sort());
   });
 
   it('lists every kind of rule on the quality rules page', () => {

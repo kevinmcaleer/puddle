@@ -4,13 +4,17 @@
 //   puddle-run check <project.puddle.json>
 //   puddle-run analyse <file>
 //   puddle-run schema <project.puddle.json | schema.dbml> [--check] [--ddl <dialect> <out.sql>] …
+// Connection sources are read with the drivers in-process; their secrets come from PUDDLE_SECRET_<NAME> variables
+// or the JSON file PUDDLE_SECRETS names, never from the project file (one holding a secret is refused).
 import { readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { basename, dirname, join, resolve } from 'node:path';
 import process from 'node:process';
 import { Cron } from 'croner';
+import { nodeConnectors } from '../connect/node';
 import { readProjectFile } from '../persistence/migrate';
 import { analyseFile, describeAnalysis, sniffFile } from './analyse';
-import type { Project, Source } from '../model';
+import type { DriverId, Project, Source } from '../model';
+import { describeConnectionSource, leakedSecrets, leakMessage, secretsFrom, type PlaceOptions } from './connections';
 import { openDb } from './db';
 import { runProject, runSucceeded } from './run';
 import { nextRun, scheduleProblem } from './schedule';
@@ -22,7 +26,18 @@ import { formatLabel } from '../canvas/formatLabel';
 const say = (line: string) => console.log(`${new Date().toISOString()} ${line}`);
 
 function readProject(path: string): Project {
-  return readProjectFile(readFileSync(path, 'utf8'));
+  const project = readProjectFile(readFileSync(path, 'utf8'));
+  const leaks = leakedSecrets(project);
+  if (leaks.length) throw new Error(`${basename(path)} is refused: ${leakMessage(leaks)}`);
+  return project;
+}
+
+/** The drivers this runner can run: the Node registry's. Listed without opening any. */
+const servedDrivers = () => new Set(Object.keys(nodeConnectors({ files: [] })) as DriverId[]);
+
+/** How connection sources are read on this runner: secrets from the environment, drivers from the Node registry. */
+export function connectionOptions(env: Record<string, string | undefined> = process.env): PlaceOptions {
+  return { secretOf: secretsFrom(env, (p) => readFileSync(p, 'utf8')), served: servedDrivers(), env };
 }
 
 async function fetchText(href: string): Promise<string> {
@@ -40,7 +55,7 @@ export async function runOnce(path: string, out?: string): Promise<boolean> {
   say(`Running ${project.name} (${basename(file)}) into ${outDir}`);
   const db = await openDb();
   try {
-    const { log } = await runProject(project, { folder, outDir, db, fetchText, fetchImpl: fetch, log: say });
+    const { log } = await runProject(project, { folder, outDir, db, fetchText, fetchImpl: fetch, connections: connectionOptions(), log: say });
     say(`Finished ${project.name} in ${log.durationMs} ms: ${log.outputs.map((o) => `${o.nodeName} ${o.status}`).join(', ') || 'no Output nodes'}`);
     return runSucceeded(log);
   } finally {
@@ -67,29 +82,39 @@ export function formatChanged(source: Source, path: string): string | undefined 
   return `now looks like ${formatLabel(sniffed.format)}, not ${formatLabel(source.format)} as the project reads it (${sniffed.reason.replace(/\.$/, '')})`;
 }
 
-/** Say what a run of this project would do: its sources, its outputs and its schedule. */
-export function check(path: string, out = (line: string) => console.log(line)): boolean {
-  const file = resolve(path);
-  const project = readProject(file);
-  const folder = dirname(file);
+/**
+ * The lines `check` prints for a project: each source and where it reads from (or why it can't, or that its file
+ * no longer looks like its format), each output, the schedule.
+ */
+export function checkLines(project: Project, folder: string, exists: (path: string) => boolean, connections: PlaceOptions, now = () => new Date()): { lines: string[]; ok: boolean } {
+  const lines: string[] = [project.name];
   let ok = true;
-  out(`${project.name}`);
-  for (const p of placeSources(project, folder, existsSync)) {
+  for (const p of placeSources(project, folder, exists, connections)) {
     if (p.path === undefined) ok = false;
-    const changed = p.path ? formatChanged(p.source, p.path) : undefined;
+    const changed = p.path && !p.connection ? formatChanged(p.source, p.path) : undefined;
     if (changed) ok = false;
-    out(`  source ${p.source.name}: ${p.path === undefined ? p.reason : p.path || 'pasted text'}${changed ? `; ${changed}` : ''}`);
+    const where = p.path === undefined ? p.reason : p.connection ? `reads ${describeConnectionSource(p.source, p.connection)}` : p.path || 'pasted text';
+    lines.push(`  source ${p.source.name}: ${where}${changed ? `; ${changed}` : ''}`);
   }
-  for (const n of project.nodes) if (n.type === 'output') out(`  output ${n.name}: ${n.outputSpec.format}`);
+  for (const n of project.nodes) if (n.type === 'output') lines.push(`  output ${n.name}: ${n.outputSpec.format}`);
   const schedule = project.settings.schedule;
-  if (!schedule) out('  schedule: none (set one in the Project tab to run it from a folder)');
+  if (!schedule) lines.push('  schedule: none (set one in the Project tab to run it from a folder)');
   else {
     const problem = scheduleProblem(schedule);
     if (problem) {
       ok = false;
-      out(`  schedule: “${schedule}” ${problem}`);
-    } else out(`  schedule: ${schedule}, next at ${nextRun(schedule)?.toISOString() ?? 'never'}`);
+      lines.push(`  schedule: “${schedule}” ${problem}`);
+    } else lines.push(`  schedule: ${schedule}, next at ${nextRun(schedule, now())?.toISOString() ?? 'never'}`);
   }
+  return { lines, ok };
+}
+
+/** Say what a run of this project would do: its sources (and which connections still need a secret), its outputs and its schedule. */
+export function check(path: string, out = (line: string) => console.log(line)): boolean {
+  const file = resolve(path);
+  const project = readProject(file);
+  const { lines, ok } = checkLines(project, dirname(file), existsSync, connectionOptions());
+  for (const line of lines) out(line);
   return ok;
 }
 
@@ -215,9 +240,24 @@ Outputs, the run log (<project>.run.json) and the quality report (<project>.qual
 by default an out/ folder beside the project file. Source files are found by their runner path (set on the
 source in the editor), or by name beside the project file or in its sources/ folder.
 
+Connection sources are read with the drivers built in. A connection's secret comes from the variable
+PUDDLE_SECRET_<NAME> (its name upper-cased, runs of other characters as _) or from the JSON file PUDDLE_SECRETS
+names, { "<connection name>": "<secret>" }; a project file holding a secret is refused. A database file is found
+by its runner path or by name beside the project file, inside the project's folder only.
+
 ${SCHEMA_USAGE}`;
 
 async function main(argv: string[]) {
+  try {
+    await run(argv);
+  } catch (e) {
+    // A refused project file, a secrets file that can't be read: one line, no stack.
+    console.error(e instanceof Error ? e.message : String(e));
+    process.exitCode = 1;
+  }
+}
+
+async function run(argv: string[]) {
   const { command, target, out, poll } = parseArgs(argv);
   if (command === 'schema') {
     process.exitCode = schemaCommand(argv.slice(1), { readFile: (f) => readFileSync(f, 'utf8'), writeFile: (f, t) => writeFileSync(f, t), out: (l) => console.log(l), err: (l) => console.error(l) });
