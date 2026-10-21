@@ -135,9 +135,12 @@ test('quick fixes and steps', async ({ page }) => {
 
 /** Right-click in the results grid (a canvas) at a point in pixels from its left edge, on the header or on a row. */
 async function rightClickAt(page: Page, x: number, row?: number) {
-  const box = (await page.getByTestId('results-table').boundingBox())!;
-  await page.mouse.click(box.x + x, row == null ? box.y + 20 : box.y + 52 + 28 * row + 14, { button: 'right' });
-  await expect(page.getByTestId('context-menu')).toBeVisible();
+  // The grid draws once its rows arrive: a right-click before then opens nothing, so one that didn't is tried again.
+  await expect(async () => {
+    const box = (await page.getByTestId('results-table').boundingBox())!;
+    await page.mouse.click(box.x + x, row == null ? box.y + 20 : box.y + 52 + 28 * row + 14, { button: 'right' });
+    await expect(page.getByTestId('context-menu')).toBeVisible({ timeout: 2_000 });
+  }).toPass({ timeout: 20_000 });
 }
 
 test('the column menu', async ({ page }) => {

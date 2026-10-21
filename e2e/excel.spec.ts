@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { addFiles, cell, columnsOf, expectRows, fixture, node, openApp } from './helpers/app';
+import { addFiles, cell, columnsOf, expectRows, fixture, node, openApp, selectNode } from './helpers/app';
 
 const columns = (page: Page) => page.getByTestId('inspector-columns').locator('.ui-col');
 const types = (page: Page) => page.getByTestId('inspector-columns').locator('.ui-type');
@@ -123,7 +123,7 @@ test('a reopened project reads the chosen sheet again once the workbook is chose
   await page.reload();
   await expect(page.getByTestId('engine-ready')).toBeVisible({ timeout: 45_000 });
   await expect(node(page, 'sales.xlsx')).toHaveAttribute('data-status', 'detached');
-  await node(page, 'sales.xlsx').click();
+  await selectNode(page, 'sales.xlsx');
   await expect(page.getByTestId('attachment-banner')).toHaveAttribute('data-state', 'detached');
 
   const chooser = page.waitForEvent('filechooser');

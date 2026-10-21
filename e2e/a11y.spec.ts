@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { expect, test, type Page } from '@playwright/test';
 import { expectAccessible } from './helpers/axe';
-import { addFiles, addStep, addStepNode, expectRows, fixture, node, openApp } from './helpers/app';
+import { addFiles, addStep, addStepNode, expectRows, fixture, node, openApp, selectNode } from './helpers/app';
 
 const projectMenu = async (page: Page, item: string) => {
   await page.getByTestId('project-menu').click();
@@ -12,12 +12,12 @@ const projectMenu = async (page: Page, item: string) => {
 async function smallFlow(page: Page) {
   await addFiles(page, [fixture('customers.csv')]);
   await expect(node(page, 'customers.csv')).toHaveAttribute('data-status', 'ok', { timeout: 20_000 });
-  await node(page, 'customers.csv').click();
+  await selectNode(page, 'customers.csv');
   await addStepNode(page, 'Trim whitespace');
   await page.getByRole('button', { name: 'Add', exact: true }).click();
   await page.getByRole('menuitem', { name: /^Output/ }).click();
   await expect(node(page, 'Output 1')).toHaveAttribute('data-status', 'ok', { timeout: 20_000 });
-  await node(page, 'Transform 1').click();
+  await selectNode(page, 'Transform 1');
   await expectRows(page, 4);
 }
 
@@ -98,14 +98,14 @@ for (const theme of ['light', 'dark'] as const) {
       await expect(node(page, 'Output 1')).toHaveAttribute('data-status', 'blocked');
       await expectAccessible(page, 'the pivot editor, a broken node and a node waiting on it');
 
-      await node(page, 'customers.csv').click();
+      await selectNode(page, 'customers.csv');
       await page.getByRole('button', { name: 'Add rule' }).click();
       await page.getByRole('menuitem', { name: 'No leading or trailing spaces', exact: true }).click();
       await page.getByTestId('rule-settings').getByRole('button', { name: 'name', exact: true }).click();
       await expect(page.getByTestId('rules').locator('.ui-rule').first()).toHaveAttribute('data-status', 'fail', { timeout: 20_000 });
       await expectAccessible(page, 'the rules');
 
-      await node(page, 'Output 1').click();
+      await selectNode(page, 'Output 1');
       await expectAccessible(page, 'the Output inspector, viewing a waiting node');
       await page.getByRole('button', { name: 'Write quality report' }).click();
       await expect(page.getByTestId('report-dialog')).toBeVisible();
@@ -117,8 +117,8 @@ for (const theme of ['light', 'dark'] as const) {
       await addFiles(page, [fixture('shop-customers.csv'), fixture('shop-orders.csv')]);
       await expect(node(page, 'shop-customers.csv')).toHaveAttribute('data-status', 'ok', { timeout: 20_000 });
       await expect(node(page, 'shop-orders.csv')).toHaveAttribute('data-status', 'ok', { timeout: 20_000 });
-      await node(page, 'shop-customers.csv').click();
-      await node(page, 'shop-orders.csv').click({ modifiers: ['Shift'] });
+      await selectNode(page, 'shop-customers.csv');
+      await selectNode(page, 'shop-orders.csv', ['Shift']);
       await page.getByRole('button', { name: 'Add', exact: true }).click();
       await page.getByRole('menuitem', { name: /Query/ }).click();
       await expect(page.getByTestId('query-designer')).toBeVisible();
@@ -134,8 +134,8 @@ for (const theme of ['light', 'dark'] as const) {
       await page.getByRole('button', { name: 'Back to canvas' }).click();
       await expect(page.getByTestId('canvas')).toBeVisible();
 
-      await node(page, 'shop-customers.csv').click();
-      await node(page, 'shop-orders.csv').click({ modifiers: ['Shift'] });
+      await selectNode(page, 'shop-customers.csv');
+      await selectNode(page, 'shop-orders.csv', ['Shift']);
       await page.getByRole('button', { name: 'Join these two' }).click();
       await expect(node(page, 'Join 1')).toHaveAttribute('data-status', 'ok', { timeout: 20_000 });
       await expectAccessible(page, 'the Join inspector');
