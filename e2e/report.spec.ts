@@ -99,7 +99,8 @@ test('a node Fix all ran on reports the issues found and what became of each, wi
   await node(page, 'messy.csv').click();
   await page.getByRole('button', { name: 'Ignore issue: Duplicate rows' }).click();
   await page.getByTestId('results-panel').getByRole('button', { name: 'Fix 6 issues' }).click();
-  await expectRows(page, 4);
+  // The view moves to the last fix; with the duplicates ignored, every row stays.
+  await expect(page.getByTestId('results-table')).toHaveAttribute('aria-label', /^Results of Transform \d+: 5 rows/, { timeout: 20_000 });
 
   // The report is offered on the source, which has no rules: the fixes are what it reports.
   await node(page, 'messy.csv').click();
