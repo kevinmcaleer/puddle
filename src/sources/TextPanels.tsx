@@ -2,7 +2,8 @@
 // tables, and the banner shown while either is being read or when it can't be.
 import type { ParseOptions, Source } from '../model';
 import { candidateLabel } from '../structured';
-import { Banner, Field, Ruler, Select } from '../ui';
+import { LOG_PRESETS, logPreset } from '../logs';
+import { Banner, Field, Ruler, Select, TextInput } from '../ui';
 import { EncodingField, HeaderSwitch, NullStringsField, SkipFields } from './CsvOptions';
 import { withBoundary } from './fixedWidth';
 import { useRewrites } from './rewrite';
@@ -55,6 +56,34 @@ export function PipesOptions({ source, onChange }: { source: Source; onChange: (
       {read?.state === 'ok' && (
         <p className="text-label text-ink-muted" data-testid="rewrite-size">
           {`${plural(read.rows, 'row')}, ${plural(read.columns, 'column')}${read.dropped ? `; ${plural(read.dropped, 'line')} around the table left out` : ''}`}
+        </p>
+      )}
+      <EncodingField {...props} />
+      <NullStringsField {...props} />
+      {read?.state === 'failed' && <RewriteProblemBanner source={source} />}
+    </>
+  );
+}
+
+/** The inspector's read options for a log file: the preset its lines are read as, or a custom pattern. */
+export function LogOptions({ source, onChange }: { source: Source; onChange: (options: ParseOptions) => void }) {
+  const o = source.parseOptions;
+  const read = useRewrites((s) => s.reads[source.id]);
+  const preset = logPreset(o.preset ?? (read?.state === 'ok' ? read.preset : undefined));
+  const props = { options: o, onChange };
+  return (
+    <>
+      <Field label="Lines" htmlFor="opt-preset" hint={preset.hint}>
+        <Select id="opt-preset" options={LOG_PRESETS.map((p) => ({ value: p.id, label: p.label }))} value={preset.id} onChange={(e) => onChange({ ...o, preset: e.target.value })} />
+      </Field>
+      {preset.id === 'custom' && (
+        <Field label="Pattern" htmlFor="opt-pattern" hint="A regular expression; each named group (?<name>…) is a column.">
+          <TextInput id="opt-pattern" mono value={o.pattern ?? ''} placeholder="(?<time>\S+) (?<level>\w+) (?<message>.*)" spellCheck={false} onChange={(e) => onChange({ ...o, pattern: e.target.value })} />
+        </Field>
+      )}
+      {read?.state === 'ok' && (
+        <p className="text-label text-ink-muted" data-testid="rewrite-size">
+          {`${plural(read.rows, 'row')}, ${plural(read.columns, 'column')}${read.unmatched ? `; ${plural(read.unmatched, 'line')} didn’t fit and ${read.unmatched === 1 ? 'was' : 'were'} left out` : ''}`}
         </p>
       )}
       <EncodingField {...props} />

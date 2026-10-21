@@ -155,6 +155,17 @@ describe('reading a file from an archive', () => {
   });
 });
 
+describe('reading a log file', () => {
+  const log: Source = { id: 'l', name: 'access.log', kind: 'file', format: 'log', file: { originalName: 'access.log', size: 1, lastModified: 0, headHash: 'h1' }, parseOptions: { preset: 'combined' }, detectedSchema: [] };
+
+  it('reads the CSV Puddle wrote from the lines, named for the file, the preset and the pattern', () => {
+    expect(sourceFileName(log)).toMatch(/^src_l_[0-9a-f]{12}\.csv$/);
+    expect(sourceRelation(log)).toBe(`read_csv('${sourceFileName(log)}', header = true, delim = ',', quote = '"', escape = '"', null_padding = true)`);
+    expect(sourceFileName({ ...log, parseOptions: { preset: 'syslog' } })).not.toBe(sourceFileName(log));
+    expect(sourceFileName({ ...log, parseOptions: { preset: 'custom', pattern: '(?<a>.)' } })).not.toBe(sourceFileName({ ...log, parseOptions: { preset: 'custom', pattern: '(?<b>.)' } }));
+  });
+});
+
 describe('reading a table of a Word document', () => {
   const word: Source = { id: 'w', name: 'report.docx', kind: 'file', format: 'word', file: { originalName: 'report.docx', size: 1, lastModified: 0, headHash: 'h1' }, parseOptions: {}, detectedSchema: [] };
 

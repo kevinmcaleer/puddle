@@ -15,7 +15,7 @@ import { decodeText, isRewrittenText, readText, readWord, rewrittenCsv, rulerLin
  * pasted text stored in the project.
  */
 
-export interface RewriteRead extends Pick<RewrittenTable, 'boundaries' | 'dropped' | 'record' | 'candidates' | 'table' | 'tables'> {
+export interface RewriteRead extends Pick<RewrittenTable, 'boundaries' | 'dropped' | 'record' | 'candidates' | 'table' | 'tables' | 'preset' | 'unmatched'> {
   rows: number;
   columns: number;
   /** The first lines of the table, for the ruler. */
@@ -100,7 +100,7 @@ async function read(engine: EngineClient, source: Source & { format: RewrittenFo
     const table = source.format === 'word' ? await readWord(await bytesOf(input), o) : readText(source.format, text, o);
     await engine.dropFile(file).catch(() => undefined);
     await engine.registerText(file, rewrittenCsv(table));
-    const info: RewriteRead = { rows: table.rows.length, columns: table.columns.length, lines: rulerLines(text, source.format === 'fixed' ? o.skip : 0), ...(table.boundaries ? { boundaries: table.boundaries } : {}), ...(table.dropped != null ? { dropped: table.dropped } : {}), ...(table.record != null ? { record: table.record, candidates: table.candidates } : {}), ...(table.table != null ? { table: table.table, tables: table.tables } : {}) };
+    const info: RewriteRead = { rows: table.rows.length, columns: table.columns.length, lines: rulerLines(text, source.format === 'fixed' ? o.skip : 0), ...(table.boundaries ? { boundaries: table.boundaries } : {}), ...(table.dropped != null ? { dropped: table.dropped } : {}), ...(table.record != null ? { record: table.record, candidates: table.candidates } : {}), ...(table.table != null ? { table: table.table, tables: table.tables } : {}), ...(table.preset != null ? { preset: table.preset, unmatched: table.unmatched } : {}) };
     remember(engine, id, file, input, info, () => {
       const now = useProjectStore.getState().history.present.sources.find((s) => s.id === id);
       return now && sourceFileName(now);

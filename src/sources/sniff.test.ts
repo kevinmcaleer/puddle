@@ -210,6 +210,22 @@ describe('delimited text', () => {
   });
 });
 
+describe('log files', () => {
+  const read = (name: string) => readFileSync(join(__dirname, '../../tests/fixtures/logs', name), 'utf8');
+
+  it('names the preset from the lines: an access log, syslog, an IIS log and a timestamped app log', () => {
+    expect(file('access.log', bytes(read('access.log')))).toMatchObject({ format: 'log', confidence: 'likely', parseOptions: { preset: 'combined' }, reason: 'Lines in the shape of a web server access log (Web server access log (Apache, nginx)).' });
+    expect(file('messages', bytes(read('syslog.log')))).toMatchObject({ format: 'log', parseOptions: { preset: 'syslog' } });
+    expect(file('u_ex261011.log', bytes(read('iis.log')))).toMatchObject({ format: 'log', parseOptions: { preset: 'iis' } });
+    expect(file('app.log', bytes(read('app.log')))).toMatchObject({ format: 'log', parseOptions: { preset: 'timestamped' } });
+  });
+
+  it('leaves a CSV or TSV log to DuckDB, timestamps and all', () => {
+    expect(file('events.log', bytes('time,level,message\n2026-10-11 09:00:01,INFO,started\n2026-10-11 09:00:02,WARN,slow\n'))).toMatchObject({ format: 'csv' });
+    expect(file('events.log', bytes('time\tlevel\tmessage\n2026-10-11 09:00:01\tINFO\tstarted\n2026-10-11 09:00:02\tWARN\tslow\n'))).toMatchObject({ format: 'tsv' });
+  });
+});
+
 describe('the file name and the content', () => {
   it('agrees: a CSV named .csv is sure; a CSV named .txt or with no extension reads as CSV without a question', () => {
     expect(file('orders.csv', bytes('a,b\n1,2\n3,4\n'))).toMatchObject({ format: 'csv', confidence: 'sure' });

@@ -34,6 +34,7 @@ Puddle reads these formats:
 | XML | `.xml`, `.kml`, `.gpx` | The repeating element is read as rows (a KML file's placemarks, a GPX track's points). See [XML](#xml). |
 | YAML, TOML and INI | `.yaml`, `.yml`, `.toml`, `.ini`, `.cfg` | The list or map of records in the file is read as rows; nested fields become dotted columns. See [YAML, TOML, INI and GeoJSON](#yaml-toml-ini-and-geojson). |
 | GeoJSON | `.geojson` | Each feature is a row: its properties as columns, its geometry as JSON. See [YAML, TOML, INI and GeoJSON](#yaml-toml-ini-and-geojson). |
+| Log files | `.log`, `.txt` | Web server access logs, syslog, IIS logs and application logs with a timestamp and a level, each line taken apart into columns; or a custom pattern. See [Log files](#log-files). |
 | Fixed width | `.txt`, `.prn`, `.dat` | Columns lined up with spaces, as mainframe and ERP reports print them. The boundaries are found from the columns of spaces and adjusted on a ruler. See [Fixed width and pipe tables](#fixed-width-and-pipe-tables). |
 | Pipe table | `.txt` | Rows between `|` characters, as SAP lists and Markdown tables have them. The lines around the table are left out. See [Fixed width and pipe tables](#fixed-width-and-pipe-tables). |
 | Word | `.docx` | The tables in a Word document. Choose the table; add the document's other tables as sources of their own. See [Word documents](#word-documents). |
@@ -134,6 +135,19 @@ A report printed to text often has no delimiter at all: each column starts at th
 An SAP list, and a Markdown table, writes its rows between `|` characters, with rules of dashes between them and banners, page headers and footers around them. Puddle reads such a file as a **pipe table**: only the lines between pipes are rows, rules and a header printed again on a later page are dropped, the empty columns the edge pipes would make are left out, and every cell is trimmed. The inspector says how many lines around the table were left out. A total row at the end is kept, and listed as a suggested fix on the Issues panel, because removing data is your call.
 
 Both are read in your browser into rows that DuckDB then types, so the amounts and dates are read as on any text file: German amounts with a trailing minus, as SAP writes them, are a Parse numbers fix away. `puddle-run` reads both the same way, with the boundaries the project saved.
+
+## Log files
+
+A log file has one entry per line in a shape its writer chose. Puddle knows four and reads the lines into columns, which DuckDB then types like any CSV:
+
+| Lines | Columns |
+|---|---|
+| Web server access log (Apache, nginx; the combined and common formats) | `host`, `ident`, `user`, `time` (as a timestamp), `method`, `path`, `protocol`, `status`, `bytes`, `referrer`, `agent` |
+| Syslog (the old `Oct 11 22:14:15 host process[pid]: message` line and RFC 5424) | `priority`, `time`, `host`, `process`, `pid`, `id`, `data`, `message` |
+| IIS log (W3C extended) | The fields the `#Fields:` line at the top names |
+| Application log | `time`, `level`, `message`; a line without a timestamp (a stack trace) joins the message above it |
+
+The shape is detected from the first lines and shown as **Lines** in the inspector, where another can be chosen. **Custom pattern** takes a regular expression with a named group for each column, such as `(?<time>\S+) (?<level>\w+) (?<message>.*)`; lines that fit no pattern are left out, and the inspector says how many. A `-` in an access or IIS log reads as empty. A log written as CSV, TSV or JSON lines is read as that format. `puddle-run` reads the same lines the same way.
 
 ## YAML, TOML, INI and GeoJSON
 
