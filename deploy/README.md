@@ -66,7 +66,27 @@ docker run --rm -v /srv/puddle/projects:/projects puddle-run:latest check /proje
 docker run --rm -v /srv/puddle/projects:/projects puddle-run:latest run /projects/orders.puddle.json
 ```
 
-Without Docker, `npm run build:runner` builds `dist-runner/puddle-run.mjs`, and `node dist-runner/puddle-run.mjs watch /srv/puddle/projects` runs it on any machine with Node 20 or later (the native DuckDB binding is downloaded by `npm ci` for the machine's own platform).
+Without Docker, `npm run build:runner` builds `dist-runner/puddle-run.mjs`, and `node dist-runner/puddle-run.mjs watch /srv/puddle/projects` runs it on any machine with Node 20 or later (the native DuckDB binding and the database clients are downloaded by `npm ci` for the machine's own platform).
+
+### Databases on the runner
+
+A project's connection sources (**Add › From database**) run on the runner too: the same drivers puddle-connect carries are built into the image and run in-process, so the runner needs no service and no network path to the browser. A table copied nightly is an Output node writing Parquet from a connection source; the run log (`<project>.run.json`) says how many rows each connection gave.
+
+Secrets never travel in a project file (the editor never writes one there, and the runner refuses a file that holds one). Give them to the runner in one of two ways:
+
+- A JSON file, `{ "<connection name>": "<secret>" }`, kept outside the repository with mode 600, named by `PUDDLE_SECRETS_FILE` in `.env`; compose mounts it read-only at the path `PUDDLE_SECRETS` names inside the container. Until one is given, the empty `/dev/null` is mounted.
+- A variable per connection, `PUDDLE_SECRET_<NAME>`: the connection's name upper-cased, with every run of characters other than letters and digits as one `_` (`Shop DB` → `PUDDLE_SECRET_SHOP_DB`). A variable wins over the file.
+
+A connection with no secret is reported by `puddle-run check`, and its sources are skipped at run time with the same message. A database file (SQLite, LibSQL) is found by the path on the connection, or by its name beside the project file or under `sources/`, inside the project's folder only. A connection that reaches the database from the browser (DuckDB files, OAuth sign-ins) can't be read by the runner yet.
+
+```sh
+cat > /srv/puddle/secrets.json <<'JSON'
+{ "Shop DB": "the-password" }
+JSON
+chmod 600 /srv/puddle/secrets.json
+PUDDLE_PROJECTS=/srv/puddle/projects PUDDLE_SECRETS_FILE=/srv/puddle/secrets.json docker compose --profile runner up -d
+docker run --rm --network host -v /srv/puddle/projects:/projects -v /srv/puddle/secrets.json:/run/secrets.json:ro -e PUDDLE_SECRETS=/run/secrets.json puddle-run:latest check /projects/orders.puddle.json
+```
 
 ### Schemas in a pipeline (puddle-run schema)
 

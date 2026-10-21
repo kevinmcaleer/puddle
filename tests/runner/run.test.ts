@@ -5,7 +5,9 @@ import { join } from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { openDb, type RunnerDb } from '../../src/runner/db';
 import { runProject, runSucceeded, type RunLog } from '../../src/runner/run';
-import { parseArgs, projectFiles, watch } from '../../src/runner/cli';
+import { check, checkLines, parseArgs, projectFiles, watch } from '../../src/runner/cli';
+import { secretsFrom, type PlaceOptions } from '../../src/runner/connections';
+import type { Connection, DriverId, Source } from '../../src/model';
 import { sourceTableName } from '../../src/compiler';
 import { parseProject, type Project } from '../../src/model';
 import { flow, src, step } from '../helpers/projects';
@@ -221,5 +223,83 @@ describe('puddle-run with schema tables', () => {
     const { log } = await runProject(withTables('customers'), { folder, outDir, db });
     expect(log.outputs[0]).toMatchObject({ status: 'blocked', blocking: ['tbl can’t take some of the rows loaded into it: 2 rows have a customer_id that is already in the table or repeated.'] });
     expect(existsSync(join(outDir, 'out.csv'))).toBe(false);
+  });
+});
+
+describe('puddle-run with connection sources', () => {
+  const served = new Set<DriverId>(['sqlite', 'libsql', 'postgres', 'mysql']);
+  const options = (env: Record<string, string | undefined> = {}, file = '{}'): PlaceOptions => ({ secretOf: secretsFrom(env, () => file), served, env });
+  const connSource = (id: string, connectionId: string, read: Partial<Source['connection']>): Source => ({ ...src({ id, format: 'connection' }), name: id, kind: 'connection', connection: { connectionId, columns: [], ...read } });
+  const withConnections = (connections: Connection[], sources: Source[]): Project => ({
+    ...flow({
+      sources,
+      nodes: sources.flatMap((s) => [{ id: s.id, type: 'source' as const, sourceId: s.id }, { id: `out-${s.id}`, type: 'output' as const, outputSpec: { format: 'parquet', options: {} } }]),
+      wires: sources.map((s) => [s.id, `out-${s.id}`, 0] as [string, string, 0]),
+    }),
+    name: 'Connections',
+    connections,
+  });
+
+  it('reads a SQLite file picked in the browser by its name beside the project, with the types the driver declares, and skips a source whose connection needs a secret', async () => {
+    writeFileSync(join(folder, 'sources', 'shop.sqlite'), readFileSync(join(__dirname, '../fixtures/db/shop.sqlite')));
+    const sqlite: Connection = { id: 'sq', name: 'Shop file', driver: 'sqlite', via: 'browser', settings: { file: 'shop.sqlite' }, auth: 'none' };
+    const pg: Connection = { id: 'pg', name: 'Shop DB', driver: 'postgres', via: 'pi', settings: { host: 'db', database: 'shop', user: 'puddle' }, auth: 'password' };
+    const p = withConnections([sqlite, pg], [connSource('cust', 'sq', { table: { name: 'customers' } }), connSource('tot', 'sq', { query: 'SELECT customer_id, sum(total) AS spent FROM orders GROUP BY customer_id', limit: 2 }), connSource('far', 'pg', { table: { name: 'orders' } })]);
+    const outDir = join(folder, 'out-connections');
+    const lines: string[] = [];
+    const { log } = await runProject(p, { folder, outDir, db, connections: options(), log: (l) => lines.push(l), now: () => new Date('2026-10-21T03:00:00Z') });
+    expect(log.sources).toEqual([
+      { id: 'cust', name: 'cust', connection: 'table customers of connection “Shop file” (SQLite)', rows: 3 },
+      { id: 'tot', name: 'tot', connection: 'a query of connection “Shop file” (SQLite)', rows: 2 },
+      { id: 'far', name: 'far', problem: 'needs the password of connection “Shop DB”: set PUDDLE_SECRET_SHOP_DB, or add "Shop DB" to the PUDDLE_SECRETS file' },
+    ]);
+    expect(log.outputs.map((o) => [o.nodeName, o.status, o.rows])).toEqual([
+      ['out-cust', 'written', 3],
+      ['out-tot', 'written', 2],
+      ['out-far', 'skipped', undefined],
+    ]);
+    expect(lines).toContain('Source cust: read 3 rows from table customers of connection “Shop file” (SQLite).');
+    const rows = await db.query(`SELECT * FROM read_parquet('${join(outDir, 'out-cust.parquet').replaceAll("'", "''")}') ORDER BY id`);
+    expect(rows.map((r) => [r.id, r.name, r.email, r.active])).toEqual([
+      [1n, 'Ada Lovelace', 'ada@example.com', true],
+      [2n, 'Grace Hopper', 'grace@example.com', true],
+      [3n, 'Alan Turing', null, false],
+    ]);
+    expect(await db.describe(`SELECT * FROM "${sourceTableName(p.sources[0]!)}"`)).toEqual(expect.arrayContaining([{ name: 'id', type: 'BIGINT' }, { name: 'active', type: 'BOOLEAN' }]));
+    // The staging table the stream went through is gone.
+    expect((await db.query(`SELECT count(*) AS n FROM duckdb_tables() WHERE table_name LIKE '%_arrow'`))[0]!.n).toBe(0n);
+  });
+
+  const pgUrl = process.env.PUDDLE_TEST_POSTGRES;
+  it.skipIf(!pgUrl)('reads a PostgreSQL table with the secret from a PUDDLE_SECRETS file, and writes it as Parquet', async () => {
+    const u = new URL(pgUrl!);
+    const pg: Connection = { id: 'pg', name: 'Shop DB', driver: 'postgres', via: 'pi', settings: { host: u.hostname, port: Number(u.port) || 5432, database: u.pathname.slice(1), user: decodeURIComponent(u.username) }, auth: 'password' };
+    const p = withConnections([pg], [connSource('orders', 'pg', { table: { schema: 'public', name: 'orders' } })]);
+    const secrets = join(folder, 'secrets.json');
+    writeFileSync(secrets, JSON.stringify({ 'Shop DB': decodeURIComponent(u.password) }));
+    const outDir = join(folder, 'out-postgres');
+    const { log } = await runProject(p, { folder, outDir, db, connections: { secretOf: secretsFrom({ PUDDLE_SECRETS: secrets }, (f) => readFileSync(f, 'utf8')), served, env: { PUDDLE_SECRETS: secrets } } });
+    expect(log.sources[0]).toEqual({ id: 'orders', name: 'orders', connection: 'table public.orders of connection “Shop DB” (PostgreSQL, secret from PUDDLE_SECRETS)', rows: 4 });
+    expect(log.outputs[0]).toMatchObject({ status: 'written', rows: 4, file: 'out-orders.parquet' });
+    expect(await db.describe(`SELECT * FROM read_parquet('${join(outDir, 'out-orders.parquet').replaceAll("'", "''")}')`)).toContainEqual({ name: 'total', type: 'DECIMAL(10,2)' });
+  });
+
+  it('check says what each connection source reads and which secret it still needs', () => {
+    const sqlite: Connection = { id: 'sq', name: 'Shop file', driver: 'sqlite', via: 'browser', settings: { file: 'shop.sqlite' }, auth: 'none' };
+    const pg: Connection = { id: 'pg', name: 'Shop DB', driver: 'postgres', via: 'pi', settings: { host: 'db' }, auth: 'password' };
+    const p = withConnections([sqlite, pg], [connSource('cust', 'sq', { table: { name: 'customers' } }), connSource('far', 'pg', { table: { name: 'orders' } })]);
+    const exists = (path: string) => path === join(folder, 'sources', 'shop.sqlite');
+    expect(checkLines(p, folder, exists, options())).toEqual({
+      ok: false,
+      lines: ['Connections', '  source cust: reads table customers of connection “Shop file” (SQLite)', '  source far: needs the password of connection “Shop DB”: set PUDDLE_SECRET_SHOP_DB, or add "Shop DB" to the PUDDLE_SECRETS file', '  output out-cust: parquet', '  output out-far: parquet', '  schedule: none (set one in the Project tab to run it from a folder)'],
+    });
+    expect(checkLines(p, folder, exists, options({ PUDDLE_SECRET_SHOP_DB: 'pw' }))).toMatchObject({ ok: true, lines: expect.arrayContaining(['  source far: reads table orders of connection “Shop DB” (PostgreSQL, secret from PUDDLE_SECRET_SHOP_DB)']) });
+  });
+
+  it('refuses a project file that carries a secret in a connection’s settings', () => {
+    const pg: Connection = { id: 'pg', name: 'Shop DB', driver: 'postgres', via: 'pi', settings: { host: 'db', password: 'hunter2' }, auth: 'password' };
+    const file = join(folder, 'leaky.puddle.json');
+    writeFileSync(file, JSON.stringify(withConnections([pg], [connSource('far', 'pg', { table: { name: 'orders' } })])));
+    expect(() => check(file)).toThrow('leaky.puddle.json is refused: connection “Shop DB” has a password in its settings. Puddle never writes a secret into a project file: take it out and give it through PUDDLE_SECRET_SHOP_DB or the PUDDLE_SECRETS file.');
   });
 });

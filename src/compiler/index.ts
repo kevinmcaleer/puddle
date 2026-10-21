@@ -46,7 +46,7 @@ export { dropDuckdbSchema, duckdbSchema, duckdbType, foreignKey, primaryKey, rec
 export { migrationSql, narrows, type Migration } from './ddl/migration';
 export { describeFailure, FAILURE_COLUMN, LOAD_FAILURES, loadColumns, projectSchema, tableFor, textSample, type LoadCheck, type LoadColumn } from './schemaTable';
 export { compileAccessLoad, dropTable, sourceFileName, sourceRelation, sourceTableName } from './sources';
-export { compileConnectionLoad, compileRelationPreview, compileTableCount, compileTableSelect, loadType } from './connectionLoad';
+export { compileConnectionLoad, compileRelationPreview, compileStagingTable, compileTableCount, compileTableSelect, loadType } from './connectionLoad';
 export { dateText, dateType, isNumberDateFormat, NUMBER_DATE_FORMATS, readDateFormat, readDates } from './dateRead';
 export { englishDateNames, isParseLocale, PARSE_LOCALE_IDS, PARSE_LOCALES, parseLocale, type ParseLocale, type ParseLocaleId } from './locales';
 export { bool, cteName, ident, list, num, stepFailure, str, strList } from './sql';

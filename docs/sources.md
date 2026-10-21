@@ -177,6 +177,8 @@ Three stores have no tables in the SQL sense, so Puddle infers them. **MongoDB**
 
 When you open the project again in another tab, a database file is chosen again, as any file is, from the source's results pane or inspector; a password or token is typed again, since it was never stored.
 
+`puddle-run` reads connection sources too, with the same drivers built in, so a table copied from a database every night is an Output node writing Parquet from a connection source. The runner takes each connection's secret from its own environment, never from the project file: the variable `PUDDLE_SECRET_<NAME>` (the connection's name upper-cased, with runs of other characters as `_`), or a JSON file named by `PUDDLE_SECRETS` holding `{ "<connection name>": "<secret>" }`. A project file that carries a secret is refused outright. A database file is found by its path or by name beside the project file, inside the project's folder only; a DuckDB file and a connection that signs in through the browser can't be read by the runner yet. `puddle-run check` says what each connection source reads and which connections still need a secret, and the run log counts the rows read per connection. The [deployment guide](https://github.com/kevinmcaleer/puddle/blob/main/deploy/README.md#databases-on-the-runner) says how to give the runner its secrets.
+
 ## Read options
 
 Select a source to see how it is read in the inspector. For a CSV file that is the delimiter, whether the first row is the header, the encoding, the quote character and which values count as empty (such as `NA` or `n/a`). Change any of them and every node after the source updates.

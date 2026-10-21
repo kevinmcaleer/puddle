@@ -23,6 +23,9 @@ export function compileConnectionLoad(table: string, columns: { name: string; sq
   return database ? `${switchDatabase(database)}; ${create}; ${switchDatabase()}` : create;
 }
 
+/** An empty staging table with the types a driver's Arrow stream carries, for a DuckDB that can't take the stream itself (the runner's native build appends the rows). */
+export const compileStagingTable = (table: string, columns: { name: string; sqlType: string }[]) => `CREATE OR REPLACE TABLE ${ident(table)} (${columns.map((c) => `${ident(c.name)} ${loadType(c.sqlType)}`).join(', ')})`;
+
 /** Everything in a loaded table (for describing its columns). */
 export const compileTableSelect = (table: string) => `SELECT * FROM ${ident(table)}`;
 

@@ -36,7 +36,13 @@ services:
     restart: unless-stopped
     environment:
       TZ: ${TZ:-Europe/London}
-    volumes: ['${PUDDLE_PROJECTS:-./projects}:/projects']
+      # Secrets for the projects' database connections: a JSON file { "<connection name>": "<secret>" } at
+      # PUDDLE_SECRETS_FILE on the host (outside the repository, mode 600), mounted read-only; until one is given
+      # the empty /dev/null is mounted. PUDDLE_SECRET_<NAME> variables work too.
+      PUDDLE_SECRETS: /run/puddle/secrets.json
+    volumes:
+      - '${PUDDLE_PROJECTS:-./projects}:/projects'
+      - '${PUDDLE_SECRETS_FILE:-/dev/null}:/run/puddle/secrets.json:ro'
     command: ['watch', '/projects', '--poll', '${PUDDLE_RUNNER_POLL:-30}']
 
   # puddle-connect speaks the database protocols a browser cannot. It sits on the internal network only; nginx in the

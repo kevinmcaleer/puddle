@@ -219,8 +219,25 @@ jobs:
     name: puddle-run image
     if: github.event_name != 'schedule'
     runs-on: ubuntu-latest
+    # The connection-sources project in the container reads a SQLite file beside it and this PostgreSQL, with the
+    # secret from a PUDDLE_SECRETS file; the container shares the host's network to reach localhost:5432.
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: hunter2-ci
+          POSTGRES_DB: shop
+        ports:
+          - 5432:5432
+        options: --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 10
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: node scripts/seed-postgres.mjs postgres://postgres:hunter2-ci@localhost:5432/shop
       - uses: docker/setup-qemu-action@v3
       - uses: docker/setup-buildx-action@v3
       - name: Build the runner image for amd64 and arm64
@@ -250,6 +267,28 @@ jobs:
           ls -l /tmp/projects/out
           test -s /tmp/projects/out/*.run.json
           grep -q '"status": "written"' /tmp/projects/out/*.run.json
+      - name: Run a project with connection sources in the container, secrets from PUDDLE_SECRETS
+        run: |
+          mkdir -p /tmp/connections
+          cp tests/fixtures/projects/connections.puddle.json tests/fixtures/db/shop.sqlite /tmp/connections/
+          echo '{ "Shop DB": "hunter2-ci" }' > /tmp/connections/secrets.json
+          chmod -R a+rwX /tmp/connections
+          # Without the secret the PostgreSQL source is reported, and check exits 1.
+          ! docker run --rm --network host -v /tmp/connections:/projects puddle-run:ci check /projects/connections.puddle.json
+          docker run --rm --network host -v /tmp/connections:/projects -e PUDDLE_SECRETS=/projects/secrets.json puddle-run:ci check /projects/connections.puddle.json | tee /tmp/check.txt
+          grep -q 'reads table public.orders of connection “Shop DB” (PostgreSQL, secret from PUDDLE_SECRETS)' /tmp/check.txt
+          docker run --rm --network host -v /tmp/connections:/projects -e PUDDLE_SECRETS=/projects/secrets.json puddle-run:ci run /projects/connections.puddle.json | tee /tmp/run.txt
+          grep -q 'read 4 rows from table public.orders' /tmp/run.txt
+          grep -q 'read 3 rows from table customers' /tmp/run.txt
+          ls -l /tmp/connections/out
+          test -s "/tmp/connections/out/Orders from PostgreSQL.parquet"
+          test -s "/tmp/connections/out/Customers from SQLite.parquet"
+          # The secret is in neither the log nor the run log.
+          ! grep -q hunter2-ci /tmp/run.txt /tmp/check.txt /tmp/connections/out/*.run.json
+          # A project file carrying a secret is refused.
+          sed 's/"user": "postgres"/"user": "postgres", "password": "hunter2-ci"/' tests/fixtures/projects/connections.puddle.json > /tmp/connections/leaky.puddle.json
+          ! docker run --rm --network host -v /tmp/connections:/projects -e PUDDLE_SECRETS=/projects/secrets.json puddle-run:ci run /projects/leaky.puddle.json 2>&1 | tee /tmp/leaky.txt
+          grep -q 'is refused: connection “Shop DB” has a password' /tmp/leaky.txt
 
   connect:
     name: puddle-connect

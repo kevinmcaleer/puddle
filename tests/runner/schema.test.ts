@@ -18,7 +18,7 @@ beforeAll(async () => {
   folder = mkdtempSync(join(tmpdir(), 'puddle-schema-'));
   // Beside the repository's node_modules, so the native DuckDB binding the bundle leaves out is found.
   cli = join(root, 'node_modules', '.cache', `puddle-run-schema-${process.pid}.mjs`);
-  await build({ entryPoints: [join(root, 'src/runner/cli.ts')], bundle: true, platform: 'node', target: 'node20', format: 'esm', external: ['@duckdb/node-api'], outfile: cli, logLevel: 'warning' });
+  await build({ entryPoints: [join(root, 'src/runner/cli.ts')], bundle: true, platform: 'node', target: 'node20', format: 'esm', external: ['@duckdb/node-api', 'sql.js', 'pg', 'mysql2', 'node-firebird', 'tedious', 'oracledb', 'mongodb', 'redis', 'cassandra-driver'], outfile: cli, logLevel: 'warning' });
   writeFileSync(join(folder, 'docs.puddle.json'), JSON.stringify(setSchemaDbml(createProject('Docs example'), EXAMPLE_DBML)));
   writeFileSync(join(folder, 'broken.dbml'), 'Table a {\n  id int [pk\n}\n');
 }, 60_000);

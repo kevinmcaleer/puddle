@@ -3,6 +3,8 @@
 #   docker build -f Dockerfile.runner -t puddle-run .
 #   docker run --rm -v /srv/puddle/projects:/projects puddle-run run /projects/orders.puddle.json
 #   docker run -d  -v /srv/puddle/projects:/projects puddle-run watch /projects
+# Connection sources are read with the drivers built in; their secrets come from PUDDLE_SECRET_<NAME> variables or
+# the JSON file PUDDLE_SECRETS names (mount it in), never from the project file.
 
 FROM --platform=$BUILDPLATFORM node:22-bookworm-slim AS build
 WORKDIR /app
@@ -15,7 +17,7 @@ RUN npm run build:runner
 FROM node:22-bookworm-slim
 WORKDIR /app
 ENV NODE_ENV=production
-# The bundle carries everything but the native DuckDB binding, which is installed for this image's own platform.
+# The bundle carries everything but the native DuckDB binding and the database clients, installed for this image's own platform.
 COPY --from=build /app/dist-runner ./
 RUN npm install --omit=dev --ignore-scripts --no-audit --no-fund && npm cache clean --force
 # Projects are mounted here; outputs, run logs and quality reports go to /projects/out unless --out says otherwise.

@@ -1,18 +1,23 @@
 // One run of a project: place its sources, check the quality gate, write every Output node's file, and leave a run
 // log and a quality report beside the outputs. The same compiler the browser uses; DuckDB's native build runs it.
-// Only pure modules are imported here (model, compiler, the gate, the XML and Access readers), so the bundle never touches the browser engine.
+// Only pure modules are imported here (model, compiler, the gate, the XML and Access readers, the connectors as
+// Node runs them), so the bundle never touches the browser engine.
 import { existsSync, mkdtempSync, mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { columnsToCsv } from '../access/csv';
 import { openDatabase, readTable } from '../access/read';
-import { compileAccessLoad, compileExport, compileLoadCheck, compileRules, describeFailure, exportFileName, fullData, SchemaCache, sourceFileName, sourceTableName, str } from '../compiler';
+import { compileAccessLoad, compileConnectionLoad, compileExport, compileLoadCheck, compileRules, describeFailure, dropTable, exportFileName, fullData, SchemaCache, sourceFileName, sourceTableName, str } from '../compiler';
+import { nodeConnectors } from '../connect/node';
+import { readRequestOf } from '../connect/request';
+import type { Connector } from '../connect/types';
 import { buildSchema } from '../schemaTables/build';
 import { describeBlock, exportGate, type BlockingRule } from '../flow/gate';
 import type { RuleResult } from '../flow/ruleResult';
 import { nodeById, topoSort, upstreamIds, type OutputNode, type Project } from '../model';
 import { qualityMarkdown } from './report';
 import { readFeed } from '../sources/odata';
+import { describeConnectionSource, type PlaceOptions } from './connections';
 import { placeSources, type SourcePlace } from './sources';
 import type { RunnerDb } from './db';
 import { tableToCsv, xmlToTable } from '../xml';
@@ -40,7 +45,7 @@ export interface RunLog {
   startedAt: string;
   finishedAt: string;
   durationMs: number;
-  sources: { id: string; name: string; path?: string; problem?: string }[];
+  sources: { id: string; name: string; path?: string; problem?: string; /** A connection source: what it read, and how many rows came. */ connection?: string; rows?: number }[];
   outputs: OutputRun[];
   /** Every enabled rule's result, by node and rule id. */
   rules: Record<string, Record<string, RuleResult>>;
@@ -56,6 +61,10 @@ export interface RunOptions {
   fetchText?: (href: string) => Promise<string>;
   /** How OData feeds are fetched, page by page; the global fetch when not given. */
   fetchImpl?: typeof fetch;
+  /** The secrets and drivers connection sources are read with; without it they are reported as unreadable. */
+  connections?: PlaceOptions;
+  /** The drivers, by id; the Node registry reading files inside the project's folder when not given. */
+  connectors?: Partial<Record<string, Connector>>;
   log?: (line: string) => void;
 }
 
@@ -75,9 +84,10 @@ const fetchOrThrow = (fetchText: RunOptions['fetchText'], address: string) => {
 
 /**
  * Put each source where the compiled SQL reads it: a link to the file, the pasted text, or the fetched address. An
- * Access table is written as CSV, and the statement that loads it as the typed table the SQL reads goes in `loads`.
+ * Access table is written as CSV, and the statement that loads it as the typed table the SQL reads goes in `loads`;
+ * a connection source's rows are read through its driver into a staging table in `db`, and its load goes there too.
  */
-async function stage(places: SourcePlace[], stageDir: string, { fetchText, fetchImpl }: Pick<RunOptions, 'fetchText' | 'fetchImpl'>, loads: Map<string, string>): Promise<Map<string, string>> {
+async function stage(places: SourcePlace[], stageDir: string, { fetchText, fetchImpl, db, connectors }: Pick<RunOptions, 'fetchText' | 'fetchImpl' | 'db' | 'connectors'>, loads: Map<string, string>, read: Map<string, number>): Promise<Map<string, string>> {
   const problems = new Map<string, string>();
   // Each Access database is opened once, however many of its tables the project reads.
   const databases = new Map<string, ReturnType<typeof openDatabase>>();
@@ -89,7 +99,19 @@ async function stage(places: SourcePlace[], stageDir: string, { fetchText, fetch
     }
     const target = join(stageDir, sourceFileName(source));
     try {
-      if (source.format === 'access') {
+      if (p.connection) {
+        // Read as in the browser: the driver's Arrow stream into a staging table, then cast to the types it declared.
+        const { connection, secret } = p.connection;
+        const connector = connectors?.[connection.driver];
+        if (!connector) throw new Error(`no ${connection.driver} driver in this runner`);
+        const r = await connector.read({ connection, secret }, readRequestOf(source.connection!));
+        if (!('ipc' in r)) throw new Error('its driver answered with a relation of the engine, which the runner can’t load');
+        const table = sourceTableName(source);
+        const staging = `${table}_arrow`;
+        await db.insertArrow(staging, r.ipc);
+        loads.set(source.id, compileConnectionLoad(table, r.columns, { staging }));
+        read.set(source.id, r.rows);
+      } else if (source.format === 'access') {
         // Read as in the browser: mdb-reader, then each column given its Access type by DuckDB.
         const table = sourceTableName(source);
         let db = databases.get(p.path);
@@ -158,14 +180,19 @@ export async function runProject(project: Project, opts: RunOptions): Promise<{ 
   mkdirSync(opts.outDir, { recursive: true });
   const outputs: OutputRun[] = [];
   let rules: RunLog['rules'] = {};
-  const places = placeSources(full, opts.folder, existsSync);
+  const places = placeSources(full, opts.folder, existsSync, opts.connections);
+  const read = new Map<string, number>();
   try {
     const loads = new Map<string, string>();
-    const problems = await stage(places, stageDir, opts, loads);
+    const connectors = opts.connectors ?? (places.some((p) => p.connection) ? nodeConnectors({ files: [opts.folder] }) : undefined);
+    const problems = await stage(places, stageDir, { ...opts, connectors }, loads, read);
     // The compiled SQL reads `src_<id>.csv` by bare name; DuckDB looks for it here.
     await opts.db.query(`SET file_search_path = ${str(stageDir)}`);
     for (const [id, sql] of loads) await opts.db.query(sql).catch((e: unknown) => problems.set(id, `couldn’t be read: ${e instanceof Error ? e.message : String(e)}`));
-    for (const [id, why] of problems) say(`Source ${full.sources.find((s) => s.id === id)?.name ?? id} ${why}.`);
+    // The staging tables have been cast into their sources' tables.
+    for (const p of places) if (p.connection) await opts.db.query(dropTable(`${sourceTableName(p.source)}_arrow`)).catch(() => undefined);
+    for (const [id, why] of problems) say(`Source ${full.sources.find((s) => s.id === id)?.name ?? id} ${why.replace(/\.$/, '')}.`);
+    for (const p of places) if (p.connection && read.has(p.source.id)) say(`Source ${p.source.name}: read ${read.get(p.source.id)} rows from ${describeConnectionSource(p.source, p.connection)}.`);
 
     // Schema table nodes read the project's DBML built as tables, as in the browser.
     const tableNodes = full.nodes.filter((n) => n.type === 'table');
@@ -235,7 +262,12 @@ export async function runProject(project: Project, opts: RunOptions): Promise<{ 
     startedAt: started.toISOString(),
     finishedAt: finished.toISOString(),
     durationMs: finished.getTime() - started.getTime(),
-    sources: places.map((p) => ({ id: p.source.id, name: p.source.name, ...(p.path !== undefined ? { path: p.path || undefined } : { problem: p.reason }) })),
+    sources: places.map((p) => ({
+      id: p.source.id,
+      name: p.source.name,
+      ...(p.path !== undefined ? { path: p.path || undefined } : { problem: p.reason }),
+      ...(p.connection ? { connection: describeConnectionSource(p.source, p.connection), ...(read.has(p.source.id) ? { rows: read.get(p.source.id) } : {}) } : {}),
+    })),
     outputs,
     rules,
   };

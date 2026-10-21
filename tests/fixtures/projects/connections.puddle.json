@@ -1,0 +1,167 @@
+{
+  "id": "pConnectionsFixture",
+  "name": "Connections (runner)",
+  "formatVersion": 3,
+  "createdAt": "2026-10-21T06:00:00.000Z",
+  "updatedAt": "2026-10-21T06:00:00.000Z",
+  "notes": "A SQLite file beside the project and a PostgreSQL shop, each copied to Parquet. The runner takes the PostgreSQL password from PUDDLE_SECRETS.",
+  "settings": {
+    "sampleThresholdRows": 5000000,
+    "locale": "en-GB",
+    "defaultDateFormats": [],
+    "stepsAsNodes": true,
+    "fixAllSuggestions": false,
+    "columnNames": "words"
+  },
+  "connections": [
+    {
+      "id": "cSqlite",
+      "name": "Shop file",
+      "driver": "sqlite",
+      "via": "browser",
+      "settings": {
+        "file": "shop.sqlite"
+      },
+      "auth": "none"
+    },
+    {
+      "id": "cPg",
+      "name": "Shop DB",
+      "driver": "postgres",
+      "via": "local",
+      "settings": {
+        "host": "localhost",
+        "port": 5432,
+        "database": "shop",
+        "user": "postgres",
+        "ssl": false,
+        "sslVerify": true
+      },
+      "auth": "password"
+    }
+  ],
+  "sources": [
+    {
+      "id": "sCust",
+      "name": "customers",
+      "kind": "connection",
+      "connection": {
+        "connectionId": "cSqlite",
+        "table": {
+          "name": "customers"
+        },
+        "columns": []
+      },
+      "format": "connection",
+      "parseOptions": {},
+      "detectedSchema": []
+    },
+    {
+      "id": "sOrders",
+      "name": "orders",
+      "kind": "connection",
+      "connection": {
+        "connectionId": "cPg",
+        "table": {
+          "schema": "public",
+          "name": "orders"
+        },
+        "columns": []
+      },
+      "format": "connection",
+      "parseOptions": {},
+      "detectedSchema": []
+    }
+  ],
+  "nodes": [
+    {
+      "id": "nCust",
+      "name": "customers",
+      "position": {
+        "x": 80,
+        "y": 80
+      },
+      "rules": [],
+      "type": "source",
+      "sourceId": "sCust"
+    },
+    {
+      "id": "nOrders",
+      "name": "orders",
+      "position": {
+        "x": 80,
+        "y": 240
+      },
+      "rules": [],
+      "type": "source",
+      "sourceId": "sOrders"
+    },
+    {
+      "id": "oCust",
+      "name": "Customers from SQLite",
+      "position": {
+        "x": 400,
+        "y": 80
+      },
+      "rules": [],
+      "type": "output",
+      "outputSpec": {
+        "format": "parquet",
+        "options": {}
+      }
+    },
+    {
+      "id": "oOrders",
+      "name": "Orders from PostgreSQL",
+      "position": {
+        "x": 400,
+        "y": 240
+      },
+      "rules": [],
+      "type": "output",
+      "outputSpec": {
+        "format": "parquet",
+        "options": {}
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "e1",
+      "from": {
+        "nodeId": "nCust"
+      },
+      "to": {
+        "nodeId": "oCust",
+        "port": 0
+      }
+    },
+    {
+      "id": "e2",
+      "from": {
+        "nodeId": "nOrders"
+      },
+      "to": {
+        "nodeId": "oOrders",
+        "port": 0
+      }
+    }
+  ],
+  "groups": [],
+  "view": {
+    "pinned": false,
+    "canvasViewport": {
+      "x": 0,
+      "y": 0,
+      "zoom": 1
+    }
+  },
+  "schema": {
+    "dbml": "",
+    "positions": {},
+    "detail": "full",
+    "views": [],
+    "versions": []
+  },
+  "exportLog": []
+}

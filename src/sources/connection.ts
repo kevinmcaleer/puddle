@@ -5,7 +5,8 @@ import { useEngineStore } from '../app/engine';
 import { compileConnectionLoad, compileRelationPreview, compileTableCount, compileTableSelect, dropTable, sourceTableName } from '../compiler';
 import { connectorFor } from '../connect/browser';
 import { contextFor } from '../connect/context';
-import type { ReadRequest, ReadResult } from '../connect/types';
+import { readRequestOf } from '../connect/request';
+import type { ReadResult } from '../connect/types';
 import { connectionFile, useConnectionFiles } from '../connections/files';
 import { driver, SECRET_LABEL } from '../connections/drivers';
 import { hasSecret, useSecrets } from '../connections/secrets';
@@ -84,15 +85,7 @@ export const connectionNeedsMessage = (connection: Connection | undefined, read:
   return read?.state === 'failed' ? read.message : undefined;
 };
 
-/** What a source asks its driver to read: the table or query, the row limit and, where the driver takes them, the filter and the shape. */
-export const readRequestOf = (c: ConnectionSource): ReadRequest => ({
-  table: c.table,
-  query: c.query,
-  limit: c.limit,
-  ...(c.filter?.trim() ? { filter: c.filter.trim() } : {}),
-  ...(c.allowFiltering ? { allowFiltering: true } : {}),
-  ...(c.shape && (c.shape.depth !== undefined || c.shape.arrays !== undefined) ? { shape: c.shape } : {}),
-});
+export { readRequestOf };
 
 /** True when a source's data can be queried: anything but a connection source, or one whose table is loaded for what it reads now. */
 export function connectionReady(project: Project, sourceId: string): boolean {
