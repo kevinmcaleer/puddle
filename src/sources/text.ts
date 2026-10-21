@@ -14,6 +14,9 @@ export type RewrittenTextFormat = Exclude<RewrittenFormat, 'word'>;
 
 export const isRewrittenText = (s: Pick<Source, 'format'>): s is Source & { format: RewrittenFormat } => s.format === 'fixed' || s.format === 'pipes' || s.format === 'word' || isStructuredFormat(s.format);
 
+/** A rewritten source read from text, which `readText` takes: every rewritten format but a Word document. */
+export const isRewrittenTextSource = (s: Pick<Source, 'format'>): s is Source & { format: RewrittenTextFormat } => isRewrittenText(s) && s.format !== 'word';
+
 /** Decode a file's bytes in the encoding its read options name (as the sniff set it): UTF-16 by its BOM, Latin-1 as Windows-1252, else UTF-8. */
 export function decodeText(bytes: Uint8Array, encoding?: string): string {
   if (encoding === 'utf-16') {
