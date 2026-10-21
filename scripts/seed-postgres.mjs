@@ -18,6 +18,13 @@ async function connect(db) {
   u.pathname = `/${db}`;
   const client = new pg.Client({ connectionString: u.toString() });
   await client.connect();
+  // CockroachDB accepts a connection to a database that doesn't exist and only complains at the first query.
+  try {
+    await client.query('SELECT 1');
+  } catch (e) {
+    await client.end().catch(() => {});
+    throw e;
+  }
   return client;
 }
 
