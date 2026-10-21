@@ -75,6 +75,11 @@ describe('the SQL Server driver', () => {
     expect(Number(t.getChild('signed_up')!.get(0))).toBe(Date.UTC(2024, 0, 15));
   });
 
+  it('refuses a statement that returned no rows, which a write would', async () => {
+    const c = sqlserverConnector(replay());
+    await expect(c.read(ctx, { query: "UPDATE customers SET name = 'x'" })).rejects.toThrow('That statement returned no rows to read; the connection only reads.');
+  });
+
   it('still documents the tables where sys.* can’t be read', async () => {
     const c = sqlserverConnector(replay(/sys\./));
     const d = await c.document!(ctx);
@@ -132,10 +137,10 @@ describe('the SQL Server driver', () => {
   });
 
   it('writes the SQL of a read in Transact-SQL, reads defaults, and makes the client’s values plain', () => {
-    expect(readSql({ table: { name: 'orders' } })).toEqual(['SELECT * FROM [dbo].[orders]']);
-    expect(readSql({ table: { schema: 'sales', name: 'or]ders' }, limit: 5 })).toEqual(['SELECT TOP (5) * FROM [sales].[or]]ders]']);
-    expect(readSql({ query: 'SELECT 1 AS n; ', limit: 2 })).toEqual(['SET ROWCOUNT 2', 'SELECT 1 AS n']);
-    expect(readSql({ query: 'SELECT 1 AS n' })).toEqual(['SELECT 1 AS n']);
+    expect(readSql({ table: { name: 'orders' } })).toBe('SELECT * FROM [dbo].[orders]');
+    expect(readSql({ table: { schema: 'sales', name: 'or]ders' }, limit: 5 })).toBe('SELECT TOP (5) * FROM [sales].[or]]ders]');
+    expect(readSql({ query: 'SELECT 1 AS n; ', limit: 2 })).toBe('SET ROWCOUNT 2;\nBEGIN TRANSACTION;\nSELECT 1 AS n;\nROLLBACK TRANSACTION');
+    expect(readSql({ query: 'SELECT 1 AS n' })).toBe('BEGIN TRANSACTION;\nSELECT 1 AS n;\nROLLBACK TRANSACTION');
     expect(sqlserverDefault("('placed')")).toBe("'placed'");
     expect(sqlserverDefault('((1))')).toBe('1');
     expect(sqlserverDefault('(getdate())')).toBe('getdate()');

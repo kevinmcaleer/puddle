@@ -64,7 +64,7 @@ describe.skipIf(!url)(`the oracle driver against ${url ? new URL(url).host : 'no
     if (!('ipc' in q)) throw new Error('expected a stream');
     expect(q.rows).toBe(2);
     expect(q.columns.map((c) => c.sqlType)).toEqual(['VARCHAR', 'TIMESTAMP', 'INTEGER']);
-    expect(tableFromIPC(q.ipc).getChild('ACTIVE')!.toArray().map(Number)).toEqual([1, 1]);
+    expect(Array.from(tableFromIPC(q.ipc).getChild('ACTIVE')!.toArray(), Number)).toEqual([1, 1]);
   });
 
   it('refuses to write', async () => {

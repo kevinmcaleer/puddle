@@ -284,14 +284,17 @@ export function sheetFromResult(fields: SqlserverField[], rows: unknown[][]): { 
 }
 
 /**
- * The SQL a read runs. A table is read with TOP; a query is run as written, after SET ROWCOUNT bounds it, since a
- * query that ends in ORDER BY can't sit inside a derived table in Transact-SQL.
+ * The SQL a read runs, as one batch. A table is read with TOP; a query is run as written, after SET ROWCOUNT bounds
+ * it, since a query that ends in ORDER BY can't sit inside a derived table in Transact-SQL (the SET must share the
+ * batch: tedious runs each request through sp_executesql, whose SET options end with it). The batch runs in a
+ * transaction that is rolled back, so a statement that writes leaves nothing behind: read-only intent only steers
+ * an availability group to a readable replica, it doesn't refuse a write.
  */
-export function readSql(req: ReadRequest): string[] {
+export function readSql(req: ReadRequest): string {
   const limit = req.limit ? Math.max(1, Math.floor(req.limit)) : undefined;
-  if (req.table) return [`SELECT ${limit ? `TOP (${limit}) ` : ''}* FROM ${qualified(req.table)}`];
+  if (req.table) return `SELECT ${limit ? `TOP (${limit}) ` : ''}* FROM ${qualified(req.table)}`;
   const query = (req.query ?? '').trim().replace(/;\s*$/, '');
-  return [...(limit ? [`SET ROWCOUNT ${limit}`] : []), query];
+  return `${limit ? `SET ROWCOUNT ${limit};\n` : ''}BEGIN TRANSACTION;\n${query};\nROLLBACK TRANSACTION`;
 }
 
 export function sqlserverConnector(connect: SqlserverConnect = sqlserverConnect): Connector {
@@ -339,9 +342,9 @@ export function sqlserverConnector(connect: SqlserverConnect = sqlserverConnect)
     read: (ctx, req): Promise<ReadResult> =>
       withClient(ctx, async (client) => {
         if (!req.table && !req.query) throw new ConnectorError('Choose a table or write a query.');
-        const statements = readSql(req);
-        for (const sql of statements.slice(0, -1)) await client.query(sql);
-        const r = await client.query(statements[statements.length - 1]!);
+        const r = await client.query(readSql(req));
+        // A statement that returned no columns wasn't a read (an UPDATE, say); its transaction was rolled back.
+        if (!r.fields.length) throw new ConnectorError('That statement returned no rows to read; the connection only reads.');
         const { columns, sqlTypes } = sheetFromResult(r.fields, r.rows);
         return { ipc: sheetToIPC(columns), columns: columns.map((c, i) => ({ name: c.name, sqlType: sqlTypes[i]! })), rows: r.rows.length };
       }),

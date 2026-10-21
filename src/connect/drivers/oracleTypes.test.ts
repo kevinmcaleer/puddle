@@ -5,6 +5,9 @@ describe('Oracle types', () => {
   it('holds NUMBER by its precision and scale: integers that fit, decimals otherwise, unconstrained as double', () => {
     expect(numberType(9, 0)).toEqual({ type: 'BIGINT', sqlType: 'INTEGER' });
     expect(numberType(10, 0)).toEqual({ type: 'BIGINT', sqlType: 'BIGINT' });
+    // ALL_TAB_COLUMNS' precision and scale arrive as text, since every NUMBER is fetched as text.
+    expect(numberType('10', '0')).toEqual({ type: 'BIGINT', sqlType: 'BIGINT' });
+    expect(oracleColumnType({ DATA_TYPE: 'NUMBER', DATA_PRECISION: '10', DATA_SCALE: '2' })).toEqual({ type: 'VARCHAR', sqlType: 'DECIMAL(10,2)', declared: 'NUMBER(10,2)' });
     expect(numberType(1, 0)).toEqual({ type: 'BIGINT', sqlType: 'INTEGER' });
     expect(numberType(18, 0)).toEqual({ type: 'BIGINT', sqlType: 'BIGINT' });
     expect(numberType(20, 0)).toEqual({ type: 'VARCHAR', sqlType: 'DECIMAL(20,0)' });

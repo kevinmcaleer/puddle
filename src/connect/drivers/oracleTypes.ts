@@ -23,15 +23,20 @@ export interface OracleField {
 const TEXT: OracleType = { type: 'VARCHAR', sqlType: 'VARCHAR' };
 const DOUBLE: OracleType = { type: 'DOUBLE', sqlType: 'DOUBLE' };
 
+/** A precision or scale as the client gives it: a number from a result's metadata, text from ALL_TAB_COLUMNS (every NUMBER is fetched as text). */
+const num = (v: number | string | null | undefined): number | null => (v === null || v === undefined || v === '' ? null : Number(v));
+
 /** NUMBER(p,s) as DuckDB holds it: whole numbers in an integer type that fits, fractions as DECIMAL, unconstrained as DOUBLE. */
-export function numberType(precision: number | null | undefined, scale: number | null | undefined): OracleType {
-  if (!precision || precision > 38 || scale === null || scale === undefined || scale < 0) return DOUBLE;
+export function numberType(p: number | string | null | undefined, s: number | string | null | undefined): OracleType {
+  const precision = num(p);
+  const scale = num(s);
+  if (!precision || precision > 38 || scale === null || scale < 0) return DOUBLE;
   if (scale === 0) return precision <= 9 ? { type: 'BIGINT', sqlType: 'INTEGER' } : precision <= 18 ? { type: 'BIGINT', sqlType: 'BIGINT' } : { type: 'VARCHAR', sqlType: `DECIMAL(${precision},0)` };
   return { type: 'VARCHAR', sqlType: `DECIMAL(${precision},${scale})` };
 }
 
 /** The type of a data type's name, as both the result metadata and ALL_TAB_COLUMNS spell it (TIMESTAMP(6) WITH TIME ZONE and the like). */
-export function oracleNamedType(name: string, precision?: number | null, scale?: number | null): OracleType {
+export function oracleNamedType(name: string, precision?: number | string | null, scale?: number | string | null): OracleType {
   const t = name.toUpperCase().replace(/\(\d+\)/g, '').trim();
   if (t === 'NUMBER') return numberType(precision, scale);
   if (t === 'FLOAT' || t === 'BINARY_DOUBLE') return DOUBLE;
@@ -54,10 +59,10 @@ export function oracleFieldType(f: OracleField): OracleType {
 /** A column as ALL_TAB_COLUMNS describes it. */
 export interface OracleColumnRow {
   DATA_TYPE: string;
-  DATA_LENGTH?: number | null;
-  CHAR_LENGTH?: number | null;
-  DATA_PRECISION?: number | null;
-  DATA_SCALE?: number | null;
+  DATA_LENGTH?: number | string | null;
+  CHAR_LENGTH?: number | string | null;
+  DATA_PRECISION?: number | string | null;
+  DATA_SCALE?: number | string | null;
 }
 
 /** The type of a catalogued column, and how its declaration reads (the DBML type). */
@@ -65,7 +70,7 @@ export function oracleColumnType(c: OracleColumnRow): OracleType & { declared: s
   const t = c.DATA_TYPE.toUpperCase();
   const mapped = oracleNamedType(t, c.DATA_PRECISION, c.DATA_SCALE);
   let declared = t;
-  if (t === 'NUMBER') declared = c.DATA_PRECISION ? `NUMBER(${c.DATA_PRECISION},${c.DATA_SCALE ?? 0})` : 'NUMBER';
+  if (t === 'NUMBER') declared = num(c.DATA_PRECISION) ? `NUMBER(${num(c.DATA_PRECISION)},${num(c.DATA_SCALE) ?? 0})` : 'NUMBER';
   else if (/^(VARCHAR2|NVARCHAR2|CHAR|NCHAR)$/.test(t)) declared = `${t}(${c.CHAR_LENGTH || c.DATA_LENGTH || 0})`;
   else if (t === 'RAW') declared = `RAW(${c.DATA_LENGTH ?? 0})`;
   return { ...mapped, declared };
