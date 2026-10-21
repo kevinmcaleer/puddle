@@ -1,5 +1,5 @@
 import { useEngineStore } from '../app/engine';
-import { isRewritten, sourceFileName } from '../compiler';
+import { isLoadedTable, isRewritten, sourceFileName } from '../compiler';
 import type { EngineClient } from '../engine';
 import { invalidateCaches } from '../flow/status';
 import { addSource, newId, setSourceFormat, useProjectStore, type ParseOptions, type Source, type SourceFormat } from '../model';
@@ -8,7 +8,8 @@ import { markAttached } from './attachments';
 import { openFormatDialog } from './formatDialog';
 import { keepHandle, type FileHandle } from './handles';
 import { HEAD_BYTES, hashBytes } from './hash';
-import { sniff, sniffPasted, TAIL_BYTES } from './sniff';
+import { archiveKindOf, sniff, sniffPasted, TAIL_BYTES } from './sniff';
+import { addArchiveSource, attachArchive, isArchiveSource, sourceArchive } from './archive';
 
 /** Files picked this session, by source id. Projects store references, never the data (plan D6). */
 const files = new Map<string, File>();
@@ -18,7 +19,7 @@ export const sourceFile = (sourceId: string) => files.get(sourceId);
 /** Remember the file now registered for a source (used when a file is chosen again on reopen). */
 export const rememberFile = (sourceId: string, file: File) => files.set(sourceId, file);
 
-function engineOrThrow() {
+export function engineOrThrow() {
   const engine = useEngineStore.getState().engine;
   if (!engine) throw new SourceError('DuckDB is still starting. Try again in a moment.');
   return engine;
@@ -33,6 +34,9 @@ export async function addFileSource(file: File, position = { x: 80, y: 80 }, han
   const tail = file.size > HEAD_BYTES ? new Uint8Array(await file.slice(Math.max(0, file.size - TAIL_BYTES)).arrayBuffer()) : undefined;
   // The bytes say what the file is (plan D24); the name only breaks a tie. A file that could be two things opens the
   // Format picker once it is on the canvas, with the best guess already read.
+  // A compressed file or an archive is opened for the file inside (see ./archive).
+  const kind = archiveKindOf(head);
+  if (kind) return addArchiveSource(file, kind, head, position, handle);
   const sniffed = sniff({ name: file.name, head, size: file.size, tail });
   const engine = engineOrThrow();
   const source: Source = {
@@ -53,8 +57,8 @@ export async function addFileSource(file: File, position = { x: 80, y: 80 }, han
   return source;
 }
 
-/** Excel is read by SheetJS into a table (see ./excel), Access by mdb-reader (see ./access), and XML, fixed-width text and pipe tables into rows (see ./xml, ./rewrite), not by DuckDB from the file. */
-const readByDuckDb = (format: SourceFormat) => format !== 'xlsx' && format !== 'access' && !isRewritten(format);
+/** Excel is read by SheetJS into a table (see ./excel), Access by mdb-reader (see ./access), Arrow by the Arrow library (see ./arrow), and XML, fixed-width text and pipe tables into rows (see ./xml, ./rewrite), not by DuckDB from the file. */
+export const readByDuckDb = (format: SourceFormat) => !isLoadedTable(format) && !isRewritten(format);
 
 /** Hand a source's file to DuckDB under the name its format reads, straight from the file handle (never copied). */
 export async function registerSourceFile(engine: Pick<EngineClient, 'registerFile'>, source: Source, file: File) {
@@ -72,10 +76,13 @@ export async function changeSourceFormat(sourceId: string, format: SourceFormat,
   if (!source || (source.format === format && JSON.stringify(source.parseOptions) === JSON.stringify(parseOptions))) return;
   const next = { ...source, format, parseOptions };
   const file = files.get(sourceId);
+  const archive = sourceArchive(sourceId);
   if (file && source.kind === 'file') {
     const engine = engineOrThrow();
     if (readByDuckDb(source.format)) await engine.dropFile(sourceFileName(source)).catch(() => undefined);
-    await registerFile(engine, next, file);
+    // A file from an archive may now need unpacking (or no longer): the reader is given the right one again.
+    if (archive && isArchiveSource(next)) await attachArchive(engine, next, archive);
+    else await registerFile(engine, next, file);
   } else if (source.kind === 'clipboard' && source.clipboard) {
     const engine = engineOrThrow();
     if (readByDuckDb(source.format)) await engine.dropFile(sourceFileName(source)).catch(() => undefined);

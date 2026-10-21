@@ -111,3 +111,46 @@ describe('reading fixed-width text and pipe tables', () => {
     expect(sourceRelation(source)).toBe(`read_csv('${sourceFileName(source)}', header = true, delim = ',', quote = '"', escape = '"', null_padding = true, nullstr = ['', 'N/A'])`);
   });
 });
+
+describe('reading a file from an archive', () => {
+  const inArchive = (format: Source['format'], archive: Source['archive'], parseOptions: Source['parseOptions'] = {}): Source => ({
+    id: 'a',
+    name: 'orders.csv',
+    kind: 'file',
+    format,
+    file: { originalName: 'shop.zip', size: 1, lastModified: 0, headHash: 'h1' },
+    archive,
+    parseOptions,
+    detectedSchema: [],
+  });
+
+  it('hands DuckDB a gzipped CSV, TSV or JSON as it is, named with its .gz, to unpack as it reads', () => {
+    const gz = inArchive('csv', { kind: 'gzip', entry: 'orders.csv' });
+    expect(sourceFileName(gz)).toMatch(/^src_a_[0-9a-f]{12}\.csv\.gz$/);
+    expect(sourceRelation(gz)).toBe(`read_csv('${sourceFileName(gz)}', compression = 'gzip', null_padding = true)`);
+    const json = inArchive('ndjson', { kind: 'gzip', entry: 'events.ndjson' });
+    expect(sourceFileName(json)).toMatch(/\.ndjson\.gz$/);
+    expect(sourceRelation(json)).toBe(`read_json_auto('${sourceFileName(json)}', format = 'newline_delimited', compression = 'gzip')`);
+    expect(sourceRelation(inArchive('json', { kind: 'gzip', entry: 'items.json' }))).toMatch(/^read_json_auto\('src_a_[0-9a-f]{12}\.json\.gz', compression = 'gzip'\)$/);
+  });
+
+  it('reads an unpacked entry under a name that follows the entry, so another file of the same zip is never mistaken for it', () => {
+    const orders = inArchive('csv', { kind: 'zip', entry: 'shop/orders.csv' });
+    const customers = inArchive('csv', { kind: 'zip', entry: 'shop/customers.csv' });
+    expect(sourceFileName(orders)).toMatch(/^src_a_[0-9a-f]{12}\.csv$/);
+    expect(sourceFileName(orders)).not.toBe(sourceFileName(customers));
+    expect(sourceRelation(orders)).toBe(`read_csv('${sourceFileName(orders)}', null_padding = true)`);
+    // A gzipped workbook or Parquet file is unpacked first: no .gz.
+    expect(sourceFileName(inArchive('parquet', { kind: 'gzip', entry: 'data.parquet' }))).toMatch(/\.parquet$/);
+    expect(sourceTableName(inArchive('xlsx', { kind: 'gzip', entry: 'sales.xlsx' }))).not.toBe(sourceTableName(inArchive('xlsx', { kind: 'gzip', entry: 'other.xlsx' })));
+    // The rewritten formats keep the entry in their names too.
+    expect(sourceFileName(inArchive('pipes', { kind: 'zip', entry: 'a.txt' }))).not.toBe(sourceFileName(inArchive('pipes', { kind: 'zip', entry: 'b.txt' })));
+  });
+
+  it('reads an Arrow file as the table it was loaded into, named for the file', () => {
+    const arrow: Source = { ...inArchive('arrow', undefined), name: 'customers.arrow', file: { originalName: 'customers.arrow', size: 1, lastModified: 0, headHash: 'h1' } };
+    expect(sourceTableName(arrow)).toMatch(/^src_a_[0-9a-f]{12}$/);
+    expect(sourceRelation(arrow)).toBe(`"${sourceTableName(arrow)}"`);
+    expect(sourceTableName({ ...arrow, file: { ...arrow.file!, headHash: 'h2' } })).not.toBe(sourceTableName(arrow));
+  });
+});

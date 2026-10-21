@@ -1,13 +1,15 @@
 // One run of a project: place its sources, check the quality gate, write every Output node's file, and leave a run
 // log and a quality report beside the outputs. The same compiler the browser uses; DuckDB's native build runs it.
-// Only pure modules are imported here (model, compiler, the gate, the XML, Access and spreadsheet readers), so the bundle never touches the browser engine.
+// Only pure modules are imported here (model, compiler, the gate, the XML, Access, spreadsheet, archive and Arrow readers), so the bundle never touches the browser engine.
 import { existsSync, mkdtempSync, mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { columnsToCsv } from '../access/csv';
+import { readEntry } from '../archive';
+import { arrowColumns, readArrowFile } from '../arrow/read';
 import { openDatabase, readTable } from '../access/read';
 import { parseWorkbook, readSheet } from '../excel/read';
-import { compileAccessLoad, compileExport, compileLoadCheck, compileRules, describeFailure, exportFileName, fullData, SchemaCache, sourceFileName, sourceTableName, str } from '../compiler';
+import { compileAccessLoad, compileExport, compileLoadCheck, compileRules, describeFailure, exportFileName, fullData, readsCompressed, SchemaCache, sourceFileName, sourceTableName, str } from '../compiler';
 import { buildSchema } from '../schemaTables/build';
 import { describeBlock, exportGate, type BlockingRule } from '../flow/gate';
 import type { RuleResult } from '../flow/ruleResult';
@@ -99,34 +101,43 @@ async function stage(places: SourcePlace[], stageDir: string, { fetchText, fetch
     }
     const target = join(stageDir, sourceFileName(source));
     try {
-      if (source.format === 'access') {
+      // A file inside a .gz or .zip is unpacked first, as in the browser; a gzipped text file DuckDB reads as it is
+      // (sourceFileName keeps its .gz) is linked whole and unpacked as it is read.
+      const bytes = async () => (source.archive && !readsCompressed(source) ? await readEntry(new Uint8Array(readFileSync(p.path!)), source.archive.kind, source.archive.entry) : new Uint8Array(readFileSync(p.path!)));
+      if (source.format === 'arrow') {
+        // Read as in the browser: the Arrow library, then each column given its type by DuckDB.
+        const table = sourceTableName(source);
+        const columns = arrowColumns(readArrowFile(await bytes()));
+        writeFileSync(join(stageDir, `${table}.csv`), columnsToCsv(columns));
+        loads.set(source.id, compileAccessLoad(table, columns, { csv: `${table}.csv` }));
+      } else if (source.format === 'access') {
         // Read as in the browser: mdb-reader, then each column given its Access type by DuckDB.
         const table = sourceTableName(source);
         let db = databases.get(p.path);
-        if (!db) databases.set(p.path, (db = openDatabase(new Uint8Array(readFileSync(p.path)))));
+        if (!db) databases.set(p.path, (db = openDatabase(await bytes())));
         const data = readTable(db, source.parseOptions.table);
         writeFileSync(join(stageDir, `${table}.csv`), columnsToCsv(data.columns));
         loads.set(source.id, compileAccessLoad(table, data.columns, { csv: `${table}.csv` }));
       } else if (source.format === 'xlsx') {
         // Read as in the browser: SheetJS with the project's sheet options, then each column given its type by DuckDB.
         const table = sourceTableName(source);
-        const bytes = source.kind === 'url' ? await fetchBytes(fetchImpl, p.path) : new Uint8Array(readFileSync(p.path));
         const o = source.parseOptions;
-        const data = readSheet(parseWorkbook(bytes), { sheet: o.sheet, headerRow: o.headerRow, range: o.range, headerRows: o.headerRows, fillMerges: o.fillMerges });
+        const data = readSheet(parseWorkbook(source.kind === 'url' ? await fetchBytes(fetchImpl, p.path) : await bytes()), { sheet: o.sheet, headerRow: o.headerRow, range: o.range, headerRows: o.headerRows, fillMerges: o.fillMerges });
         writeFileSync(join(stageDir, `${table}.csv`), columnsToCsv(data.columns));
         loads.set(source.id, compileAccessLoad(table, data.columns.map((c) => ({ name: c.name, sqlType: c.type })), { csv: `${table}.csv` }));
       } else if (source.format === 'xml') {
         // DuckDB reads the CSV Puddle writes from the XML's records, as in the browser.
-        const xml = source.kind === 'clipboard' ? source.clipboard!.text : source.kind === 'url' ? await fetchOrThrow(fetchText, p.path) : new Uint8Array(readFileSync(p.path));
+        const xml = source.kind === 'clipboard' ? source.clipboard!.text : source.kind === 'url' ? await fetchOrThrow(fetchText, p.path) : await bytes();
         const o = source.parseOptions;
         writeFileSync(target, tableToCsv(await xmlToTable(xml, { record: o.record, expand: o.expand })));
       } else if (isRewrittenText(source)) {
         // Fixed-width text and pipe tables: read into rows as in the browser, then DuckDB reads the CSV.
-        const text = source.kind === 'clipboard' ? source.clipboard!.text : source.kind === 'url' ? await fetchOrThrow(fetchText, p.path) : decodeText(new Uint8Array(readFileSync(p.path)), source.parseOptions.encoding);
+        const text = source.kind === 'clipboard' ? source.clipboard!.text : source.kind === 'url' ? await fetchOrThrow(fetchText, p.path) : decodeText(await bytes(), source.parseOptions.encoding);
         writeFileSync(target, rewrittenCsv(readText(source.format, text, source.parseOptions)));
       } else if (source.kind === 'clipboard') writeFileSync(target, source.clipboard!.text);
       else if (source.url?.odata) writeFileSync(target, (await readFeed(new URL(p.path), source.url.odata, { fetchImpl })).csv);
       else if (source.kind === 'url') writeFileSync(target, await fetchOrThrow(fetchText, p.path));
+      else if (source.archive && !readsCompressed(source)) writeFileSync(target, await bytes());
       else symlinkSync(p.path, target);
     } catch (e) {
       problems.set(source.id, `couldn’t be read: ${e instanceof Error ? e.message : String(e)}`);

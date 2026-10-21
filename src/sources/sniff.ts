@@ -1,6 +1,7 @@
 // What a file is, from its bytes: the signature for binary formats, the encoding and the shape of the text for the
 // rest. Content wins over the file name when it is unambiguous (plan D24); when it isn't, the result says so and the
 // Format picker asks. Pure, so it is tested on bytes.
+import type { ArchiveKind } from '../archive';
 import type { ParseOptions, SourceFormat } from '../model';
 import { knownFormat, READS, SourceError } from './detect';
 import { detectBoundaries } from './fixedWidth';
@@ -8,7 +9,7 @@ import { detectBoundaries } from './fixedWidth';
 export type Confidence = 'sure' | 'likely' | 'unsure';
 
 /** A format the sniff can name but Puddle doesn't read, so the refusal can say what the file is. */
-export type OtherFormat = 'word' | 'powerpoint' | 'zip' | 'gzip' | 'bzip2' | 'zstd' | 'arrow' | 'sqlite' | 'pdf' | 'ole' | 'binary';
+export type OtherFormat = 'word' | 'powerpoint' | 'zip' | 'gzip' | 'bzip2' | 'zstd' | 'sqlite' | 'pdf' | 'ole' | 'binary';
 
 export interface Sniffed {
   format: SourceFormat;
@@ -120,16 +121,22 @@ const OTHER_NAMES: Record<OtherFormat, string> = {
   gzip: 'a gzip-compressed file',
   bzip2: 'a bzip2-compressed file',
   zstd: 'a zstd-compressed file',
-  arrow: 'an Arrow file',
   sqlite: 'a SQLite database',
   pdf: 'a PDF',
   ole: 'an old Office file that isn’t a workbook',
   binary: 'a binary file',
 };
 
+/** A gzip-compressed file or a zip archive, which src/sources/archive.ts opens for the file inside. */
+export const archiveKindOf = (head: Uint8Array): ArchiveKind | undefined => {
+  const signature = signatureOf(head);
+  return signature === 'gzip' || signature === 'zip' ? signature : undefined;
+};
+
 /** The refusal for a format Puddle can name but not read, as the brand book words it: what it is, then what to do. */
 export function refusal(name: string, other: OtherFormat): SourceError {
-  if (other === 'gzip' || other === 'bzip2' || other === 'zstd' || other === 'zip') return new SourceError(`${name} is ${OTHER_NAMES[other]}, which Puddle doesn’t open yet. Unpack it and add the file inside.`);
+  if (other === 'bzip2' || other === 'zstd') return new SourceError(`${name} is ${OTHER_NAMES[other]}, which Puddle doesn’t open. Unpack it and add the file inside, or pack it as gzip or zip.`);
+  if (other === 'gzip' || other === 'zip') return new SourceError(`${name} is ${OTHER_NAMES[other]}, which Puddle opens from a chosen file: unpack it and add the file inside, or choose the archive itself.`);
   return new SourceError(`${name} is ${OTHER_NAMES[other]}, which Puddle doesn’t read. ${READS}`);
 }
 
@@ -428,8 +435,8 @@ export function sniff({ name, head, size, tail }: SniffInput): Sniffed {
   const byName = knownFormat(name);
   const signature = signatureOf(head);
   if (signature) {
-    if (signature === 'xlsx' || signature === 'parquet' || signature === 'access') {
-      return { format: signature, confidence: 'sure', parseOptions: {}, alternatives: [], reason: `A ${signature === 'xlsx' ? 'spreadsheet' : signature === 'parquet' ? 'Parquet file' : 'database'} by its signature.` };
+    if (signature === 'xlsx' || signature === 'parquet' || signature === 'access' || signature === 'arrow') {
+      return { format: signature, confidence: 'sure', parseOptions: {}, alternatives: [], reason: `${signature === 'xlsx' ? 'A spreadsheet' : signature === 'parquet' ? 'A Parquet file' : signature === 'arrow' ? 'An Arrow file' : 'A database'} by its signature.` };
     }
     // An old Office file whose streams weren't in the first megabyte: a workbook when the name says so.
     if (signature === 'ole' && byName === 'xlsx') return { format: 'xlsx', confidence: 'likely', parseOptions: {}, alternatives: [], reason: 'An old Office file, taken as a workbook from the file name.' };
@@ -441,7 +448,7 @@ export function sniff({ name, head, size, tail }: SniffInput): Sniffed {
   }
   const decoded = decodeHead(head, size == null || size <= head.length);
   if ('binary' in decoded) {
-    if (byName === 'parquet' || byName === 'xlsx' || byName === 'access') return { format: byName, confidence: 'likely', parseOptions: {}, alternatives: [], reason: 'Taken from the file name.' };
+    if (byName === 'parquet' || byName === 'xlsx' || byName === 'access' || byName === 'arrow') return { format: byName, confidence: 'likely', parseOptions: {}, alternatives: [], reason: 'Taken from the file name.' };
     throw refusal(name, 'binary');
   }
   // A flat OpenDocument spreadsheet (.fods) is XML; its name says which XML.

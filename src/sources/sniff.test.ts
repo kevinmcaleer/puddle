@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { SourceError } from './detect';
-import { columnNames, decodeHead, fixedWidthColumns, signatureOf, sniff, sniffDelimiter, sniffHeader, sniffPasted, sniffShape, sniffText } from './sniff';
+import { archiveKindOf, columnNames, decodeHead, fixedWidthColumns, signatureOf, sniff, sniffDelimiter, sniffHeader, sniffPasted, sniffShape, sniffText } from './sniff';
 
 const bytes = (...parts: (string | number[])[]) => new Uint8Array(parts.flatMap((p) => (typeof p === 'string' ? [...new TextEncoder().encode(p)] : p)));
 const messy = (name: string) => new Uint8Array(readFileSync(join(__dirname, '../../tests/fixtures/messy', name)));
@@ -83,14 +83,24 @@ describe('binary signatures', () => {
     expect(file('customers.parquet', fixture('customers.parquet'))).toMatchObject({ format: 'parquet', confidence: 'sure' });
     expect(file('shop.accdb', fixture('shop.accdb'))).toMatchObject({ format: 'access', confidence: 'sure' });
     expect(file('shop.mdb', fixture('shop.mdb').subarray(0, 4096)).format).toBe('access');
+    expect(file('customers.arrow', fixture('archives/customers.arrow'))).toMatchObject({ format: 'arrow', confidence: 'sure', reason: 'An Arrow file by its signature.' });
+    // An Arrow stream (no ARROW1 magic) is binary that only a known name explains.
+    expect(() => file('customers.arrows', bytes([0xff, 0xff, 0xff, 0xff, 0x10, 0, 0, 0, 0x0c, 0, 0, 0]))).toThrow('customers.arrows is a binary file');
+    expect(file('customers.feather', bytes([0xff, 0xff, 0xff, 0xff, 0x10, 0, 0, 0, 0x0c, 0, 0, 0]))).toMatchObject({ format: 'arrow', confidence: 'likely' });
   });
 
   it('refuses what it can name but not read, saying what it is and what to do', () => {
-    expect(() => file('letter.doc', bytes([0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1]))).toThrow('letter.doc is an old Office file that isn’t a workbook, which Puddle doesn’t read. Add a CSV, TSV, JSON, NDJSON, Parquet, spreadsheet (.xlsx, .xls, .ods, .numbers, .dbf), XML or Access (.accdb, .mdb) file.');
+    expect(() => file('letter.doc', bytes([0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1]))).toThrow('letter.doc is an old Office file that isn’t a workbook, which Puddle doesn’t read. Add a CSV, TSV, JSON, NDJSON, Parquet, Arrow, spreadsheet (.xlsx, .xls, .ods, .numbers, .dbf), XML or Access (.accdb, .mdb) file, or a .gz or .zip holding one.');
     expect(() => file('letter.doc', ole('WordDocument'))).toThrow('letter.doc is a Word document, which Puddle doesn’t read.');
-    expect(() => file('orders.csv.gz', bytes([0x1f, 0x8b, 0x08]))).toThrow('orders.csv.gz is a gzip-compressed file, which Puddle doesn’t open yet. Unpack it and add the file inside.');
+    // A compressed file or an archive is opened by addFileSource for the file inside (src/sources/archive.ts); the sniff alone names it.
+    expect(() => file('orders.csv.gz', bytes([0x1f, 0x8b, 0x08]))).toThrow('orders.csv.gz is a gzip-compressed file, which Puddle opens from a chosen file: unpack it and add the file inside, or choose the archive itself.');
+    expect(() => file('orders.csv.bz2', bytes('BZh91AY'))).toThrow('orders.csv.bz2 is a bzip2-compressed file, which Puddle doesn’t open. Unpack it and add the file inside, or pack it as gzip or zip.');
+    expect(archiveKindOf(bytes([0x1f, 0x8b, 0x08]))).toBe('gzip');
+    expect(archiveKindOf(fixture('archives/shop.zip'))).toBe('zip');
+    expect(archiveKindOf(fixture('sales.xlsx'))).toBeUndefined();
+    expect(archiveKindOf(bytes('a,b\n1,2'))).toBeUndefined();
     expect(() => file('report.pdf', bytes('%PDF-1.4'))).toThrow(/report\.pdf is a PDF, which Puddle doesn’t read\. Add a CSV/);
-    expect(() => file('photo.png', bytes([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0]))).toThrow('photo.png is a binary file, which Puddle doesn’t read. Add a CSV, TSV, JSON, NDJSON, Parquet, spreadsheet (.xlsx, .xls, .ods, .numbers, .dbf), XML or Access (.accdb, .mdb) file.');
+    expect(() => file('photo.png', bytes([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0]))).toThrow('photo.png is a binary file, which Puddle doesn’t read. Add a CSV, TSV, JSON, NDJSON, Parquet, Arrow, spreadsheet (.xlsx, .xls, .ods, .numbers, .dbf), XML or Access (.accdb, .mdb) file, or a .gz or .zip holding one.');
     expect(() => file('empty.dat', bytes(''))).toThrow(SourceError);
   });
 });

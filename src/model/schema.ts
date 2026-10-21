@@ -5,7 +5,7 @@ export const FORMAT_VERSION = 2;
 
 export const ColumnSchemaZ = z.object({ name: z.string(), type: z.string() });
 
-export const SourceFormatZ = z.enum(['csv', 'tsv', 'json', 'ndjson', 'parquet', 'xlsx', 'xml', 'access', 'fixed', 'pipes']);
+export const SourceFormatZ = z.enum(['csv', 'tsv', 'json', 'ndjson', 'parquet', 'xlsx', 'xml', 'access', 'fixed', 'pipes', 'arrow']);
 
 export const ParseOptionsZ = z
   .object({
@@ -99,6 +99,11 @@ export const SourceZ = z.object({
     })
     .optional(),
   clipboard: z.object({ text: z.string() }).optional(),
+  /**
+   * The archive the file is read from (a .gz or .zip chosen as a source): which kind, and the entry (the file inside)
+   * this source reads. `file` describes the archive itself; `format` and `parseOptions` the entry.
+   */
+  archive: z.object({ kind: z.enum(['gzip', 'zip']), entry: z.string() }).optional(),
   format: SourceFormatZ,
   parseOptions: ParseOptionsZ.default({}),
   detectedSchema: z.array(ColumnSchemaZ).default([]),

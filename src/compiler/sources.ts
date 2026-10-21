@@ -5,7 +5,16 @@ import { bool, ident, num, str, strList } from './sql';
 const ROW = ident('__puddle_row');
 const TOTAL = ident('__puddle_total');
 
-const EXT: Record<Source['format'], string> = { csv: 'csv', tsv: 'tsv', json: 'json', ndjson: 'ndjson', parquet: 'parquet', xlsx: 'xlsx', xml: 'csv', access: 'accdb', fixed: 'csv', pipes: 'csv' };
+const EXT: Record<Source['format'], string> = { csv: 'csv', tsv: 'tsv', json: 'json', ndjson: 'ndjson', parquet: 'parquet', xlsx: 'xlsx', xml: 'csv', access: 'accdb', fixed: 'csv', pipes: 'csv', arrow: 'arrow' };
+
+/**
+ * A gzip-compressed text file DuckDB reads as it is (CSV, TSV, JSON, NDJSON): registered with its .gz, it is unpacked
+ * as it is read, never whole into memory. Anything else in an archive is unpacked first (src/sources/archive.ts).
+ */
+export const readsCompressed = (source: Pick<Source, 'format' | 'archive'>) => source.archive?.kind === 'gzip' && (source.format === 'csv' || source.format === 'tsv' || source.format === 'json' || source.format === 'ndjson');
+
+/** Excel, Access and Arrow are loaded into a DuckDB table (sourceTableName) rather than read from a file. */
+export const isLoadedTable = (format: Source['format']) => format === 'xlsx' || format === 'access' || format === 'arrow';
 
 /** Formats Puddle reads into rows itself and hands DuckDB as CSV: XML, fixed-width text and pipe tables. */
 export const isRewritten = (format: Source['format']) => format === 'xml' || format === 'fixed' || format === 'pipes';
@@ -18,9 +27,12 @@ export const isRewritten = (format: Source['format']) => format === 'xml' || for
 export function sourceFileName(source: Source): string {
   const o = source.parseOptions;
   const hash = source.file?.headHash ?? source.url?.headHash ?? null;
-  if (source.format === 'xml') return `src_${source.id}_${hashValue([hash, o.record ?? null, o.expand ?? null]).slice(0, 12)}.csv`;
-  if (source.format === 'fixed') return `src_${source.id}_${hashValue([hash, 'fixed', o.boundaries ?? null, o.header ?? null, o.skip ?? null, o.skipBottom ?? null, o.encoding ?? null]).slice(0, 12)}.csv`;
-  if (source.format === 'pipes') return `src_${source.id}_${hashValue([hash, 'pipes', o.header ?? null, o.encoding ?? null]).slice(0, 12)}.csv`;
+  // A file from an archive is named for the entry too, so another entry of the same archive is never mistaken for it.
+  const entry = source.archive ? [source.archive.entry] : [];
+  if (source.format === 'xml') return `src_${source.id}_${hashValue([hash, ...entry, o.record ?? null, o.expand ?? null]).slice(0, 12)}.csv`;
+  if (source.format === 'fixed') return `src_${source.id}_${hashValue([hash, ...entry, 'fixed', o.boundaries ?? null, o.header ?? null, o.skip ?? null, o.skipBottom ?? null, o.encoding ?? null]).slice(0, 12)}.csv`;
+  if (source.format === 'pipes') return `src_${source.id}_${hashValue([hash, ...entry, 'pipes', o.header ?? null, o.encoding ?? null]).slice(0, 12)}.csv`;
+  if (source.archive) return `src_${source.id}_${hashValue([hash, ...entry]).slice(0, 12)}.${EXT[source.format]}${readsCompressed(source) ? '.gz' : ''}`;
   return `src_${source.id}.${EXT[source.format]}`;
 }
 
@@ -31,7 +43,9 @@ export function sourceFileName(source: Source): string {
  */
 export function sourceTableName(source: Source): string {
   const o = source.parseOptions;
-  const key = source.format === 'access' ? [source.file?.headHash ?? null, 'access', o.table ?? null] : [source.file?.headHash ?? null, o.sheet ?? null, o.headerRow ?? null, o.range ?? null, o.headerRows ?? null, o.fillMerges ?? null];
+  const hash = source.file?.headHash ?? source.url?.headHash ?? null;
+  const entry = source.archive ? [source.archive.entry] : [];
+  const key = source.format === 'access' ? [hash, ...entry, 'access', o.table ?? null] : source.format === 'arrow' ? [hash, ...entry, 'arrow'] : [hash, ...entry, o.sheet ?? null, o.headerRow ?? null, o.range ?? null, o.headerRows ?? null, o.fillMerges ?? null];
   return `src_${source.id}_${hashValue(key).slice(0, 12)}`;
 }
 
@@ -77,6 +91,7 @@ export function sourceRelation(source: Source): string {
       // An empty field stays empty: DuckDB's own null string is '', and naming others would otherwise drop it.
       if (o.nullStrings?.length) args.push(`nullstr = ${strList([...new Set(['', ...o.nullStrings])])}`);
       if (o.skip) args.push(`skip = ${num(o.skip)}`);
+      if (readsCompressed(source)) args.push(`compression = 'gzip'`);
       // With a banner skipped, DuckDB's sniffer fails on a ragged row below, so the columns are given outright: the
       // names the file's own sniff read from the header line, every one as text (the steps type them after).
       // Ragged rows (a header with a trailing comma, an unquoted comma in one value) otherwise make the sniffer give
@@ -96,13 +111,14 @@ export function sourceRelation(source: Source): string {
       return relation;
     }
     case 'json':
-      return `read_json_auto(${file})`;
+      return `read_json_auto(${[file, ...(readsCompressed(source) ? [`compression = 'gzip'`] : [])].join(', ')})`;
     case 'ndjson':
-      return `read_json_auto(${file}, format = 'newline_delimited')`;
+      return `read_json_auto(${[file, `format = 'newline_delimited'`, ...(readsCompressed(source) ? [`compression = 'gzip'`] : [])].join(', ')})`;
     case 'parquet':
       return `read_parquet(${file})`;
     case 'xlsx':
     case 'access':
+    case 'arrow':
       return ident(sourceTableName(source));
     case 'xml':
       // Written by Puddle from the XML (see src/xml), always with a header row, commas and double quotes.

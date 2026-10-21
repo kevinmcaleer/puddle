@@ -170,6 +170,51 @@ describe('puddle-run', () => {
     expect(await db.describe(`SELECT * FROM "${sourceTableName(p.sources[0]!)}"`)).toContainEqual({ name: 'Amount', type: 'DECIMAL(19,4)' });
   });
 
+  it('reads a gzipped CSV as it is, a file inside a zip, and an Arrow file with its types', async () => {
+    writeFileSync(join(folder, 'orders.csv.gz'), readFileSync(join(__dirname, '../fixtures/archives/orders.csv.gz')));
+    writeFileSync(join(folder, 'shop.zip'), readFileSync(join(__dirname, '../fixtures/archives/shop.zip')));
+    writeFileSync(join(folder, 'customers.arrow'), readFileSync(join(__dirname, '../fixtures/archives/customers.arrow')));
+    const file = (id: string, name: string, format: Source['format'], archive?: Source['archive']) => ({ ...src({ id, format }), name, archive, file: { originalName: name, size: 1, lastModified: 0, headHash: 'h' } });
+    const p = flow({
+      sources: [file('g', 'orders.csv.gz', 'csv', { kind: 'gzip', entry: 'orders.csv' }), file('z', 'shop.zip', 'csv', { kind: 'zip', entry: 'shop/customers.csv' }), file('a', 'customers.arrow', 'arrow')],
+      nodes: [
+        { id: 'g', type: 'source', sourceId: 'g' },
+        { id: 'z', type: 'source', sourceId: 'z' },
+        { id: 'a', type: 'source', sourceId: 'a' },
+        { id: 'out', type: 'output', outputSpec: { format: 'csv', options: {} } },
+        { id: 'out2', type: 'output', outputSpec: { format: 'csv', options: {} } },
+        { id: 'out3', type: 'output', outputSpec: { format: 'csv', options: {} } },
+      ],
+      wires: [
+        ['g', 'out', 0],
+        ['z', 'out2', 0],
+        ['a', 'out3', 0],
+      ],
+    });
+    p.name = 'Archives';
+    const outDir = join(folder, 'out-archives');
+    const { log } = await runProject(p, { folder, outDir, db, now: () => new Date('2026-10-17T03:00:00Z') });
+    expect(log.sources.map((s) => s.problem)).toEqual([undefined, undefined, undefined]);
+    expect(log.outputs.map((o) => [o.nodeName, o.status, o.rows])).toEqual([
+      ['out', 'written', 5],
+      ['out2', 'written', 5],
+      ['out3', 'written', 4],
+    ]);
+    expect(readFileSync(join(outDir, 'out.csv'), 'utf8').trim().split('\n').slice(0, 2)).toEqual(['order_id,customer_id,total,status', '100,1,12.5,shipped']);
+    expect(readFileSync(join(outDir, 'out2.csv'), 'utf8').trim().split('\n').slice(0, 2)).toEqual(['customer_id,name,status', '1,Ada,active']);
+    const arrow = readFileSync(join(outDir, 'out3.csv'), 'utf8').trim().split('\n');
+    expect(arrow[0]).toBe('id,name,joined,balance,active');
+    expect(arrow[1]).toBe('1,Ada,2026-01-05,12.5,true');
+    expect(arrow[3]).toBe('3,Linus,,,false');
+    expect(await db.describe(`SELECT * FROM "${sourceTableName(p.sources[2]!)}"`)).toEqual([
+      { name: 'id', type: 'BIGINT' },
+      { name: 'name', type: 'VARCHAR' },
+      { name: 'joined', type: 'DATE' },
+      { name: 'balance', type: 'DOUBLE' },
+      { name: 'active', type: 'BOOLEAN' },
+    ]);
+  });
+
   it('reads spreadsheets in every format with the sheet options the browser saved: an old .xls and a dBase table', async () => {
     writeFileSync(join(folder, 'sales.xls'), readFileSync(join(__dirname, '../fixtures/formats/sales.xls')));
     writeFileSync(join(folder, 'sales.dbf'), readFileSync(join(__dirname, '../fixtures/formats/sales.dbf')));

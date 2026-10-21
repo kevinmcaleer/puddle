@@ -21,6 +21,8 @@ import { UrlProblemBanner } from '../sources/UrlPanel';
 import { attachmentOf } from '../sources/attachments';
 import { isAccessSource } from '../sources/access';
 import { AccessProblemBanner } from '../sources/AccessPanel';
+import { ArrowProblemBanner } from '../sources/ArchivePanel';
+import { isArrowSource } from '../sources/arrow';
 import { isExcelSource } from '../sources/excel';
 import { ExcelProblemBanner } from '../sources/ExcelPanel';
 import { isXmlSource } from '../sources/xml';
@@ -488,6 +490,12 @@ function NodeResult({ engine, project, target, ...pane }: { engine: EngineClient
       return (
         <div className="p-4" data-testid="results-access">
           <AccessProblemBanner source={source} />
+        </div>
+      );
+    if (source && isArrowSource(source) && attachmentOf(source.id) !== 'detached')
+      return (
+        <div className="p-4" data-testid="results-arrow">
+          <ArrowProblemBanner source={source} />
         </div>
       );
     return (
