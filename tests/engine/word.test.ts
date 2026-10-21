@@ -10,6 +10,7 @@ import { addFileSource } from '../../src/sources/add';
 import { useAttachments } from '../../src/sources/attachments';
 import { resetRewrites, rewriteReady, syncRewrites, useRewrites } from '../../src/sources/rewrite';
 import { addWordTables, tablesNotAdded } from '../../src/sources/word';
+import type { WordTableInfo } from '../../src/word';
 import { createNodeBackend } from '../helpers/nodeBackend';
 
 const fixture = (name: string) => new File([readFileSync(join(__dirname, '../fixtures/word', name)) as Uint8Array<ArrayBuffer>], name);
@@ -58,7 +59,7 @@ describe('a Word document', () => {
   it('adds the other tables as sources sharing the file, and says when a table isn’t there', async () => {
     const s = await addFileSource(fixture('report.docx'));
     await sync();
-    const tables = (useRewrites.getState().reads[s.id] as { tables: { index: number; label: string }[] }).tables;
+    const tables = (useRewrites.getState().reads[s.id] as { tables: WordTableInfo[] }).tables;
     expect(tablesNotAdded(project(), s, tables).map((t) => t.index)).toEqual([1, 2]);
     const added = await addWordTables(s, tablesNotAdded(project(), s, tables));
     expect(added.map((a) => [a.name, a.parseOptions.table])).toEqual([
