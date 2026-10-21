@@ -18,40 +18,39 @@ async function connect(db) {
   u.pathname = `/${db}`;
   const client = new pg.Client({ connectionString: u.toString() });
   await client.connect();
-  // CockroachDB accepts a connection to a database that doesn't exist and only complains at the first query.
-  try {
-    await client.query('SELECT 1');
-  } catch (e) {
-    await client.end().catch(() => {});
-    throw e;
-  }
   return client;
 }
 
+// Creates the database when it is missing, from whichever administrative database the server has. CockroachDB
+// accepts a connection to a database that doesn't exist and only complains at the first query that needs it, so
+// the catalogue is asked rather than trusting the connection.
+async function ensureDatabase() {
+  for (const admin of ['postgres', 'defaultdb']) {
+    const c = await connect(admin);
+    try {
+      const { rows } = await c.query('SELECT 1 FROM pg_database WHERE datname = $1', [database]);
+      if (rows.length === 0) await c.query(`CREATE DATABASE "${database.replaceAll('"', '""')}"`);
+      return;
+    } catch (e) {
+      if (e.code !== '3D000') throw e;
+    } finally {
+      await c.end().catch(() => {});
+    }
+  }
+  throw new Error(`No administrative database found at ${target.host} to create ${database} from.`);
+}
+
 // The database may still be starting: try for a while.
-let client;
 for (let attempt = 0; ; attempt++) {
   try {
-    client = await connect(database);
+    await ensureDatabase();
     break;
   } catch (e) {
-    if (e.code === '3D000') {
-      for (const admin of ['postgres', 'defaultdb']) {
-        try {
-          const c = await connect(admin);
-          await c.query(`CREATE DATABASE "${database.replaceAll('"', '""')}"`);
-          await c.end();
-          break;
-        } catch (inner) {
-          if (inner.code !== '3D000') throw inner;
-        }
-      }
-      continue;
-    }
-    if (attempt >= 30) throw e;
+    if (attempt >= 30 || e.code === '3D000' || e.code === '28000' || e.code === '28P01') throw e;
     await new Promise((r) => setTimeout(r, 1000));
   }
 }
+const client = await connect(database);
 await client.query(sql);
 const { rows } = await client.query('SELECT count(*)::text AS n FROM orders');
 await client.end();
