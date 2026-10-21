@@ -1,0 +1,28 @@
+# puddle-connect: the database service for Puddle, for a server such as the Pi. Multi-arch (amd64 and arm64).
+#   docker build -f Dockerfile.connect -t puddle-connect .
+#   docker run --rm -p 127.0.0.1:8765:8765 -e PUDDLE_CONNECT_TOKEN=… -e PUDDLE_CONNECT_ALLOW=db.local puddle-connect
+# It listens on 0.0.0.0:8765 inside the container, so it needs a token; keep the port off the public network
+# (compose puts it on the internal network behind nginx's /connect/).
+
+FROM --platform=$BUILDPLATFORM node:22-bookworm-slim AS build
+WORKDIR /app
+COPY package.json package-lock.json ./
+COPY vendor ./vendor
+RUN npm ci --ignore-scripts
+COPY . .
+RUN npm run build:connect
+
+FROM node:22-bookworm-slim
+WORKDIR /app
+ENV NODE_ENV=production
+ENV PUDDLE_CONNECT_HOST=0.0.0.0
+ENV PUDDLE_CONNECT_PORT=8765
+COPY --from=build /app/dist-connect ./
+RUN npm install --omit=dev --ignore-scripts --no-audit --no-fund && npm cache clean --force
+# Database files the file drivers may read are mounted here.
+VOLUME ["/data"]
+ENV PUDDLE_CONNECT_FILES=/data
+EXPOSE 8765
+USER node
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s CMD ["node", "-e", "fetch('http://127.0.0.1:8765/health',{headers:{Authorization:'Bearer '+process.env.PUDDLE_CONNECT_TOKEN}}).then(r=>process.exit(r.ok?0:1),()=>process.exit(1))"]
+ENTRYPOINT ["node", "puddle-connect.mjs"]

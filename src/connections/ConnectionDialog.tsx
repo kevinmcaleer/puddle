@@ -8,7 +8,7 @@ import { addConnection, connectionSources, removeConnection, useProject, useProj
 import { addConnectionSources, connectionNeeds, readCatalog, tableName } from '../sources/connection';
 import { Banner, Button, Dialog, Field, formatInstant, Select, Switch, TextInput } from '../ui';
 import { closeConnectionDialog, openDocumentSchema, useConnectionDialog } from './dialog';
-import { describeSettings, driver, DRIVERS, missingFields, SECRET_LABEL, VIA_LABEL, type Driver } from './drivers';
+import { describeSettings, driver, DRIVERS, fieldsFor, missingFields, SECRET_LABEL, VIA_LABEL, type Driver } from './drivers';
 import { rememberConnectionFile, useConnectionFiles } from './files';
 import { copyConnection, newConnection } from './form';
 import { forgetSecret, rememberSecret, secretFor, SERVICE_TOKEN_ID, useSecrets } from './secrets';
@@ -115,7 +115,7 @@ function ConnectionForm({ initial, isNew, onDone, onBack }: { initial: Connectio
   const [keep, setKeep] = useState(true);
   const [test, setTest] = useState<TestResult | { ok: 'testing' } | null>(null);
   const secretLabel = SECRET_LABEL[d.auth];
-  const missing = missingFields(d, conn.settings);
+  const missing = missingFields(d, conn.settings, conn.via);
   const setting = (key: string, value: string | number | boolean) => {
     setConn((c) => ({ ...c, settings: { ...c.settings, [key]: value } }));
     setTest(null);
@@ -147,7 +147,7 @@ function ConnectionForm({ initial, isNew, onDone, onBack }: { initial: Connectio
         <TextInput id="conn-name" data-autofocus value={conn.name} onChange={(e) => setConn({ ...conn, name: e.target.value })} />
       </Field>
       <div className="grid grid-cols-2 gap-3">
-        {d.fields.map((f) => {
+        {fieldsFor(d, conn.via).map((f) => {
           const id = `conn-${f.key}`;
           const value = conn.settings[f.key];
           if (f.kind === 'boolean')

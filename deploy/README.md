@@ -145,6 +145,28 @@ curl -sI https://puddle.kevspowertools.com/ | grep -i cross-origin
 
 Both isolation headers should appear. In the browser console, `crossOriginIsolated` should be `true`. Don't turn on Cloudflare features that rewrite responses, such as Rocket Loader or email obfuscation. The largest file is DuckDB's WASM engine (about 36 MB), well within what Cloudflare passes and caches.
 
+## Databases (puddle-connect)
+
+A browser cannot open a connection to PostgreSQL, MySQL and most other databases, so Puddle reads them through puddle-connect, a small service that speaks the database protocols and streams rows back as Arrow. It is not a proxy: it has no route that fetches a URL, only drivers that open databases, and on a server it reaches only the hosts you list. Two ways to run it:
+
+- **On your own computer**, next to the database (or a database file): `npx puddle-connect --origin https://puddle.kevspowertools.com`. It binds to `127.0.0.1:8765`, needs no token there, answers only the origins given (and the local development ones), and may read database files under the folder it was started in (`--files` for others). Puddle finds it at `localhost:8765` and offers **On this computer** under **Where it runs**.
+- **On the Pi**, with the `connect` profile:
+
+  ```sh
+  docker compose --profile connect up -d
+  ```
+
+  with, in `.env`:
+
+  ```
+  PUDDLE_CONNECT_TOKEN=<a long random string>
+  PUDDLE_CONNECT_ALLOW=db.local,10.0.0.0/8
+  ```
+
+  The service refuses to start without `PUDDLE_CONNECT_TOKEN`; every request must carry it as a bearer token, and Puddle asks for it once under **Where it runs** and keeps it in the tab only. `PUDDLE_CONNECT_ALLOW` lists the hosts, `*.suffixes`, addresses or CIDR ranges the drivers may reach; empty reaches nothing, and loopback or the Pi's own network are never implied. Database files go in `PUDDLE_CONNECT_DATA` (default `./data`), the only folder the file drivers read. `PUDDLE_CONNECT_TIMEOUT` (seconds, default 60) bounds each read, as does a row cap and at most four reads at once. The service keeps no state and logs only the route, driver and host, never a secret or a row.
+
+  nginx proxies `/connect/` to it; the tunnel's public hostname needs nothing more. Put **Cloudflare Access** on `https://puddle.kevspowertools.com/connect/*` too (Zero Trust, then Access, then Applications: a self-hosted application for that path with a policy allowing your login), so the tunnel asks for your login before the token is even checked.
+
 ## DuckDB extensions
 
 DuckDB-WASM reads JSON and Parquet through extensions that it normally downloads from extensions.duckdb.org. The image includes them instead: `scripts/fetch-duckdb-extensions.mjs` downloads them at build time for the bundled DuckDB version into `duckdb-extensions/<version>/<platform>/`, and writes a `manifest.json`. On start, the app checks that manifest and points DuckDB at the site's own copy, so loading these formats sends no request off the site. Run `npm run fetch-extensions` to get the same locally.

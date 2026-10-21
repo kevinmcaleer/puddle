@@ -2,6 +2,7 @@
 #   docker compose up -d                      # Puddle on http://localhost:8088
 #   docker compose --profile tunnel up -d     # also a Cloudflare Tunnel (needs CLOUDFLARE_TUNNEL_TOKEN)
 #   docker compose --profile runner up -d     # also puddle-run, running the projects in ./projects on their schedules
+#   docker compose --profile connect up -d    # also puddle-connect, reached at /connect/ (needs PUDDLE_CONNECT_TOKEN and PUDDLE_CONNECT_ALLOW)
 # Settings come from the environment or a .env file next to this one. See deploy/README.md.
 services:
   puddle:
@@ -37,6 +38,24 @@ services:
       TZ: ${TZ:-Europe/London}
     volumes: ['${PUDDLE_PROJECTS:-./projects}:/projects']
     command: ['watch', '/projects', '--poll', '${PUDDLE_RUNNER_POLL:-30}']
+
+  # puddle-connect speaks the database protocols a browser cannot. It sits on the internal network only; nginx in the
+  # puddle service proxies /connect/ to it. It refuses to start without PUDDLE_CONNECT_TOKEN, and reaches only the
+  # hosts in PUDDLE_CONNECT_ALLOW (empty reaches nothing). Put Cloudflare Access on /connect/ as well: deploy/README.md.
+  connect:
+    profiles: [connect]
+    image: ${PUDDLE_CONNECT_IMAGE:-puddle-connect:latest}
+    build:
+      context: .
+      dockerfile: Dockerfile.connect
+    restart: unless-stopped
+    read_only: true
+    environment:
+      PUDDLE_CONNECT_TOKEN: ${PUDDLE_CONNECT_TOKEN:?PUDDLE_CONNECT_TOKEN is required for puddle-connect}
+      PUDDLE_CONNECT_ALLOW: ${PUDDLE_CONNECT_ALLOW:-}
+      PUDDLE_CONNECT_TIMEOUT: ${PUDDLE_CONNECT_TIMEOUT:-60}
+      PUDDLE_CONNECT_ORIGIN: ${PUDDLE_CONNECT_ORIGIN:-}
+    volumes: ['${PUDDLE_CONNECT_DATA:-./data}:/data:ro']
 
   cloudflared:
     profiles: [tunnel]
