@@ -57,14 +57,17 @@ The editor is browser-only, so nothing runs while the browser is closed. `puddle
 
    It reads the folder every 30 seconds (`PUDDLE_RUNNER_POLL`), so a project saved or changed there is picked up without a restart. Times follow `TZ` (default `Europe/London`).
 
-Each run writes every Output node's file (CSV, TSV, JSON, NDJSON or Parquet; Excel and clipboard outputs are skipped for now) into `out/` next to the project files, with `<project>.run.json` (what ran, rows per output, every rule's result) and `<project>.quality.md` (the quality report). A failing `fail` rule holds that export back, as it does in the browser; the run log says which rule.
+Each run writes every Output node's file (CSV, TSV, JSON, NDJSON or Parquet; Excel and clipboard outputs are skipped for now) into `out/` next to the project files, with `<project>.run.json` (what ran, rows per output, every rule's result) and the quality report as `<project>.quality.md`, `.quality.json` and `.quality.html`: the same report the editor's **Write quality report** writes, with every rule's result and, for each node Fix all ran on, the issues analysis found and which were fixed or ignored. A failing `fail` rule holds that export back, as it does in the browser; the run log says which rule.
 
 One-off runs and checks:
 
 ```sh
 docker run --rm -v /srv/puddle/projects:/projects puddle-run:latest check /projects/orders.puddle.json
 docker run --rm -v /srv/puddle/projects:/projects puddle-run:latest run /projects/orders.puddle.json
+docker run --rm -v /srv/puddle/projects:/projects puddle-run:latest analyse /projects/sources/orders.csv
 ```
+
+`check` also looks at each source file it finds and says when one no longer looks like the format the project reads it as (a `.csv` that is now JSON, say), and exits 1. `analyse <file>` needs no project: it reads a file as the editor would and lists the issues the Issues panel would show, each with its severity, how many rows it touches and the fix Fix all would apply; it exits 1 when there is something to fix.
 
 Without Docker, `npm run build:runner` builds `dist-runner/puddle-run.mjs`, and `node dist-runner/puddle-run.mjs watch /srv/puddle/projects` runs it on any machine with Node 22 or later (pdf.js, which reads PDF sources, needs it; the native DuckDB binding is downloaded by `npm ci` for the machine's own platform).
 

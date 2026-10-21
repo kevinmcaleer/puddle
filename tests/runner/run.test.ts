@@ -5,7 +5,8 @@ import { join } from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { openDb, type RunnerDb } from '../../src/runner/db';
 import { runProject, runSucceeded, type RunLog } from '../../src/runner/run';
-import { parseArgs, projectFiles, watch } from '../../src/runner/cli';
+import { analyseFile } from '../../src/runner/analyse';
+import { check, formatChanged, parseArgs, projectFiles, watch } from '../../src/runner/cli';
 import { sourceTableName } from '../../src/compiler';
 import { parseProject, type Project, type Source } from '../../src/model';
 import { flow, src, step } from '../helpers/projects';
@@ -72,8 +73,67 @@ describe('puddle-run', () => {
     const saved = JSON.parse(readFileSync(join(outDir, 'shop-orders.run.json'), 'utf8')) as RunLog;
     expect(saved.schema).toBe('puddle-run/1');
     expect(saved.startedAt).toBe('2026-10-17T03:00:00.000Z');
-    expect(readFileSync(join(outDir, 'shop-orders.quality.md'), 'utf8')).toContain('Shop orders');
-    expect(report).toContain('No rules are set on this project.');
+    expect(readFileSync(join(outDir, 'shop-orders.quality.md'), 'utf8')).toBe(report);
+    expect(report).toContain('# Quality report: Shop orders');
+    expect(report).toContain('**0 rules.**');
+    expect(report).toMatch(/\| shop-customers\.csv \| csv \| 5 \| `h` \|/);
+  });
+
+  it('writes the quality report as the browser does, in Markdown, JSON and HTML, with each node’s rules and the issues it kept from Fix all', async () => {
+    const p = project({ rule: { id: 'r1', type: 'noEdgeSpaces', label: 'No leading or trailing spaces in name', params: { column: 'name' }, severity: 'warn', enabled: true } });
+    p.nodes = p.nodes.map((n) =>
+      n.id === 'c'
+        ? {
+            ...n,
+            analysis: { at: '2026-10-21T09:00:00.000Z', rows: 4, issues: [{ key: 'edgeSpaces:name', kind: 'edgeSpaces', column: 'name', label: 'Spaces at either end of name', count: 2, fixed: true }, { key: 'duplicateRows', kind: 'duplicateRows', label: 'Duplicate rows', count: 1 }] },
+            ignoredIssues: ['duplicateRows'],
+          }
+        : n,
+    );
+    const outDir = join(folder, 'out-report');
+    const { quality } = await runProject(p, { folder, outDir, db, now: () => new Date('2026-10-21T10:00:00Z') });
+    expect(quality.schema).toBe('puddle-quality-report/1');
+    expect(quality.generatedAt).toBe('2026-10-21T10:00:00.000Z');
+    expect(quality.nodes.map((n) => n.name)).toEqual(['c', 't']);
+    expect(quality.nodes[0]!.analysis).toMatchObject({ found: 2, fixed: 1, ignored: 1, open: 0 });
+    expect(quality.nodes[1]!.rules[0]).toMatchObject({ label: 'No leading or trailing spaces in name', status: 'pass', total: 5, failed: 0 });
+    expect(quality.sources.map((s) => [s.name, s.rows, s.headHash])).toEqual([
+      ['shop-customers.csv', 5, 'h'],
+      ['orders.csv', 5, 'h'],
+    ]);
+    expect(JSON.parse(readFileSync(join(outDir, 'shop-orders.quality.json'), 'utf8'))).toEqual(quality);
+    const md = readFileSync(join(outDir, 'shop-orders.quality.md'), 'utf8');
+    expect(md).toContain('## c\n\nNo rules.\n\n### Issues\n\n2 issues found 21 Oct 2026, 09:00 UTC in 4 rows: 1 fixed, 1 ignored.');
+    expect(md).toContain('| Fixed | Spaces at either end of name | name | 2 |');
+    const html = readFileSync(join(outDir, 'shop-orders.quality.html'), 'utf8');
+    expect(html.startsWith('<!doctype html>')).toBe(true);
+    expect(html).toContain('data-outcome="ignored"');
+  });
+
+  it('check says when a source file no longer looks like the format the project reads it as', () => {
+    const changed = mkdtempSync(join(tmpdir(), 'puddle-check-'));
+    try {
+      writeFileSync(join(changed, 'customers.csv'), readFileSync(join(__dirname, '../fixtures/customers.csv')));
+      writeFileSync(join(changed, 'orders.csv'), readFileSync(join(__dirname, '../fixtures/items.json')));
+      const p = { ...project(), sources: project().sources.map((s) => (s.id === 'c' ? { ...s, file: { ...s.file!, originalName: 'customers.csv' } } : s)) };
+      writeFileSync(join(changed, 'shop.puddle.json'), JSON.stringify(p));
+      expect(formatChanged(p.sources[0]!, join(changed, 'customers.csv'))).toBeUndefined();
+      expect(formatChanged(p.sources[1]!, join(changed, 'orders.csv'))).toMatch(/^now looks like JSON, not CSV as the project reads it \(/);
+      const lines: string[] = [];
+      expect(check(join(changed, 'shop.puddle.json'), (l) => lines.push(l))).toBe(false);
+      expect(lines[1]).toBe(`  source shop-customers.csv: ${join(changed, 'customers.csv')}`);
+      expect(lines[2]).toMatch(/^ {2}source orders\.csv: .*orders\.csv; now looks like JSON, not CSV/);
+    } finally {
+      rmSync(changed, { recursive: true, force: true });
+    }
+  });
+
+  it('analyses a file with no project, sniffing it as the editor does, and lists the editor’s issues', async () => {
+    const a = await analyseFile(join(__dirname, '../fixtures/messy.csv'), db);
+    expect(a).toMatchObject({ name: 'messy.csv', format: 'csv' });
+    expect(a.analysis.facts.rows).toBe(5);
+    expect(a.issues.map((i) => i.key)).toEqual(['duplicateRows', 'nonPrinting:name', 'edgeSpaces:name', 'doubleSpaces:name', 'emptyText:name', 'edgeSpaces:city', 'numbersAsText:price']);
+    await expect(analyseFile(join(__dirname, '../fixtures/locked.accdb'), db)).rejects.toThrow();
   });
 
   it('holds back an Output while a fail rule fails upstream, and skips one whose source is missing', async () => {

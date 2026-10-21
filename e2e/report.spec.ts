@@ -1,5 +1,5 @@
 import { expect, test, type Download, type Page } from '@playwright/test';
-import { addFiles, fixture, node, openApp, selectNode } from './helpers/app';
+import { addFiles, expectRows, fixture, node, openApp, selectNode } from './helpers/app';
 
 const dialog = (page: Page) => page.getByTestId('report-dialog');
 const textOf = async (file: Download) => Buffer.concat(await (await file.createReadStream()).toArray()).toString('utf8');
@@ -89,4 +89,37 @@ test('the rules panel exports an HTML report with sample failing rows, and JSON 
   ]);
   expect(json.nodes[0].rules[0].override).toMatchObject({ outputName: 'Output 1', fileName: 'Output 1.csv' });
   expect(json.sources).toEqual([expect.objectContaining({ name: 'customers.csv', rows: 4, headHash: expect.stringMatching(/^[0-9a-f]{64}$/) })]);
+});
+
+test('a node Fix all ran on reports the issues found and what became of each, with or without rules', async ({ page }) => {
+  await openApp(page);
+  await addFiles(page, [fixture('messy.csv')]);
+  await expectRows(page, 5);
+  await expect(node(page, 'messy.csv').getByTestId('node-issues')).toHaveText('7 issues', { timeout: 20_000 });
+  await node(page, 'messy.csv').click();
+  await page.getByRole('button', { name: 'Ignore issue: Duplicate rows' }).click();
+  await page.getByTestId('results-panel').getByRole('button', { name: 'Fix 6 issues' }).click();
+  // The view moves to the last fix; with the duplicates ignored, every row stays.
+  await expect(page.getByTestId('results-table')).toHaveAttribute('aria-label', /^Results of Transform \d+: 5 rows/, { timeout: 20_000 });
+
+  // The report is offered on the source, which has no rules: the fixes are what it reports.
+  await node(page, 'messy.csv').click();
+  const json = JSON.parse(await textOf(await exportReport(page, { format: 'json' })));
+  expect(json.nodes.map((n: { name: string }) => n.name)).toEqual(['messy.csv']);
+  expect(json.nodes[0].rules).toEqual([]);
+  expect(json.nodes[0].analysis).toMatchObject({ rows: 5, found: 7, fixed: 6, ignored: 1, open: 0 });
+  expect(json.nodes[0].analysis.issues.map((i: { key: string; outcome: string }) => [i.key, i.outcome])).toEqual([
+    ['duplicateRows', 'ignored'],
+    ['nonPrinting:name', 'fixed'],
+    ['edgeSpaces:name', 'fixed'],
+    ['doubleSpaces:name', 'fixed'],
+    ['emptyText:name', 'fixed'],
+    ['edgeSpaces:city', 'fixed'],
+    ['numbersAsText:price', 'fixed'],
+  ]);
+  for (const value of ['lovelace', 'hopper', 'LONDON']) expect(JSON.stringify(json)).not.toContain(value);
+
+  const html = await textOf(await exportReport(page, { format: 'html' }));
+  expect(html).toContain('data-testid="report-issues"');
+  expect(html).toMatch(/7 issues found .+ UTC in 5 rows: 6 fixed, 1 ignored\./);
 });

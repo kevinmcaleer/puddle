@@ -172,6 +172,20 @@ export const SchemaCheckZ = z.object({ schema: z.string().default('public'), tab
 
 export const PositionZ = z.object({ x: z.number(), y: z.number() });
 
+/** One issue analysis found, as the quality report lists it: its key, its words, how many rows, and whether Fix all fixed it. */
+export const RecordedIssueZ = z.object({
+  key: z.string(),
+  kind: z.string(),
+  column: z.string().optional(),
+  value: z.string().optional(),
+  label: z.string(),
+  count: z.number(),
+  fixed: z.boolean().optional(),
+});
+
+/** What analysis last found in a node's output, kept when Fix all ran or an issue was ignored, so the quality report can say what was found and what became of it. */
+export const AnalysisRecordZ = z.object({ at: z.string(), rows: z.number(), issues: z.array(RecordedIssueZ) });
+
 const NodeBase = {
   id: z.string().min(1),
   name: z.string(),
@@ -183,6 +197,8 @@ const NodeBase = {
   dismissedSuggestions: z.array(z.string()).optional(),
   /** Issues found by analysis and ignored for this node, by issue key (kind and column), so they stay ignored. */
   ignoredIssues: z.array(z.string()).optional(),
+  /** The issues analysis last found here and which Fix all fixed; ignored ones are in `ignoredIssues`. */
+  analysis: AnalysisRecordZ.optional(),
   /** Materialise as a table for reuse (Phase 2). */
   pinnedResult: z.boolean().optional(),
   schemaCheck: SchemaCheckZ.optional(),
@@ -488,6 +504,8 @@ export type Source = z.infer<typeof SourceZ>;
 export type Step = z.infer<typeof StepZ>;
 export type StepOrigin = z.infer<typeof StepOriginZ>;
 export type Rule = z.infer<typeof RuleZ>;
+export type RecordedIssue = z.infer<typeof RecordedIssueZ>;
+export type AnalysisRecord = z.infer<typeof AnalysisRecordZ>;
 export type SourceNode = z.infer<typeof SourceNodeZ>;
 export type TransformNode = z.infer<typeof TransformNodeZ>;
 export type OutputNode = z.infer<typeof OutputNodeZ>;

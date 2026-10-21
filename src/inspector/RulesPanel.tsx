@@ -171,8 +171,8 @@ export function RulesPanel({ node }: { node: GraphNode }) {
       ) : (
         <p className="text-ink-muted">No rules yet. Add one to say what this data should look like.</p>
       )}
-      {/* An Output node offers the report next to its export instead. */}
-      {node.rules.length > 0 && node.type !== 'output' && (
+      {/* An Output node offers the report next to its export instead; a node Fix all ran on has issues to report even with no rules. */}
+      {(node.rules.length > 0 || node.analysis) && node.type !== 'output' && (
         <div className="pt-2">
           <QualityReportButton node={node} />
         </div>
