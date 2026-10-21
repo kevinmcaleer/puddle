@@ -12,11 +12,17 @@
 //   node scripts/record-database.mjs surrealdb http://root:root@localhost:8000/shop/shop
 //   node scripts/record-database.mjs hana hana://SHOP:password@localhost:39015/HXE
 //   node scripts/record-database.mjs dynamodb 'dynamodb://AKIDEXAMPLE:secretexample@eu-west-2?endpoint=http://127.0.0.1:18092'
+//   node scripts/record-database.mjs mongodb mongodb://localhost:27017/shop
+//   node scripts/record-database.mjs redis redis://:password@localhost:6379/0
+//   node scripts/record-database.mjs upstash http://:token@localhost:18079
+//   node scripts/record-database.mjs cassandra 'cassandra://localhost:9042/shop?datacenter=datacenter1'
 // The two that sign in with a key read it from the file `key` names (a throwaway from scripts/make-test-key.mjs for the
 // stand-ins); `endpoint` and `url` point at a stand-in or a private endpoint and are left out for the real service.
 // after seeding it with the matching scripts/seed-<family>.mjs. Writes
 // tests/fixtures/db/<family>/{queries,catalog}.json; the HTTP families (ClickHouse, Trino) record each request and
-// its answer to exchanges.json instead, with the secrets taken out. Bytes in a recording are kept as base64 under {bytes}.
+// its answer to exchanges.json instead, with the secrets taken out, and the families whose client isn't SQL
+// (MongoDB, Redis, Cassandra) record each call on the client, its arguments and its answer, to calls.json. Bytes in
+// a recording are kept as base64 under {bytes}, dates as ISO text under {date}.
 import { build } from 'esbuild';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -43,6 +49,38 @@ const FAMILIES = {
   // DynamoDB: the URL's user and password are the access key id and secret access key; PartiQL reads one table.
   dynamodb: { module: 'dynamodb', http: true, auth: 'aws', query: 'SELECT * FROM "orders" WHERE customer_id = 1 ORDER BY id', make: (mod, fetchImpl) => mod.dynamoConnector(fetchImpl), settings: (u) => ({ region: u.hostname, accessKeyId: decodeURIComponent(u.username), ...(u.searchParams.get('endpoint') ? { endpoint: u.searchParams.get('endpoint') } : {}) }) },
   libsql: { module: 'hrana', http: true, auth: 'token', make: (mod, fetchImpl) => mod.hranaConnector('libsql', fetchImpl), settings: (u) => ({ url: u.origin }) },
+  // The families whose client is called rather than queried: every call is recorded. MongoDB's query is a shell
+  // call; Redis reads key patterns (its table is one too); Cassandra has no joins, so its query reads one table.
+  mongodb: {
+    module: 'mongodb',
+    connect: 'mongoConnect',
+    calls: true,
+    make: (mod, connect) => mod.mongoConnector(connect),
+    settings: (u) => ({ url: `${u.protocol}//${u.host}`, database: u.pathname.slice(1), ...(u.searchParams.get('authSource') ? { authSource: u.searchParams.get('authSource') } : {}) }),
+    query: 'db.orders.find({ customer_id: 1 }, { _id: 1, total: 1, status: 1 })',
+    extra: [
+      { table: { name: 'orders' }, filter: '{ "status": "placed" }', limit: 10 },
+      { query: 'db.orders.aggregate([{ $group: { _id: "$status", n: { $sum: 1 } } }, { $sort: { _id: 1 } }])', limit: 10 },
+    ],
+  },
+  redis: { module: 'redis', connect: 'redisConnect', connectModule: 'redisSocket', calls: true, make: (mod, connect) => mod.redisConnector(connect), settings: (u) => ({ host: u.hostname, port: Number(u.port) || 6379, db: Number(u.pathname.slice(1)) || 0 }), table: 'user:*', query: 'order:*', extra: [{ query: '*', limit: 5 }] },
+  upstash: { module: 'redis', http: true, auth: 'token', via: 'browser', make: (mod, fetchImpl) => mod.redisConnector(undefined, fetchImpl), settings: (u) => ({ rest: u.origin }), table: 'user:*', query: 'order:*' },
+  cassandra: {
+    module: 'cassandra',
+    connect: 'cassandraConnect',
+    calls: true,
+    make: (mod, connect) => mod.cassandraConnector('cassandra', connect),
+    settings: (u) => ({ host: u.hostname, port: Number(u.port) || 9042, keyspace: u.pathname.slice(1), datacenter: u.searchParams.get('datacenter') ?? 'datacenter1' }),
+    table: { schema: 'shop', name: 'orders' },
+    query: 'SELECT name, signed_up, active, tags FROM shop.customers',
+    extra: [
+      { table: { schema: 'shop', name: 'orders' }, filter: "status = 'placed'", limit: 10 },
+      { table: { schema: 'shop', name: 'orders' }, filter: 'total > 10', allowFiltering: true, limit: 10 },
+      // Reads without a collection column, for the engine tests (a JSON column needs DuckDB's json extension).
+      { query: 'SELECT id, name, email, signed_up, active FROM shop.customers', limit: 10 },
+      { query: 'SELECT id, total, placed_at FROM shop.orders', limit: 10 },
+    ],
+  },
 };
 const f = FAMILIES[family];
 if (!f || !url) {
@@ -52,14 +90,44 @@ if (!f || !url) {
 // Bundled under node_modules so the bundle finds the client next to it.
 const out = fileURLToPath(new URL('../node_modules/.puddle-record', import.meta.url));
 mkdirSync(out, { recursive: true });
-await build({ entryPoints: [fileURLToPath(new URL(`../src/connect/drivers/${f.module}.ts`, import.meta.url))], bundle: true, platform: 'node', format: 'esm', external: ['pg', 'mysql2', 'node-firebird', 'tedious', 'oracledb', 'hdb'], outfile: join(out, `${f.module}.mjs`), logLevel: 'warning' });
+await build({ entryPoints: [fileURLToPath(new URL(`../src/connect/drivers/${f.module}.ts`, import.meta.url))], bundle: true, platform: 'node', format: 'esm', external: ['pg', 'mysql2', 'node-firebird', 'tedious', 'oracledb', 'hdb', 'mongodb', 'redis', 'cassandra-driver'], outfile: join(out, `${f.module}.mjs`), logLevel: 'warning' });
 const mod = await import(pathToFileURL(join(out, `${f.module}.mjs`)).href);
+let connectMod = mod;
+if (f.connectModule) {
+  await build({ entryPoints: [fileURLToPath(new URL(`../src/connect/drivers/${f.connectModule}.ts`, import.meta.url))], bundle: true, platform: 'node', format: 'esm', external: ['redis'], outfile: join(out, `${f.connectModule}.mjs`), logLevel: 'warning' });
+  connectMod = await import(pathToFileURL(join(out, `${f.connectModule}.mjs`)).href);
+}
 await build({ entryPoints: [fileURLToPath(new URL('../src/connect/drivers/http.ts', import.meta.url))], bundle: true, platform: 'node', format: 'esm', outfile: join(out, 'http.mjs'), logLevel: 'warning' });
 const { redact } = await import(pathToFileURL(join(out, 'http.mjs')).href);
 
 const plain = (v) => (v instanceof Uint8Array ? { bytes: Buffer.from(v).toString('base64') } : v);
+/** A call's arguments or answer as JSON keeps them: bytes as base64, dates as ISO text, anything with a toJSON (an ObjectId) as that. */
+const plainDeep = (v) => {
+  if (v === null || v === undefined) return null;
+  if (v instanceof Uint8Array) return plain(v);
+  if (v instanceof Date) return { date: v.toISOString() };
+  if (Array.isArray(v)) return v.map(plainDeep);
+  if (typeof v === 'object') return typeof v.toJSON === 'function' ? plainDeep(v.toJSON()) : Object.fromEntries(Object.entries(v).map(([k, x]) => [k, plainDeep(x)]));
+  return v;
+};
 const queries = [];
 const exchanges = [];
+const calls = [];
+// For the families whose client is called: each method's arguments and answer, in order.
+const recordingCalls = async (config) => {
+  const inner = await connectMod[f.connect](config);
+  const out = {};
+  for (const [name, fn] of Object.entries(inner)) {
+    if (name === 'end') out.end = () => inner.end();
+    else
+      out[name] = async (...args) => {
+        const result = await fn(...args);
+        calls.push({ method: name, args: plainDeep(args), result: plainDeep(result) });
+        return result;
+      };
+  }
+  return out;
+};
 // For the HTTP families: a fetch that keeps each request and its answer, without the secrets (http.ts `redact`).
 const recordingFetch = async (input, init = {}) => {
   const res = await fetch(input, init);
@@ -85,19 +153,22 @@ const recording = async (config) => {
   };
 };
 const u = new URL(url);
-const connector = f.make(mod, f.http ? recordingFetch : recording);
+const connector = f.make(mod, f.http ? recordingFetch : f.calls ? recordingCalls : recording);
 const user = decodeURIComponent(u.username);
-const settings = f.http ? { ...(user && !['token', 'aws'].includes(f.auth) ? { user } : {}), ...f.settings(u) } : { host: u.hostname, port: Number(u.port) || f.port, user, ...f.settings(u) };
+const settings = f.http || f.calls ? { ...(user && !['token', 'aws'].includes(f.auth) ? { user } : {}), ...f.settings(u) } : { host: u.hostname, port: Number(u.port) || f.port, user, ...f.settings(u) };
 const secret = f.key ? readFileSync(u.searchParams.get('key'), 'utf8') : decodeURIComponent(u.password);
-const ctx = { connection: { id: 'c', name: 'shop', driver: family, via: 'local', settings, auth: f.auth ?? 'password' }, secret };
+const driver = family === 'upstash' ? 'redis' : family;
+const ctx = { connection: { id: 'c', name: 'shop', driver, via: f.via ?? 'local', settings, auth: f.auth ?? 'password' }, secret };
 const test = await connector.test(ctx);
 const catalog = await connector.catalog(ctx);
 const detail = await connector.document(ctx);
-await connector.read(ctx, { table: { name: f.upper ? 'ORDERS' : 'orders' }, limit: 10 });
+await connector.read(ctx, { table: typeof f.table === 'object' ? f.table : { name: f.table ?? (f.upper ? 'ORDERS' : 'orders') }, limit: 10 });
 await connector.read(ctx, { query: f.query ?? 'SELECT c.name, o.total, o.placed_at, o.status, c.signed_up, c.active FROM orders o JOIN customers c ON c.id = o.customer_id ORDER BY o.id', limit: 2 });
+for (const req of f.extra ?? []) await connector.read(ctx, req).catch((e) => console.error(`(${e.message})`));
 const dir = new URL(`../tests/fixtures/db/${family}/`, import.meta.url);
 mkdirSync(dir, { recursive: true });
-if (f.http) writeFileSync(new URL('exchanges.json', dir), JSON.stringify(exchanges, null, 2) + '\n');
-else writeFileSync(new URL('queries.json', dir), JSON.stringify(queries, null, 2) + '\n');
+const recorded = f.http ? exchanges : f.calls ? calls : queries;
+const file = f.http ? 'exchanges.json' : f.calls ? 'calls.json' : 'queries.json';
+writeFileSync(new URL(file, dir), JSON.stringify(recorded, null, 2) + '\n');
 writeFileSync(new URL('catalog.json', dir), JSON.stringify({ test, catalog, detail }, null, 2) + '\n');
-console.log(`Recorded ${f.http ? exchanges.length : queries.length} ${f.http ? 'exchanges' : 'queries'} from ${test.server}.`);
+console.log(`Recorded ${recorded.length} ${file.replace('.json', '')} from ${test.server}.`);

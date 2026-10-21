@@ -29,7 +29,7 @@ export function sourceTableName(source: Source): string {
   const o = source.parseOptions;
   const c = source.connection;
   const key = c
-    ? [c.connectionId, c.table?.schema ?? null, c.table?.name ?? null, c.query ?? null, c.limit ?? null]
+    ? [c.connectionId, c.table?.schema ?? null, c.table?.name ?? null, c.query ?? null, c.limit ?? null, c.filter ?? null, c.allowFiltering ?? null, c.shape?.depth ?? null, c.shape?.arrays ?? null]
     : source.format === 'access' ? [source.file?.headHash ?? null, 'access', o.table ?? null] : [source.file?.headHash ?? null, o.sheet ?? null, o.headerRow ?? null, o.range ?? null];
   return `src_${source.id}_${hashValue(key).slice(0, 12)}`;
 }

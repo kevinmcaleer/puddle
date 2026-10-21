@@ -28,3 +28,16 @@ describe('connection secrets', () => {
     expect(secretFor('c1')).toBe('x');
   });
 });
+
+describe('an empty sign-in', () => {
+  it('counts as held, so an open server asked for no password is not asked again', async () => {
+    const { connectionNeeds } = await import('../sources/connection');
+    const c = { id: 'open', name: 'shop', driver: 'mongodb', via: 'local', settings: { url: 'mongodb://127.0.0.1:27017', database: 'shop' }, auth: 'password' } as const;
+    expect(connectionNeeds(c)).toBe('secret');
+    rememberSecret('open', '');
+    expect(hasSecret('open')).toBe(true);
+    expect(connectionNeeds(c)).toBeUndefined();
+    forgetSecret('open');
+    expect(connectionNeeds(c)).toBe('secret');
+  });
+});

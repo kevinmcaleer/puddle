@@ -6,7 +6,7 @@ import { driver, SECRET_LABEL } from '../connections/drivers';
 import { useConnectionFiles } from '../connections/files';
 import { rememberSecret, useSecrets } from '../connections/secrets';
 import { updateConnectionSource, useProject, useProjectStore, type ConnectionSource, type Source } from '../model';
-import { Banner, Button, Field, formatInstant, Section, Select, TextInput } from '../ui';
+import { Banner, Button, Field, formatInstant, Section, Select, Switch, TextInput } from '../ui';
 import { connectionNeeds, connectionOf, readsLabel, refreshConnectionSource, tableName, useConnectionReads } from './connection';
 
 /** Why a connection source's rows can't be shown yet: being read, what it still needs, or what went wrong. Shared by the inspector and the results. */
@@ -54,8 +54,22 @@ export function ConnectionPanel({ source }: { source: Source & { connection: Con
   const connection = connectionOf(project, source);
   const read = useConnectionReads((s) => s.reads[source.id]);
   const c = source.connection;
+  const d = connection ? driver(connection.driver) : undefined;
   const [query, setQuery] = useState(c.query ?? '');
   const [limit, setLimit] = useState(c.limit === undefined ? '' : String(c.limit));
+  const [filter, setFilter] = useState(c.filter ?? '');
+  const [depth, setDepth] = useState(c.shape?.depth === undefined ? '' : String(c.shape.depth));
+  const filtering = connection?.driver === 'cassandra' || connection?.driver === 'scylla';
+  const commitFilter = () => {
+    const next = filter.trim() || undefined;
+    if (next !== c.filter) apply((p) => updateConnectionSource(p, source.id, { filter: next }));
+  };
+  const setShape = (patch: { depth?: number; arrays?: 'json' | 'rows' }) => apply((p) => updateConnectionSource(p, source.id, { shape: { ...c.shape, ...patch } }));
+  const commitDepth = () => {
+    const n = depth.trim() === '' ? undefined : Math.max(1, Math.floor(Number(depth)));
+    const next = n !== undefined && Number.isFinite(n) ? n : undefined;
+    if (next !== c.shape?.depth) setShape({ depth: next });
+  };
   const tables = connection?.catalog?.tables ?? [];
   const current = c.table ? tableName(c.table) : '';
   const options = tables.map((t) => ({ value: tableName(t), label: tableName(t) }));
@@ -87,7 +101,7 @@ export function ConnectionPanel({ source }: { source: Source & { connection: Con
             />
           </Field>
         ) : (
-          <Field label="Query" htmlFor="opt-conn-query" hint="Runs in the database, in its own SQL. Saved when the field loses focus.">
+          <Field label={d?.query?.label ?? 'Query'} htmlFor="opt-conn-query" hint={d?.query?.hint ?? 'Runs in the database, in its own SQL. Saved when the field loses focus.'}>
             <textarea
               id="opt-conn-query"
               className="ui-input is-mono min-h-[var(--size-row)] w-full resize-y py-1"
@@ -98,6 +112,34 @@ export function ConnectionPanel({ source }: { source: Source & { connection: Con
               onBlur={() => query.trim() !== (c.query ?? '') && query.trim() && apply((p) => updateConnectionSource(p, source.id, { query: query.trim() }))}
             />
           </Field>
+        )}
+        {c.table && d?.filter && (
+          <Field label={d.filter.label} htmlFor="opt-conn-filter" hint={d.filter.hint}>
+            <textarea
+              id="opt-conn-filter"
+              className="ui-input is-mono min-h-[var(--size-row)] w-full resize-y py-1"
+              rows={2}
+              spellCheck={false}
+              value={filter}
+              onChange={(e) => setFilter(e.target.value)}
+              onBlur={commitFilter}
+            />
+          </Field>
+        )}
+        {c.table && filtering && (
+          <Field hint="A read filtered on a column that isn’t a key scans the whole table, which costs on a cluster.">
+            <Switch id="opt-conn-filtering" label="Allow filtering" checked={!!c.allowFiltering} onChange={(on) => apply((p) => updateConnectionSource(p, source.id, { allowFiltering: on || undefined }))} />
+          </Field>
+        )}
+        {d?.documents && (
+          <div className="grid grid-cols-2 items-end gap-3">
+            <Field label="Flatten nested objects to" htmlFor="opt-conn-depth" hint={`levels; empty uses the connection’s ${String(connection?.settings.depth ?? 2)}`}>
+              <TextInput id="opt-conn-depth" inputMode="numeric" value={depth} onChange={(e) => setDepth(e.target.value)} onBlur={commitDepth} onKeyDown={(e) => e.key === 'Enter' && commitDepth()} />
+            </Field>
+            <Field label="Arrays" htmlFor="opt-conn-arrays" hint="as JSON text, or one row per element">
+              <Select id="opt-conn-arrays" options={[{ value: 'json', label: 'JSON text' }, { value: 'rows', label: 'One row per element' }]} value={c.shape?.arrays ?? 'json'} onChange={(e) => setShape({ arrays: e.target.value === 'rows' ? 'rows' : 'json' })} />
+            </Field>
+          </div>
         )}
         <div className="grid grid-cols-2 items-end gap-3">
           <Field label="At most" htmlFor="opt-conn-limit" hint="rows; empty reads all">

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { columnKind, documentsToSheet, documentValue, flattenDocument } from './documents';
+import { columnKind, documentsToSheet, documentValue, flattenDocument, shapeFor, unrollArrays } from './documents';
 
 describe('documents as rows', () => {
   it('flattens nested objects to a depth, keeping deeper ones, arrays and empty objects as values', () => {
@@ -57,5 +57,26 @@ describe('documents as rows', () => {
       [null, '{"lat":1}'],
     ]);
     expect(documentsToSheet([])).toEqual({ columns: [], sqlTypes: [] });
+  });
+
+  it('unrolls arrays into rows side by side when asked: one row per element, null where an array is shorter or missing', () => {
+    expect(unrollArrays({ id: 1, tags: ['a', 'b'], sizes: [10] })).toEqual([
+      { id: 1, tags: 'a', sizes: 10 },
+      { id: 1, tags: 'b', sizes: null },
+    ]);
+    expect(unrollArrays({ id: 2, tags: [] })).toEqual([{ id: 2, tags: null }]);
+    expect(unrollArrays({ id: 3 })).toEqual([{ id: 3 }]);
+    const { columns, sqlTypes } = documentsToSheet([{ id: 1, tags: ['a', 'b'] }, { id: 2, tags: [] }, { id: 3, tags: [{ n: 1 }] }], 2, 'rows');
+    expect(columns.map((c) => [c.name, c.values])).toEqual([
+      ['id', [1, 1, 2, 3]],
+      ['tags', ['a', 'b', null, '{"n":1}']],
+    ]);
+    expect(sqlTypes).toEqual(['BIGINT', 'VARCHAR']);
+  });
+
+  it('takes a source’s shape over the connection’s depth', () => {
+    expect(shapeFor(undefined, 3)).toEqual({ depth: 3, arrays: 'json' });
+    expect(shapeFor({ depth: 1.5, arrays: 'rows' }, 3)).toEqual({ depth: 1, arrays: 'rows' });
+    expect(shapeFor({ depth: 0 }, 3)).toEqual({ depth: 3, arrays: 'json' });
   });
 });

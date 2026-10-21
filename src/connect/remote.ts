@@ -44,7 +44,7 @@ export function remoteConnector(ctxVia: 'local' | 'pi', fetchImpl: Fetch = fetch
       return (await (await call(ctx, 'document')).json()) as CatalogDetail;
     },
     async read(ctx, req: ReadRequest) {
-      const res = await call(ctx, 'read', { table: req.table, query: req.query, limit: req.limit }, ctx.signal);
+      const res = await call(ctx, 'read', { table: req.table, query: req.query, limit: req.limit, filter: req.filter, allowFiltering: req.allowFiltering, shape: req.shape }, ctx.signal);
       const columns = JSON.parse(res.headers.get('Puddle-Columns') ?? '[]') as { name: string; sqlType: string }[];
       const rows = Number(res.headers.get('Puddle-Rows') ?? 0);
       // Cancelling tells the service to stop the read it named, as well as dropping the stream.

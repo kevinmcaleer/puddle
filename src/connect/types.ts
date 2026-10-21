@@ -33,6 +33,12 @@ export interface ReadRequest {
   table?: { schema?: string; name: string };
   query?: string;
   limit?: number;
+  /** A condition on a table read, in the driver's own terms: a MongoDB filter document, a CQL WHERE condition. */
+  filter?: string;
+  /** Cassandra and ScyllaDB: let a filtered read scan the table (ALLOW FILTERING), which costs on a cluster. */
+  allowFiltering?: boolean;
+  /** How a document store's records become rows, over the connection's own depth. */
+  shape?: { depth?: number; arrays?: 'json' | 'rows' };
 }
 
 /**

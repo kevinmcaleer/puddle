@@ -34,7 +34,7 @@ describe('puddle-connect', () => {
 
   it('says what it is and answers CORS for its origins only', async () => {
     const r = await fetch(`${base}/health`, { headers: { Origin: 'http://localhost:4173' } });
-    expect(await r.json()).toEqual({ version: expect.any(String), drivers: ['sqlite', 'libsql', 'postgres', 'redshift', 'cockroach', 'greengage', 'mysql', 'mariadb', 'tidb', 'firebird', 'sqlserver', 'oracle', 'clickhouse', 'bigquery', 'snowflake', 'trino', 'surrealdb', 'dynamodb', 'hana'], allowlist: false });
+    expect(await r.json()).toEqual({ version: expect.any(String), drivers: ['sqlite', 'libsql', 'postgres', 'redshift', 'cockroach', 'greengage', 'mysql', 'mariadb', 'tidb', 'firebird', 'sqlserver', 'oracle', 'clickhouse', 'bigquery', 'snowflake', 'trino', 'surrealdb', 'dynamodb', 'hana', 'mongodb', 'redis', 'cassandra', 'scylla'], allowlist: false });
     expect(r.headers.get('access-control-allow-origin')).toBe('http://localhost:4173');
     const other = await fetch(`${base}/health`, { headers: { Origin: 'https://evil.example' } });
     expect(other.headers.get('access-control-allow-origin')).toBeNull();
@@ -194,8 +194,14 @@ describe('the command line', () => {
     const parsed = parseRequest({ driver: 'postgres', settings: { host: 'db', port: 5432, ssl: true, nested: { x: 1 } }, secret: 'hunter2', table: { schema: 'public', name: 'orders' }, limit: 10.7, name: 'Shop', catalog: { tables: [] } });
     expect(parsed).toEqual({ connection: { id: 'request', name: '', driver: 'postgres', via: 'local', settings: { host: 'db', port: 5432, ssl: true }, auth: 'none' }, secret: 'hunter2', read: { table: { schema: 'public', name: 'orders' }, limit: 10 } });
     expect(JSON.stringify(parsed.connection)).not.toContain('Shop');
+    // A filter, the filtering switch and the shape pass as they are, nothing else in their place.
+    expect(parseRequest({ driver: 'mongodb', table: { name: 'orders' }, filter: '{"status": "placed"}', allowFiltering: 'yes', shape: { depth: 3.5, arrays: 'rows', flatten: false } }).read).toEqual({ table: { name: 'orders' }, filter: '{"status": "placed"}', shape: { depth: 3, arrays: 'rows' } });
+    expect(parseRequest({ driver: 'cassandra', table: { name: 'orders' }, filter: '  ', allowFiltering: true, shape: {} }).read).toEqual({ table: { name: 'orders' }, allowFiltering: true });
     expect(targetHost({ host: 'db.local' })).toBe('db.local');
     expect(targetHost({ url: 'https://ch.example:8443/x' })).toBe('ch.example');
+    expect(targetHost({ url: 'mongodb+srv://cluster0.example.mongodb.net' }, 'mongodb')).toBe('cluster0.example.mongodb.net');
+    expect(targetHost({ host: 'cache.local', rest: 'https://eu1-db.upstash.io' }, 'redis')).toBe('eu1-db.upstash.io');
+    expect(targetHost({ host: 'cache.local', rest: '' }, 'redis')).toBe('cache.local');
     expect(targetHost({ url: 'not a url' })).toBe('not a url');
     expect(targetHost({ path: '/x' })).toBeUndefined();
     // The warehouses reach their own hosts unless an address is given, so the allowlist still applies to them.

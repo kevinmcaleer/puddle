@@ -1,0 +1,946 @@
+[
+  {
+    "method": "send",
+    "args": [
+      [
+        "INFO",
+        "server"
+      ]
+    ],
+    "result": "# Server\r\nredis_version:7.4.0\r\ndragonfly_version:df-v1.31.2\r\nredis_mode:standalone\r\narch_bits:64\r\nos:Linux 6.18.44-fc-v139 x86_64\r\nthread_count:4\r\nmultiplexing_api:iouring\r\ntcp_port:16379\r\nuptime_in_seconds:2185\r\nuptime_in_days:0\r\n"
+  },
+  {
+    "method": "send",
+    "args": [
+      [
+        "DBSIZE"
+      ]
+    ],
+    "result": 13
+  },
+  {
+    "method": "send",
+    "args": [
+      [
+        "SCAN",
+        "0",
+        "MATCH",
+        "*",
+        "COUNT",
+        "500"
+      ]
+    ],
+    "result": [
+      "0",
+      [
+        "order:103",
+        "user:3",
+        "order:104",
+        "leaderboard",
+        "orders:recent",
+        "user:2",
+        "order:101",
+        "order:102",
+        "user:1",
+        "events",
+        "order:101:tags",
+        "visits",
+        "order:103:tags"
+      ]
+    ]
+  },
+  {
+    "method": "sendAll",
+    "args": [
+      [
+        [
+          "TYPE",
+          "leaderboard"
+        ],
+        [
+          "TYPE",
+          "events"
+        ],
+        [
+          "TYPE",
+          "visits"
+        ]
+      ]
+    ],
+    "result": [
+      "zset",
+      "stream",
+      "string"
+    ]
+  },
+  {
+    "method": "sendAll",
+    "args": [
+      [
+        [
+          "ZRANGE",
+          "leaderboard",
+          "0",
+          "-1",
+          "WITHSCORES"
+        ],
+        [
+          "XRANGE",
+          "events",
+          "-",
+          "+"
+        ],
+        [
+          "GET",
+          "visits"
+        ]
+      ]
+    ],
+    "result": [
+      [
+        [
+          "user:3",
+          42.25
+        ],
+        [
+          "user:2",
+          120
+        ],
+        [
+          "user:1",
+          145.49
+        ]
+      ],
+      [
+        [
+          "1712000000000-0",
+          [
+            "kind",
+            "signup",
+            "user",
+            "1"
+          ]
+        ],
+        [
+          "1712000001000-0",
+          [
+            "kind",
+            "order",
+            "order",
+            "101"
+          ]
+        ]
+      ],
+      "42"
+    ]
+  },
+  {
+    "method": "sendAll",
+    "args": [
+      [
+        [
+          "TYPE",
+          "order:103"
+        ],
+        [
+          "TYPE",
+          "order:104"
+        ],
+        [
+          "TYPE",
+          "order:101"
+        ],
+        [
+          "TYPE",
+          "order:102"
+        ],
+        [
+          "TYPE",
+          "order:101:tags"
+        ],
+        [
+          "TYPE",
+          "order:103:tags"
+        ]
+      ]
+    ],
+    "result": [
+      "hash",
+      "hash",
+      "hash",
+      "hash",
+      "set",
+      "set"
+    ]
+  },
+  {
+    "method": "sendAll",
+    "args": [
+      [
+        [
+          "HGETALL",
+          "order:103"
+        ],
+        [
+          "HGETALL",
+          "order:104"
+        ],
+        [
+          "HGETALL",
+          "order:101"
+        ],
+        [
+          "HGETALL",
+          "order:102"
+        ],
+        [
+          "SMEMBERS",
+          "order:101:tags"
+        ],
+        [
+          "SMEMBERS",
+          "order:103:tags"
+        ]
+      ]
+    ],
+    "result": [
+      {
+        "customer_id": "2",
+        "total": "120",
+        "placed_at": "2024-04-03T11:15:00Z",
+        "status": "returned"
+      },
+      {
+        "customer_id": "3",
+        "total": "42.25",
+        "placed_at": "2024-04-04T16:45:00Z",
+        "status": "placed"
+      },
+      {
+        "customer_id": "1",
+        "total": "19.99",
+        "placed_at": "2024-04-01T09:30:00Z",
+        "status": "shipped",
+        "notes": "Gift wrap"
+      },
+      {
+        "customer_id": "1",
+        "total": "5.5",
+        "placed_at": "2024-04-02T14:00:00Z",
+        "status": "placed"
+      },
+      [
+        "express",
+        "gift"
+      ],
+      [
+        "bulk"
+      ]
+    ]
+  },
+  {
+    "method": "sendAll",
+    "args": [
+      [
+        [
+          "TYPE",
+          "orders:recent"
+        ]
+      ]
+    ],
+    "result": [
+      "list"
+    ]
+  },
+  {
+    "method": "sendAll",
+    "args": [
+      [
+        [
+          "LRANGE",
+          "orders:recent",
+          "0",
+          "-1"
+        ]
+      ]
+    ],
+    "result": [
+      [
+        "104",
+        "103",
+        "102",
+        "101"
+      ]
+    ]
+  },
+  {
+    "method": "sendAll",
+    "args": [
+      [
+        [
+          "TYPE",
+          "user:3"
+        ],
+        [
+          "TYPE",
+          "user:2"
+        ],
+        [
+          "TYPE",
+          "user:1"
+        ]
+      ]
+    ],
+    "result": [
+      "hash",
+      "hash",
+      "hash"
+    ]
+  },
+  {
+    "method": "sendAll",
+    "args": [
+      [
+        [
+          "HGETALL",
+          "user:3"
+        ],
+        [
+          "HGETALL",
+          "user:2"
+        ],
+        [
+          "HGETALL",
+          "user:1"
+        ]
+      ]
+    ],
+    "result": [
+      {
+        "name": "Alan Turing",
+        "signed_up": "2024-03-05",
+        "active": "0"
+      },
+      {
+        "name": "Grace Hopper",
+        "email": "grace@example.com",
+        "signed_up": "2024-02-20",
+        "active": "1"
+      },
+      {
+        "name": "Ada Lovelace",
+        "email": "ada@example.com",
+        "signed_up": "2024-01-15",
+        "active": "1"
+      }
+    ]
+  },
+  {
+    "method": "send",
+    "args": [
+      [
+        "SCAN",
+        "0",
+        "MATCH",
+        "*",
+        "COUNT",
+        "500"
+      ]
+    ],
+    "result": [
+      "0",
+      [
+        "order:103",
+        "user:3",
+        "order:104",
+        "leaderboard",
+        "orders:recent",
+        "user:2",
+        "order:101",
+        "order:102",
+        "user:1",
+        "events",
+        "order:101:tags",
+        "visits",
+        "order:103:tags"
+      ]
+    ]
+  },
+  {
+    "method": "sendAll",
+    "args": [
+      [
+        [
+          "TYPE",
+          "leaderboard"
+        ],
+        [
+          "TYPE",
+          "events"
+        ],
+        [
+          "TYPE",
+          "visits"
+        ]
+      ]
+    ],
+    "result": [
+      "zset",
+      "stream",
+      "string"
+    ]
+  },
+  {
+    "method": "sendAll",
+    "args": [
+      [
+        [
+          "ZRANGE",
+          "leaderboard",
+          "0",
+          "-1",
+          "WITHSCORES"
+        ],
+        [
+          "XRANGE",
+          "events",
+          "-",
+          "+"
+        ],
+        [
+          "GET",
+          "visits"
+        ]
+      ]
+    ],
+    "result": [
+      [
+        [
+          "user:3",
+          42.25
+        ],
+        [
+          "user:2",
+          120
+        ],
+        [
+          "user:1",
+          145.49
+        ]
+      ],
+      [
+        [
+          "1712000000000-0",
+          [
+            "kind",
+            "signup",
+            "user",
+            "1"
+          ]
+        ],
+        [
+          "1712000001000-0",
+          [
+            "kind",
+            "order",
+            "order",
+            "101"
+          ]
+        ]
+      ],
+      "42"
+    ]
+  },
+  {
+    "method": "sendAll",
+    "args": [
+      [
+        [
+          "TYPE",
+          "order:103"
+        ],
+        [
+          "TYPE",
+          "order:104"
+        ],
+        [
+          "TYPE",
+          "order:101"
+        ],
+        [
+          "TYPE",
+          "order:102"
+        ],
+        [
+          "TYPE",
+          "order:101:tags"
+        ],
+        [
+          "TYPE",
+          "order:103:tags"
+        ]
+      ]
+    ],
+    "result": [
+      "hash",
+      "hash",
+      "hash",
+      "hash",
+      "set",
+      "set"
+    ]
+  },
+  {
+    "method": "sendAll",
+    "args": [
+      [
+        [
+          "HGETALL",
+          "order:103"
+        ],
+        [
+          "HGETALL",
+          "order:104"
+        ],
+        [
+          "HGETALL",
+          "order:101"
+        ],
+        [
+          "HGETALL",
+          "order:102"
+        ],
+        [
+          "SMEMBERS",
+          "order:101:tags"
+        ],
+        [
+          "SMEMBERS",
+          "order:103:tags"
+        ]
+      ]
+    ],
+    "result": [
+      {
+        "customer_id": "2",
+        "total": "120",
+        "placed_at": "2024-04-03T11:15:00Z",
+        "status": "returned"
+      },
+      {
+        "customer_id": "3",
+        "total": "42.25",
+        "placed_at": "2024-04-04T16:45:00Z",
+        "status": "placed"
+      },
+      {
+        "customer_id": "1",
+        "total": "19.99",
+        "placed_at": "2024-04-01T09:30:00Z",
+        "status": "shipped",
+        "notes": "Gift wrap"
+      },
+      {
+        "customer_id": "1",
+        "total": "5.5",
+        "placed_at": "2024-04-02T14:00:00Z",
+        "status": "placed"
+      },
+      [
+        "express",
+        "gift"
+      ],
+      [
+        "bulk"
+      ]
+    ]
+  },
+  {
+    "method": "sendAll",
+    "args": [
+      [
+        [
+          "TYPE",
+          "orders:recent"
+        ]
+      ]
+    ],
+    "result": [
+      "list"
+    ]
+  },
+  {
+    "method": "sendAll",
+    "args": [
+      [
+        [
+          "LRANGE",
+          "orders:recent",
+          "0",
+          "-1"
+        ]
+      ]
+    ],
+    "result": [
+      [
+        "104",
+        "103",
+        "102",
+        "101"
+      ]
+    ]
+  },
+  {
+    "method": "sendAll",
+    "args": [
+      [
+        [
+          "TYPE",
+          "user:3"
+        ],
+        [
+          "TYPE",
+          "user:2"
+        ],
+        [
+          "TYPE",
+          "user:1"
+        ]
+      ]
+    ],
+    "result": [
+      "hash",
+      "hash",
+      "hash"
+    ]
+  },
+  {
+    "method": "sendAll",
+    "args": [
+      [
+        [
+          "HGETALL",
+          "user:3"
+        ],
+        [
+          "HGETALL",
+          "user:2"
+        ],
+        [
+          "HGETALL",
+          "user:1"
+        ]
+      ]
+    ],
+    "result": [
+      {
+        "name": "Alan Turing",
+        "signed_up": "2024-03-05",
+        "active": "0"
+      },
+      {
+        "name": "Grace Hopper",
+        "email": "grace@example.com",
+        "signed_up": "2024-02-20",
+        "active": "1"
+      },
+      {
+        "name": "Ada Lovelace",
+        "email": "ada@example.com",
+        "signed_up": "2024-01-15",
+        "active": "1"
+      }
+    ]
+  },
+  {
+    "method": "send",
+    "args": [
+      [
+        "SCAN",
+        "0",
+        "MATCH",
+        "user:*",
+        "COUNT",
+        "500"
+      ]
+    ],
+    "result": [
+      "0",
+      [
+        "user:3",
+        "user:2",
+        "user:1"
+      ]
+    ]
+  },
+  {
+    "method": "sendAll",
+    "args": [
+      [
+        [
+          "TYPE",
+          "user:3"
+        ],
+        [
+          "TYPE",
+          "user:2"
+        ],
+        [
+          "TYPE",
+          "user:1"
+        ]
+      ]
+    ],
+    "result": [
+      "hash",
+      "hash",
+      "hash"
+    ]
+  },
+  {
+    "method": "sendAll",
+    "args": [
+      [
+        [
+          "HGETALL",
+          "user:3"
+        ],
+        [
+          "HGETALL",
+          "user:2"
+        ],
+        [
+          "HGETALL",
+          "user:1"
+        ]
+      ]
+    ],
+    "result": [
+      {
+        "name": "Alan Turing",
+        "signed_up": "2024-03-05",
+        "active": "0"
+      },
+      {
+        "name": "Grace Hopper",
+        "email": "grace@example.com",
+        "signed_up": "2024-02-20",
+        "active": "1"
+      },
+      {
+        "name": "Ada Lovelace",
+        "email": "ada@example.com",
+        "signed_up": "2024-01-15",
+        "active": "1"
+      }
+    ]
+  },
+  {
+    "method": "send",
+    "args": [
+      [
+        "SCAN",
+        "0",
+        "MATCH",
+        "order:*",
+        "COUNT",
+        "500"
+      ]
+    ],
+    "result": [
+      "0",
+      [
+        "order:103",
+        "order:104",
+        "order:101",
+        "order:102",
+        "order:101:tags",
+        "order:103:tags"
+      ]
+    ]
+  },
+  {
+    "method": "sendAll",
+    "args": [
+      [
+        [
+          "TYPE",
+          "order:103"
+        ],
+        [
+          "TYPE",
+          "order:104"
+        ]
+      ]
+    ],
+    "result": [
+      "hash",
+      "hash"
+    ]
+  },
+  {
+    "method": "sendAll",
+    "args": [
+      [
+        [
+          "HGETALL",
+          "order:103"
+        ],
+        [
+          "HGETALL",
+          "order:104"
+        ]
+      ]
+    ],
+    "result": [
+      {
+        "customer_id": "2",
+        "total": "120",
+        "placed_at": "2024-04-03T11:15:00Z",
+        "status": "returned"
+      },
+      {
+        "customer_id": "3",
+        "total": "42.25",
+        "placed_at": "2024-04-04T16:45:00Z",
+        "status": "placed"
+      }
+    ]
+  },
+  {
+    "method": "send",
+    "args": [
+      [
+        "SCAN",
+        "0",
+        "MATCH",
+        "*",
+        "COUNT",
+        "500"
+      ]
+    ],
+    "result": [
+      "0",
+      [
+        "order:103",
+        "user:3",
+        "order:104",
+        "leaderboard",
+        "orders:recent",
+        "user:2",
+        "order:101",
+        "order:102",
+        "user:1",
+        "events",
+        "order:101:tags",
+        "visits",
+        "order:103:tags"
+      ]
+    ]
+  },
+  {
+    "method": "sendAll",
+    "args": [
+      [
+        [
+          "TYPE",
+          "order:103"
+        ],
+        [
+          "TYPE",
+          "user:3"
+        ],
+        [
+          "TYPE",
+          "order:104"
+        ],
+        [
+          "TYPE",
+          "leaderboard"
+        ],
+        [
+          "TYPE",
+          "orders:recent"
+        ]
+      ]
+    ],
+    "result": [
+      "hash",
+      "hash",
+      "hash",
+      "zset",
+      "list"
+    ]
+  },
+  {
+    "method": "sendAll",
+    "args": [
+      [
+        [
+          "HGETALL",
+          "order:103"
+        ],
+        [
+          "HGETALL",
+          "user:3"
+        ],
+        [
+          "HGETALL",
+          "order:104"
+        ],
+        [
+          "ZRANGE",
+          "leaderboard",
+          "0",
+          "-1",
+          "WITHSCORES"
+        ],
+        [
+          "LRANGE",
+          "orders:recent",
+          "0",
+          "-1"
+        ]
+      ]
+    ],
+    "result": [
+      {
+        "customer_id": "2",
+        "total": "120",
+        "placed_at": "2024-04-03T11:15:00Z",
+        "status": "returned"
+      },
+      {
+        "name": "Alan Turing",
+        "signed_up": "2024-03-05",
+        "active": "0"
+      },
+      {
+        "customer_id": "3",
+        "total": "42.25",
+        "placed_at": "2024-04-04T16:45:00Z",
+        "status": "placed"
+      },
+      [
+        [
+          "user:3",
+          42.25
+        ],
+        [
+          "user:2",
+          120
+        ],
+        [
+          "user:1",
+          145.49
+        ]
+      ],
+      [
+        "104",
+        "103",
+        "102",
+        "101"
+      ]
+    ]
+  }
+]

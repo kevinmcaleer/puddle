@@ -126,7 +126,9 @@ function ConnectionForm({ initial, isNew, onDone, onBack }: { initial: Connectio
   };
   const save = () => {
     useProjectStore.getState().apply((p) => addConnection(p, conn));
-    if (secret && keep) rememberSecret(conn.id, secret);
+    // An empty secret counts as a sign-in once Test has shown the server takes it (an open server), so the tab doesn't ask again.
+    const open = !secret && test !== null && test.ok === true;
+    if ((secret || open) && keep) rememberSecret(conn.id, secret);
     else forgetSecret(conn.id);
     onDone(conn);
   };
@@ -312,6 +314,8 @@ function TablePicker({ connectionId, onBack }: { connectionId: string; onBack: (
   const need = connection && connectionNeeds(connection);
   const needsFile = need === 'file';
   const needsSecret = need === 'secret';
+  // A driver whose user name is optional may face an open server, which is signed in to with no secret at all.
+  const openServer = !!d && d.auth === 'password' && d.fields.some((f) => f.key === 'user' && !f.required) && !String(connection?.settings.user ?? '').trim();
   const [secret, setSecret] = useState('');
   const [catalog, setCatalog] = useState<Catalog | undefined>(connection?.catalog);
   const [state, setState] = useState<'idle' | 'ok' | 'failed'>('idle');
@@ -367,7 +371,7 @@ function TablePicker({ connectionId, onBack }: { connectionId: string; onBack: (
             <TextInput id="pick-secret" type="password" autoComplete="off" value={secret} onChange={(e) => setSecret(e.target.value)} />
           </Field>
           <div className="pb-5">
-            <Button variant="primary" disabled={!secret} onClick={() => rememberSecret(connection.id, secret)}>Sign in</Button>
+            <Button variant="primary" disabled={!secret && !openServer} onClick={() => rememberSecret(connection.id, secret)}>Sign in</Button>
           </div>
         </div>
       )}

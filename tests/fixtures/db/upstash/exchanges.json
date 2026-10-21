@@ -1,0 +1,184 @@
+[
+  {
+    "method": "POST",
+    "url": "http://127.0.0.1:18079/",
+    "body": "[\"INFO\",\"server\"]",
+    "status": 200,
+    "response": "{\"result\":\"# Server\\r\\nredis_version:7.4.0\\r\\ndragonfly_version:df-v1.31.2\\r\\nredis_mode:standalone\\r\\narch_bits:64\\r\\nos:Linux 6.18.44-fc-v139 x86_64\\r\\nthread_count:4\\r\\nmultiplexing_api:iouring\\r\\ntcp_port:16379\\r\\nuptime_in_seconds:2204\\r\\nuptime_in_days:0\\r\\n\"}"
+  },
+  {
+    "method": "POST",
+    "url": "http://127.0.0.1:18079/",
+    "body": "[\"DBSIZE\"]",
+    "status": 200,
+    "response": "{\"result\":13}"
+  },
+  {
+    "method": "POST",
+    "url": "http://127.0.0.1:18079/",
+    "body": "[\"SCAN\",\"0\",\"MATCH\",\"*\",\"COUNT\",\"500\"]",
+    "status": 200,
+    "response": "{\"result\":[\"0\",[\"order:103\",\"user:3\",\"order:104\",\"leaderboard\",\"orders:recent\",\"user:2\",\"order:101\",\"order:102\",\"user:1\",\"events\",\"order:101:tags\",\"visits\",\"order:103:tags\"]]}"
+  },
+  {
+    "method": "POST",
+    "url": "http://127.0.0.1:18079/pipeline",
+    "body": "[[\"TYPE\",\"leaderboard\"],[\"TYPE\",\"events\"],[\"TYPE\",\"visits\"]]",
+    "status": 200,
+    "response": "[{\"result\":\"zset\"},{\"result\":\"stream\"},{\"result\":\"string\"}]"
+  },
+  {
+    "method": "POST",
+    "url": "http://127.0.0.1:18079/pipeline",
+    "body": "[[\"ZRANGE\",\"leaderboard\",\"0\",\"-1\",\"WITHSCORES\"],[\"XRANGE\",\"events\",\"-\",\"+\"],[\"GET\",\"visits\"]]",
+    "status": 200,
+    "response": "[{\"result\":[[\"user:3\",42.25],[\"user:2\",120],[\"user:1\",145.49]]},{\"result\":[[\"1712000000000-0\",[\"kind\",\"signup\",\"user\",\"1\"]],[\"1712000001000-0\",[\"kind\",\"order\",\"order\",\"101\"]]]},{\"result\":\"42\"}]"
+  },
+  {
+    "method": "POST",
+    "url": "http://127.0.0.1:18079/pipeline",
+    "body": "[[\"TYPE\",\"order:103\"],[\"TYPE\",\"order:104\"],[\"TYPE\",\"order:101\"],[\"TYPE\",\"order:102\"],[\"TYPE\",\"order:101:tags\"],[\"TYPE\",\"order:103:tags\"]]",
+    "status": 200,
+    "response": "[{\"result\":\"hash\"},{\"result\":\"hash\"},{\"result\":\"hash\"},{\"result\":\"hash\"},{\"result\":\"set\"},{\"result\":\"set\"}]"
+  },
+  {
+    "method": "POST",
+    "url": "http://127.0.0.1:18079/pipeline",
+    "body": "[[\"HGETALL\",\"order:103\"],[\"HGETALL\",\"order:104\"],[\"HGETALL\",\"order:101\"],[\"HGETALL\",\"order:102\"],[\"SMEMBERS\",\"order:101:tags\"],[\"SMEMBERS\",\"order:103:tags\"]]",
+    "status": 200,
+    "response": "[{\"result\":{\"customer_id\":\"2\",\"total\":\"120\",\"placed_at\":\"2024-04-03T11:15:00Z\",\"status\":\"returned\"}},{\"result\":{\"customer_id\":\"3\",\"total\":\"42.25\",\"placed_at\":\"2024-04-04T16:45:00Z\",\"status\":\"placed\"}},{\"result\":{\"customer_id\":\"1\",\"total\":\"19.99\",\"placed_at\":\"2024-04-01T09:30:00Z\",\"status\":\"shipped\",\"notes\":\"Gift wrap\"}},{\"result\":{\"customer_id\":\"1\",\"total\":\"5.5\",\"placed_at\":\"2024-04-02T14:00:00Z\",\"status\":\"placed\"}},{\"result\":[\"express\",\"gift\"]},{\"result\":[\"bulk\"]}]"
+  },
+  {
+    "method": "POST",
+    "url": "http://127.0.0.1:18079/pipeline",
+    "body": "[[\"TYPE\",\"orders:recent\"]]",
+    "status": 200,
+    "response": "[{\"result\":\"list\"}]"
+  },
+  {
+    "method": "POST",
+    "url": "http://127.0.0.1:18079/pipeline",
+    "body": "[[\"LRANGE\",\"orders:recent\",\"0\",\"-1\"]]",
+    "status": 200,
+    "response": "[{\"result\":[\"104\",\"103\",\"102\",\"101\"]}]"
+  },
+  {
+    "method": "POST",
+    "url": "http://127.0.0.1:18079/pipeline",
+    "body": "[[\"TYPE\",\"user:3\"],[\"TYPE\",\"user:2\"],[\"TYPE\",\"user:1\"]]",
+    "status": 200,
+    "response": "[{\"result\":\"hash\"},{\"result\":\"hash\"},{\"result\":\"hash\"}]"
+  },
+  {
+    "method": "POST",
+    "url": "http://127.0.0.1:18079/pipeline",
+    "body": "[[\"HGETALL\",\"user:3\"],[\"HGETALL\",\"user:2\"],[\"HGETALL\",\"user:1\"]]",
+    "status": 200,
+    "response": "[{\"result\":{\"name\":\"Alan Turing\",\"signed_up\":\"2024-03-05\",\"active\":\"0\"}},{\"result\":{\"name\":\"Grace Hopper\",\"email\":\"grace@example.com\",\"signed_up\":\"2024-02-20\",\"active\":\"1\"}},{\"result\":{\"name\":\"Ada Lovelace\",\"email\":\"ada@example.com\",\"signed_up\":\"2024-01-15\",\"active\":\"1\"}}]"
+  },
+  {
+    "method": "POST",
+    "url": "http://127.0.0.1:18079/",
+    "body": "[\"SCAN\",\"0\",\"MATCH\",\"*\",\"COUNT\",\"500\"]",
+    "status": 200,
+    "response": "{\"result\":[\"0\",[\"order:103\",\"user:3\",\"order:104\",\"leaderboard\",\"orders:recent\",\"user:2\",\"order:101\",\"order:102\",\"user:1\",\"events\",\"order:101:tags\",\"visits\",\"order:103:tags\"]]}"
+  },
+  {
+    "method": "POST",
+    "url": "http://127.0.0.1:18079/pipeline",
+    "body": "[[\"TYPE\",\"leaderboard\"],[\"TYPE\",\"events\"],[\"TYPE\",\"visits\"]]",
+    "status": 200,
+    "response": "[{\"result\":\"zset\"},{\"result\":\"stream\"},{\"result\":\"string\"}]"
+  },
+  {
+    "method": "POST",
+    "url": "http://127.0.0.1:18079/pipeline",
+    "body": "[[\"ZRANGE\",\"leaderboard\",\"0\",\"-1\",\"WITHSCORES\"],[\"XRANGE\",\"events\",\"-\",\"+\"],[\"GET\",\"visits\"]]",
+    "status": 200,
+    "response": "[{\"result\":[[\"user:3\",42.25],[\"user:2\",120],[\"user:1\",145.49]]},{\"result\":[[\"1712000000000-0\",[\"kind\",\"signup\",\"user\",\"1\"]],[\"1712000001000-0\",[\"kind\",\"order\",\"order\",\"101\"]]]},{\"result\":\"42\"}]"
+  },
+  {
+    "method": "POST",
+    "url": "http://127.0.0.1:18079/pipeline",
+    "body": "[[\"TYPE\",\"order:103\"],[\"TYPE\",\"order:104\"],[\"TYPE\",\"order:101\"],[\"TYPE\",\"order:102\"],[\"TYPE\",\"order:101:tags\"],[\"TYPE\",\"order:103:tags\"]]",
+    "status": 200,
+    "response": "[{\"result\":\"hash\"},{\"result\":\"hash\"},{\"result\":\"hash\"},{\"result\":\"hash\"},{\"result\":\"set\"},{\"result\":\"set\"}]"
+  },
+  {
+    "method": "POST",
+    "url": "http://127.0.0.1:18079/pipeline",
+    "body": "[[\"HGETALL\",\"order:103\"],[\"HGETALL\",\"order:104\"],[\"HGETALL\",\"order:101\"],[\"HGETALL\",\"order:102\"],[\"SMEMBERS\",\"order:101:tags\"],[\"SMEMBERS\",\"order:103:tags\"]]",
+    "status": 200,
+    "response": "[{\"result\":{\"customer_id\":\"2\",\"total\":\"120\",\"placed_at\":\"2024-04-03T11:15:00Z\",\"status\":\"returned\"}},{\"result\":{\"customer_id\":\"3\",\"total\":\"42.25\",\"placed_at\":\"2024-04-04T16:45:00Z\",\"status\":\"placed\"}},{\"result\":{\"customer_id\":\"1\",\"total\":\"19.99\",\"placed_at\":\"2024-04-01T09:30:00Z\",\"status\":\"shipped\",\"notes\":\"Gift wrap\"}},{\"result\":{\"customer_id\":\"1\",\"total\":\"5.5\",\"placed_at\":\"2024-04-02T14:00:00Z\",\"status\":\"placed\"}},{\"result\":[\"express\",\"gift\"]},{\"result\":[\"bulk\"]}]"
+  },
+  {
+    "method": "POST",
+    "url": "http://127.0.0.1:18079/pipeline",
+    "body": "[[\"TYPE\",\"orders:recent\"]]",
+    "status": 200,
+    "response": "[{\"result\":\"list\"}]"
+  },
+  {
+    "method": "POST",
+    "url": "http://127.0.0.1:18079/pipeline",
+    "body": "[[\"LRANGE\",\"orders:recent\",\"0\",\"-1\"]]",
+    "status": 200,
+    "response": "[{\"result\":[\"104\",\"103\",\"102\",\"101\"]}]"
+  },
+  {
+    "method": "POST",
+    "url": "http://127.0.0.1:18079/pipeline",
+    "body": "[[\"TYPE\",\"user:3\"],[\"TYPE\",\"user:2\"],[\"TYPE\",\"user:1\"]]",
+    "status": 200,
+    "response": "[{\"result\":\"hash\"},{\"result\":\"hash\"},{\"result\":\"hash\"}]"
+  },
+  {
+    "method": "POST",
+    "url": "http://127.0.0.1:18079/pipeline",
+    "body": "[[\"HGETALL\",\"user:3\"],[\"HGETALL\",\"user:2\"],[\"HGETALL\",\"user:1\"]]",
+    "status": 200,
+    "response": "[{\"result\":{\"name\":\"Alan Turing\",\"signed_up\":\"2024-03-05\",\"active\":\"0\"}},{\"result\":{\"name\":\"Grace Hopper\",\"email\":\"grace@example.com\",\"signed_up\":\"2024-02-20\",\"active\":\"1\"}},{\"result\":{\"name\":\"Ada Lovelace\",\"email\":\"ada@example.com\",\"signed_up\":\"2024-01-15\",\"active\":\"1\"}}]"
+  },
+  {
+    "method": "POST",
+    "url": "http://127.0.0.1:18079/",
+    "body": "[\"SCAN\",\"0\",\"MATCH\",\"user:*\",\"COUNT\",\"500\"]",
+    "status": 200,
+    "response": "{\"result\":[\"0\",[\"user:3\",\"user:2\",\"user:1\"]]}"
+  },
+  {
+    "method": "POST",
+    "url": "http://127.0.0.1:18079/pipeline",
+    "body": "[[\"TYPE\",\"user:3\"],[\"TYPE\",\"user:2\"],[\"TYPE\",\"user:1\"]]",
+    "status": 200,
+    "response": "[{\"result\":\"hash\"},{\"result\":\"hash\"},{\"result\":\"hash\"}]"
+  },
+  {
+    "method": "POST",
+    "url": "http://127.0.0.1:18079/pipeline",
+    "body": "[[\"HGETALL\",\"user:3\"],[\"HGETALL\",\"user:2\"],[\"HGETALL\",\"user:1\"]]",
+    "status": 200,
+    "response": "[{\"result\":{\"name\":\"Alan Turing\",\"signed_up\":\"2024-03-05\",\"active\":\"0\"}},{\"result\":{\"name\":\"Grace Hopper\",\"email\":\"grace@example.com\",\"signed_up\":\"2024-02-20\",\"active\":\"1\"}},{\"result\":{\"name\":\"Ada Lovelace\",\"email\":\"ada@example.com\",\"signed_up\":\"2024-01-15\",\"active\":\"1\"}}]"
+  },
+  {
+    "method": "POST",
+    "url": "http://127.0.0.1:18079/",
+    "body": "[\"SCAN\",\"0\",\"MATCH\",\"order:*\",\"COUNT\",\"500\"]",
+    "status": 200,
+    "response": "{\"result\":[\"0\",[\"order:103\",\"order:104\",\"order:101\",\"order:102\",\"order:101:tags\",\"order:103:tags\"]]}"
+  },
+  {
+    "method": "POST",
+    "url": "http://127.0.0.1:18079/pipeline",
+    "body": "[[\"TYPE\",\"order:103\"],[\"TYPE\",\"order:104\"]]",
+    "status": 200,
+    "response": "[{\"result\":\"hash\"},{\"result\":\"hash\"}]"
+  },
+  {
+    "method": "POST",
+    "url": "http://127.0.0.1:18079/pipeline",
+    "body": "[[\"HGETALL\",\"order:103\"],[\"HGETALL\",\"order:104\"]]",
+    "status": 200,
+    "response": "[{\"result\":{\"customer_id\":\"2\",\"total\":\"120\",\"placed_at\":\"2024-04-03T11:15:00Z\",\"status\":\"returned\"}},{\"result\":{\"customer_id\":\"3\",\"total\":\"42.25\",\"placed_at\":\"2024-04-04T16:45:00Z\",\"status\":\"placed\"}}]"
+  }
+]

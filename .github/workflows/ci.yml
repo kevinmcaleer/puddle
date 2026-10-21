@@ -48,6 +48,11 @@ jobs:
       PUDDLE_TEST_CLICKHOUSE: http://default:puddle@localhost:8123/shop
       # The DynamoDB flow reads the shop in the browser from DynamoDB Local, started with CORS on.
       PUDDLE_TEST_DYNAMODB: dynamodb://AKIDEXAMPLE:secretexample@eu-west-2?endpoint=http://localhost:8002
+      # The MongoDB flow reads a collection through puddle-connect; the Redis flow reads keys in the browser over the
+      # Upstash stand-in (scripts/upstash-stand-in.mjs) in front of the Redis service.
+      PUDDLE_TEST_MONGODB: mongodb://localhost:27017/shop
+      PUDDLE_TEST_REDIS: redis://localhost:6379/0
+      PUDDLE_TEST_UPSTASH: http://localhost:18079?token=puddle-token
     services:
       postgres:
         image: postgres:16
@@ -79,6 +84,16 @@ jobs:
         ports:
           - 8123:8123
         options: --health-cmd "wget -qO- http://localhost:8123/ping" --health-interval 5s --health-timeout 5s --health-retries 20
+      mongo:
+        image: mongo:8
+        ports:
+          - 27017:27017
+        options: --health-cmd "mongosh --quiet --eval 'db.runCommand({ping:1}).ok'" --health-interval 5s --health-timeout 5s --health-retries 20
+      redis:
+        image: redis:7
+        ports:
+          - 6379:6379
+        options: --health-cmd "redis-cli ping" --health-interval 5s --health-timeout 5s --health-retries 20
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -92,6 +107,9 @@ jobs:
       - run: node scripts/seed-clickhouse.mjs "$PUDDLE_TEST_CLICKHOUSE"
       - run: docker run -d --name dynamodb -p 8002:8000 amazon/dynamodb-local:latest -jar DynamoDBLocal.jar -inMemory -sharedDb -cors '*'
       - run: node scripts/seed-dynamodb.mjs "$PUDDLE_TEST_DYNAMODB"
+      - run: node scripts/seed-mongodb.mjs "$PUDDLE_TEST_MONGODB"
+      - run: node scripts/seed-redis.mjs "$PUDDLE_TEST_REDIS"
+      - run: (node scripts/upstash-stand-in.mjs 18079 puddle-token "$PUDDLE_TEST_REDIS" > /tmp/upstash-stand-in.log 2>&1 &) && sleep 1
       - run: npx playwright install --with-deps ${{ matrix.browser }}
       - run: npm run e2e -- --shard=${{ matrix.shard }}/${{ matrix.shards }}
       - if: failure()
@@ -274,7 +292,9 @@ jobs:
     # or a start too slow for one). BigQuery and Snowflake have no container: their rows run the stand-ins
     # (scripts/*-stand-in.mjs), which answer in the APIs' shapes and check the signed sign-in with a key made for the job;
     # a real project or account is the proof, when one is given. SAP HANA has no container either and no stand-in: its
-    # driver is tested on hand-made fixtures only (src/connect/drivers/hana.test.ts).
+    # driver is tested on hand-made fixtures only (src/connect/drivers/hana.test.ts). MongoDB, Redis (with the Upstash
+    # stand-in in front of it for the REST interface), Cassandra (materialized views turned on) and ScyllaDB are started
+    # by hand too.
     # Each row also re-records the family's fixtures and prints them, so tests/fixtures/db/<family>/ can be refreshed from
     # the log.
     name: ${{ matrix.name }} driver
@@ -298,6 +318,10 @@ jobs:
           - { name: LibSQL (sqld), driver: libsql, url: 'http://localhost:8081', test: tests/connect/libsql.test.ts }
           - { name: SurrealDB, driver: surrealdb, url: 'http://root:root@localhost:8000/shop/shop', test: tests/connect/surrealdb.test.ts }
           - { name: DynamoDB Local, driver: dynamodb, url: 'dynamodb://AKIDEXAMPLE:secretexample@eu-west-2?endpoint=http://localhost:8002', test: tests/connect/dynamodb.test.ts }
+          - { name: MongoDB, driver: mongodb, url: 'mongodb://localhost:27017/shop', test: tests/connect/mongodb.test.ts }
+          - { name: Redis, driver: redis, url: 'redis://:puddle@localhost:6379/0', test: tests/connect/redis.test.ts }
+          - { name: Cassandra, driver: cassandra, url: 'cassandra://localhost:9042/shop?datacenter=datacenter1', test: tests/connect/cassandra.test.ts }
+          - { name: ScyllaDB, driver: scylla, url: 'cassandra://localhost:9043/shop?datacenter=datacenter1', test: tests/connect/cassandra.test.ts }
     services:
       postgres:
         image: postgres:16
@@ -353,6 +377,11 @@ jobs:
       PUDDLE_TEST_LIBSQL: ${{ matrix.driver == 'libsql' && matrix.url || '' }}
       PUDDLE_TEST_SURREALDB: ${{ matrix.driver == 'surrealdb' && matrix.url || '' }}
       PUDDLE_TEST_DYNAMODB: ${{ matrix.driver == 'dynamodb' && matrix.url || '' }}
+      PUDDLE_TEST_MONGODB: ${{ matrix.driver == 'mongodb' && matrix.url || '' }}
+      PUDDLE_TEST_REDIS: ${{ matrix.driver == 'redis' && matrix.url || '' }}
+      PUDDLE_TEST_UPSTASH: ${{ matrix.driver == 'redis' && 'http://127.0.0.1:18079?token=puddle-token' || '' }}
+      PUDDLE_TEST_CASSANDRA: ${{ startsWith(matrix.url, 'cassandra') && matrix.url || '' }}
+      PUDDLE_TEST_CASSANDRA_DRIVER: ${{ matrix.driver }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -374,6 +403,17 @@ jobs:
         run: docker run -d --name surrealdb -p 8000:8000 surrealdb/surrealdb:v2 start --user root --pass root memory
       - if: matrix.driver == 'dynamodb'
         run: docker run -d --name dynamodb -p 8002:8000 amazon/dynamodb-local:latest -jar DynamoDBLocal.jar -inMemory -sharedDb -cors '*'
+      - if: matrix.driver == 'mongodb'
+        run: docker run -d --name mongo -p 27017:27017 mongo:8
+      - if: matrix.driver == 'redis'
+        run: docker run -d --name redis -p 6379:6379 redis:7 redis-server --requirepass puddle
+      - if: matrix.driver == 'cassandra'
+        # Materialized views are off by default in Cassandra; the seed makes one, so the container turns them on first.
+        run: >-
+          docker run -d --name cassandra -p 9042:9042 -e MAX_HEAP_SIZE=1G -e HEAP_NEWSIZE=200M cassandra:5
+          bash -c "sed -i 's/^materialized_views_enabled:.*/materialized_views_enabled: true/' /etc/cassandra/cassandra.yaml && exec docker-entrypoint.sh cassandra -f"
+      - if: matrix.driver == 'scylla'
+        run: docker run -d --name scylla -p 9043:9042 scylladb/scylla:6.2 --smp 1 --memory 750M --overprovisioned 1 --developer-mode 1
       - if: matrix.driver == 'bigquery' || matrix.driver == 'snowflake'
         run: |
           node scripts/make-test-key.mjs /tmp/puddle-keys http://127.0.0.1:18090/token
@@ -400,14 +440,30 @@ jobs:
         run: node scripts/seed-surrealdb.mjs "$PUDDLE_TEST_SURREALDB"
       - if: matrix.driver == 'dynamodb'
         run: node scripts/seed-dynamodb.mjs "$PUDDLE_TEST_DYNAMODB"
+      - if: matrix.driver == 'mongodb'
+        run: node scripts/seed-mongodb.mjs "$PUDDLE_TEST_MONGODB"
+      - if: matrix.driver == 'redis'
+        run: |
+          node scripts/seed-redis.mjs "$PUDDLE_TEST_REDIS"
+          (node scripts/upstash-stand-in.mjs 18079 puddle-token "$PUDDLE_TEST_REDIS" > /tmp/upstash-stand-in.log 2>&1 &)
+          sleep 1
+      - if: startsWith(matrix.url, 'cassandra')
+        run: node scripts/seed-cassandra.mjs "$PUDDLE_TEST_CASSANDRA"
       - run: npx vitest run ${{ matrix.test }} --project shared
       - name: Record the fixtures the unit tests replay, for refreshing tests/fixtures/db/${{ matrix.driver }}/
-        if: matrix.driver == 'firebird' || matrix.driver == 'sqlserver' || matrix.driver == 'oracle' || matrix.driver == 'clickhouse' || matrix.driver == 'trino' || matrix.driver == 'libsql' || matrix.driver == 'surrealdb' || matrix.driver == 'dynamodb'
+        if: matrix.driver == 'firebird' || matrix.driver == 'sqlserver' || matrix.driver == 'oracle' || matrix.driver == 'clickhouse' || matrix.driver == 'trino' || matrix.driver == 'libsql' || matrix.driver == 'surrealdb' || matrix.driver == 'dynamodb' || matrix.driver == 'mongodb' || matrix.driver == 'redis' || matrix.driver == 'cassandra'
         run: |
           node scripts/record-database.mjs ${{ matrix.driver }} "${{ matrix.url }}"
-          echo '::group::queries.json'; cat tests/fixtures/db/${{ matrix.driver }}/queries.json 2>/dev/null || cat tests/fixtures/db/${{ matrix.driver }}/exchanges.json; echo '::endgroup::'
+          echo '::group::queries.json'; cat tests/fixtures/db/${{ matrix.driver }}/queries.json 2>/dev/null || cat tests/fixtures/db/${{ matrix.driver }}/exchanges.json 2>/dev/null || cat tests/fixtures/db/${{ matrix.driver }}/calls.json; echo '::endgroup::'
           echo '::group::catalog.json'; cat tests/fixtures/db/${{ matrix.driver }}/catalog.json; echo '::endgroup::'
           git diff --stat -- tests/fixtures/db/${{ matrix.driver }}/
+      - name: Record the Upstash fixtures too, for refreshing tests/fixtures/db/upstash/
+        if: matrix.driver == 'redis'
+        run: |
+          node scripts/record-database.mjs upstash 'http://:puddle-token@127.0.0.1:18079'
+          echo '::group::exchanges.json'; cat tests/fixtures/db/upstash/exchanges.json; echo '::endgroup::'
+          echo '::group::catalog.json'; cat tests/fixtures/db/upstash/catalog.json; echo '::endgroup::'
+          git diff --stat -- tests/fixtures/db/upstash/
 
   publish:
     name: Publish the image
