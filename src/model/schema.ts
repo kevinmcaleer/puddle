@@ -1,11 +1,12 @@
 import { z } from 'zod';
 
 /** Bump when the saved shape changes, and add a migration in persistence. */
-export const FORMAT_VERSION = 2;
+export const FORMAT_VERSION = 3;
 
 export const ColumnSchemaZ = z.object({ name: z.string(), type: z.string() });
 
-export const SourceFormatZ = z.enum(['csv', 'tsv', 'json', 'ndjson', 'parquet', 'xlsx', 'xml', 'access', 'fixed', 'pipes', 'arrow', 'yaml', 'toml', 'ini', 'geojson', 'word', 'log', 'pdf']);
+/** `connection` is not a file format: a connection source's rows arrive from a database and are read from a staging table. */
+export const SourceFormatZ = z.enum(['csv', 'tsv', 'json', 'ndjson', 'parquet', 'xlsx', 'xml', 'access', 'connection', 'fixed', 'pipes', 'arrow', 'yaml', 'toml', 'ini', 'geojson', 'word', 'log', 'pdf']);
 
 export const ParseOptionsZ = z
   .object({
@@ -46,10 +47,73 @@ export const ParseOptionsZ = z
   })
   .partial();
 
+
+/** The databases Puddle connects to: Beekeeper Studio's list (plan/phase6-databases.md, section 5). */
+export const DRIVER_IDS = [
+  'postgres', 'mysql', 'sqlite', 'sqlserver', 'redshift', 'cockroach', 'mariadb', 'tidb', 'bigquery', 'redis', 'greengage',
+  'oracle', 'cassandra', 'scylla', 'firebird', 'libsql', 'clickhouse', 'duckdb', 'sqlanywhere', 'mongodb', 'trino',
+  'surrealdb', 'dynamodb', 'snowflake', 'hana',
+] as const;
+export const DriverIdZ = z.enum(DRIVER_IDS);
+
+/**
+ * Where a connection runs: in this page (database files, and services whose HTTP interface lets a browser in), in
+ * puddle-connect on this computer (`local`, at localhost), or in puddle-connect on the Pi (`pi`, behind the tunnel).
+ */
+export const ConnectionViaZ = z.enum(['browser', 'local', 'pi']);
+
+/** What a driver signs in with: a password, a token, a private key, an OAuth sign-in in the browser, AWS keys, or nothing. */
+export const ConnectionAuthZ = z.enum(['password', 'token', 'keypair', 'oauth', 'aws', 'none']);
+
+export const CatalogColumnZ = z.object({ name: z.string(), type: z.string(), nullable: z.boolean().optional() });
+export const CatalogTableZ = z.object({
+  schema: z.string().optional(),
+  name: z.string(),
+  kind: z.enum(['table', 'view']).default('table'),
+  columns: z.array(CatalogColumnZ).default([]),
+  /** A row estimate from the catalogue, where it has one cheaply. */
+  rows: z.number().nonnegative().optional(),
+});
+/** The names and types a connection was last seen to have: a small cache for the database browser and the runner. */
+export const CatalogZ = z.object({ tables: z.array(CatalogTableZ).default([]) });
+
+/**
+ * A saved connection: everything needed to connect except the secret, which stays on the device (src/connections/secrets).
+ * `settings` is driver-specific (host, port, database, user, ssl, account, project, region…) and never holds a secret.
+ */
+export const ConnectionZ = z.object({
+  id: z.string().min(1),
+  name: z.string(),
+  driver: DriverIdZ,
+  via: ConnectionViaZ,
+  settings: z.record(z.string(), z.union([z.string(), z.number(), z.boolean()])).default({}),
+  auth: ConnectionAuthZ,
+  catalog: CatalogZ.optional(),
+  /** When the catalogue was last read. */
+  catalogAt: z.string().optional(),
+  /** When the schema was last documented into the project's DBML. */
+  documentedAt: z.string().optional(),
+});
+
+/** How a document store's records become rows: nested objects flattened to `parent.child` columns to a depth, arrays as JSON text or one row each. */
+export const ConnectionShapeZ = z.object({ flatten: z.boolean().default(true), depth: z.number().int().nonnegative().default(2), arrays: z.enum(['json', 'rows']).default('json') });
+
+export const ConnectionSourceZ = z.object({
+  connectionId: z.string().min(1),
+  /** One of the two: a table of the database, or a query the database runs in its own dialect. */
+  table: z.object({ schema: z.string().optional(), name: z.string().min(1) }).optional(),
+  query: z.string().optional(),
+  /** Read at most this many rows. Absent reads them all. */
+  limit: z.number().int().positive().optional(),
+  /** The columns as DuckDB types, from the driver, so the read is typed before a row arrives. */
+  columns: z.array(ColumnSchemaZ).default([]),
+  shape: ConnectionShapeZ.optional(),
+});
+
 export const SourceZ = z.object({
   id: z.string().min(1),
   name: z.string(),
-  kind: z.enum(['file', 'url', 'clipboard']),
+  kind: z.enum(['file', 'url', 'clipboard', 'connection']),
   file: z
     .object({
       originalName: z.string(),
@@ -103,6 +167,8 @@ export const SourceZ = z.object({
     })
     .optional(),
   clipboard: z.object({ text: z.string() }).optional(),
+  /** A table or query of one of the project's connections (Add source › From database). */
+  connection: ConnectionSourceZ.optional(),
   /**
    * The archive the file is read from (a .gz or .zip chosen as a source): which kind, and the entry (the file inside)
    * this source reads. `file` describes the archive itself; `format` and `parseOptions` the entry.
@@ -485,6 +551,7 @@ export const ProjectZ = z.object({
   updatedAt: z.string(),
   notes: z.string().default(''),
   settings: ProjectSettingsZ.default({ sampleThresholdRows: 5_000_000, locale: 'en-GB', defaultDateFormats: [], stepsAsNodes: true, fixAllSuggestions: false, columnNames: 'words' }),
+  connections: z.array(ConnectionZ).default([]),
   sources: z.array(SourceZ).default([]),
   nodes: z.array(NodeZ).default([]),
   edges: z.array(EdgeZ).default([]),
@@ -501,6 +568,13 @@ export type ColumnSchema = z.infer<typeof ColumnSchemaZ>;
 export type SourceFormat = z.infer<typeof SourceFormatZ>;
 export type ParseOptions = z.infer<typeof ParseOptionsZ>;
 export type Source = z.infer<typeof SourceZ>;
+export type DriverId = z.infer<typeof DriverIdZ>;
+export type ConnectionVia = z.infer<typeof ConnectionViaZ>;
+export type ConnectionAuth = z.infer<typeof ConnectionAuthZ>;
+export type Connection = z.infer<typeof ConnectionZ>;
+export type Catalog = z.infer<typeof CatalogZ>;
+export type CatalogTable = z.infer<typeof CatalogTableZ>;
+export type ConnectionSource = z.infer<typeof ConnectionSourceZ>;
 export type Step = z.infer<typeof StepZ>;
 export type StepOrigin = z.infer<typeof StepOriginZ>;
 export type Rule = z.infer<typeof RuleZ>;

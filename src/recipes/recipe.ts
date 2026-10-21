@@ -3,7 +3,7 @@
 import { ruleDef, stepDef } from '../compiler';
 import { createProject, FORMAT_VERSION, newId, NodeZ, parseProject, type GraphNode, type Project, type Source, type Step } from '../model';
 import { ProjectFileError, upgrade } from '../persistence/migrate';
-import { withoutHeaderValues, withoutPastedRows } from '../persistence/shareable';
+import { withoutConnectionHost, withoutHeaderValues, withoutPastedRows } from '../persistence/shareable';
 import { migrateTemplate, TEMPLATE_NODE_ID, templateAsProject, templateFromProject, TemplateError } from '../persistence/templates';
 import type { Template } from '../templates/template';
 
@@ -29,6 +29,8 @@ export interface RecipeFile {
   description: string;
   notes: string;
   settings?: Project['settings'];
+  /** Database connections by driver and database only: no host, user or secret (plan D25). */
+  connections?: Project['connections'];
   sources: Source[];
   nodes: GraphNode[];
   edges: Project['edges'];
@@ -38,7 +40,7 @@ export interface RecipeFile {
 
 /** A recipe read and checked: a pipeline to open as a new project, or a template for the library. */
 export type Recipe =
-  | { kind: 'pipeline'; name: string; description: string; project: Pick<Project, 'notes' | 'settings' | 'sources' | 'nodes' | 'edges'> }
+  | { kind: 'pipeline'; name: string; description: string; project: Pick<Project, 'notes' | 'settings' | 'connections' | 'sources' | 'nodes' | 'edges'> }
   | { kind: 'template'; name: string; description: string; template: Template };
 
 const isObject = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v);
@@ -116,6 +118,7 @@ export function recipeFromProject(project: Project, about: { name: string; descr
     description: about.description.trim(),
     notes: project.notes,
     settings: project.settings,
+    connections: project.connections.map(withoutConnectionHost),
     sources: project.sources.map(recipeSource),
     nodes: project.nodes.map(recipeNode),
     edges: project.edges,
@@ -189,7 +192,7 @@ export function parseRecipe(raw: unknown, at: Date = new Date()): Recipe {
   }
   // Whatever the file carried, only what a recipe describes is kept.
   const { notes, settings, edges } = project;
-  return { kind: 'pipeline', name, description, project: { notes, settings, edges, sources: project.sources.map(recipeSource), nodes: project.nodes.map(recipeNode) } };
+  return { kind: 'pipeline', name, description, project: { notes, settings, edges, connections: project.connections.map(withoutConnectionHost), sources: project.sources.map(recipeSource), nodes: project.nodes.map(recipeNode) } };
 }
 
 /** Read a `.puddle-recipe.json` file's text. */
@@ -213,7 +216,7 @@ export const expectedBySource = (recipe: Extract<Recipe, { kind: 'pipeline' }>) 
  */
 export function projectFromRecipe(recipe: Extract<Recipe, { kind: 'pipeline' }>, at: Date = new Date()): Project {
   const base = createProject(recipe.name, at);
-  const { notes, settings, sources, nodes, edges } = recipe.project;
+  const { notes, settings, connections, sources, nodes, edges } = recipe.project;
   // New source ids: files are kept per tab by source id, so a second project from the same recipe mustn't pick up
   // the file chosen for the first.
   const ids = new Map(sources.map((s) => [s.id, newId('s')]));
@@ -221,6 +224,7 @@ export function projectFromRecipe(recipe: Extract<Recipe, { kind: 'pipeline' }>,
     ...base,
     notes: notes || recipe.description,
     settings,
+    connections,
     sources: sources.map((s) => ({ ...s, id: ids.get(s.id)!, ...(s.detectedSchema.length ? { expected: s.detectedSchema } : {}) })),
     nodes: nodes.map((n) => (n.type === 'source' ? { ...n, sourceId: ids.get(n.sourceId) ?? n.sourceId } : n)),
     edges,

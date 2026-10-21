@@ -1,4 +1,4 @@
-import type { Project } from '../model';
+import type { Connection, Project } from '../model';
 import type { Template } from '../templates/template';
 
 const DB = 'puddle';
@@ -35,6 +35,8 @@ export interface ProjectSummary {
   updatedAt: string;
   sources: number;
   nodes: number;
+  /** Its database connections (never their secrets), so another project can copy one and the home screen can list them. */
+  connections: Connection[];
 }
 
 let opening: Promise<IDBDatabase> | null = null;
@@ -100,7 +102,7 @@ export const deleteProject = (id: string) => run('readwrite', (s) => s.delete(id
 export async function listProjects(): Promise<ProjectSummary[]> {
   const all = await run<Project[]>('readonly', (s) => s.getAll() as IDBRequest<Project[]>);
   return all
-    .map((p) => ({ id: p.id, name: p.name, updatedAt: p.updatedAt, sources: p.sources.length, nodes: p.nodes.length }))
+    .map((p) => ({ id: p.id, name: p.name, updatedAt: p.updatedAt, sources: p.sources.length, nodes: p.nodes.length, connections: p.connections ?? [] }))
     .sort((a, b) => (a.updatedAt < b.updatedAt ? 1 : a.updatedAt > b.updatedAt ? -1 : 0));
 }
 

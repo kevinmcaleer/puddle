@@ -5,7 +5,7 @@ import { bool, ident, num, str, strList } from './sql';
 const ROW = ident('__puddle_row');
 const TOTAL = ident('__puddle_total');
 
-const EXT: Record<Source['format'], string> = { csv: 'csv', tsv: 'tsv', json: 'json', ndjson: 'ndjson', parquet: 'parquet', xlsx: 'xlsx', xml: 'csv', access: 'accdb', fixed: 'csv', pipes: 'csv', arrow: 'arrow', yaml: 'csv', toml: 'csv', ini: 'csv', geojson: 'csv', word: 'csv', log: 'csv', pdf: 'csv' };
+const EXT: Record<Source['format'], string> = { csv: 'csv', tsv: 'tsv', json: 'json', ndjson: 'ndjson', parquet: 'parquet', xlsx: 'xlsx', xml: 'csv', access: 'accdb', connection: 'table', fixed: 'csv', pipes: 'csv', arrow: 'arrow', yaml: 'csv', toml: 'csv', ini: 'csv', geojson: 'csv', word: 'csv', log: 'csv', pdf: 'csv' };
 
 /**
  * A gzip-compressed text file DuckDB reads as it is (CSV, TSV, JSON, NDJSON): registered with its .gz, it is unpacked
@@ -48,9 +48,12 @@ export function sourceFileName(source: Source): string {
  */
 export function sourceTableName(source: Source): string {
   const o = source.parseOptions;
+  const c = source.connection;
   const hash = source.file?.headHash ?? source.url?.headHash ?? null;
   const entry = source.archive ? [source.archive.entry] : [];
-  const key = source.format === 'access' ? [hash, ...entry, 'access', o.table ?? null] : source.format === 'arrow' ? [hash, ...entry, 'arrow'] : [hash, ...entry, o.sheet ?? null, o.headerRow ?? null, o.range ?? null, o.headerRows ?? null, o.fillMerges ?? null];
+  const key = c
+    ? [c.connectionId, c.table?.schema ?? null, c.table?.name ?? null, c.query ?? null, c.limit ?? null]
+    : source.format === 'access' ? [hash, ...entry, 'access', o.table ?? null] : source.format === 'arrow' ? [hash, ...entry, 'arrow'] : [hash, ...entry, o.sheet ?? null, o.headerRow ?? null, o.range ?? null, o.headerRows ?? null, o.fillMerges ?? null];
   return `src_${source.id}_${hashValue(key).slice(0, 12)}`;
 }
 
@@ -123,6 +126,7 @@ export function sourceRelation(source: Source): string {
       return `read_parquet(${file})`;
     case 'xlsx':
     case 'access':
+    case 'connection':
     case 'arrow':
       return ident(sourceTableName(source));
     case 'xml':
