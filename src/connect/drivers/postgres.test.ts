@@ -1,5 +1,5 @@
 // The PostgreSQL family driver against the queries recorded from a real PostgreSQL 16 (tests/fixtures/db/postgres/,
-// regenerated with scripts/record-postgres.mjs), and against a database that lacks what Redshift lacks.
+// regenerated with scripts/record-database.mjs postgres <url>), and against a database that lacks what Redshift lacks.
 import { tableFromIPC } from 'apache-arrow';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';

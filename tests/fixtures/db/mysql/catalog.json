@@ -1,0 +1,262 @@
+{
+  "test": {
+    "ok": true,
+    "server": "MariaDB 10.11.14, 3 tables"
+  },
+  "catalog": {
+    "tables": [
+      {
+        "name": "customers",
+        "kind": "table",
+        "columns": [
+          {
+            "name": "id",
+            "type": "INTEGER",
+            "nullable": false
+          },
+          {
+            "name": "name",
+            "type": "VARCHAR",
+            "nullable": false
+          },
+          {
+            "name": "email",
+            "type": "VARCHAR",
+            "nullable": true
+          },
+          {
+            "name": "signed_up",
+            "type": "DATE",
+            "nullable": true
+          },
+          {
+            "name": "active",
+            "type": "BOOLEAN",
+            "nullable": true
+          }
+        ],
+        "rows": 3
+      },
+      {
+        "name": "orders",
+        "kind": "table",
+        "columns": [
+          {
+            "name": "id",
+            "type": "INTEGER",
+            "nullable": false
+          },
+          {
+            "name": "customer_id",
+            "type": "INTEGER",
+            "nullable": false
+          },
+          {
+            "name": "total",
+            "type": "DECIMAL(10,2)",
+            "nullable": true
+          },
+          {
+            "name": "placed_at",
+            "type": "TIMESTAMP",
+            "nullable": true
+          },
+          {
+            "name": "status",
+            "type": "VARCHAR",
+            "nullable": false
+          }
+        ],
+        "rows": 4
+      },
+      {
+        "name": "order_totals",
+        "kind": "view",
+        "columns": [
+          {
+            "name": "name",
+            "type": "VARCHAR",
+            "nullable": false
+          },
+          {
+            "name": "orders",
+            "type": "BIGINT",
+            "nullable": false
+          },
+          {
+            "name": "total",
+            "type": "DECIMAL(32,2)",
+            "nullable": true
+          }
+        ]
+      }
+    ]
+  },
+  "detail": {
+    "tables": [
+      {
+        "name": "customers",
+        "kind": "table",
+        "note": "People who have ordered",
+        "columns": [
+          {
+            "name": "id",
+            "type": "int(11)",
+            "pk": true,
+            "unique": false,
+            "notNull": true,
+            "increment": true
+          },
+          {
+            "name": "name",
+            "type": "varchar(100)",
+            "pk": false,
+            "unique": false,
+            "notNull": true,
+            "increment": false
+          },
+          {
+            "name": "email",
+            "type": "varchar(255)",
+            "pk": false,
+            "unique": true,
+            "notNull": false,
+            "increment": false,
+            "note": "Lower case"
+          },
+          {
+            "name": "signed_up",
+            "type": "date",
+            "pk": false,
+            "unique": false,
+            "notNull": false,
+            "increment": false
+          },
+          {
+            "name": "active",
+            "type": "tinyint(1)",
+            "pk": false,
+            "unique": false,
+            "notNull": false,
+            "increment": false,
+            "default": "1"
+          }
+        ],
+        "indexes": [],
+        "foreignKeys": []
+      },
+      {
+        "name": "orders",
+        "kind": "table",
+        "columns": [
+          {
+            "name": "id",
+            "type": "int(11)",
+            "pk": true,
+            "unique": false,
+            "notNull": true,
+            "increment": true
+          },
+          {
+            "name": "customer_id",
+            "type": "int(11)",
+            "pk": false,
+            "unique": false,
+            "notNull": true,
+            "increment": false
+          },
+          {
+            "name": "total",
+            "type": "decimal(10,2)",
+            "pk": false,
+            "unique": false,
+            "notNull": false,
+            "increment": false
+          },
+          {
+            "name": "placed_at",
+            "type": "datetime",
+            "pk": false,
+            "unique": false,
+            "notNull": false,
+            "increment": false
+          },
+          {
+            "name": "status",
+            "type": "orders_status",
+            "pk": false,
+            "unique": false,
+            "notNull": true,
+            "increment": false,
+            "default": "'placed'"
+          }
+        ],
+        "indexes": [
+          {
+            "name": "orders_customer",
+            "columns": [
+              "customer_id"
+            ],
+            "unique": false
+          }
+        ],
+        "foreignKeys": [
+          {
+            "name": "orders_customer_id_fkey",
+            "columns": [
+              "customer_id"
+            ],
+            "refTable": "customers",
+            "refColumns": [
+              "id"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "order_totals",
+        "kind": "view",
+        "columns": [
+          {
+            "name": "name",
+            "type": "varchar(100)",
+            "pk": false,
+            "unique": false,
+            "notNull": true,
+            "increment": false
+          },
+          {
+            "name": "orders",
+            "type": "bigint(21)",
+            "pk": false,
+            "unique": false,
+            "notNull": true,
+            "increment": false,
+            "default": "0"
+          },
+          {
+            "name": "total",
+            "type": "decimal(32,2)",
+            "pk": false,
+            "unique": false,
+            "notNull": false,
+            "increment": false
+          }
+        ],
+        "indexes": [],
+        "foreignKeys": [],
+        "sql": "select `c`.`name` AS `name`,count(`o`.`id`) AS `orders`,sum(`o`.`total`) AS `total` from (`shop`.`customers` `c` left join `shop`.`orders` `o` on(`o`.`customer_id` = `c`.`id`)) group by `c`.`name`"
+      }
+    ],
+    "enums": [
+      {
+        "name": "orders_status",
+        "values": [
+          "placed",
+          "shipped",
+          "returned"
+        ]
+      }
+    ]
+  }
+}

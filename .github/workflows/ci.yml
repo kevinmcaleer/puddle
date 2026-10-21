@@ -40,8 +40,9 @@ jobs:
     env:
       E2E_BROWSERS: ${{ matrix.browser }}
       E2E_BROWSER_LOGS: '1'
-      # The PostgreSQL flow reads the shop from the service container below through puddle-connect.
+      # The PostgreSQL and MySQL flows read the shop from the service containers below through puddle-connect.
       PUDDLE_TEST_POSTGRES: postgres://postgres:puddle@localhost:5432/shop
+      PUDDLE_TEST_MYSQL: mysql://root:puddle@localhost:3306/shop
     services:
       postgres:
         image: postgres:16
@@ -51,6 +52,14 @@ jobs:
         ports:
           - 5432:5432
         options: --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 10
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: puddle
+          MYSQL_DATABASE: shop
+        ports:
+          - 3306:3306
+        options: --health-cmd "mysqladmin ping -h 127.0.0.1 -ppuddle" --health-interval 5s --health-timeout 5s --health-retries 20
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -59,6 +68,7 @@ jobs:
           cache: npm
       - run: npm ci
       - run: node scripts/seed-postgres.mjs "$PUDDLE_TEST_POSTGRES"
+      - run: node scripts/seed-mysql.mjs "$PUDDLE_TEST_MYSQL"
       - run: npx playwright install --with-deps ${{ matrix.browser }}
       - run: npm run e2e -- --shard=${{ matrix.shard }}/${{ matrix.shards }}
       - if: failure()
@@ -246,6 +256,8 @@ jobs:
         include:
           - { name: PostgreSQL, driver: postgres, url: 'postgres://postgres:puddle@localhost:5432/shop', test: tests/connect/postgres.test.ts }
           - { name: CockroachDB, driver: cockroach, url: 'postgres://root@localhost:26257/shop', test: tests/connect/postgres.test.ts }
+          - { name: MySQL, driver: mysql, url: 'mysql://root:puddle@localhost:3306/shop', test: tests/connect/mysql.test.ts }
+          - { name: MariaDB, driver: mariadb, url: 'mysql://root:puddle@localhost:3307/shop', test: tests/connect/mysql.test.ts }
     services:
       postgres:
         image: postgres:16
@@ -255,9 +267,28 @@ jobs:
         ports:
           - 5432:5432
         options: --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 10
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: puddle
+          MYSQL_DATABASE: shop
+        ports:
+          - 3306:3306
+        options: --health-cmd "mysqladmin ping -h 127.0.0.1 -ppuddle" --health-interval 5s --health-timeout 5s --health-retries 20
+      mariadb:
+        image: mariadb:11
+        env:
+          MARIADB_ROOT_PASSWORD: puddle
+          MARIADB_DATABASE: shop
+        ports:
+          - 3307:3306
+        options: --health-cmd "healthcheck.sh --connect --innodb_initialized" --health-interval 5s --health-timeout 5s --health-retries 20
     env:
-      PUDDLE_TEST_POSTGRES: ${{ matrix.url }}
+      # The PostgreSQL family reads PUDDLE_TEST_POSTGRES, the MySQL family PUDDLE_TEST_MYSQL; the other is unset for that matrix row.
+      PUDDLE_TEST_POSTGRES: ${{ startsWith(matrix.url, 'postgres') && matrix.url || '' }}
       PUDDLE_TEST_POSTGRES_DRIVER: ${{ matrix.driver }}
+      PUDDLE_TEST_MYSQL: ${{ startsWith(matrix.url, 'mysql') && matrix.url || '' }}
+      PUDDLE_TEST_MYSQL_DRIVER: ${{ matrix.driver }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -267,7 +298,10 @@ jobs:
       - run: npm ci
       - if: matrix.driver == 'cockroach'
         run: docker run -d --name cockroach -p 26257:26257 cockroachdb/cockroach:latest-v24.1 start-single-node --insecure
-      - run: node scripts/seed-postgres.mjs "$PUDDLE_TEST_POSTGRES"
+      - if: startsWith(matrix.url, 'postgres')
+        run: node scripts/seed-postgres.mjs "$PUDDLE_TEST_POSTGRES"
+      - if: startsWith(matrix.url, 'mysql')
+        run: node scripts/seed-mysql.mjs "$PUDDLE_TEST_MYSQL"
       - run: npx vitest run ${{ matrix.test }} --project shared
 
   publish:
