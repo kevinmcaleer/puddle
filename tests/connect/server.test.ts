@@ -34,7 +34,7 @@ describe('puddle-connect', () => {
 
   it('says what it is and answers CORS for its origins only', async () => {
     const r = await fetch(`${base}/health`, { headers: { Origin: 'http://localhost:4173' } });
-    expect(await r.json()).toEqual({ version: expect.any(String), drivers: ['sqlite', 'libsql'], allowlist: false });
+    expect(await r.json()).toEqual({ version: expect.any(String), drivers: ['sqlite', 'libsql', 'postgres', 'redshift', 'cockroach', 'greengage'], allowlist: false });
     expect(r.headers.get('access-control-allow-origin')).toBe('http://localhost:4173');
     const other = await fetch(`${base}/health`, { headers: { Origin: 'https://evil.example' } });
     expect(other.headers.get('access-control-allow-origin')).toBeNull();
@@ -75,8 +75,8 @@ describe('puddle-connect', () => {
     expect(await write.text()).toMatch(/not DELETE/);
     const two = await post(base, 'read', { driver: 'sqlite', settings: { path: shop }, query: 'SELECT 1; SELECT 2' });
     expect(two.status).toBe(400);
-    const pg = await post(base, 'test', { driver: 'postgres', settings: { host: 'db.local' } });
-    expect(pg.status).toBe(501);
+    const mysql = await post(base, 'test', { driver: 'mysql', settings: { host: 'db.local' } });
+    expect(mysql.status).toBe(501);
     expect((await post(base, 'test', {})).status).toBe(400);
     expect((await fetch(`${base}/test`, { method: 'POST', body: '{not json' })).status).toBe(400);
     expect((await post(base, 'fetch', { url: 'http://169.254.169.254/' })).status).toBe(404);
@@ -156,9 +156,10 @@ describe('with a token and an allowlist', () => {
       const off = await post(b, 'test', { driver: 'postgres', settings: { host: 'other.local' } }, { Authorization: 'Bearer hunter2' });
       expect(off.status).toBe(403);
       expect(await off.text()).toMatch(/allowlist/);
-      // On the list, the request reaches the drivers (which have no postgres yet).
+      // On the list, the request reaches the driver, which wants the rest of its settings.
       const on = await post(b, 'test', { driver: 'postgres', settings: { host: 'db.local' } }, { Authorization: 'Bearer hunter2' });
-      expect(on.status).toBe(501);
+      expect(on.status).toBe(422);
+      expect(await on.text()).toMatch(/database name/);
       // Loopback is not implied by a list.
       expect((await post(b, 'test', { driver: 'postgres', settings: { host: '127.0.0.1' } }, { Authorization: 'Bearer hunter2' })).status).toBe(403);
     } finally {

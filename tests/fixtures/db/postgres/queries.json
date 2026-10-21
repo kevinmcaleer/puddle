@@ -1,0 +1,1171 @@
+[
+  {
+    "text": "SET default_transaction_read_only = on",
+    "rows": [],
+    "fields": []
+  },
+  {
+    "text": "SET timezone = 'UTC'",
+    "rows": [],
+    "fields": []
+  },
+  {
+    "text": "SET datestyle = 'ISO, YMD'",
+    "rows": [],
+    "fields": []
+  },
+  {
+    "text": "SELECT version() AS version",
+    "rows": [
+      {
+        "version": "PostgreSQL 16.15 (Ubuntu 16.15-0ubuntu0.24.04.1) on x86_64-pc-linux-gnu, compiled by gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0, 64-bit"
+      }
+    ],
+    "fields": [
+      {
+        "name": "version",
+        "dataTypeID": 25,
+        "dataTypeModifier": -1
+      }
+    ]
+  },
+  {
+    "text": "SELECT count(*)::text AS n FROM information_schema.tables WHERE table_schema NOT IN ('pg_catalog', 'information_schema', 'pg_internal', 'pg_extension', 'crdb_internal') AND table_schema NOT LIKE 'pg_toast%' AND table_schema NOT LIKE 'pg_temp%'",
+    "rows": [
+      {
+        "n": "3"
+      }
+    ],
+    "fields": [
+      {
+        "name": "n",
+        "dataTypeID": 25,
+        "dataTypeModifier": -1
+      }
+    ]
+  },
+  {
+    "text": "SET default_transaction_read_only = on",
+    "rows": [],
+    "fields": []
+  },
+  {
+    "text": "SET timezone = 'UTC'",
+    "rows": [],
+    "fields": []
+  },
+  {
+    "text": "SET datestyle = 'ISO, YMD'",
+    "rows": [],
+    "fields": []
+  },
+  {
+    "text": "SELECT table_schema, table_name, table_type FROM information_schema.tables WHERE table_schema NOT IN ('pg_catalog', 'information_schema', 'pg_internal', 'pg_extension', 'crdb_internal') AND table_schema NOT LIKE 'pg_toast%' AND table_schema NOT LIKE 'pg_temp%' AND table_type IN ('BASE TABLE', 'VIEW', 'FOREIGN', 'LOCAL TEMPORARY') ORDER BY table_schema, table_name",
+    "rows": [
+      {
+        "table_schema": "public",
+        "table_name": "customers",
+        "table_type": "BASE TABLE"
+      },
+      {
+        "table_schema": "public",
+        "table_name": "order_totals",
+        "table_type": "VIEW"
+      },
+      {
+        "table_schema": "public",
+        "table_name": "orders",
+        "table_type": "BASE TABLE"
+      }
+    ],
+    "fields": [
+      {
+        "name": "table_schema",
+        "dataTypeID": 19,
+        "dataTypeModifier": -1
+      },
+      {
+        "name": "table_name",
+        "dataTypeID": 19,
+        "dataTypeModifier": -1
+      },
+      {
+        "name": "table_type",
+        "dataTypeID": 1043,
+        "dataTypeModifier": -1
+      }
+    ]
+  },
+  {
+    "text": "SELECT table_schema, table_name, column_name, data_type, udt_name, numeric_precision::text, numeric_scale::text, character_maximum_length::text, is_nullable, column_default FROM information_schema.columns WHERE table_schema NOT IN ('pg_catalog', 'information_schema', 'pg_internal', 'pg_extension', 'crdb_internal') AND table_schema NOT LIKE 'pg_toast%' AND table_schema NOT LIKE 'pg_temp%' ORDER BY table_schema, table_name, ordinal_position",
+    "rows": [
+      {
+        "table_schema": "public",
+        "table_name": "customers",
+        "column_name": "id",
+        "data_type": "integer",
+        "udt_name": "int4",
+        "numeric_precision": "32",
+        "numeric_scale": "0",
+        "character_maximum_length": null,
+        "is_nullable": "NO",
+        "column_default": "nextval('customers_id_seq'::regclass)"
+      },
+      {
+        "table_schema": "public",
+        "table_name": "customers",
+        "column_name": "name",
+        "data_type": "text",
+        "udt_name": "text",
+        "numeric_precision": null,
+        "numeric_scale": null,
+        "character_maximum_length": null,
+        "is_nullable": "NO",
+        "column_default": null
+      },
+      {
+        "table_schema": "public",
+        "table_name": "customers",
+        "column_name": "email",
+        "data_type": "text",
+        "udt_name": "text",
+        "numeric_precision": null,
+        "numeric_scale": null,
+        "character_maximum_length": null,
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_schema": "public",
+        "table_name": "customers",
+        "column_name": "signed_up",
+        "data_type": "date",
+        "udt_name": "date",
+        "numeric_precision": null,
+        "numeric_scale": null,
+        "character_maximum_length": null,
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_schema": "public",
+        "table_name": "customers",
+        "column_name": "active",
+        "data_type": "boolean",
+        "udt_name": "bool",
+        "numeric_precision": null,
+        "numeric_scale": null,
+        "character_maximum_length": null,
+        "is_nullable": "YES",
+        "column_default": "true"
+      },
+      {
+        "table_schema": "public",
+        "table_name": "order_totals",
+        "column_name": "name",
+        "data_type": "text",
+        "udt_name": "text",
+        "numeric_precision": null,
+        "numeric_scale": null,
+        "character_maximum_length": null,
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_schema": "public",
+        "table_name": "order_totals",
+        "column_name": "orders",
+        "data_type": "bigint",
+        "udt_name": "int8",
+        "numeric_precision": "64",
+        "numeric_scale": "0",
+        "character_maximum_length": null,
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_schema": "public",
+        "table_name": "order_totals",
+        "column_name": "total",
+        "data_type": "numeric",
+        "udt_name": "numeric",
+        "numeric_precision": null,
+        "numeric_scale": null,
+        "character_maximum_length": null,
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_schema": "public",
+        "table_name": "orders",
+        "column_name": "id",
+        "data_type": "integer",
+        "udt_name": "int4",
+        "numeric_precision": "32",
+        "numeric_scale": "0",
+        "character_maximum_length": null,
+        "is_nullable": "NO",
+        "column_default": "nextval('orders_id_seq'::regclass)"
+      },
+      {
+        "table_schema": "public",
+        "table_name": "orders",
+        "column_name": "customer_id",
+        "data_type": "integer",
+        "udt_name": "int4",
+        "numeric_precision": "32",
+        "numeric_scale": "0",
+        "character_maximum_length": null,
+        "is_nullable": "NO",
+        "column_default": null
+      },
+      {
+        "table_schema": "public",
+        "table_name": "orders",
+        "column_name": "total",
+        "data_type": "numeric",
+        "udt_name": "numeric",
+        "numeric_precision": "10",
+        "numeric_scale": "2",
+        "character_maximum_length": null,
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_schema": "public",
+        "table_name": "orders",
+        "column_name": "placed_at",
+        "data_type": "timestamp without time zone",
+        "udt_name": "timestamp",
+        "numeric_precision": null,
+        "numeric_scale": null,
+        "character_maximum_length": null,
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_schema": "public",
+        "table_name": "orders",
+        "column_name": "status",
+        "data_type": "USER-DEFINED",
+        "udt_name": "order_status",
+        "numeric_precision": null,
+        "numeric_scale": null,
+        "character_maximum_length": null,
+        "is_nullable": "NO",
+        "column_default": "'placed'::order_status"
+      }
+    ],
+    "fields": [
+      {
+        "name": "table_schema",
+        "dataTypeID": 19,
+        "dataTypeModifier": -1
+      },
+      {
+        "name": "table_name",
+        "dataTypeID": 19,
+        "dataTypeModifier": -1
+      },
+      {
+        "name": "column_name",
+        "dataTypeID": 19,
+        "dataTypeModifier": -1
+      },
+      {
+        "name": "data_type",
+        "dataTypeID": 1043,
+        "dataTypeModifier": -1
+      },
+      {
+        "name": "udt_name",
+        "dataTypeID": 19,
+        "dataTypeModifier": -1
+      },
+      {
+        "name": "numeric_precision",
+        "dataTypeID": 25,
+        "dataTypeModifier": -1
+      },
+      {
+        "name": "numeric_scale",
+        "dataTypeID": 25,
+        "dataTypeModifier": -1
+      },
+      {
+        "name": "character_maximum_length",
+        "dataTypeID": 25,
+        "dataTypeModifier": -1
+      },
+      {
+        "name": "is_nullable",
+        "dataTypeID": 1043,
+        "dataTypeModifier": 7
+      },
+      {
+        "name": "column_default",
+        "dataTypeID": 1043,
+        "dataTypeModifier": -1
+      }
+    ]
+  },
+  {
+    "text": "SELECT n.nspname AS table_schema, c.relname AS table_name, c.reltuples::text AS reltuples FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace WHERE c.relkind IN ('r', 'p', 'f') AND n.nspname NOT IN ('pg_catalog', 'information_schema', 'pg_internal', 'pg_extension', 'crdb_internal') AND n.nspname NOT LIKE 'pg_toast%' AND n.nspname NOT LIKE 'pg_temp%'",
+    "rows": [
+      {
+        "table_schema": "public",
+        "table_name": "customers",
+        "reltuples": "-1"
+      },
+      {
+        "table_schema": "public",
+        "table_name": "orders",
+        "reltuples": "-1"
+      }
+    ],
+    "fields": [
+      {
+        "name": "table_schema",
+        "dataTypeID": 19,
+        "dataTypeModifier": -1
+      },
+      {
+        "name": "table_name",
+        "dataTypeID": 19,
+        "dataTypeModifier": -1
+      },
+      {
+        "name": "reltuples",
+        "dataTypeID": 25,
+        "dataTypeModifier": -1
+      }
+    ]
+  },
+  {
+    "text": "SET default_transaction_read_only = on",
+    "rows": [],
+    "fields": []
+  },
+  {
+    "text": "SET timezone = 'UTC'",
+    "rows": [],
+    "fields": []
+  },
+  {
+    "text": "SET datestyle = 'ISO, YMD'",
+    "rows": [],
+    "fields": []
+  },
+  {
+    "text": "SELECT table_schema, table_name, table_type FROM information_schema.tables WHERE table_schema NOT IN ('pg_catalog', 'information_schema', 'pg_internal', 'pg_extension', 'crdb_internal') AND table_schema NOT LIKE 'pg_toast%' AND table_schema NOT LIKE 'pg_temp%' AND table_type IN ('BASE TABLE', 'VIEW', 'FOREIGN', 'LOCAL TEMPORARY') ORDER BY table_schema, table_name",
+    "rows": [
+      {
+        "table_schema": "public",
+        "table_name": "customers",
+        "table_type": "BASE TABLE"
+      },
+      {
+        "table_schema": "public",
+        "table_name": "order_totals",
+        "table_type": "VIEW"
+      },
+      {
+        "table_schema": "public",
+        "table_name": "orders",
+        "table_type": "BASE TABLE"
+      }
+    ],
+    "fields": [
+      {
+        "name": "table_schema",
+        "dataTypeID": 19,
+        "dataTypeModifier": -1
+      },
+      {
+        "name": "table_name",
+        "dataTypeID": 19,
+        "dataTypeModifier": -1
+      },
+      {
+        "name": "table_type",
+        "dataTypeID": 1043,
+        "dataTypeModifier": -1
+      }
+    ]
+  },
+  {
+    "text": "SELECT table_schema, table_name, column_name, data_type, udt_name, numeric_precision::text, numeric_scale::text, character_maximum_length::text, is_nullable, column_default FROM information_schema.columns WHERE table_schema NOT IN ('pg_catalog', 'information_schema', 'pg_internal', 'pg_extension', 'crdb_internal') AND table_schema NOT LIKE 'pg_toast%' AND table_schema NOT LIKE 'pg_temp%' ORDER BY table_schema, table_name, ordinal_position",
+    "rows": [
+      {
+        "table_schema": "public",
+        "table_name": "customers",
+        "column_name": "id",
+        "data_type": "integer",
+        "udt_name": "int4",
+        "numeric_precision": "32",
+        "numeric_scale": "0",
+        "character_maximum_length": null,
+        "is_nullable": "NO",
+        "column_default": "nextval('customers_id_seq'::regclass)"
+      },
+      {
+        "table_schema": "public",
+        "table_name": "customers",
+        "column_name": "name",
+        "data_type": "text",
+        "udt_name": "text",
+        "numeric_precision": null,
+        "numeric_scale": null,
+        "character_maximum_length": null,
+        "is_nullable": "NO",
+        "column_default": null
+      },
+      {
+        "table_schema": "public",
+        "table_name": "customers",
+        "column_name": "email",
+        "data_type": "text",
+        "udt_name": "text",
+        "numeric_precision": null,
+        "numeric_scale": null,
+        "character_maximum_length": null,
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_schema": "public",
+        "table_name": "customers",
+        "column_name": "signed_up",
+        "data_type": "date",
+        "udt_name": "date",
+        "numeric_precision": null,
+        "numeric_scale": null,
+        "character_maximum_length": null,
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_schema": "public",
+        "table_name": "customers",
+        "column_name": "active",
+        "data_type": "boolean",
+        "udt_name": "bool",
+        "numeric_precision": null,
+        "numeric_scale": null,
+        "character_maximum_length": null,
+        "is_nullable": "YES",
+        "column_default": "true"
+      },
+      {
+        "table_schema": "public",
+        "table_name": "order_totals",
+        "column_name": "name",
+        "data_type": "text",
+        "udt_name": "text",
+        "numeric_precision": null,
+        "numeric_scale": null,
+        "character_maximum_length": null,
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_schema": "public",
+        "table_name": "order_totals",
+        "column_name": "orders",
+        "data_type": "bigint",
+        "udt_name": "int8",
+        "numeric_precision": "64",
+        "numeric_scale": "0",
+        "character_maximum_length": null,
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_schema": "public",
+        "table_name": "order_totals",
+        "column_name": "total",
+        "data_type": "numeric",
+        "udt_name": "numeric",
+        "numeric_precision": null,
+        "numeric_scale": null,
+        "character_maximum_length": null,
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_schema": "public",
+        "table_name": "orders",
+        "column_name": "id",
+        "data_type": "integer",
+        "udt_name": "int4",
+        "numeric_precision": "32",
+        "numeric_scale": "0",
+        "character_maximum_length": null,
+        "is_nullable": "NO",
+        "column_default": "nextval('orders_id_seq'::regclass)"
+      },
+      {
+        "table_schema": "public",
+        "table_name": "orders",
+        "column_name": "customer_id",
+        "data_type": "integer",
+        "udt_name": "int4",
+        "numeric_precision": "32",
+        "numeric_scale": "0",
+        "character_maximum_length": null,
+        "is_nullable": "NO",
+        "column_default": null
+      },
+      {
+        "table_schema": "public",
+        "table_name": "orders",
+        "column_name": "total",
+        "data_type": "numeric",
+        "udt_name": "numeric",
+        "numeric_precision": "10",
+        "numeric_scale": "2",
+        "character_maximum_length": null,
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_schema": "public",
+        "table_name": "orders",
+        "column_name": "placed_at",
+        "data_type": "timestamp without time zone",
+        "udt_name": "timestamp",
+        "numeric_precision": null,
+        "numeric_scale": null,
+        "character_maximum_length": null,
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "table_schema": "public",
+        "table_name": "orders",
+        "column_name": "status",
+        "data_type": "USER-DEFINED",
+        "udt_name": "order_status",
+        "numeric_precision": null,
+        "numeric_scale": null,
+        "character_maximum_length": null,
+        "is_nullable": "NO",
+        "column_default": "'placed'::order_status"
+      }
+    ],
+    "fields": [
+      {
+        "name": "table_schema",
+        "dataTypeID": 19,
+        "dataTypeModifier": -1
+      },
+      {
+        "name": "table_name",
+        "dataTypeID": 19,
+        "dataTypeModifier": -1
+      },
+      {
+        "name": "column_name",
+        "dataTypeID": 19,
+        "dataTypeModifier": -1
+      },
+      {
+        "name": "data_type",
+        "dataTypeID": 1043,
+        "dataTypeModifier": -1
+      },
+      {
+        "name": "udt_name",
+        "dataTypeID": 19,
+        "dataTypeModifier": -1
+      },
+      {
+        "name": "numeric_precision",
+        "dataTypeID": 25,
+        "dataTypeModifier": -1
+      },
+      {
+        "name": "numeric_scale",
+        "dataTypeID": 25,
+        "dataTypeModifier": -1
+      },
+      {
+        "name": "character_maximum_length",
+        "dataTypeID": 25,
+        "dataTypeModifier": -1
+      },
+      {
+        "name": "is_nullable",
+        "dataTypeID": 1043,
+        "dataTypeModifier": 7
+      },
+      {
+        "name": "column_default",
+        "dataTypeID": 1043,
+        "dataTypeModifier": -1
+      }
+    ]
+  },
+  {
+    "text": "SELECT table_schema, table_name, column_name FROM information_schema.columns WHERE table_schema NOT IN ('pg_catalog', 'information_schema', 'pg_internal', 'pg_extension', 'crdb_internal') AND table_schema NOT LIKE 'pg_toast%' AND table_schema NOT LIKE 'pg_temp%' AND is_identity = 'YES'",
+    "rows": [],
+    "fields": [
+      {
+        "name": "table_schema",
+        "dataTypeID": 19,
+        "dataTypeModifier": -1
+      },
+      {
+        "name": "table_name",
+        "dataTypeID": 19,
+        "dataTypeModifier": -1
+      },
+      {
+        "name": "column_name",
+        "dataTypeID": 19,
+        "dataTypeModifier": -1
+      }
+    ]
+  },
+  {
+    "text": "SELECT n.nspname AS table_schema, c.relname AS table_name, a.attname AS column_name, d.description FROM pg_description d JOIN pg_class c ON c.oid = d.objoid JOIN pg_namespace n ON n.oid = c.relnamespace LEFT JOIN pg_attribute a ON a.attrelid = c.oid AND a.attnum = d.objsubid AND d.objsubid > 0 WHERE d.classoid = 'pg_class'::regclass AND n.nspname NOT IN ('pg_catalog', 'information_schema', 'pg_internal', 'pg_extension', 'crdb_internal') AND n.nspname NOT LIKE 'pg_toast%' AND n.nspname NOT LIKE 'pg_temp%'",
+    "rows": [
+      {
+        "table_schema": "public",
+        "table_name": "customers",
+        "column_name": null,
+        "description": "People who have ordered"
+      },
+      {
+        "table_schema": "public",
+        "table_name": "customers",
+        "column_name": "email",
+        "description": "Lower case"
+      }
+    ],
+    "fields": [
+      {
+        "name": "table_schema",
+        "dataTypeID": 19,
+        "dataTypeModifier": -1
+      },
+      {
+        "name": "table_name",
+        "dataTypeID": 19,
+        "dataTypeModifier": -1
+      },
+      {
+        "name": "column_name",
+        "dataTypeID": 19,
+        "dataTypeModifier": -1
+      },
+      {
+        "name": "description",
+        "dataTypeID": 25,
+        "dataTypeModifier": -1
+      }
+    ]
+  },
+  {
+    "text": "SELECT n.nspname AS schema, t.typname AS name, e.enumlabel AS value FROM pg_enum e JOIN pg_type t ON t.oid = e.enumtypid JOIN pg_namespace n ON n.oid = t.typnamespace WHERE n.nspname NOT IN ('pg_catalog', 'information_schema', 'pg_internal', 'pg_extension', 'crdb_internal') AND n.nspname NOT LIKE 'pg_toast%' AND n.nspname NOT LIKE 'pg_temp%' ORDER BY n.nspname, t.typname, e.enumsortorder",
+    "rows": [
+      {
+        "schema": "public",
+        "name": "order_status",
+        "value": "placed"
+      },
+      {
+        "schema": "public",
+        "name": "order_status",
+        "value": "shipped"
+      },
+      {
+        "schema": "public",
+        "name": "order_status",
+        "value": "returned"
+      }
+    ],
+    "fields": [
+      {
+        "name": "schema",
+        "dataTypeID": 19,
+        "dataTypeModifier": -1
+      },
+      {
+        "name": "name",
+        "dataTypeID": 19,
+        "dataTypeModifier": -1
+      },
+      {
+        "name": "value",
+        "dataTypeID": 19,
+        "dataTypeModifier": -1
+      }
+    ]
+  },
+  {
+    "text": "SELECT con.conname AS name, con.contype AS kind, n.nspname AS table_schema, c.relname AS table_name, con.conrelid::text AS rel, con.conkey::text AS cols, con.confrelid::text AS ref_rel, con.confkey::text AS ref_cols, fn.nspname AS ref_schema, fc.relname AS ref_table FROM pg_constraint con JOIN pg_class c ON c.oid = con.conrelid JOIN pg_namespace n ON n.oid = c.relnamespace LEFT JOIN pg_class fc ON fc.oid = con.confrelid LEFT JOIN pg_namespace fn ON fn.oid = fc.relnamespace WHERE con.contype IN ('p', 'u', 'f') AND n.nspname NOT IN ('pg_catalog', 'information_schema', 'pg_internal', 'pg_extension', 'crdb_internal') AND n.nspname NOT LIKE 'pg_toast%' AND n.nspname NOT LIKE 'pg_temp%' ORDER BY con.conname",
+    "rows": [
+      {
+        "name": "customers_email_key",
+        "kind": "u",
+        "table_schema": "public",
+        "table_name": "customers",
+        "rel": "16394",
+        "cols": "{3}",
+        "ref_rel": "0",
+        "ref_cols": null,
+        "ref_schema": null,
+        "ref_table": null
+      },
+      {
+        "name": "customers_pkey",
+        "kind": "p",
+        "table_schema": "public",
+        "table_name": "customers",
+        "rel": "16394",
+        "cols": "{1}",
+        "ref_rel": "0",
+        "ref_cols": null,
+        "ref_schema": null,
+        "ref_table": null
+      },
+      {
+        "name": "orders_customer_id_fkey",
+        "kind": "f",
+        "table_schema": "public",
+        "table_name": "orders",
+        "rel": "16406",
+        "cols": "{2}",
+        "ref_rel": "16394",
+        "ref_cols": "{1}",
+        "ref_schema": "public",
+        "ref_table": "customers"
+      },
+      {
+        "name": "orders_pkey",
+        "kind": "p",
+        "table_schema": "public",
+        "table_name": "orders",
+        "rel": "16406",
+        "cols": "{1}",
+        "ref_rel": "0",
+        "ref_cols": null,
+        "ref_schema": null,
+        "ref_table": null
+      }
+    ],
+    "fields": [
+      {
+        "name": "name",
+        "dataTypeID": 19,
+        "dataTypeModifier": -1
+      },
+      {
+        "name": "kind",
+        "dataTypeID": 18,
+        "dataTypeModifier": -1
+      },
+      {
+        "name": "table_schema",
+        "dataTypeID": 19,
+        "dataTypeModifier": -1
+      },
+      {
+        "name": "table_name",
+        "dataTypeID": 19,
+        "dataTypeModifier": -1
+      },
+      {
+        "name": "rel",
+        "dataTypeID": 25,
+        "dataTypeModifier": -1
+      },
+      {
+        "name": "cols",
+        "dataTypeID": 25,
+        "dataTypeModifier": -1
+      },
+      {
+        "name": "ref_rel",
+        "dataTypeID": 25,
+        "dataTypeModifier": -1
+      },
+      {
+        "name": "ref_cols",
+        "dataTypeID": 25,
+        "dataTypeModifier": -1
+      },
+      {
+        "name": "ref_schema",
+        "dataTypeID": 19,
+        "dataTypeModifier": -1
+      },
+      {
+        "name": "ref_table",
+        "dataTypeID": 19,
+        "dataTypeModifier": -1
+      }
+    ]
+  },
+  {
+    "text": "SELECT a.attrelid::text AS rel, a.attnum::text AS num, a.attname AS name FROM pg_attribute a JOIN pg_class c ON c.oid = a.attrelid JOIN pg_namespace n ON n.oid = c.relnamespace WHERE a.attnum > 0 AND NOT a.attisdropped AND n.nspname NOT IN ('pg_catalog', 'information_schema', 'pg_internal', 'pg_extension', 'crdb_internal') AND n.nspname NOT LIKE 'pg_toast%' AND n.nspname NOT LIKE 'pg_temp%'",
+    "rows": [
+      {
+        "rel": "16393",
+        "num": "1",
+        "name": "last_value"
+      },
+      {
+        "rel": "16393",
+        "num": "2",
+        "name": "log_cnt"
+      },
+      {
+        "rel": "16393",
+        "num": "3",
+        "name": "is_called"
+      },
+      {
+        "rel": "16394",
+        "num": "2",
+        "name": "name"
+      },
+      {
+        "rel": "16394",
+        "num": "3",
+        "name": "email"
+      },
+      {
+        "rel": "16394",
+        "num": "4",
+        "name": "signed_up"
+      },
+      {
+        "rel": "16394",
+        "num": "1",
+        "name": "id"
+      },
+      {
+        "rel": "16394",
+        "num": "5",
+        "name": "active"
+      },
+      {
+        "rel": "16401",
+        "num": "1",
+        "name": "id"
+      },
+      {
+        "rel": "16403",
+        "num": "1",
+        "name": "email"
+      },
+      {
+        "rel": "16405",
+        "num": "1",
+        "name": "last_value"
+      },
+      {
+        "rel": "16405",
+        "num": "2",
+        "name": "log_cnt"
+      },
+      {
+        "rel": "16405",
+        "num": "3",
+        "name": "is_called"
+      },
+      {
+        "rel": "16406",
+        "num": "2",
+        "name": "customer_id"
+      },
+      {
+        "rel": "16406",
+        "num": "3",
+        "name": "total"
+      },
+      {
+        "rel": "16406",
+        "num": "4",
+        "name": "placed_at"
+      },
+      {
+        "rel": "16406",
+        "num": "1",
+        "name": "id"
+      },
+      {
+        "rel": "16406",
+        "num": "5",
+        "name": "status"
+      },
+      {
+        "rel": "16411",
+        "num": "1",
+        "name": "id"
+      },
+      {
+        "rel": "16418",
+        "num": "1",
+        "name": "customer_id"
+      },
+      {
+        "rel": "16419",
+        "num": "1",
+        "name": "name"
+      },
+      {
+        "rel": "16419",
+        "num": "2",
+        "name": "orders"
+      },
+      {
+        "rel": "16419",
+        "num": "3",
+        "name": "total"
+      }
+    ],
+    "fields": [
+      {
+        "name": "rel",
+        "dataTypeID": 25,
+        "dataTypeModifier": -1
+      },
+      {
+        "name": "num",
+        "dataTypeID": 25,
+        "dataTypeModifier": -1
+      },
+      {
+        "name": "name",
+        "dataTypeID": 19,
+        "dataTypeModifier": -1
+      }
+    ]
+  },
+  {
+    "text": "SELECT schemaname AS table_schema, tablename AS table_name, indexname AS name, indexdef AS def FROM pg_indexes WHERE schemaname NOT IN ('pg_catalog', 'information_schema', 'pg_internal', 'pg_extension', 'crdb_internal') AND schemaname NOT LIKE 'pg_toast%' AND schemaname NOT LIKE 'pg_temp%' ORDER BY indexname",
+    "rows": [
+      {
+        "table_schema": "public",
+        "table_name": "customers",
+        "name": "customers_email_key",
+        "def": "CREATE UNIQUE INDEX customers_email_key ON public.customers USING btree (email)"
+      },
+      {
+        "table_schema": "public",
+        "table_name": "customers",
+        "name": "customers_pkey",
+        "def": "CREATE UNIQUE INDEX customers_pkey ON public.customers USING btree (id)"
+      },
+      {
+        "table_schema": "public",
+        "table_name": "orders",
+        "name": "orders_customer",
+        "def": "CREATE INDEX orders_customer ON public.orders USING btree (customer_id)"
+      },
+      {
+        "table_schema": "public",
+        "table_name": "orders",
+        "name": "orders_pkey",
+        "def": "CREATE UNIQUE INDEX orders_pkey ON public.orders USING btree (id)"
+      }
+    ],
+    "fields": [
+      {
+        "name": "table_schema",
+        "dataTypeID": 19,
+        "dataTypeModifier": -1
+      },
+      {
+        "name": "table_name",
+        "dataTypeID": 19,
+        "dataTypeModifier": -1
+      },
+      {
+        "name": "name",
+        "dataTypeID": 19,
+        "dataTypeModifier": -1
+      },
+      {
+        "name": "def",
+        "dataTypeID": 25,
+        "dataTypeModifier": -1
+      }
+    ]
+  },
+  {
+    "text": "SELECT table_schema, table_name, view_definition FROM information_schema.views WHERE table_schema NOT IN ('pg_catalog', 'information_schema', 'pg_internal', 'pg_extension', 'crdb_internal') AND table_schema NOT LIKE 'pg_toast%' AND table_schema NOT LIKE 'pg_temp%'",
+    "rows": [
+      {
+        "table_schema": "public",
+        "table_name": "order_totals",
+        "view_definition": " SELECT c.name,\n    count(o.id) AS orders,\n    sum(o.total) AS total\n   FROM (customers c\n     LEFT JOIN orders o ON ((o.customer_id = c.id)))\n  GROUP BY c.name;"
+      }
+    ],
+    "fields": [
+      {
+        "name": "table_schema",
+        "dataTypeID": 19,
+        "dataTypeModifier": -1
+      },
+      {
+        "name": "table_name",
+        "dataTypeID": 19,
+        "dataTypeModifier": -1
+      },
+      {
+        "name": "view_definition",
+        "dataTypeID": 1043,
+        "dataTypeModifier": -1
+      }
+    ]
+  },
+  {
+    "text": "SET default_transaction_read_only = on",
+    "rows": [],
+    "fields": []
+  },
+  {
+    "text": "SET timezone = 'UTC'",
+    "rows": [],
+    "fields": []
+  },
+  {
+    "text": "SET datestyle = 'ISO, YMD'",
+    "rows": [],
+    "fields": []
+  },
+  {
+    "text": "SELECT * FROM \"orders\" LIMIT 10",
+    "rowMode": "array",
+    "rows": [
+      [
+        "101",
+        "1",
+        "19.99",
+        "2024-04-01 09:30:00",
+        "shipped"
+      ],
+      [
+        "102",
+        "1",
+        "5.50",
+        "2024-04-02 14:00:00",
+        "placed"
+      ],
+      [
+        "103",
+        "2",
+        "120.00",
+        "2024-04-03 11:15:00",
+        "returned"
+      ],
+      [
+        "104",
+        "3",
+        "42.25",
+        "2024-04-04 16:45:00",
+        "placed"
+      ]
+    ],
+    "fields": [
+      {
+        "name": "id",
+        "dataTypeID": 23,
+        "dataTypeModifier": -1
+      },
+      {
+        "name": "customer_id",
+        "dataTypeID": 23,
+        "dataTypeModifier": -1
+      },
+      {
+        "name": "total",
+        "dataTypeID": 1700,
+        "dataTypeModifier": 655366
+      },
+      {
+        "name": "placed_at",
+        "dataTypeID": 1114,
+        "dataTypeModifier": -1
+      },
+      {
+        "name": "status",
+        "dataTypeID": 16386,
+        "dataTypeModifier": -1
+      }
+    ]
+  },
+  {
+    "text": "SET default_transaction_read_only = on",
+    "rows": [],
+    "fields": []
+  },
+  {
+    "text": "SET timezone = 'UTC'",
+    "rows": [],
+    "fields": []
+  },
+  {
+    "text": "SET datestyle = 'ISO, YMD'",
+    "rows": [],
+    "fields": []
+  },
+  {
+    "text": "SELECT * FROM (SELECT c.name, o.total, o.placed_at, o.status, c.signed_up, c.active FROM orders o JOIN customers c ON c.id = o.customer_id ORDER BY o.id) AS puddle_query LIMIT 2",
+    "rowMode": "array",
+    "rows": [
+      [
+        "Ada Lovelace",
+        "19.99",
+        "2024-04-01 09:30:00",
+        "shipped",
+        "2024-01-15",
+        "t"
+      ],
+      [
+        "Ada Lovelace",
+        "5.50",
+        "2024-04-02 14:00:00",
+        "placed",
+        "2024-01-15",
+        "t"
+      ]
+    ],
+    "fields": [
+      {
+        "name": "name",
+        "dataTypeID": 25,
+        "dataTypeModifier": -1
+      },
+      {
+        "name": "total",
+        "dataTypeID": 1700,
+        "dataTypeModifier": 655366
+      },
+      {
+        "name": "placed_at",
+        "dataTypeID": 1114,
+        "dataTypeModifier": -1
+      },
+      {
+        "name": "status",
+        "dataTypeID": 16386,
+        "dataTypeModifier": -1
+      },
+      {
+        "name": "signed_up",
+        "dataTypeID": 1082,
+        "dataTypeModifier": -1
+      },
+      {
+        "name": "active",
+        "dataTypeID": 16,
+        "dataTypeModifier": -1
+      }
+    ]
+  }
+]

@@ -39,23 +39,25 @@ const host = (defaultPort?: number): DriverField[] => [
 const database = (label = 'Database'): DriverField => ({ key: 'database', label, kind: 'text', required: true });
 const user: DriverField = { key: 'user', label: 'User name', kind: 'text', required: true };
 const ssl: DriverField = { key: 'ssl', label: 'Use SSL', kind: 'boolean', default: false };
+/** Whether an SSL connection checks the server's certificate against the trusted authorities; off for a self-signed one. */
+const sslVerify: DriverField = { key: 'sslVerify', label: 'Check the certificate', kind: 'boolean', default: true, hint: 'Off for a self-signed certificate.' };
 const file = (label: string): DriverField => ({ key: 'file', label, kind: 'file', hint: 'A file on this computer, read in the browser. Nothing is uploaded.', required: true });
 const url = (placeholder: string): DriverField => ({ key: 'url', label: 'Address', kind: 'text', placeholder, required: true });
 
 const SERVICE: ConnectionVia[] = ['local', 'pi'];
 
 export const DRIVERS: Driver[] = [
-  { id: 'postgres', label: 'PostgreSQL', monogram: 'Pg', runsIn: SERVICE, auth: 'password', fields: [...host(5432), database(), user, ssl], community: true },
+  { id: 'postgres', label: 'PostgreSQL', monogram: 'Pg', runsIn: SERVICE, auth: 'password', fields: [...host(5432), database(), user, ssl, sslVerify], community: true },
   { id: 'mysql', label: 'MySQL', monogram: 'My', runsIn: SERVICE, auth: 'password', fields: [...host(3306), database(), user, ssl], community: true },
   { id: 'sqlite', label: 'SQLite', monogram: 'SL', runsIn: ['browser', ...SERVICE], auth: 'none', fields: [{ ...file('Database file'), when: ['browser'] }, { key: 'path', label: 'Path of the database file', kind: 'text', placeholder: '/data/shop.sqlite', hint: 'On the computer running puddle-connect, inside the folders it may read.', required: true, when: SERVICE }], note: 'A .sqlite or .db file, read in the browser or by puddle-connect.', community: true },
   { id: 'sqlserver', label: 'SQL Server', monogram: 'MS', runsIn: SERVICE, auth: 'password', fields: [...host(1433), database(), user, { key: 'domain', label: 'Domain', kind: 'text', hint: 'For a Windows login. Empty for a SQL login.' }, { key: 'encrypt', label: 'Encrypt', kind: 'boolean', default: true }], community: true },
-  { id: 'redshift', label: 'Amazon Redshift', monogram: 'Rs', runsIn: SERVICE, auth: 'password', fields: [...host(5439), database(), user, { ...ssl, default: true }], community: true },
-  { id: 'cockroach', label: 'CockroachDB', monogram: 'Cr', runsIn: SERVICE, auth: 'password', fields: [...host(26257), database(), user, { ...ssl, default: true }], community: true },
+  { id: 'redshift', label: 'Amazon Redshift', monogram: 'Rs', runsIn: SERVICE, auth: 'password', fields: [...host(5439), database(), user, { ...ssl, default: true }, sslVerify], community: true },
+  { id: 'cockroach', label: 'CockroachDB', monogram: 'Cr', runsIn: SERVICE, auth: 'password', fields: [...host(26257), database(), user, { ...ssl, default: true }, sslVerify], community: true },
   { id: 'mariadb', label: 'MariaDB', monogram: 'Ma', runsIn: SERVICE, auth: 'password', fields: [...host(3306), database(), user, ssl], community: true },
   { id: 'tidb', label: 'TiDB', monogram: 'Ti', runsIn: SERVICE, auth: 'password', fields: [...host(4000), database(), user, { ...ssl, default: true }], community: true },
   { id: 'bigquery', label: 'Google BigQuery', monogram: 'BQ', runsIn: ['browser', ...SERVICE], auth: 'oauth', fields: [{ key: 'project', label: 'Project', kind: 'text', required: true }, { key: 'dataset', label: 'Dataset', kind: 'text', hint: 'Empty lists every dataset.' }], note: 'Signs in with Google in the browser; a service-account key on the Pi.', community: true },
   { id: 'redis', label: 'Redis', monogram: 'Rd', runsIn: ['browser', ...SERVICE], auth: 'password', fields: [...host(6379), { key: 'db', label: 'Database number', kind: 'number', default: 0 }, { ...user, required: false }, { key: 'rest', label: 'Upstash REST address', kind: 'text', hint: 'In the browser, a Redis with a REST interface (Upstash) is read directly; the token is the secret.' }], community: true },
-  { id: 'greengage', label: 'GreengageDB', monogram: 'Gg', runsIn: SERVICE, auth: 'password', fields: [...host(5432), database(), user, ssl], community: true },
+  { id: 'greengage', label: 'GreengageDB', monogram: 'Gg', runsIn: SERVICE, auth: 'password', fields: [...host(5432), database(), user, ssl, sslVerify], community: true },
   { id: 'oracle', label: 'Oracle Database', monogram: 'Or', runsIn: SERVICE, auth: 'password', fields: [...host(1521), { key: 'service', label: 'Service name', kind: 'text', required: true }, user] },
   { id: 'cassandra', label: 'Cassandra', monogram: 'Ca', runsIn: SERVICE, auth: 'password', fields: [...host(9042), { key: 'keyspace', label: 'Keyspace', kind: 'text' }, { key: 'datacenter', label: 'Local data centre', kind: 'text', default: 'datacenter1' }, { ...user, required: false }] },
   { id: 'scylla', label: 'ScyllaDB', monogram: 'Sc', runsIn: SERVICE, auth: 'password', fields: [...host(9042), { key: 'keyspace', label: 'Keyspace', kind: 'text' }, { key: 'datacenter', label: 'Local data centre', kind: 'text', default: 'datacenter1' }, { ...user, required: false }] },

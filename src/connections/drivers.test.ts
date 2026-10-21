@@ -16,7 +16,7 @@ describe('drivers', () => {
 
   it('starts a connection with the driver’s defaults and says which required fields are empty', () => {
     const pg = driver('postgres');
-    expect(defaultSettings(pg)).toEqual({ port: 5432, ssl: false });
+    expect(defaultSettings(pg)).toEqual({ port: 5432, ssl: false, sslVerify: true });
     expect(missingFields(pg, defaultSettings(pg))).toEqual(['Host', 'Database', 'User name']);
     expect(missingFields(pg, { host: 'db', database: 'shop', user: 'kev' })).toEqual([]);
   });
