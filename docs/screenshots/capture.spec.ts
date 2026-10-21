@@ -210,8 +210,11 @@ test('the column menu', async ({ page }) => {
   await shot(page, 'column-menu-cell', menu);
   await page.keyboard.press('Escape');
 
-  await rightClickAt(page, 450);
-  await menu.getByRole('menuitem', { name: 'Replace values…' }).click();
+  // Under CI load the menu has been seen to close again before the item could be clicked: open it again if so.
+  await expect(async () => {
+    await rightClickAt(page, 450);
+    await menu.getByRole('menuitem', { name: 'Replace values…' }).click({ timeout: 5_000 });
+  }).toPass({ timeout: 60_000 });
   await shot(page, 'column-menu-replace', page.getByRole('dialog', { name: 'Replace values in city' }));
   await page.getByRole('dialog').getByRole('button', { name: 'Replace' }).click();
   await expect(steps(page)).toHaveCount(1);
