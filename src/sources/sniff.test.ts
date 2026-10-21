@@ -90,7 +90,7 @@ describe('binary signatures', () => {
   });
 
   it('refuses what it can name but not read, saying what it is and what to do', () => {
-    expect(() => file('letter.doc', bytes([0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1]))).toThrow('letter.doc is an old Office file that isn’t a workbook, which Puddle doesn’t read. Add a CSV, TSV, JSON, NDJSON, Parquet, Arrow, spreadsheet (.xlsx, .xls, .ods, .numbers, .dbf), XML or Access (.accdb, .mdb) file, or a .gz or .zip holding one.');
+    expect(() => file('letter.doc', bytes([0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1]))).toThrow('letter.doc is an old Office file that isn’t a workbook, which Puddle doesn’t read. Add a CSV, TSV, JSON, NDJSON, Parquet, Arrow, spreadsheet (.xlsx, .xls, .ods, .numbers, .dbf), XML, YAML, TOML, INI, GeoJSON or Access (.accdb, .mdb) file, or a .gz or .zip holding one.');
     expect(() => file('letter.doc', ole('WordDocument'))).toThrow('letter.doc is a Word document, which Puddle doesn’t read.');
     // A compressed file or an archive is opened by addFileSource for the file inside (src/sources/archive.ts); the sniff alone names it.
     expect(() => file('orders.csv.gz', bytes([0x1f, 0x8b, 0x08]))).toThrow('orders.csv.gz is a gzip-compressed file, which Puddle opens from a chosen file: unpack it and add the file inside, or choose the archive itself.');
@@ -100,7 +100,7 @@ describe('binary signatures', () => {
     expect(archiveKindOf(fixture('sales.xlsx'))).toBeUndefined();
     expect(archiveKindOf(bytes('a,b\n1,2'))).toBeUndefined();
     expect(() => file('report.pdf', bytes('%PDF-1.4'))).toThrow(/report\.pdf is a PDF, which Puddle doesn’t read\. Add a CSV/);
-    expect(() => file('photo.png', bytes([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0]))).toThrow('photo.png is a binary file, which Puddle doesn’t read. Add a CSV, TSV, JSON, NDJSON, Parquet, Arrow, spreadsheet (.xlsx, .xls, .ods, .numbers, .dbf), XML or Access (.accdb, .mdb) file, or a .gz or .zip holding one.');
+    expect(() => file('photo.png', bytes([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0]))).toThrow('photo.png is a binary file, which Puddle doesn’t read. Add a CSV, TSV, JSON, NDJSON, Parquet, Arrow, spreadsheet (.xlsx, .xls, .ods, .numbers, .dbf), XML, YAML, TOML, INI, GeoJSON or Access (.accdb, .mdb) file, or a .gz or .zip holding one.');
     expect(() => file('empty.dat', bytes(''))).toThrow(SourceError);
   });
 });
@@ -180,13 +180,22 @@ describe('delimited text', () => {
     expect(sniffText('1,Ada,36\n2,Bob,41\n3,Cy,29\n').parseOptions).toEqual({ header: false });
   });
 
-  it('reads a pipe table or SAP list as a pipe table, fixed-width text with its boundaries, and names YAML without reading it', () => {
+  it('reads a pipe table or SAP list as a pipe table, fixed-width text with its boundaries, and YAML, TOML and INI by their lines', () => {
     expect(sniffText('|a|b|\n|---|---|\n|1|2|\n')).toMatchObject({ format: 'pipes', confidence: 'likely', parseOptions: {} });
     expect(sniffText('Title\n|a|b|\n|1|2|\n|3|4|\n')).toMatchObject({ format: 'pipes', reason: expect.stringContaining('1 line around the table') });
     const fixed = ['NAME      CITY     AGE', 'Ada       Leeds     36', 'Bob       York      41', 'Cy        Hull      29', 'Dee       Bath      33'];
     expect(fixedWidthColumns(fixed)).toBe(2);
     expect(sniffText(fixed.join('\n'))).toMatchObject({ format: 'fixed', confidence: 'likely', parseOptions: { boundaries: [10, 19] }, reason: '3 columns at fixed positions, lined up with spaces.' });
-    expect(sniffText('---\nname: Ada\ncity: Leeds\n')).toMatchObject({ confidence: 'unsure', reason: expect.stringContaining('YAML') });
+    expect(sniffText('---\nname: Ada\ncity: Leeds\n')).toMatchObject({ format: 'yaml', confidence: 'likely', reason: 'Key: value lines, as YAML has them.' });
+    expect(sniffText('servers:\n  - name: alpha\n    ip: 10.0.0.1\n  - name: beta\n')).toMatchObject({ format: 'yaml', confidence: 'likely' });
+    expect(sniffText('; settings\napp = Puddle\n[database]\nhost = db.example.com\nport = 5432\n')).toMatchObject({ format: 'ini', confidence: 'likely', reason: 'Key = value lines under [section] headings, as an INI file has them.' });
+    expect(sniffText('title = "Example"\n[owner]\nname = "Ada"\n[[products]]\nsku = "A-1"\n')).toMatchObject({ format: 'toml', confidence: 'likely' });
+    // The name settles TOML against INI, and a file named for one of them is sure.
+    expect(file('settings.ini', bytes('[a]\nk = "v"\n'))).toMatchObject({ format: 'ini', confidence: 'sure' });
+    expect(file('config.toml', bytes('[a]\nk = v\n'))).toMatchObject({ format: 'toml', confidence: 'sure' });
+    expect(file('servers.yaml', fixture('structured/servers.yaml'))).toMatchObject({ format: 'yaml', confidence: 'sure' });
+    expect(file('places.geojson', fixture('structured/places.geojson'))).toMatchObject({ format: 'geojson', confidence: 'sure', reason: 'A GeoJSON feature collection.' });
+    expect(file('places.kml', fixture('structured/places.kml'))).toMatchObject({ format: 'xml', confidence: 'sure' });
     expect(sniffText('Dear all,\n\nHere are the notes.\nThanks.\n')).toMatchObject({ format: 'csv', confidence: 'unsure' });
   });
 

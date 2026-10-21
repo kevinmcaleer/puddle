@@ -31,7 +31,9 @@ Puddle reads these formats:
 | Spreadsheets | `.xlsx`, `.xlsm`, `.xls`, `.xlsb`, `.ods`, `.fods`, `.numbers`, `.dbf`, `.dif`, `.slk`, `.wk1` | Excel in every format since 97 (macros in an `.xlsm` are ignored), OpenDocument, Apple Numbers, dBase and FoxPro tables (also the data part of a Shapefile), and the old SYLK, DIF and Lotus 1-2-3 formats, all read the same way. Choose the sheet and, when it holds several tables, which one; the header row and how many rows it takes; an optional cell range; and whether merged cells are filled. |
 | JSON and NDJSON | `.json`, `.ndjson`, `.jsonl` | An array of objects, or one object per line. |
 | Parquet | `.parquet`, `.pq` | Read directly, with its column types. |
-| XML | `.xml` | The repeating element is read as rows. See [XML](#xml). |
+| XML | `.xml`, `.kml`, `.gpx` | The repeating element is read as rows (a KML file's placemarks, a GPX track's points). See [XML](#xml). |
+| YAML, TOML and INI | `.yaml`, `.yml`, `.toml`, `.ini`, `.cfg` | The list or map of records in the file is read as rows; nested fields become dotted columns. See [YAML, TOML, INI and GeoJSON](#yaml-toml-ini-and-geojson). |
+| GeoJSON | `.geojson` | Each feature is a row: its properties as columns, its geometry as JSON. See [YAML, TOML, INI and GeoJSON](#yaml-toml-ini-and-geojson). |
 | Fixed width | `.txt`, `.prn`, `.dat` | Columns lined up with spaces, as mainframe and ERP reports print them. The boundaries are found from the columns of spaces and adjusted on a ruler. See [Fixed width and pipe tables](#fixed-width-and-pipe-tables). |
 | Pipe table | `.txt` | Rows between `|` characters, as SAP lists and Markdown tables have them. The lines around the table are left out. See [Fixed width and pipe tables](#fixed-width-and-pipe-tables). |
 | Access | `.accdb`, `.mdb` | Choose the table; add the database's other tables as sources of their own. See [Access databases](#access-databases). |
@@ -131,6 +133,14 @@ A report printed to text often has no delimiter at all: each column starts at th
 An SAP list, and a Markdown table, writes its rows between `|` characters, with rules of dashes between them and banners, page headers and footers around them. Puddle reads such a file as a **pipe table**: only the lines between pipes are rows, rules and a header printed again on a later page are dropped, the empty columns the edge pipes would make are left out, and every cell is trimmed. The inspector says how many lines around the table were left out. A total row at the end is kept, and listed as a suggested fix on the Issues panel, because removing data is your call.
 
 Both are read in your browser into rows that DuckDB then types, so the amounts and dates are read as on any text file: German amounts with a trailing minus, as SAP writes them, are a Parse numbers fix away. `puddle-run` reads both the same way, with the boundaries the project saved.
+
+## YAML, TOML, INI and GeoJSON
+
+Configuration and small data sets often come as YAML, TOML or INI rather than CSV. Puddle parses the file and looks for the records in it: a list of objects (a YAML list, a TOML `[[array of tables]]`), or a map whose entries are records (INI sections, TOML `[server.alpha]` tables), where each entry becomes a row with its name in a `key` column. The biggest list wins; the inspector lists every place records were found under **Records**, and **The whole document, as one row** reads the top-level keys as columns. Nested maps become dotted columns (`owner.email`), lists inside a record are kept as JSON text, and a YAML file of several documents (separated by `---`) reads each as a row.
+
+A GeoJSON file reads each feature as a row: its `id` where it has one, its properties as columns and its geometry as JSON text, which a step can pull coordinates out of. KML and GPX files are XML, read with the placemarks or track points as the record element; a KMZ is a zipped KML and opens as one.
+
+The rows are typed by DuckDB as on any CSV, so numbers, dates and booleans written as text are a Parse step away. `puddle-run` reads all of them the same way.
 
 ## Access databases
 

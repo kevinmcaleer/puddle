@@ -1,0 +1,23 @@
+title = "Example"
+
+[owner]
+name = "Ada"
+dob = 1979-05-27T07:32:00Z
+
+[[products]]
+sku = "A-1"
+price = 12.5
+in_stock = true
+
+[[products]]
+sku = "B-2"
+price = 8
+in_stock = false
+
+[servers.alpha]
+ip = "10.0.0.1"
+role = "web"
+
+[servers.beta]
+ip = "10.0.0.2"
+role = "db"

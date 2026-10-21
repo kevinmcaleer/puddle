@@ -1,0 +1,27 @@
+# Servers inventory
+region: eu-west
+servers:
+  - name: alpha
+    ip: 10.0.0.1
+    cores: 4
+    tags: [web, prod]
+    added: 2026-01-05
+    owner:
+      team: platform
+      email: platform@example.com
+  - name: beta
+    ip: 10.0.0.2
+    cores: 8
+    tags: []
+    added: 2026-02-10
+    owner:
+      team: data
+      email: data@example.com
+  - name: gamma
+    ip: 10.0.0.3
+    cores: 2
+    tags: [batch]
+    added: ~
+    owner:
+      team: data
+      email: ~

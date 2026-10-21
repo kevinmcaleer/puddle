@@ -365,8 +365,11 @@ export function sniffText(text: string, tail?: string): Sniffed {
     }
     return { format: 'xml', confidence: 'sure', ...none, reason: 'Starts with an XML tag.' };
   }
-  if (t.startsWith('[')) return { format: 'json', confidence: 'sure', ...none, reason: 'Starts with a JSON array.' };
+  // A [section] heading on its own line opens an INI or TOML file, not a JSON array.
+  if (t.startsWith('[') && !/^\[\[?[\w.\-"' ]+\]\]?\s*$/.test(first)) return { format: 'json', confidence: 'sure', ...none, reason: 'Starts with a JSON array.' };
   if (t.startsWith('{')) {
+    // GeoJSON names itself near the top: a FeatureCollection or one Feature.
+    if (/^\{[\s\S]{0,2000}"type"\s*:\s*"Feature(Collection)?"/.test(t)) return { format: 'geojson', confidence: 'sure', ...none, reason: 'A GeoJSON feature collection.' };
     const objects = lines.filter((l) => /^\{.*\}\s*,?$/.test(l.trim()));
     if (lines.length >= 2 && objects.length === lines.length) return { format: 'ndjson', confidence: 'sure', ...none, reason: 'One JSON object per line.' };
     return { format: 'json', confidence: 'sure', ...none, reason: 'Starts with a JSON object.' };
@@ -402,8 +405,17 @@ export function sniffText(text: string, tail?: string): Sniffed {
   }
 
   if (fixed.length) return { format: 'fixed', confidence: 'likely', parseOptions: { boundaries: fixed }, alternatives: [], reason: `${fixed.length + 1} columns at fixed positions, lined up with spaces.` };
-  if (/^---\s*$/m.test(first) || lines.filter((l) => /^\s*[\w.-]+:(\s|$)/.test(l)).length >= lines.length * 0.6) {
-    return { format: 'csv', confidence: 'unsure', ...none, reason: 'Looks like YAML, which Puddle doesn’t read. Choose a format, or save the data as CSV.' };
+  // TOML and INI: [section] headings and key = value lines. TOML quotes its strings and has arrays and [[tables]]; INI doesn't.
+  const content = lines.filter((l) => !/^\s*[;#]/.test(l));
+  const sections = content.filter((l) => /^\s*\[\[?[^\]]+\]\]?\s*$/.test(l)).length;
+  const assignments = content.filter((l) => /^\s*[\w.\-"']+\s*=/.test(l)).length;
+  if (content.length >= 2 && sections + assignments >= content.length * 0.8 && assignments >= 1) {
+    const toml = content.some((l) => /^\s*\[\[[^\]]+\]\]\s*$/.test(l) || /=\s*("|'|\[|\{|true\s*$|false\s*$)/.test(l));
+    return { format: toml ? 'toml' : 'ini', confidence: 'likely', ...none, reason: toml ? 'Key = value lines with quoted strings or [[tables]], as TOML has them.' : 'Key = value lines under [section] headings, as an INI file has them.' };
+  }
+  // YAML: key: value lines, a --- document marker, or a list of - items.
+  if (/^---\s*$/m.test(first) || content.filter((l) => /^\s*(-\s+)?[\w.-]+:(\s|$)/.test(l) || /^\s*-\s+\S/.test(l)).length >= content.length * 0.6) {
+    return { format: 'yaml', confidence: 'likely', ...none, reason: 'Key: value lines, as YAML has them.' };
   }
   return { format: 'csv', confidence: 'unsure', ...none, reason: lines.length ? 'Plain lines with no separator Puddle recognises.' : 'The file is empty.' };
 }
@@ -465,6 +477,8 @@ export function sniff({ name, head, size, tail }: SniffInput): Sniffed {
     if (byName && content.confidence === 'unsure') return { ...content, format: byName, confidence: 'likely', parseOptions: encoding, reason: `${content.reason} Read as ${byName.toUpperCase()}, as the file name says.` };
     return { ...content, confidence: sure, parseOptions };
   }
+  // TOML and INI are one family: the name settles which, when the content saw the other.
+  if ((byName === 'toml' || byName === 'ini') && (content.format === 'toml' || content.format === 'ini')) return { ...content, format: byName, confidence: 'sure', parseOptions: encoding };
   // They disagree. Unambiguous content wins (D24): JSON named .csv reads as JSON. Otherwise the name has the final say.
   if (content.confidence === 'sure') return { ...content, parseOptions, alternatives: [byName], reason: `${content.reason} The name says ${byName.toUpperCase()}, but the content doesn’t.` };
   if (content.confidence === 'likely') return { ...content, parseOptions, confidence: 'unsure', alternatives: [byName], reason: `${content.reason} The name says ${byName.toUpperCase()}.` };
