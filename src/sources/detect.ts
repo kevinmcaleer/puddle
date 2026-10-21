@@ -19,6 +19,14 @@ const BY_EXTENSION: Record<string, SourceFormat> = {
   parquet: 'parquet',
   pq: 'parquet',
   xml: 'xml',
+  kml: 'xml',
+  gpx: 'xml',
+  yaml: 'yaml',
+  yml: 'yaml',
+  toml: 'toml',
+  ini: 'ini',
+  cfg: 'ini',
+  geojson: 'geojson',
   arrow: 'arrow',
   feather: 'arrow',
   ipc: 'arrow',
@@ -28,10 +36,10 @@ const BY_EXTENSION: Record<string, SourceFormat> = {
   ...Object.fromEntries(SPREADSHEET_EXTENSIONS.map((ext) => [ext, 'xlsx' as const])),
 };
 
-export const ACCEPT = `.csv,.txt,.tsv,.tab,.json,.ndjson,.jsonl,.parquet,.pq,.arrow,.feather,.ipc,${SPREADSHEET_EXTENSIONS.map((e) => `.${e}`).join(',')},.xml,.mdb,.accdb,.gz,.zip,.dat,.log,.text,.prn`;
+export const ACCEPT = `.csv,.txt,.tsv,.tab,.json,.ndjson,.jsonl,.parquet,.pq,.arrow,.feather,.ipc,${SPREADSHEET_EXTENSIONS.map((e) => `.${e}`).join(',')},.xml,.kml,.gpx,.yaml,.yml,.toml,.ini,.cfg,.geojson,.mdb,.accdb,.gz,.zip,.dat,.log,.text,.prn`;
 
 /** What Puddle reads, for the refusals. */
-export const READS = 'Add a CSV, TSV, JSON, NDJSON, Parquet, Arrow, spreadsheet (.xlsx, .xls, .ods, .numbers, .dbf), XML or Access (.accdb, .mdb) file, or a .gz or .zip holding one.';
+export const READS = 'Add a CSV, TSV, JSON, NDJSON, Parquet, Arrow, spreadsheet (.xlsx, .xls, .ods, .numbers, .dbf), XML, YAML, TOML, INI, GeoJSON or Access (.accdb, .mdb) file, or a .gz or .zip holding one.';
 
 /** Plain-text extensions that say nothing about the shape inside; `sniff` reads it from the bytes. */
 export const TEXT_EXTENSIONS = new Set(['txt', 'dat', 'log', 'text', 'prn']);
@@ -61,6 +69,7 @@ export function formatFromText(text: string): SourceFormat {
   const t = text.trimStart();
   const firstLine = t.split(/\r?\n/, 1)[0] ?? '';
   if (/^<[?!a-zA-Z_]/.test(t)) return 'xml';
+  if (/^\{[\s\S]{0,2000}"type"\s*:\s*"Feature(Collection)?"/.test(t)) return 'geojson';
   if (t.startsWith('[')) return 'json';
   if (t.startsWith('{')) return /^\{.*\}\s*$/.test(firstLine) && t.includes('\n') ? 'ndjson' : 'json';
   if (firstLine.includes('\t')) return 'tsv';

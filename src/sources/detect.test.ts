@@ -19,6 +19,14 @@ describe('format from a file name', () => {
     ['book.xlsb', 'xlsx'],
     ['book.xlsm', 'xlsx'],
     ['customers.arrow', 'arrow'],
+    ['servers.yaml', 'yaml'],
+    ['servers.yml', 'yaml'],
+    ['pyproject.toml', 'toml'],
+    ['settings.ini', 'ini'],
+    ['app.cfg', 'ini'],
+    ['places.geojson', 'geojson'],
+    ['places.kml', 'xml'],
+    ['track.gpx', 'xml'],
     ['customers.feather', 'arrow'],
     ['orders.csv.gz', 'csv'],
     ['book.xlsx.gz', 'xlsx'],
@@ -38,7 +46,7 @@ describe('format from a file name', () => {
   });
 
   it('refuses unknown formats with what it can read', () => {
-    expect(() => formatFromName('photo.png')).toThrow(/CSV, TSV, JSON, NDJSON, Parquet, Arrow, spreadsheet \(\.xlsx, \.xls, \.ods, \.numbers, \.dbf\), XML or Access \(\.accdb, \.mdb\) file, or a \.gz or \.zip holding one/);
+    expect(() => formatFromName('photo.png')).toThrow(/CSV, TSV, JSON, NDJSON, Parquet, Arrow, spreadsheet \(\.xlsx, \.xls, \.ods, \.numbers, \.dbf\), XML, YAML, TOML, INI, GeoJSON or Access \(\.accdb, \.mdb\) file, or a \.gz or \.zip holding one/);
     expect(() => formatFromName('README')).toThrow(SourceError);
   });
 

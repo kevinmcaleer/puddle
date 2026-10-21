@@ -6,16 +6,16 @@ import type { EngineClient } from '../engine';
 import { useProject, useProjectStore, type Project, type Source } from '../model';
 import { sourceFile } from './add';
 import { useAttachments } from './attachments';
-import { decodeText, isRewrittenText, readText, rewrittenCsv, rulerLines, type RewrittenTable } from './text';
+import { decodeText, isRewrittenText, readText, rewrittenCsv, rulerLines, type RewrittenFormat, type RewrittenTable } from './text';
 
 /**
- * Fixed-width text and pipe tables. DuckDB reads neither, so Puddle reads them (./fixedWidth, ./pipes) and hands
+ * Fixed-width text, pipe tables and structured text (YAML, TOML, INI, GeoJSON). DuckDB reads none of them, so Puddle reads them (./fixedWidth, ./pipes, src/structured) and hands
  * DuckDB the rows as CSV, registered under a name that follows the file and the read options (sourceFileName), as
  * XML is (./xml). The text comes from a chosen file, from a web address (kept here as the fetched bytes) or from
  * pasted text stored in the project.
  */
 
-export interface RewriteRead extends Pick<RewrittenTable, 'boundaries' | 'dropped'> {
+export interface RewriteRead extends Pick<RewrittenTable, 'boundaries' | 'dropped' | 'record' | 'candidates'> {
   rows: number;
   columns: number;
   /** The first lines of the table, for the ruler. */
@@ -85,7 +85,7 @@ function remember(engine: EngineClient, id: string, file: string, input: Input, 
 
 const textOf = async (input: Input, encoding?: string) => (typeof input === 'string' ? input : decodeText(input instanceof Uint8Array ? input : new Uint8Array(await input.arrayBuffer()), encoding));
 
-async function read(engine: EngineClient, source: Source & { format: 'fixed' | 'pipes' }, input: Input, file: string) {
+async function read(engine: EngineClient, source: Source & { format: RewrittenFormat }, input: Input, file: string) {
   const id = source.id;
   const token = ++tokens;
   attempts.set(id, { file, input, token });
@@ -98,7 +98,7 @@ async function read(engine: EngineClient, source: Source & { format: 'fixed' | '
     const table = readText(source.format, text, o);
     await engine.dropFile(file).catch(() => undefined);
     await engine.registerText(file, rewrittenCsv(table));
-    const info: RewriteRead = { rows: table.rows.length, columns: table.columns.length, lines: rulerLines(text, source.format === 'fixed' ? o.skip : 0), ...(table.boundaries ? { boundaries: table.boundaries } : {}), ...(table.dropped != null ? { dropped: table.dropped } : {}) };
+    const info: RewriteRead = { rows: table.rows.length, columns: table.columns.length, lines: rulerLines(text, source.format === 'fixed' ? o.skip : 0), ...(table.boundaries ? { boundaries: table.boundaries } : {}), ...(table.dropped != null ? { dropped: table.dropped } : {}), ...(table.record != null ? { record: table.record, candidates: table.candidates } : {}) };
     remember(engine, id, file, input, info, () => {
       const now = useProjectStore.getState().history.present.sources.find((s) => s.id === id);
       return now && sourceFileName(now);

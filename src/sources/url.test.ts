@@ -1,5 +1,7 @@
 import { headHash } from './hash';
+import { rewriteInput } from './rewrite';
 import {
+  addUrlSource,
   CORS_MESSAGE,
   fetchAddress,
   formatFromAddress,
@@ -170,6 +172,15 @@ describe('fetching an address', () => {
   it('detects the format from the Content-Type, or uses the one chosen', async () => {
     expect((await fetchAddress('https://x.org/export', { fetchImpl: fakeServer(text('{"a":1}'), { type: 'application/json' }).fetchImpl })).format).toBe('json');
     expect((await fetchAddress('https://x.org/a.csv', { format: 'tsv', fetchImpl: fakeServer(text('a\tb')).fetchImpl })).format).toBe('tsv');
+  });
+
+  // Regression: a YAML file from an address was handed to DuckDB as it was, never read into rows.
+  it('keeps a structured text file fetched from an address for the rewrite path, as fixed-width text is kept', async () => {
+    const body = text('servers:\n  - name: alpha\n    ip: 10.0.0.1\n');
+    const { fetchImpl } = fakeServer(body, { type: 'application/yaml' });
+    const source = await addUrlSource('https://x.org/servers.yaml', { fetchImpl });
+    expect(source.format).toBe('yaml');
+    expect(rewriteInput(source)).toEqual(body);
   });
 
   it('explains a CORS refusal, which the browser reports as a bare network error', async () => {

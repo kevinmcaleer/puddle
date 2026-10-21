@@ -5,7 +5,7 @@ export const FORMAT_VERSION = 2;
 
 export const ColumnSchemaZ = z.object({ name: z.string(), type: z.string() });
 
-export const SourceFormatZ = z.enum(['csv', 'tsv', 'json', 'ndjson', 'parquet', 'xlsx', 'xml', 'access', 'fixed', 'pipes', 'arrow']);
+export const SourceFormatZ = z.enum(['csv', 'tsv', 'json', 'ndjson', 'parquet', 'xlsx', 'xml', 'access', 'fixed', 'pipes', 'arrow', 'yaml', 'toml', 'ini', 'geojson']);
 
 export const ParseOptionsZ = z
   .object({
@@ -31,7 +31,7 @@ export const ParseOptionsZ = z
     headerRows: z.number().int().min(1).max(3),
     /** Excel: whether every cell of a merged cell in the data takes its value; unset means yes. */
     fillMerges: z.boolean(),
-    /** XML: the repeating element read as records, as a path of local names from the root ("catalog/book"). */
+    /** XML: the repeating element read as records, as a path of local names from the root ("catalog/book"). YAML, TOML, INI and GeoJSON: the list or map read as records, as a path of keys ("data/items"; "." is the whole document as one row). */
     record: z.string(),
     /** XML: a repeating element inside each record, as a path from it ("author"), given a row each. */
     expand: z.string(),

@@ -5,7 +5,7 @@ import { bool, ident, num, str, strList } from './sql';
 const ROW = ident('__puddle_row');
 const TOTAL = ident('__puddle_total');
 
-const EXT: Record<Source['format'], string> = { csv: 'csv', tsv: 'tsv', json: 'json', ndjson: 'ndjson', parquet: 'parquet', xlsx: 'xlsx', xml: 'csv', access: 'accdb', fixed: 'csv', pipes: 'csv', arrow: 'arrow' };
+const EXT: Record<Source['format'], string> = { csv: 'csv', tsv: 'tsv', json: 'json', ndjson: 'ndjson', parquet: 'parquet', xlsx: 'xlsx', xml: 'csv', access: 'accdb', fixed: 'csv', pipes: 'csv', arrow: 'arrow', yaml: 'csv', toml: 'csv', ini: 'csv', geojson: 'csv' };
 
 /**
  * A gzip-compressed text file DuckDB reads as it is (CSV, TSV, JSON, NDJSON): registered with its .gz, it is unpacked
@@ -16,8 +16,10 @@ export const readsCompressed = (source: Pick<Source, 'format' | 'archive'>) => s
 /** Excel, Access and Arrow are loaded into a DuckDB table (sourceTableName) rather than read from a file. */
 export const isLoadedTable = (format: Source['format']) => format === 'xlsx' || format === 'access' || format === 'arrow';
 
-/** Formats Puddle reads into rows itself and hands DuckDB as CSV: XML, fixed-width text and pipe tables. */
-export const isRewritten = (format: Source['format']) => format === 'xml' || format === 'fixed' || format === 'pipes';
+/** Formats Puddle reads into rows itself and hands DuckDB as CSV: XML, fixed-width text, pipe tables and structured text (YAML, TOML, INI, GeoJSON). */
+export const isRewritten = (format: Source['format']) => format === 'xml' || format === 'fixed' || format === 'pipes' || isStructured(format);
+
+export const isStructured = (format: Source['format']) => format === 'yaml' || format === 'toml' || format === 'ini' || format === 'geojson';
 
 /**
  * The name a source's file is registered under in DuckDB's virtual file system. XML, fixed-width text and a pipe
@@ -32,6 +34,7 @@ export function sourceFileName(source: Source): string {
   if (source.format === 'xml') return `src_${source.id}_${hashValue([hash, ...entry, o.record ?? null, o.expand ?? null]).slice(0, 12)}.csv`;
   if (source.format === 'fixed') return `src_${source.id}_${hashValue([hash, ...entry, 'fixed', o.boundaries ?? null, o.header ?? null, o.skip ?? null, o.skipBottom ?? null, o.encoding ?? null]).slice(0, 12)}.csv`;
   if (source.format === 'pipes') return `src_${source.id}_${hashValue([hash, ...entry, 'pipes', o.header ?? null, o.encoding ?? null]).slice(0, 12)}.csv`;
+  if (isStructured(source.format)) return `src_${source.id}_${hashValue([hash, ...entry, source.format, o.record ?? null, o.encoding ?? null]).slice(0, 12)}.csv`;
   if (source.archive) return `src_${source.id}_${hashValue([hash, ...entry]).slice(0, 12)}.${EXT[source.format]}${readsCompressed(source) ? '.gz' : ''}`;
   return `src_${source.id}.${EXT[source.format]}`;
 }
@@ -124,8 +127,12 @@ export function sourceRelation(source: Source): string {
       // Written by Puddle from the XML (see src/xml), always with a header row, commas and double quotes.
       return `read_csv(${file}, header = true, delim = ',', quote = '"', escape = '"', null_padding = true)`;
     case 'fixed':
-    case 'pipes': {
-      // Written by Puddle from the text (src/sources/fixedWidth.ts, pipes.ts) the same way; the words for empty apply as on any text.
+    case 'pipes':
+    case 'yaml':
+    case 'toml':
+    case 'ini':
+    case 'geojson': {
+      // Written by Puddle from the text (src/sources/fixedWidth.ts, pipes.ts, src/structured) the same way; the words for empty apply as on any text.
       const args = [file, 'header = true', `delim = ','`, `quote = '"'`, `escape = '"'`, 'null_padding = true'];
       if (o.nullStrings?.length) args.push(`nullstr = ${strList([...new Set(['', ...o.nullStrings])])}`);
       return `read_csv(${args.join(', ')})`;

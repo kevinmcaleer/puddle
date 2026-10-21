@@ -1,7 +1,8 @@
 // The inspector's read options for fixed-width text (the boundaries over the first lines, as a ruler) and pipe
 // tables, and the banner shown while either is being read or when it can't be.
 import type { ParseOptions, Source } from '../model';
-import { Banner, Field, Ruler } from '../ui';
+import { candidateLabel } from '../structured';
+import { Banner, Field, Ruler, Select } from '../ui';
 import { EncodingField, HeaderSwitch, NullStringsField, SkipFields } from './CsvOptions';
 import { withBoundary } from './fixedWidth';
 import { useRewrites } from './rewrite';
@@ -54,6 +55,41 @@ export function PipesOptions({ source, onChange }: { source: Source; onChange: (
       {read?.state === 'ok' && (
         <p className="text-label text-ink-muted" data-testid="rewrite-size">
           {`${plural(read.rows, 'row')}, ${plural(read.columns, 'column')}${read.dropped ? `; ${plural(read.dropped, 'line')} around the table left out` : ''}`}
+        </p>
+      )}
+      <EncodingField {...props} />
+      <NullStringsField {...props} />
+      {read?.state === 'failed' && <RewriteProblemBanner source={source} />}
+    </>
+  );
+}
+
+/** The inspector's read options for YAML, TOML, INI and GeoJSON: which records become the rows. */
+export function StructuredOptions({ source, onChange }: { source: Source; onChange: (options: ParseOptions) => void }) {
+  const o = source.parseOptions;
+  const read = useRewrites((s) => s.reads[source.id]);
+  const candidates = read?.state === 'ok' ? (read.candidates ?? []) : [];
+  const current = o.record ?? (read?.state === 'ok' ? read.record : undefined) ?? '';
+  const options = candidates.length ? candidates.map((c) => ({ value: c.path, label: candidateLabel(c) })) : [{ value: current, label: current || 'Detect' }];
+  if (!options.some((c) => c.value === current)) options.unshift({ value: current, label: `${current} (not in this file)` });
+  const props = { options: o, onChange };
+  return (
+    <>
+      <Field label="Records" htmlFor="opt-record" hint="The list or map in the file whose entries become rows. Nested fields become dotted columns; lists inside a record stay as JSON.">
+        <Select
+          id="opt-record"
+          options={options}
+          value={current}
+          disabled={candidates.length < 2}
+          onChange={(e) => {
+            const next = { ...o, record: e.target.value };
+            onChange(next);
+          }}
+        />
+      </Field>
+      {read?.state === 'ok' && (
+        <p className="text-label text-ink-muted" data-testid="rewrite-size">
+          {`${plural(read.rows, 'row')}, ${plural(read.columns, 'column')}`}
         </p>
       )}
       <EncodingField {...props} />

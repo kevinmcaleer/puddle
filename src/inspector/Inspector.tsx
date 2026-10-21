@@ -24,6 +24,7 @@ import { DetachedMessage } from '../sources/ReconnectBanner';
 import { ReattachButton } from '../sources/ReattachButton';
 import { UrlPanel } from '../sources/UrlPanel';
 import { isAccessSource } from '../sources/access';
+import { isStructured } from '../compiler';
 import { AccessPanel } from '../sources/AccessPanel';
 import { ArchivePanel, ArrowProblemBanner } from '../sources/ArchivePanel';
 import { isArchiveSource } from '../sources/archive';
@@ -35,7 +36,7 @@ import { XmlPanel } from '../sources/XmlPanel';
 import { hasParseOptions, LOCALES, parseNullStrings } from './options';
 import { changeSourceFormat } from '../sources/add';
 import { CsvOptions } from '../sources/CsvOptions';
-import { FixedWidthOptions, PipesOptions } from '../sources/TextPanels';
+import { FixedWidthOptions, PipesOptions, StructuredOptions } from '../sources/TextPanels';
 import { FORMAT_OPTIONS } from '../sources/formats';
 
 function SourceOptions({ source }: { source: Source }) {
@@ -47,6 +48,7 @@ function SourceOptions({ source }: { source: Source }) {
         {(source.format === 'csv' || source.format === 'tsv') && <CsvOptions format={source.format} options={source.parseOptions} onChange={(o) => apply((p) => setParseOptions(p, source.id, o))} />}
         {source.format === 'fixed' && <FixedWidthOptions source={source} onChange={(o) => apply((p) => setParseOptions(p, source.id, o))} />}
         {source.format === 'pipes' && <PipesOptions source={source} onChange={(o) => apply((p) => setParseOptions(p, source.id, o))} />}
+        {isStructured(source.format) && <StructuredOptions source={source} onChange={(o) => apply((p) => setParseOptions(p, source.id, o))} />}
       </div>
     </Section>
   );

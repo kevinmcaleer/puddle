@@ -1,13 +1,14 @@
-// Reading fixed-width text and pipe tables into the CSV DuckDB reads, shared by the browser (./rewrite) and the
-// runner (src/runner/run.ts). Pure: bytes and options in, CSV out.
+// Reading fixed-width text, pipe tables and structured text (YAML, TOML, INI, GeoJSON) into the CSV DuckDB reads,
+// shared by the browser (./rewrite) and the runner (src/runner/run.ts). Pure: bytes and options in, CSV out.
 import type { ParseOptions, Source } from '../model';
+import { isStructuredFormat, parseStructured, structuredToTable, type RecordCandidate, type StructuredFormat } from '../structured';
 import { tableToCsv } from '../xml';
 import { readFixedWidth } from './fixedWidth';
 import { readPipes } from './pipes';
 
-export type RewrittenFormat = 'fixed' | 'pipes';
+export type RewrittenFormat = 'fixed' | 'pipes' | StructuredFormat;
 
-export const isRewrittenText = (s: Pick<Source, 'format'>): s is Source & { format: RewrittenFormat } => s.format === 'fixed' || s.format === 'pipes';
+export const isRewrittenText = (s: Pick<Source, 'format'>): s is Source & { format: RewrittenFormat } => s.format === 'fixed' || s.format === 'pipes' || isStructuredFormat(s.format);
 
 /** Decode a file's bytes in the encoding its read options name (as the sniff set it): UTF-16 by its BOM, Latin-1 as Windows-1252, else UTF-8. */
 export function decodeText(bytes: Uint8Array, encoding?: string): string {
@@ -26,10 +27,17 @@ export interface RewrittenTable {
   boundaries?: number[];
   /** Pipe table: lines around the table that were dropped. */
   dropped?: number;
+  /** Structured text: the records read, as a path of keys, and every place records were found. */
+  record?: string;
+  candidates?: RecordCandidate[];
 }
 
 /** Read the text as the format says, with its read options. */
 export function readText(format: RewrittenFormat, text: string, o: ParseOptions): RewrittenTable {
+  if (isStructuredFormat(format)) {
+    const t = structuredToTable(parseStructured(format, text), format, { record: o.record });
+    return { columns: t.columns, rows: t.rows, record: t.record, candidates: t.candidates };
+  }
   if (format === 'fixed') {
     const t = readFixedWidth(text, { boundaries: o.boundaries, header: o.header, skip: o.skip, skipBottom: o.skipBottom });
     return { columns: t.columns, rows: t.rows, boundaries: t.boundaries };

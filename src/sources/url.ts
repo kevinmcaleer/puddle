@@ -14,6 +14,7 @@ import type { HtmlTable } from './html';
 import { fetchTable, tableFetched } from './webpage';
 import { fetchFeed, type FeedSpec, type ReadOptions } from './odata';
 import { rememberSignIn, signInFor } from './odataSignIn';
+import { isRewrittenText } from './text';
 import { rememberRewriteInput } from './rewrite';
 import { rememberXml } from './xml';
 
@@ -64,6 +65,15 @@ const BY_CONTENT_TYPE: Record<string, SourceFormat> = {
   'application/x-parquet': 'parquet',
   'application/parquet': 'parquet',
   'application/xml': 'xml',
+  'application/yaml': 'yaml',
+  'application/x-yaml': 'yaml',
+  'text/yaml': 'yaml',
+  'text/x-yaml': 'yaml',
+  'application/toml': 'toml',
+  'text/x-ini': 'ini',
+  'application/geo+json': 'geojson',
+  'application/vnd.google-earth.kml+xml': 'xml',
+  'application/gpx+xml': 'xml',
   'text/xml': 'xml',
   'application/atom+xml': 'xml',
   'application/rss+xml': 'xml',
@@ -195,7 +205,8 @@ export function addressOf(source: Source): URL | string {
 async function register(source: Source, fetched: Fetched) {
   if (source.format === 'xml') return void rememberXml(source.id, fetched.data!);
   if (source.format === 'xlsx') return void rememberFile(source.id, new File([fetched.data! as Uint8Array<ArrayBuffer>], source.name));
-  if (source.format === 'fixed' || source.format === 'pipes') return void rememberRewriteInput(source.id, fetched.data!);
+  // Fixed-width text, pipe tables and structured text are read into rows first too (./rewrite).
+  if (isRewrittenText(source)) return void rememberRewriteInput(source.id, fetched.data!);
   const engine = await whenEngine();
   const name = sourceFileName(source);
   await engine.dropFile(name).catch(() => undefined);

@@ -215,6 +215,41 @@ describe('puddle-run', () => {
     ]);
   });
 
+  it('reads YAML, TOML and GeoJSON into rows with the records the browser chose', async () => {
+    writeFileSync(join(folder, 'servers.yaml'), readFileSync(join(__dirname, '../fixtures/structured/servers.yaml')));
+    writeFileSync(join(folder, 'pyproject.toml'), readFileSync(join(__dirname, '../fixtures/structured/pyproject.toml')));
+    writeFileSync(join(folder, 'places.geojson'), readFileSync(join(__dirname, '../fixtures/structured/places.geojson')));
+    const file = (id: string, name: string, format: Source['format'], parseOptions: Source['parseOptions'] = {}) => ({ ...src({ id, format }), name, parseOptions, file: { originalName: name, size: 1, lastModified: 0, headHash: 'h' } });
+    const p = flow({
+      sources: [file('y', 'servers.yaml', 'yaml'), file('t', 'pyproject.toml', 'toml', { record: 'servers' }), file('g', 'places.geojson', 'geojson')],
+      nodes: [
+        { id: 'y', type: 'source', sourceId: 'y' },
+        { id: 't', type: 'source', sourceId: 't' },
+        { id: 'g', type: 'source', sourceId: 'g' },
+        { id: 'out', type: 'output', outputSpec: { format: 'csv', options: {} } },
+        { id: 'out2', type: 'output', outputSpec: { format: 'csv', options: {} } },
+        { id: 'out3', type: 'output', outputSpec: { format: 'csv', options: {} } },
+      ],
+      wires: [
+        ['y', 'out', 0],
+        ['t', 'out2', 0],
+        ['g', 'out3', 0],
+      ],
+    });
+    p.name = 'Structured';
+    const outDir = join(folder, 'out-structured');
+    const { log } = await runProject(p, { folder, outDir, db, now: () => new Date('2026-10-17T03:00:00Z') });
+    expect(log.sources.map((s) => s.problem)).toEqual([undefined, undefined, undefined]);
+    expect(log.outputs.map((o) => [o.nodeName, o.status, o.rows])).toEqual([
+      ['out', 'written', 3],
+      ['out2', 'written', 2],
+      ['out3', 'written', 3],
+    ]);
+    expect(readFileSync(join(outDir, 'out.csv'), 'utf8').trim().split('\n')[0]).toBe('name,ip,cores,tags,added,owner.team,owner.email');
+    expect(readFileSync(join(outDir, 'out2.csv'), 'utf8').trim().split('\n')).toEqual(['key,ip,role', 'alpha,10.0.0.1,web', 'beta,10.0.0.2,db']);
+    expect(readFileSync(join(outDir, 'out3.csv'), 'utf8').trim().split('\n')[1]).toBe('1,Lighthouse,landmark,34.5,"{""type"":""Point"",""coordinates"":[-3.1,53.4]}"');
+  });
+
   it('reads spreadsheets in every format with the sheet options the browser saved: an old .xls and a dBase table', async () => {
     writeFileSync(join(folder, 'sales.xls'), readFileSync(join(__dirname, '../fixtures/formats/sales.xls')));
     writeFileSync(join(folder, 'sales.dbf'), readFileSync(join(__dirname, '../fixtures/formats/sales.dbf')));
