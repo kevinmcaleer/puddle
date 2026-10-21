@@ -17,6 +17,6 @@ test('appending customers.csv to customers.parquet stacks the same columns', asy
   await expect(page.getByTestId('wire-customers.parquet->Append 1')).toHaveAttribute('data-port', '0');
   await expect(page.getByTestId('inspector-columns').locator('.ui-col')).toHaveText(['id', 'name', 'email', 'joined']);
   await expect(page.getByTestId('append-column-from')).toHaveText(['all inputs', 'all inputs', 'all inputs', 'all inputs']);
-  await node(page, 'Append 1').click();
+  await selectNode(page, 'Append 1');
   await expectRows(page, 8);
 });

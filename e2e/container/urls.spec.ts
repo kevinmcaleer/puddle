@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 import { readFileSync } from 'node:fs';
 import { startFileServer, type FileServer } from '../../tests/helpers/fileServer';
-import { expectRows, fixture, node, openApp } from '../helpers/app';
+import { expectRows, fixture, node, openApp, selectNode } from '../helpers/app';
 
 // URL sources against the container: JSON and Parquet need the self-hosted extensions, which only the image has.
 let server: FileServer;
@@ -33,9 +33,9 @@ test('JSON and Parquet load from a web address; Parquet is read by range request
   }
   await expect(node(page, 'items.json')).toHaveAttribute('data-status', 'ok', { timeout: 30_000 });
   await expect(node(page, 'customers.parquet')).toHaveAttribute('data-status', 'ok', { timeout: 30_000 });
-  await node(page, 'items.json').click();
+  await selectNode(page, 'items.json');
   await expectRows(page, 2);
-  await node(page, 'customers.parquet').click();
+  await selectNode(page, 'customers.parquet');
   await expectRows(page, 4);
   await expect(page.getByTestId('url-fetched')).toContainText('read in parts as needed');
   const parquet = server.requests.filter((r) => r.path === '/customers.parquet');

@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import { readFileSync } from 'node:fs';
-import { addFiles, bringIntoView, expectRows, fixture, node, openApp } from '../helpers/app';
+import { addFiles, bringIntoView, expectRows, fixture, node, openApp, selectNode } from '../helpers/app';
 
 const ISOLATION = { 'cross-origin-opener-policy': 'same-origin', 'cross-origin-embedder-policy': 'require-corp' };
 
@@ -45,14 +45,14 @@ test('JSON, NDJSON and Parquet load and export with no request leaving the site'
   await addFiles(page, [fixture('items.json'), fixture('customers.parquet')]);
   await expect(node(page, 'items.json')).toHaveAttribute('data-status', 'ok', { timeout: 30_000 });
   await expect(node(page, 'customers.parquet')).toHaveAttribute('data-status', 'ok', { timeout: 30_000 });
-  await node(page, 'items.json').click();
+  await selectNode(page, 'items.json');
   await expectRows(page, 2);
 
   // Export the Parquet source as Parquet and JSON, then read each file back in.
-  await node(page, 'customers.parquet').click();
+  await selectNode(page, 'customers.parquet');
   await page.getByRole('button', { name: 'Add', exact: true }).click();
   await page.getByRole('menuitem', { name: 'Output' }).click();
-  await node(page, 'Output 1').click();
+  await selectNode(page, 'Output 1');
   // Each through the menu beside the export button, which switches the node's format and exports.
   for (const [label, ext] of [['Parquet', 'parquet'], ['JSON', 'json'], ['NDJSON', 'ndjson']] as const) {
     await page.locator('.ui-resultsbar').getByRole('button', { name: 'Export as', exact: true }).click();
@@ -66,16 +66,16 @@ test('JSON, NDJSON and Parquet load and export with no request leaving the site'
     await expect(node(page, `back.${ext}`)).toHaveAttribute('data-status', 'ok', { timeout: 30_000 });
     // Each file read back lands below the last, soon under the results panel.
     await bringIntoView(page, `back.${ext}`);
-    await node(page, `back.${ext}`).click();
+    await selectNode(page, `back.${ext}`);
     await expectRows(page, 4);
-    await node(page, 'Output 1').click();
+    await selectNode(page, 'Output 1');
   }
 
   // NDJSON last: a third source added before the Output would put that node under the minimap.
   await addFiles(page, [fixture('events.ndjson')]);
   await expect(node(page, 'events.ndjson')).toHaveAttribute('data-status', 'ok', { timeout: 30_000 });
   await bringIntoView(page, 'events.ndjson');
-  await node(page, 'events.ndjson').click();
+  await selectNode(page, 'events.ndjson');
   await expectRows(page, 3);
   await expect(page.getByTestId('inspector-columns').locator('.ui-col')).toHaveText(['event', 'at']);
   expect(away).toEqual([]);
@@ -95,7 +95,7 @@ test('after the first visit the app loads and runs a flow offline', async ({ pag
   await expect(page.getByTestId('engine-ready')).toBeVisible({ timeout: 45_000 });
   await addFiles(page, [fixture('customers.csv')]);
   await expect(node(page, 'customers.csv')).toHaveAttribute('data-status', 'ok', { timeout: 20_000 });
-  await node(page, 'customers.csv').click();
+  await selectNode(page, 'customers.csv');
   await expectRows(page, 4);
 });
 
