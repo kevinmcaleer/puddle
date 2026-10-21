@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2">
+  <Document>
+    <name>Places</name>
+    <Folder>
+      <name>Landmarks</name>
+      <Placemark>
+        <name>Lighthouse</name>
+        <description>Built 1830</description>
+        <Point><coordinates>-3.1,53.4,0</coordinates></Point>
+      </Placemark>
+      <Placemark>
+        <name>Pier</name>
+        <description>Victorian</description>
+        <Point><coordinates>-3.11,53.41,0</coordinates></Point>
+      </Placemark>
+    </Folder>
+    <Placemark>
+      <name>Park</name>
+      <Point><coordinates>-3.12,53.42,0</coordinates></Point>
+    </Placemark>
+  </Document>
+</kml>

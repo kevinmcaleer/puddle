@@ -24,7 +24,11 @@ import { DetachedMessage } from '../sources/ReconnectBanner';
 import { ReattachButton } from '../sources/ReattachButton';
 import { UrlPanel } from '../sources/UrlPanel';
 import { isAccessSource } from '../sources/access';
+import { isStructured } from '../compiler';
 import { AccessPanel } from '../sources/AccessPanel';
+import { ArchivePanel, ArrowProblemBanner } from '../sources/ArchivePanel';
+import { isArchiveSource } from '../sources/archive';
+import { isArrowSource, useArrowReads } from '../sources/arrow';
 import { isConnectionSource } from '../sources/connection';
 import { ConnectionPanel } from '../sources/ConnectionPanel';
 import { isExcelSource } from '../sources/excel';
@@ -34,6 +38,8 @@ import { XmlPanel } from '../sources/XmlPanel';
 import { hasParseOptions, LOCALES, parseNullStrings } from './options';
 import { changeSourceFormat } from '../sources/add';
 import { CsvOptions } from '../sources/CsvOptions';
+import { FixedWidthOptions, LogOptions, PipesOptions, StructuredOptions } from '../sources/TextPanels';
+import { WordOptions } from '../sources/WordPanel';
 import { FORMAT_OPTIONS } from '../sources/formats';
 
 function SourceOptions({ source }: { source: Source }) {
@@ -43,6 +49,11 @@ function SourceOptions({ source }: { source: Source }) {
       <div className="flex flex-col gap-3">
         <FormatField source={source} />
         {(source.format === 'csv' || source.format === 'tsv') && <CsvOptions format={source.format} options={source.parseOptions} onChange={(o) => apply((p) => setParseOptions(p, source.id, o))} />}
+        {source.format === 'fixed' && <FixedWidthOptions source={source} onChange={(o) => apply((p) => setParseOptions(p, source.id, o))} />}
+        {source.format === 'pipes' && <PipesOptions source={source} onChange={(o) => apply((p) => setParseOptions(p, source.id, o))} />}
+        {isStructured(source.format) && <StructuredOptions source={source} onChange={(o) => apply((p) => setParseOptions(p, source.id, o))} />}
+        {source.format === 'log' && <LogOptions source={source} onChange={(o) => apply((p) => setParseOptions(p, source.id, o))} />}
+        {(source.format === 'word' || source.format === 'pdf') && <WordOptions source={source} onChange={(o) => apply((p) => setParseOptions(p, source.id, o))} />}
       </div>
     </Section>
   );
@@ -144,6 +155,12 @@ function ProjectSettings() {
 }
 
 /** Where puddle-run finds this file on the machine it runs on; the browser never reads it. */
+/** An Arrow file that couldn't be read: the reason, in the inspector. */
+function ArrowFailure({ source }: { source: Source }) {
+  const failed = useArrowReads((s) => s.reads[source.id]?.state === 'failed');
+  return failed ? <div className="px-4 pt-3"><ArrowProblemBanner source={source} /></div> : null;
+}
+
 function RunnerPath({ source }: { source: Source }) {
   const apply = useProjectStore((s) => s.apply);
   const path = source.file?.path ?? '';
@@ -328,7 +345,9 @@ function NodeInspector({ node }: { node: GraphNode }) {
       </div>
       {source && source.kind === 'file' && <AttachmentBanner source={source} />}
       {source && source.kind === 'url' && <UrlPanel source={source} />}
+      {source && isArchiveSource(source) && <ArchivePanel source={source} />}
       {source && isExcelSource(source) && <ExcelPanel source={source} />}
+      {source && isArrowSource(source) && <ArrowFailure source={source} />}
       {source && isXmlSource(source) && <XmlPanel source={source} />}
       {source && isAccessSource(source) && <AccessPanel source={source} />}
       {source && isConnectionSource(source) && <ConnectionPanel key={source.id} source={source} />}

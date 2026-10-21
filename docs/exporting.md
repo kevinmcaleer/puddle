@@ -38,3 +38,5 @@ Fix the data, change the rule to a warning, or choose **Export anyway**. Exporti
 ![The Write quality report dialog](_static/screenshots/export-report-dialog.png)
 
 A report holds no values from your data unless you turn on **Include sample failing rows**, so it's safe to share.
+
+For each node **Fix all** has run on (or an issue has been ignored on), the report also has an **Issues** section: every issue analysis found there at the time, how many rows it touched, and what became of it: fixed by Fix all, ignored, or still open. The button is offered on such a node even when it has no rules. `puddle-run` writes the same report, in all three formats, beside each run's outputs (see {doc}`self-hosting`).

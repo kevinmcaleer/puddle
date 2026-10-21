@@ -1,13 +1,13 @@
 import { expect, test } from '@playwright/test';
-import { addFiles, fixture, node, openApp } from './helpers/app';
+import { addFiles, fixture, node, openApp, selectNode } from './helpers/app';
 
 test('the relationships view shows a join’s key between the tables, relates two columns by dragging, and downloads DBML', async ({ page }) => {
   await openApp(page);
   await addFiles(page, [fixture('shop-orders.csv'), fixture('shop-customers.csv')]);
   await expect(node(page, 'shop-orders.csv')).toHaveAttribute('data-status', 'ok');
   await expect(node(page, 'shop-customers.csv')).toHaveAttribute('data-status', 'ok');
-  await node(page, 'shop-orders.csv').click();
-  await node(page, 'shop-customers.csv').click({ modifiers: ['Shift'] });
+  await selectNode(page, 'shop-orders.csv');
+  await selectNode(page, 'shop-customers.csv', ['Shift']);
   await page.getByTestId('group-bar').getByRole('button', { name: 'Join these two' }).click();
   await expect(node(page, 'Join 1')).toHaveAttribute('data-status', 'ok');
 
@@ -46,6 +46,6 @@ test('the relationships view shows a join’s key between the tables, relates tw
   // The rule is the project's own: back on the canvas, the orders source carries it.
   await view.getByRole('button', { name: 'Back to canvas' }).click();
   await expect(page.getByTestId('relationships')).toHaveCount(0);
-  await node(page, 'shop-orders.csv').click();
+  await selectNode(page, 'shop-orders.csv');
   await expect(page.getByTestId('inspector')).toContainText('Every status exists in shop-customers.csv.status');
 });

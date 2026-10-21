@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { addFiles, fixture, node, openApp } from './helpers/app';
+import { addFiles, fixture, node, openApp, selectNode } from './helpers/app';
 
 // Principle 5 (one screen, no modes): the canvas, the relationships view, the query designer and the Schema view are tabs over the
 // canvas area, one click or key apart, while the inspector and results stay where they are.
@@ -11,8 +11,8 @@ test('the view switcher moves between the canvas, relationships, the query desig
   await expect(views).toHaveText(['Canvas', 'Relationships', 'Designer', 'Schema']);
   await expect(views.nth(2)).toBeDisabled();
 
-  await node(page, 'shop-customers.csv').click();
-  await node(page, 'shop-orders.csv').click({ modifiers: ['Shift'] });
+  await selectNode(page, 'shop-customers.csv');
+  await selectNode(page, 'shop-orders.csv', ['Shift']);
   await page.getByRole('button', { name: 'Add', exact: true }).click();
   await page.getByRole('menuitem', { name: /Query/ }).click();
   await expect(page.getByTestId('query-designer')).toBeVisible();

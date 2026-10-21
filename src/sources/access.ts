@@ -217,7 +217,7 @@ export function addAccessTables(source: Source, tables: string[]): Source[] {
 }
 
 /** Keep the file handle stored for a source for the sources added beside it, so they reconnect with it next time. */
-async function shareHandle(projectId: string, from: string, to: string[]) {
+export async function shareHandle(projectId: string, from: string, to: string[]) {
   if (!supportsFileHandles()) return;
   const handle = (await loadHandles<FileHandle>(projectId).catch(() => undefined))?.get(from);
   for (const id of to) keepHandle(id, handle);

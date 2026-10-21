@@ -6,7 +6,7 @@ export const FORMAT_VERSION = 3;
 export const ColumnSchemaZ = z.object({ name: z.string(), type: z.string() });
 
 /** `connection` is not a file format: a connection source's rows arrive from a database and are read from a staging table. */
-export const SourceFormatZ = z.enum(['csv', 'tsv', 'json', 'ndjson', 'parquet', 'xlsx', 'xml', 'access', 'connection']);
+export const SourceFormatZ = z.enum(['csv', 'tsv', 'json', 'ndjson', 'parquet', 'xlsx', 'xml', 'access', 'connection', 'fixed', 'pipes', 'arrow', 'yaml', 'toml', 'ini', 'geojson', 'word', 'log', 'pdf']);
 
 export const ParseOptionsZ = z
   .object({
@@ -26,14 +26,24 @@ export const ParseOptionsZ = z
     columns: z.array(z.string()),
     sheet: z.string(),
     headerRow: z.number().int().nonnegative(),
-    /** Excel: an A1 cell range to read, such as B3:F200. */
+    /** Excel: an A1 cell range to read, such as B3:F200; unset, the largest table on the sheet. */
     range: z.string(),
-    /** XML: the repeating element read as records, as a path of local names from the root ("catalog/book"). */
+    /** Excel: how many rows the header takes (1 to 3), the names joined ("Q1 Jan"); found from the merged cells when unset. */
+    headerRows: z.number().int().min(1).max(3),
+    /** Excel: whether every cell of a merged cell in the data takes its value; unset means yes. */
+    fillMerges: z.boolean(),
+    /** XML: the repeating element read as records, as a path of local names from the root ("catalog/book"). YAML, TOML, INI and GeoJSON: the list or map read as records, as a path of keys ("data/items"; "." is the whole document as one row). */
     record: z.string(),
     /** XML: a repeating element inside each record, as a path from it ("author"), given a row each. */
     expand: z.string(),
-    /** Access: the table of the database read. */
+    /** Access: the table of the database read. Word and PDF: the table of the document read, by its number from 1 ("2"); unset, the biggest. */
     table: z.string(),
+    /** Log files: the preset the lines are read as (src/logs LOG_PRESETS: combined, syslog, iis, timestamped, custom). */
+    preset: z.string(),
+    /** Log files: the custom pattern, as regular expression source with a named group for each column. */
+    pattern: z.string(),
+    /** Fixed width: the character offsets at which each column after the first starts; found from the text when unset. */
+    boundaries: z.array(z.number().int().positive()),
   })
   .partial();
 
@@ -163,6 +173,11 @@ export const SourceZ = z.object({
   clipboard: z.object({ text: z.string() }).optional(),
   /** A table or query of one of the project's connections (Add source › From database). */
   connection: ConnectionSourceZ.optional(),
+  /**
+   * The archive the file is read from (a .gz or .zip chosen as a source): which kind, and the entry (the file inside)
+   * this source reads. `file` describes the archive itself; `format` and `parseOptions` the entry.
+   */
+  archive: z.object({ kind: z.enum(['gzip', 'zip']), entry: z.string() }).optional(),
   format: SourceFormatZ,
   parseOptions: ParseOptionsZ.default({}),
   detectedSchema: z.array(ColumnSchemaZ).default([]),
@@ -227,6 +242,20 @@ export const SchemaCheckZ = z.object({ schema: z.string().default('public'), tab
 
 export const PositionZ = z.object({ x: z.number(), y: z.number() });
 
+/** One issue analysis found, as the quality report lists it: its key, its words, how many rows, and whether Fix all fixed it. */
+export const RecordedIssueZ = z.object({
+  key: z.string(),
+  kind: z.string(),
+  column: z.string().optional(),
+  value: z.string().optional(),
+  label: z.string(),
+  count: z.number(),
+  fixed: z.boolean().optional(),
+});
+
+/** What analysis last found in a node's output, kept when Fix all ran or an issue was ignored, so the quality report can say what was found and what became of it. */
+export const AnalysisRecordZ = z.object({ at: z.string(), rows: z.number(), issues: z.array(RecordedIssueZ) });
+
 const NodeBase = {
   id: z.string().min(1),
   name: z.string(),
@@ -238,6 +267,8 @@ const NodeBase = {
   dismissedSuggestions: z.array(z.string()).optional(),
   /** Issues found by analysis and ignored for this node, by issue key (kind and column), so they stay ignored. */
   ignoredIssues: z.array(z.string()).optional(),
+  /** The issues analysis last found here and which Fix all fixed; ignored ones are in `ignoredIssues`. */
+  analysis: AnalysisRecordZ.optional(),
   /** Materialise as a table for reuse (Phase 2). */
   pinnedResult: z.boolean().optional(),
   schemaCheck: SchemaCheckZ.optional(),
@@ -551,6 +582,8 @@ export type ConnectionSource = z.infer<typeof ConnectionSourceZ>;
 export type Step = z.infer<typeof StepZ>;
 export type StepOrigin = z.infer<typeof StepOriginZ>;
 export type Rule = z.infer<typeof RuleZ>;
+export type RecordedIssue = z.infer<typeof RecordedIssueZ>;
+export type AnalysisRecord = z.infer<typeof AnalysisRecordZ>;
 export type SourceNode = z.infer<typeof SourceNodeZ>;
 export type TransformNode = z.infer<typeof TransformNodeZ>;
 export type OutputNode = z.infer<typeof OutputNodeZ>;

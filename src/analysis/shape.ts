@@ -42,9 +42,10 @@ const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? o
 
 /**
  * The shape issues of a source read from delimited text: the banner and footer become skip options on the source
- * (`options` are its read options now, so the counts add up); the rest become steps that drop the rows.
+ * (`options` are its read options now, so the counts add up); the rest become steps that drop the rows. For a sheet
+ * (`sheet`), whose table was cut out of the sheet already, only the rows inside the table are issues.
  */
-export function findShapeIssues(columns: string[], shape: ShapeFacts, options: ParseOptions, ignored: string[] = []): Issue[] {
+export function findShapeIssues(columns: string[], shape: ShapeFacts, options: ParseOptions, ignored: string[] = [], sheet = false): Issue[] {
   const out: Issue[] = [];
   const add = (kind: IssueKind, issue: Omit<Issue, 'key' | 'kind' | 'column'>) => {
     const key = issueKey(kind);
@@ -58,12 +59,12 @@ export function findShapeIssues(columns: string[], shape: ShapeFacts, options: P
   // Leading narrow rows are a banner only when no header row was taken from the file (a skip would take the header
   // with them otherwise): then the skip option drops them, and the row after is read as the header.
   const unnamed = options.header === false || columns.every((c) => /^column\d+$/.test(c));
-  const banner = unnamed ? shape.top : 0;
+  const banner = unnamed && !sheet ? shape.top : 0;
   if (banner) {
     const skip = (options.skip ?? 0) + banner;
     add('bannerRows', { count: banner, share: share(banner), examples: [], severity: 'fix', fix: { readOptions: { skip }, label: `Skip ${plural(skip, 'line')} at the top` } });
   }
-  if (shape.bottom) {
+  if (shape.bottom && !sheet) {
     const skipBottom = (options.skipBottom ?? 0) + shape.bottom;
     add('footerRows', { count: shape.bottom, share: share(shape.bottom), examples: [], severity: 'fix', fix: { readOptions: { skipBottom }, label: `Skip ${plural(skipBottom, 'row')} at the bottom` } });
   }
@@ -74,7 +75,7 @@ export function findShapeIssues(columns: string[], shape: ShapeFacts, options: P
   // Separators and other narrow rows inside the table (page breaks, a banner on page two) go together, since the
   // banner and footer ones leave with the skip options. (Blank rows are counted apart; a wholly blank row is never
   // narrow, so the counts don't overlap.)
-  const inside = shape.separator + shape.narrow - banner - shape.bottom;
+  const inside = shape.separator + shape.narrow - banner - (sheet ? 0 : shape.bottom);
   if (inside > 0) {
     const rest = columns.slice(1);
     add('narrowRows', {

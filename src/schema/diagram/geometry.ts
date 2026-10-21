@@ -5,7 +5,7 @@
 import { enumOf, qualified, type DbmlEnum, type DbmlSchema, type Ref, type StickyNote, type Table, type TableGroup } from '../model';
 import { toneOf, type Tone } from './palette';
 import { CHAR, FOOT, GAP, GLYPH, LINE, MARGIN, MIN_WIDTH, NOTE_WIDTH, PAD, ROW, STUB } from './metrics';
-import { placeNew, type Sized } from './place';
+import { frameOf, placeGrouped, type Sized } from './place';
 
 export * from './metrics';
 
@@ -295,10 +295,7 @@ const union = (rects: Rect[]): Rect | undefined => {
 };
 
 /** A group's frame around its tables: padded, with its name in a header above them. */
-export function frameAround(tables: Rect[]): Rect | undefined {
-  const u = union(tables);
-  return u && { x: u.x - PAD, y: u.y - PAD - ROW, w: u.w + PAD * 2, h: u.h + PAD * 2 + ROW };
-}
+export const frameAround = frameOf;
 
 /**
  * The whole diagram: every element where it was put, or in a free spot near what it is joined to (else on a new
@@ -306,7 +303,15 @@ export function frameAround(tables: Rect[]): Rect | undefined {
  */
 export function layoutDiagram(schema: DbmlSchema, positions: Record<string, Point>, options: DiagramOptions = {}): Diagram {
   const { tables, enums, notes, sized } = sizeElements(schema, options);
-  const places = { ...positions, ...placeNew(sized, positions) };
+  // A table is drawn inside the first group that lists it.
+  const shown = new Set(tables.map((t) => t.id));
+  const grouped = new Set<string>();
+  const members = schema.groups.map((g) => {
+    const ids = g.tables.map(tableId).filter((id) => shown.has(id) && !grouped.has(id));
+    ids.forEach((id) => grouped.add(id));
+    return ids;
+  });
+  const places = { ...positions, ...placeGrouped(sized, positions, members) };
 
   const tableBoxes: TableBox[] = tables.map((s) => {
     const at = places[s.id]!;
@@ -323,12 +328,9 @@ export function layoutDiagram(schema: DbmlSchema, positions: Record<string, Poin
   });
 
   const byId = new Map(tableBoxes.map((b) => [b.id, b]));
-  // A table is drawn inside the first group that lists it.
-  const grouped = new Set<string>();
   const groups: GroupFrame[] = [];
-  for (const g of schema.groups) {
-    const ids = g.tables.map(tableId).filter((id) => byId.has(id) && !grouped.has(id));
-    ids.forEach((id) => grouped.add(id));
+  for (const [i, g] of schema.groups.entries()) {
+    const ids = members[i]!;
     const frame = frameAround(ids.map((id) => byId.get(id)!));
     if (frame) groups.push({ id: groupId(g), group: g, tables: ids, ...frame, tone: toneOf(g.color) });
   }

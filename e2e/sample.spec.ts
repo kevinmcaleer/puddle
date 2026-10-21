@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import { readFileSync } from 'node:fs';
-import { addFiles, expectRows, fixture, node, openApp } from './helpers/app';
+import { addFiles, expectRows, fixture, node, openApp, selectNode } from './helpers/app';
 
 /** Set the project's "Sample above" threshold (shown when no node is selected). */
 async function setThreshold(page: Page, rows: number) {
@@ -26,7 +26,7 @@ test('a source over the threshold opens in sample mode, says so, and Run on full
   await expect(strip(page)).toContainText('Sample of 2 rows');
 
   // Rules in sample mode say so.
-  await node(page, 'customers.csv').click();
+  await selectNode(page, 'customers.csv');
   await page.getByRole('button', { name: 'Add rule' }).click();
   await page.getByRole('menuitem', { name: 'Never empty', exact: true }).click();
   await page.getByTestId('rule-settings').getByRole('button', { name: 'email', exact: true }).click();
@@ -51,10 +51,10 @@ test('exports in sample mode check rules and write every row from the full data'
   await setThreshold(page, 2);
   await addFiles(page, [fixture('customers.csv')]);
   await expect(node(page, 'customers.csv')).toHaveAttribute('data-status', 'ok');
-  await node(page, 'customers.csv').click();
+  await selectNode(page, 'customers.csv');
   await page.getByRole('button', { name: 'Add', exact: true }).click();
   await page.getByRole('menuitem', { name: 'Output' }).click();
-  await node(page, 'Output 1').click();
+  await selectNode(page, 'Output 1');
   await expect(page.getByTestId('sample-banner')).toBeVisible();
   await expectRows(page, 2);
 
@@ -117,7 +117,7 @@ test('a stopped export saves nothing and is logged as stopped', async ({ page })
   await expect(node(page, 'customers.csv')).toHaveAttribute('data-status', 'ok');
   await page.getByRole('button', { name: 'Add', exact: true }).click();
   await page.getByRole('menuitem', { name: 'Output' }).click();
-  await node(page, 'Output 1').click();
+  await selectNode(page, 'Output 1');
   await expectRows(page, 4);
   let downloads = 0;
   page.on('download', () => downloads++);

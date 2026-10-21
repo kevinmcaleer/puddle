@@ -6,6 +6,7 @@ import { compile, sourceFileName } from '../../src/compiler';
 import { EngineClient } from '../../src/engine/client';
 import { tableRows } from '../../src/engine';
 import { sniff } from '../../src/sources/sniff';
+import { decodeText, isRewrittenTextSource, readText, rewrittenCsv } from '../../src/sources/text';
 import { createNodeBackend } from '../helpers/nodeBackend';
 import { flow, src } from '../helpers/projects';
 
@@ -22,7 +23,8 @@ const utf16le = (text: string) => bytes([0xff, 0xfe], Array.from(text).flatMap((
 async function read(name: string, data: Uint8Array) {
   const sniffed = sniff({ name, head: data.subarray(0, 1024 * 1024), size: data.length });
   const source = src({ id: `s_${name.replace(/\W/g, '_')}`, format: sniffed.format, parseOptions: sniffed.parseOptions });
-  await engine.registerBuffer(sourceFileName(source), data);
+  if (isRewrittenTextSource(source)) await engine.registerText(sourceFileName(source), rewrittenCsv(readText(source.format, decodeText(data, source.parseOptions.encoding), source.parseOptions)));
+  else await engine.registerBuffer(sourceFileName(source), data);
   const project = flow({ sources: [source], nodes: [{ id: 'in', type: 'source', sourceId: source.id }] });
   const columns = await engine.describe(`SELECT * FROM (${compile(project, { nodeId: 'in' }).sql}) LIMIT 0`);
   const rows = tableRows((await engine.query(compile(project, { nodeId: 'in' }).sql)).table);
@@ -37,8 +39,8 @@ describe('reading with the sniffed options', () => {
     // The banner and footer lines come off in #185; here the table itself, written back as the latin-1 bytes it is.
     const data = bytes(Array.from(table, (c) => c.charCodeAt(0)));
     const { sniffed, columns, rows } = await read('sap-extract.txt', data);
-    expect(sniffed).toMatchObject({ format: 'csv', parseOptions: { delimiter: '|', encoding: 'latin-1' } });
-    expect(columns.slice(1, 4)).toEqual(['Doc. no.', 'Vendor', 'Doc. date']);
+    expect(sniffed).toMatchObject({ format: 'pipes', parseOptions: { encoding: 'latin-1' } });
+    expect(columns.slice(0, 3)).toEqual(['Doc. no.', 'Vendor', 'Doc. date']);
     expect(rows).toHaveLength(60);
     expect(rows.map((r) => String(r['Vendor']).trim())).toContain('Müller GmbH');
   });
