@@ -1,0 +1,267 @@
+{
+  "test": {
+    "ok": true,
+    "server": "ClickHouse 26.9.2, 3 tables"
+  },
+  "catalog": {
+    "tables": [
+      {
+        "name": "customers",
+        "kind": "table",
+        "columns": [
+          {
+            "name": "id",
+            "type": "BIGINT",
+            "nullable": false
+          },
+          {
+            "name": "name",
+            "type": "VARCHAR",
+            "nullable": false
+          },
+          {
+            "name": "email",
+            "type": "VARCHAR",
+            "nullable": true
+          },
+          {
+            "name": "signed_up",
+            "type": "DATE",
+            "nullable": true
+          },
+          {
+            "name": "active",
+            "type": "BOOLEAN",
+            "nullable": false
+          }
+        ],
+        "rows": 3
+      },
+      {
+        "name": "order_totals",
+        "kind": "view",
+        "columns": [
+          {
+            "name": "name",
+            "type": "VARCHAR",
+            "nullable": false
+          },
+          {
+            "name": "orders",
+            "type": "UBIGINT",
+            "nullable": false
+          },
+          {
+            "name": "total",
+            "type": "DECIMAL(38,2)",
+            "nullable": false
+          }
+        ]
+      },
+      {
+        "name": "orders",
+        "kind": "table",
+        "columns": [
+          {
+            "name": "id",
+            "type": "BIGINT",
+            "nullable": false
+          },
+          {
+            "name": "customer_id",
+            "type": "BIGINT",
+            "nullable": false
+          },
+          {
+            "name": "total",
+            "type": "DECIMAL(10,2)",
+            "nullable": false
+          },
+          {
+            "name": "placed_at",
+            "type": "TIMESTAMP",
+            "nullable": false
+          },
+          {
+            "name": "status",
+            "type": "VARCHAR",
+            "nullable": false
+          },
+          {
+            "name": "notes",
+            "type": "VARCHAR",
+            "nullable": true
+          },
+          {
+            "name": "tags",
+            "type": "JSON",
+            "nullable": false
+          }
+        ],
+        "rows": 4
+      }
+    ]
+  },
+  "detail": {
+    "tables": [
+      {
+        "name": "customers",
+        "kind": "table",
+        "note": "People who have ordered",
+        "columns": [
+          {
+            "name": "id",
+            "type": "UInt32",
+            "pk": true,
+            "unique": false,
+            "notNull": true,
+            "increment": false
+          },
+          {
+            "name": "name",
+            "type": "String",
+            "pk": false,
+            "unique": false,
+            "notNull": true,
+            "increment": false
+          },
+          {
+            "name": "email",
+            "type": "Nullable(String)",
+            "pk": false,
+            "unique": false,
+            "notNull": false,
+            "increment": false,
+            "note": "Lower case"
+          },
+          {
+            "name": "signed_up",
+            "type": "Nullable(Date)",
+            "pk": false,
+            "unique": false,
+            "notNull": false,
+            "increment": false
+          },
+          {
+            "name": "active",
+            "type": "Bool",
+            "pk": false,
+            "unique": false,
+            "notNull": true,
+            "increment": false,
+            "default": "true"
+          }
+        ],
+        "indexes": [],
+        "foreignKeys": []
+      },
+      {
+        "name": "order_totals",
+        "kind": "view",
+        "columns": [
+          {
+            "name": "name",
+            "type": "String",
+            "pk": false,
+            "unique": false,
+            "notNull": true,
+            "increment": false
+          },
+          {
+            "name": "orders",
+            "type": "UInt64",
+            "pk": false,
+            "unique": false,
+            "notNull": true,
+            "increment": false
+          },
+          {
+            "name": "total",
+            "type": "Decimal(38, 2)",
+            "pk": false,
+            "unique": false,
+            "notNull": true,
+            "increment": false
+          }
+        ],
+        "indexes": [],
+        "foreignKeys": [],
+        "sql": "CREATE VIEW shop.order_totals (`name` String, `orders` UInt64, `total` Decimal(38, 2)) AS SELECT c.name, count(o.id) AS orders, sum(o.total) AS total FROM shop.customers AS c LEFT JOIN shop.orders AS o ON o.customer_id = c.id GROUP BY c.name"
+      },
+      {
+        "name": "orders",
+        "kind": "table",
+        "columns": [
+          {
+            "name": "id",
+            "type": "UInt32",
+            "pk": true,
+            "unique": false,
+            "notNull": true,
+            "increment": false
+          },
+          {
+            "name": "customer_id",
+            "type": "UInt32",
+            "pk": true,
+            "unique": false,
+            "notNull": true,
+            "increment": false
+          },
+          {
+            "name": "total",
+            "type": "Decimal(10, 2)",
+            "pk": false,
+            "unique": false,
+            "notNull": true,
+            "increment": false
+          },
+          {
+            "name": "placed_at",
+            "type": "DateTime",
+            "pk": false,
+            "unique": false,
+            "notNull": true,
+            "increment": false
+          },
+          {
+            "name": "status",
+            "type": "LowCardinality(String)",
+            "pk": false,
+            "unique": false,
+            "notNull": true,
+            "increment": false,
+            "default": "'placed'"
+          },
+          {
+            "name": "notes",
+            "type": "Nullable(String)",
+            "pk": false,
+            "unique": false,
+            "notNull": false,
+            "increment": false
+          },
+          {
+            "name": "tags",
+            "type": "Array(String)",
+            "pk": false,
+            "unique": false,
+            "notNull": true,
+            "increment": false
+          }
+        ],
+        "indexes": [
+          {
+            "name": "orders_status",
+            "columns": [
+              "status"
+            ],
+            "unique": false
+          }
+        ],
+        "foreignKeys": []
+      }
+    ],
+    "enums": []
+  }
+}

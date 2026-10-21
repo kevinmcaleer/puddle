@@ -148,16 +148,20 @@ export function parseRequest(body: unknown): Parsed {
   return { connection: { id: 'request', name: '', driver, via: 'local', settings, auth: 'none' }, ...(typeof b.secret === 'string' ? { secret: b.secret } : {}), read };
 }
 
-/** The host a connection reaches: its host setting, or the host of its address. */
-export function targetHost(settings: Record<string, string | number | boolean>): string | undefined {
-  if (typeof settings.host === 'string' && settings.host.trim()) return settings.host.trim();
-  if (typeof settings.url === 'string' && settings.url.trim()) {
+/** The host a connection reaches: its host setting, the host of its address, or the warehouse's own host when the driver has one. */
+export function targetHost(settings: Record<string, string | number | boolean>, driver?: DriverId): string | undefined {
+  const text = (k: string) => (typeof settings[k] === 'string' ? String(settings[k]).trim() : '');
+  const hostOf = (url: string) => {
     try {
-      return new URL(settings.url.trim()).hostname || undefined;
+      return new URL(url).hostname || undefined;
     } catch {
-      return settings.url.trim();
+      return url;
     }
-  }
+  };
+  if (text('host')) return text('host');
+  if (text('url')) return hostOf(text('url'));
+  if (driver === 'bigquery') return text('endpoint') ? hostOf(text('endpoint')) : 'bigquery.googleapis.com';
+  if (driver === 'snowflake' && text('account')) return `${text('account').replace(/\.snowflakecomputing\.com$/i, '')}.snowflakecomputing.com`;
   return undefined;
 }
 
@@ -193,8 +197,8 @@ export function createServer(options: ServerOptions, connectors: Partial<Record<
     res.writeHead(status, { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'no-store' });
     res.end(message);
   };
-  const hostAllowed = (settings: Record<string, string | number | boolean>) => {
-    const host = targetHost(settings);
+  const hostAllowed = (settings: Record<string, string | number | boolean>, driver: DriverId) => {
+    const host = targetHost(settings, driver);
     if (!host) return true;
     if (loopback && !options.allow.length) return true;
     return isAllowed(host, options.allow);
@@ -234,9 +238,9 @@ export function createServer(options: ServerOptions, connectors: Partial<Record<
       return;
     }
     const { connection, secret, read } = parseRequest(await readBody(req));
-    const host = targetHost(connection.settings);
+    const host = targetHost(connection.settings, connection.driver);
     options.log(`${route.slice(1)} ${connection.driver}${host ? ` ${host}` : ''}`);
-    if (!hostAllowed(connection.settings)) {
+    if (!hostAllowed(connection.settings, connection.driver)) {
       text(res, 403, `puddle-connect may not connect to ${host}: it isn’t on the allowlist (PUDDLE_CONNECT_ALLOW).`);
       return;
     }

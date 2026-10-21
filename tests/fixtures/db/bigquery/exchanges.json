@@ -1,0 +1,112 @@
+[
+  {
+    "method": "POST",
+    "url": "http://127.0.0.1:18090/token",
+    "body": "grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Ajwt-bearer&assertion=secret",
+    "status": 200,
+    "response": "{\"access_token\":\"stand-in-access-token\",\"expires_in\":3599,\"token_type\":\"Bearer\"}"
+  },
+  {
+    "method": "POST",
+    "url": "http://127.0.0.1:18090/bigquery/v2/projects/puddle-test/queries",
+    "body": "{\"query\":\"SELECT COUNT(*) AS n FROM `puddle-test.shop`.INFORMATION_SCHEMA.TABLES\",\"useLegacySql\":false,\"timeoutMs\":30000,\"maxResults\":10000,\"defaultDataset\":{\"projectId\":\"puddle-test\",\"datasetId\":\"shop\"}}",
+    "status": 200,
+    "response": "{\"kind\":\"bigquery#queryResponse\",\"jobReference\":{\"projectId\":\"puddle-test\",\"jobId\":\"job_1\",\"location\":\"US\"},\"jobComplete\":true,\"schema\":{\"fields\":[{\"name\":\"n\",\"type\":\"INTEGER\",\"mode\":\"NULLABLE\"}]},\"rows\":[{\"f\":[{\"v\":\"3\"}]}],\"totalRows\":\"1\"}"
+  },
+  {
+    "method": "POST",
+    "url": "http://127.0.0.1:18090/bigquery/v2/projects/puddle-test/queries",
+    "body": "{\"query\":\"SELECT table_name, table_type FROM `puddle-test.shop`.INFORMATION_SCHEMA.TABLES ORDER BY table_name\",\"useLegacySql\":false,\"timeoutMs\":30000,\"maxResults\":10000,\"defaultDataset\":{\"projectId\":\"puddle-test\",\"datasetId\":\"shop\"}}",
+    "status": 200,
+    "response": "{\"kind\":\"bigquery#queryResponse\",\"jobReference\":{\"projectId\":\"puddle-test\",\"jobId\":\"job_2\",\"location\":\"US\"},\"jobComplete\":true,\"schema\":{\"fields\":[{\"name\":\"table_name\",\"type\":\"STRING\",\"mode\":\"NULLABLE\"},{\"name\":\"table_type\",\"type\":\"STRING\",\"mode\":\"NULLABLE\"}]},\"rows\":[{\"f\":[{\"v\":\"customers\"},{\"v\":\"BASE TABLE\"}]},{\"f\":[{\"v\":\"order_totals\"},{\"v\":\"VIEW\"}]},{\"f\":[{\"v\":\"orders\"},{\"v\":\"BASE TABLE\"}]}],\"totalRows\":\"3\"}"
+  },
+  {
+    "method": "POST",
+    "url": "http://127.0.0.1:18090/bigquery/v2/projects/puddle-test/queries",
+    "body": "{\"query\":\"SELECT table_name, column_name, ordinal_position, data_type, is_nullable, column_default FROM `puddle-test.shop`.INFORMATION_SCHEMA.COLUMNS ORDER BY table_name, ordinal_position\",\"useLegacySql\":false,\"timeoutMs\":30000,\"maxResults\":10000,\"defaultDataset\":{\"projectId\":\"puddle-test\",\"datasetId\":\"shop\"}}",
+    "status": 200,
+    "response": "{\"kind\":\"bigquery#queryResponse\",\"jobReference\":{\"projectId\":\"puddle-test\",\"jobId\":\"job_3\",\"location\":\"US\"},\"jobComplete\":true,\"schema\":{\"fields\":[{\"name\":\"table_name\",\"type\":\"STRING\",\"mode\":\"NULLABLE\"},{\"name\":\"column_name\",\"type\":\"STRING\",\"mode\":\"NULLABLE\"},{\"name\":\"ordinal_position\",\"type\":\"INTEGER\",\"mode\":\"NULLABLE\"},{\"name\":\"data_type\",\"type\":\"STRING\",\"mode\":\"NULLABLE\"},{\"name\":\"is_nullable\",\"type\":\"STRING\",\"mode\":\"NULLABLE\"},{\"name\":\"column_default\",\"type\":\"STRING\",\"mode\":\"NULLABLE\"}]},\"rows\":[{\"f\":[{\"v\":\"customers\"},{\"v\":\"id\"},{\"v\":\"1\"},{\"v\":\"INT64\"},{\"v\":\"NO\"},{\"v\":\"NULL\"}]},{\"f\":[{\"v\":\"customers\"},{\"v\":\"name\"},{\"v\":\"2\"},{\"v\":\"STRING\"},{\"v\":\"NO\"},{\"v\":\"NULL\"}]},{\"f\":[{\"v\":\"customers\"},{\"v\":\"email\"},{\"v\":\"3\"},{\"v\":\"STRING\"},{\"v\":\"YES\"},{\"v\":\"NULL\"}]},{\"f\":[{\"v\":\"customers\"},{\"v\":\"signed_up\"},{\"v\":\"4\"},{\"v\":\"DATE\"},{\"v\":\"YES\"},{\"v\":\"NULL\"}]},{\"f\":[{\"v\":\"customers\"},{\"v\":\"active\"},{\"v\":\"5\"},{\"v\":\"BOOL\"},{\"v\":\"YES\"},{\"v\":\"NULL\"}]},{\"f\":[{\"v\":\"order_totals\"},{\"v\":\"name\"},{\"v\":\"1\"},{\"v\":\"STRING\"},{\"v\":\"YES\"},{\"v\":\"NULL\"}]},{\"f\":[{\"v\":\"order_totals\"},{\"v\":\"orders\"},{\"v\":\"2\"},{\"v\":\"INT64\"},{\"v\":\"YES\"},{\"v\":\"NULL\"}]},{\"f\":[{\"v\":\"order_totals\"},{\"v\":\"total\"},{\"v\":\"3\"},{\"v\":\"NUMERIC\"},{\"v\":\"YES\"},{\"v\":\"NULL\"}]},{\"f\":[{\"v\":\"orders\"},{\"v\":\"id\"},{\"v\":\"1\"},{\"v\":\"INT64\"},{\"v\":\"NO\"},{\"v\":\"NULL\"}]},{\"f\":[{\"v\":\"orders\"},{\"v\":\"customer_id\"},{\"v\":\"2\"},{\"v\":\"INT64\"},{\"v\":\"NO\"},{\"v\":\"NULL\"}]},{\"f\":[{\"v\":\"orders\"},{\"v\":\"total\"},{\"v\":\"3\"},{\"v\":\"NUMERIC\"},{\"v\":\"YES\"},{\"v\":\"NULL\"}]},{\"f\":[{\"v\":\"orders\"},{\"v\":\"placed_at\"},{\"v\":\"4\"},{\"v\":\"TIMESTAMP\"},{\"v\":\"YES\"},{\"v\":\"NULL\"}]},{\"f\":[{\"v\":\"orders\"},{\"v\":\"status\"},{\"v\":\"5\"},{\"v\":\"STRING\"},{\"v\":\"YES\"},{\"v\":\"'placed'\"}]},{\"f\":[{\"v\":\"orders\"},{\"v\":\"notes\"},{\"v\":\"6\"},{\"v\":\"STRING\"},{\"v\":\"YES\"},{\"v\":\"NULL\"}]},{\"f\":[{\"v\":\"orders\"},{\"v\":\"tags\"},{\"v\":\"7\"},{\"v\":\"ARRAY<STRING>\"},{\"v\":\"YES\"},{\"v\":\"NULL\"}]},{\"f\":[{\"v\":\"orders\"},{\"v\":\"shipping\"},{\"v\":\"8\"},{\"v\":\"STRUCT<city STRING, postcode STRING>\"},{\"v\":\"YES\"},{\"v\":\"NULL\"}]}],\"totalRows\":\"16\"}"
+  },
+  {
+    "method": "POST",
+    "url": "http://127.0.0.1:18090/bigquery/v2/projects/puddle-test/queries",
+    "body": "{\"query\":\"SELECT table_id, row_count FROM `puddle-test.shop.__TABLES__`\",\"useLegacySql\":false,\"timeoutMs\":30000,\"maxResults\":10000,\"defaultDataset\":{\"projectId\":\"puddle-test\",\"datasetId\":\"shop\"}}",
+    "status": 200,
+    "response": "{\"kind\":\"bigquery#queryResponse\",\"jobReference\":{\"projectId\":\"puddle-test\",\"jobId\":\"job_4\",\"location\":\"US\"},\"jobComplete\":true,\"schema\":{\"fields\":[{\"name\":\"table_id\",\"type\":\"STRING\",\"mode\":\"NULLABLE\"},{\"name\":\"row_count\",\"type\":\"INTEGER\",\"mode\":\"NULLABLE\"}]},\"rows\":[{\"f\":[{\"v\":\"customers\"},{\"v\":\"3\"}]},{\"f\":[{\"v\":\"orders\"},{\"v\":\"4\"}]}],\"totalRows\":\"2\"}"
+  },
+  {
+    "method": "POST",
+    "url": "http://127.0.0.1:18090/bigquery/v2/projects/puddle-test/queries",
+    "body": "{\"query\":\"SELECT table_name, table_type FROM `puddle-test.shop`.INFORMATION_SCHEMA.TABLES ORDER BY table_name\",\"useLegacySql\":false,\"timeoutMs\":30000,\"maxResults\":10000,\"defaultDataset\":{\"projectId\":\"puddle-test\",\"datasetId\":\"shop\"}}",
+    "status": 200,
+    "response": "{\"kind\":\"bigquery#queryResponse\",\"jobReference\":{\"projectId\":\"puddle-test\",\"jobId\":\"job_5\",\"location\":\"US\"},\"jobComplete\":true,\"schema\":{\"fields\":[{\"name\":\"table_name\",\"type\":\"STRING\",\"mode\":\"NULLABLE\"},{\"name\":\"table_type\",\"type\":\"STRING\",\"mode\":\"NULLABLE\"}]},\"rows\":[{\"f\":[{\"v\":\"customers\"},{\"v\":\"BASE TABLE\"}]},{\"f\":[{\"v\":\"order_totals\"},{\"v\":\"VIEW\"}]},{\"f\":[{\"v\":\"orders\"},{\"v\":\"BASE TABLE\"}]}],\"totalRows\":\"3\"}"
+  },
+  {
+    "method": "POST",
+    "url": "http://127.0.0.1:18090/bigquery/v2/projects/puddle-test/queries",
+    "body": "{\"query\":\"SELECT table_name, column_name, ordinal_position, data_type, is_nullable, column_default FROM `puddle-test.shop`.INFORMATION_SCHEMA.COLUMNS ORDER BY table_name, ordinal_position\",\"useLegacySql\":false,\"timeoutMs\":30000,\"maxResults\":10000,\"defaultDataset\":{\"projectId\":\"puddle-test\",\"datasetId\":\"shop\"}}",
+    "status": 200,
+    "response": "{\"kind\":\"bigquery#queryResponse\",\"jobReference\":{\"projectId\":\"puddle-test\",\"jobId\":\"job_6\",\"location\":\"US\"},\"jobComplete\":true,\"schema\":{\"fields\":[{\"name\":\"table_name\",\"type\":\"STRING\",\"mode\":\"NULLABLE\"},{\"name\":\"column_name\",\"type\":\"STRING\",\"mode\":\"NULLABLE\"},{\"name\":\"ordinal_position\",\"type\":\"INTEGER\",\"mode\":\"NULLABLE\"},{\"name\":\"data_type\",\"type\":\"STRING\",\"mode\":\"NULLABLE\"},{\"name\":\"is_nullable\",\"type\":\"STRING\",\"mode\":\"NULLABLE\"},{\"name\":\"column_default\",\"type\":\"STRING\",\"mode\":\"NULLABLE\"}]},\"rows\":[{\"f\":[{\"v\":\"customers\"},{\"v\":\"id\"},{\"v\":\"1\"},{\"v\":\"INT64\"},{\"v\":\"NO\"},{\"v\":\"NULL\"}]},{\"f\":[{\"v\":\"customers\"},{\"v\":\"name\"},{\"v\":\"2\"},{\"v\":\"STRING\"},{\"v\":\"NO\"},{\"v\":\"NULL\"}]},{\"f\":[{\"v\":\"customers\"},{\"v\":\"email\"},{\"v\":\"3\"},{\"v\":\"STRING\"},{\"v\":\"YES\"},{\"v\":\"NULL\"}]},{\"f\":[{\"v\":\"customers\"},{\"v\":\"signed_up\"},{\"v\":\"4\"},{\"v\":\"DATE\"},{\"v\":\"YES\"},{\"v\":\"NULL\"}]},{\"f\":[{\"v\":\"customers\"},{\"v\":\"active\"},{\"v\":\"5\"},{\"v\":\"BOOL\"},{\"v\":\"YES\"},{\"v\":\"NULL\"}]},{\"f\":[{\"v\":\"order_totals\"},{\"v\":\"name\"},{\"v\":\"1\"},{\"v\":\"STRING\"},{\"v\":\"YES\"},{\"v\":\"NULL\"}]},{\"f\":[{\"v\":\"order_totals\"},{\"v\":\"orders\"},{\"v\":\"2\"},{\"v\":\"INT64\"},{\"v\":\"YES\"},{\"v\":\"NULL\"}]},{\"f\":[{\"v\":\"order_totals\"},{\"v\":\"total\"},{\"v\":\"3\"},{\"v\":\"NUMERIC\"},{\"v\":\"YES\"},{\"v\":\"NULL\"}]},{\"f\":[{\"v\":\"orders\"},{\"v\":\"id\"},{\"v\":\"1\"},{\"v\":\"INT64\"},{\"v\":\"NO\"},{\"v\":\"NULL\"}]},{\"f\":[{\"v\":\"orders\"},{\"v\":\"customer_id\"},{\"v\":\"2\"},{\"v\":\"INT64\"},{\"v\":\"NO\"},{\"v\":\"NULL\"}]},{\"f\":[{\"v\":\"orders\"},{\"v\":\"total\"},{\"v\":\"3\"},{\"v\":\"NUMERIC\"},{\"v\":\"YES\"},{\"v\":\"NULL\"}]},{\"f\":[{\"v\":\"orders\"},{\"v\":\"placed_at\"},{\"v\":\"4\"},{\"v\":\"TIMESTAMP\"},{\"v\":\"YES\"},{\"v\":\"NULL\"}]},{\"f\":[{\"v\":\"orders\"},{\"v\":\"status\"},{\"v\":\"5\"},{\"v\":\"STRING\"},{\"v\":\"YES\"},{\"v\":\"'placed'\"}]},{\"f\":[{\"v\":\"orders\"},{\"v\":\"notes\"},{\"v\":\"6\"},{\"v\":\"STRING\"},{\"v\":\"YES\"},{\"v\":\"NULL\"}]},{\"f\":[{\"v\":\"orders\"},{\"v\":\"tags\"},{\"v\":\"7\"},{\"v\":\"ARRAY<STRING>\"},{\"v\":\"YES\"},{\"v\":\"NULL\"}]},{\"f\":[{\"v\":\"orders\"},{\"v\":\"shipping\"},{\"v\":\"8\"},{\"v\":\"STRUCT<city STRING, postcode STRING>\"},{\"v\":\"YES\"},{\"v\":\"NULL\"}]}],\"totalRows\":\"16\"}"
+  },
+  {
+    "method": "POST",
+    "url": "http://127.0.0.1:18090/bigquery/v2/projects/puddle-test/queries",
+    "body": "{\"query\":\"SELECT table_name, column_name, description FROM `puddle-test.shop`.INFORMATION_SCHEMA.COLUMN_FIELD_PATHS WHERE description IS NOT NULL AND field_path = column_name\",\"useLegacySql\":false,\"timeoutMs\":30000,\"maxResults\":10000,\"defaultDataset\":{\"projectId\":\"puddle-test\",\"datasetId\":\"shop\"}}",
+    "status": 200,
+    "response": "{\"kind\":\"bigquery#queryResponse\",\"jobReference\":{\"projectId\":\"puddle-test\",\"jobId\":\"job_7\",\"location\":\"US\"},\"jobComplete\":true,\"schema\":{\"fields\":[{\"name\":\"table_name\",\"type\":\"STRING\",\"mode\":\"NULLABLE\"},{\"name\":\"column_name\",\"type\":\"STRING\",\"mode\":\"NULLABLE\"},{\"name\":\"description\",\"type\":\"STRING\",\"mode\":\"NULLABLE\"}]},\"rows\":[{\"f\":[{\"v\":\"customers\"},{\"v\":\"email\"},{\"v\":\"Lower case\"}]}],\"totalRows\":\"1\"}"
+  },
+  {
+    "method": "POST",
+    "url": "http://127.0.0.1:18090/bigquery/v2/projects/puddle-test/queries",
+    "body": "{\"query\":\"SELECT table_name, option_value FROM `puddle-test.shop`.INFORMATION_SCHEMA.TABLE_OPTIONS WHERE option_name = 'description'\",\"useLegacySql\":false,\"timeoutMs\":30000,\"maxResults\":10000,\"defaultDataset\":{\"projectId\":\"puddle-test\",\"datasetId\":\"shop\"}}",
+    "status": 200,
+    "response": "{\"kind\":\"bigquery#queryResponse\",\"jobReference\":{\"projectId\":\"puddle-test\",\"jobId\":\"job_8\",\"location\":\"US\"},\"jobComplete\":true,\"schema\":{\"fields\":[{\"name\":\"table_name\",\"type\":\"STRING\",\"mode\":\"NULLABLE\"},{\"name\":\"option_value\",\"type\":\"STRING\",\"mode\":\"NULLABLE\"}]},\"rows\":[{\"f\":[{\"v\":\"customers\"},{\"v\":\"\\\"People who have ordered\\\"\"}]}],\"totalRows\":\"1\"}"
+  },
+  {
+    "method": "POST",
+    "url": "http://127.0.0.1:18090/bigquery/v2/projects/puddle-test/queries",
+    "body": "{\"query\":\"SELECT table_name, view_definition FROM `puddle-test.shop`.INFORMATION_SCHEMA.VIEWS\",\"useLegacySql\":false,\"timeoutMs\":30000,\"maxResults\":10000,\"defaultDataset\":{\"projectId\":\"puddle-test\",\"datasetId\":\"shop\"}}",
+    "status": 200,
+    "response": "{\"kind\":\"bigquery#queryResponse\",\"jobReference\":{\"projectId\":\"puddle-test\",\"jobId\":\"job_9\",\"location\":\"US\"},\"jobComplete\":true,\"schema\":{\"fields\":[{\"name\":\"table_name\",\"type\":\"STRING\",\"mode\":\"NULLABLE\"},{\"name\":\"view_definition\",\"type\":\"STRING\",\"mode\":\"NULLABLE\"}]},\"rows\":[{\"f\":[{\"v\":\"order_totals\"},{\"v\":\"SELECT c.name, COUNT(o.id) AS orders, SUM(o.total) AS total FROM `puddle-test.shop.orders` o JOIN `puddle-test.shop.customers` c ON c.id = o.customer_id GROUP BY c.name\"}]}],\"totalRows\":\"1\"}"
+  },
+  {
+    "method": "POST",
+    "url": "http://127.0.0.1:18090/bigquery/v2/projects/puddle-test/queries",
+    "body": "{\"query\":\"SELECT tc.table_name, tc.constraint_name, tc.constraint_type, kcu.column_name, kcu.ordinal_position FROM `puddle-test.shop`.INFORMATION_SCHEMA.TABLE_CONSTRAINTS tc JOIN `puddle-test.shop`.INFORMATION_SCHEMA.KEY_COLUMN_USAGE kcu ON kcu.constraint_name = tc.constraint_name AND kcu.table_name = tc.table_name ORDER BY tc.table_name, tc.constraint_name, kcu.ordinal_position\",\"useLegacySql\":false,\"timeoutMs\":30000,\"maxResults\":10000,\"defaultDataset\":{\"projectId\":\"puddle-test\",\"datasetId\":\"shop\"}}",
+    "status": 200,
+    "response": "{\"kind\":\"bigquery#queryResponse\",\"jobReference\":{\"projectId\":\"puddle-test\",\"jobId\":\"job_10\",\"location\":\"US\"},\"jobComplete\":true,\"schema\":{\"fields\":[{\"name\":\"table_name\",\"type\":\"STRING\",\"mode\":\"NULLABLE\"},{\"name\":\"constraint_name\",\"type\":\"STRING\",\"mode\":\"NULLABLE\"},{\"name\":\"constraint_type\",\"type\":\"STRING\",\"mode\":\"NULLABLE\"},{\"name\":\"column_name\",\"type\":\"STRING\",\"mode\":\"NULLABLE\"},{\"name\":\"ordinal_position\",\"type\":\"INTEGER\",\"mode\":\"NULLABLE\"}]},\"rows\":[{\"f\":[{\"v\":\"customers\"},{\"v\":\"customers.pk$\"},{\"v\":\"PRIMARY KEY\"},{\"v\":\"id\"},{\"v\":\"1\"}]},{\"f\":[{\"v\":\"orders\"},{\"v\":\"orders.customer_id\"},{\"v\":\"FOREIGN KEY\"},{\"v\":\"customer_id\"},{\"v\":\"1\"}]},{\"f\":[{\"v\":\"orders\"},{\"v\":\"orders.pk$\"},{\"v\":\"PRIMARY KEY\"},{\"v\":\"id\"},{\"v\":\"1\"}]}],\"totalRows\":\"3\"}"
+  },
+  {
+    "method": "POST",
+    "url": "http://127.0.0.1:18090/bigquery/v2/projects/puddle-test/queries",
+    "body": "{\"query\":\"SELECT constraint_name, table_name, column_name FROM `puddle-test.shop`.INFORMATION_SCHEMA.CONSTRAINT_COLUMN_USAGE\",\"useLegacySql\":false,\"timeoutMs\":30000,\"maxResults\":10000,\"defaultDataset\":{\"projectId\":\"puddle-test\",\"datasetId\":\"shop\"}}",
+    "status": 200,
+    "response": "{\"kind\":\"bigquery#queryResponse\",\"jobReference\":{\"projectId\":\"puddle-test\",\"jobId\":\"job_11\",\"location\":\"US\"},\"jobComplete\":true,\"schema\":{\"fields\":[{\"name\":\"constraint_name\",\"type\":\"STRING\",\"mode\":\"NULLABLE\"},{\"name\":\"table_name\",\"type\":\"STRING\",\"mode\":\"NULLABLE\"},{\"name\":\"column_name\",\"type\":\"STRING\",\"mode\":\"NULLABLE\"}]},\"rows\":[{\"f\":[{\"v\":\"customers.pk$\"},{\"v\":\"customers\"},{\"v\":\"id\"}]},{\"f\":[{\"v\":\"orders.customer_id\"},{\"v\":\"customers\"},{\"v\":\"id\"}]},{\"f\":[{\"v\":\"orders.pk$\"},{\"v\":\"orders\"},{\"v\":\"id\"}]}],\"totalRows\":\"3\"}"
+  },
+  {
+    "method": "POST",
+    "url": "http://127.0.0.1:18090/bigquery/v2/projects/puddle-test/queries",
+    "body": "{\"query\":\"SELECT * FROM `puddle-test.shop.orders` LIMIT 10\",\"useLegacySql\":false,\"timeoutMs\":30000,\"maxResults\":10000,\"defaultDataset\":{\"projectId\":\"puddle-test\",\"datasetId\":\"shop\"}}",
+    "status": 200,
+    "response": "{\"kind\":\"bigquery#queryResponse\",\"jobReference\":{\"projectId\":\"puddle-test\",\"jobId\":\"job_12\",\"location\":\"US\"},\"jobComplete\":false}"
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:18090/bigquery/v2/projects/puddle-test/queries/job_12?location=US&timeoutMs=30000&maxResults=10000",
+    "status": 200,
+    "response": "{\"kind\":\"bigquery#getQueryResultsResponse\",\"jobReference\":{\"projectId\":\"puddle-test\",\"jobId\":\"job_12\",\"location\":\"US\"},\"jobComplete\":true,\"schema\":{\"fields\":[{\"name\":\"id\",\"type\":\"INTEGER\",\"mode\":\"REQUIRED\"},{\"name\":\"customer_id\",\"type\":\"INTEGER\",\"mode\":\"REQUIRED\"},{\"name\":\"total\",\"type\":\"NUMERIC\",\"mode\":\"NULLABLE\"},{\"name\":\"placed_at\",\"type\":\"TIMESTAMP\",\"mode\":\"NULLABLE\"},{\"name\":\"status\",\"type\":\"STRING\",\"mode\":\"NULLABLE\"},{\"name\":\"notes\",\"type\":\"STRING\",\"mode\":\"NULLABLE\"},{\"name\":\"tags\",\"type\":\"STRING\",\"mode\":\"REPEATED\"},{\"name\":\"shipping\",\"type\":\"RECORD\",\"mode\":\"NULLABLE\",\"fields\":[{\"name\":\"city\",\"type\":\"STRING\",\"mode\":\"NULLABLE\"},{\"name\":\"postcode\",\"type\":\"STRING\",\"mode\":\"NULLABLE\"}]}]},\"totalRows\":\"4\",\"rows\":[{\"f\":[{\"v\":\"101\"},{\"v\":\"1\"},{\"v\":\"19.99\"},{\"v\":\"1711963800.0\"},{\"v\":\"shipped\"},{\"v\":\"Gift wrap\"},{\"v\":[{\"v\":\"gift\"},{\"v\":\"express\"}]},{\"v\":{\"f\":[{\"v\":\"London\"},{\"v\":\"N1 9GU\"}]}}]},{\"f\":[{\"v\":\"102\"},{\"v\":\"1\"},{\"v\":\"5.5\"},{\"v\":\"1712066400.0\"},{\"v\":\"placed\"},{\"v\":null},{\"v\":[]},{\"v\":null}]}],\"pageToken\":\"page2\"}"
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:18090/bigquery/v2/projects/puddle-test/queries/job_12?location=US&timeoutMs=30000&maxResults=10000&pageToken=page2",
+    "status": 200,
+    "response": "{\"kind\":\"bigquery#getQueryResultsResponse\",\"jobReference\":{\"projectId\":\"puddle-test\",\"jobId\":\"job_12\",\"location\":\"US\"},\"jobComplete\":true,\"schema\":{\"fields\":[{\"name\":\"id\",\"type\":\"INTEGER\",\"mode\":\"REQUIRED\"},{\"name\":\"customer_id\",\"type\":\"INTEGER\",\"mode\":\"REQUIRED\"},{\"name\":\"total\",\"type\":\"NUMERIC\",\"mode\":\"NULLABLE\"},{\"name\":\"placed_at\",\"type\":\"TIMESTAMP\",\"mode\":\"NULLABLE\"},{\"name\":\"status\",\"type\":\"STRING\",\"mode\":\"NULLABLE\"},{\"name\":\"notes\",\"type\":\"STRING\",\"mode\":\"NULLABLE\"},{\"name\":\"tags\",\"type\":\"STRING\",\"mode\":\"REPEATED\"},{\"name\":\"shipping\",\"type\":\"RECORD\",\"mode\":\"NULLABLE\",\"fields\":[{\"name\":\"city\",\"type\":\"STRING\",\"mode\":\"NULLABLE\"},{\"name\":\"postcode\",\"type\":\"STRING\",\"mode\":\"NULLABLE\"}]}]},\"totalRows\":\"4\",\"rows\":[{\"f\":[{\"v\":\"103\"},{\"v\":\"2\"},{\"v\":\"120\"},{\"v\":\"1712142900.0\"},{\"v\":\"returned\"},{\"v\":null},{\"v\":[{\"v\":\"bulk\"}]},{\"v\":{\"f\":[{\"v\":\"Leeds\"},{\"v\":\"LS1 1UR\"}]}}]},{\"f\":[{\"v\":\"104\"},{\"v\":\"3\"},{\"v\":\"42.25\"},{\"v\":\"1712249100.0\"},{\"v\":\"placed\"},{\"v\":null},{\"v\":[]},{\"v\":null}]}]}"
+  },
+  {
+    "method": "POST",
+    "url": "http://127.0.0.1:18090/bigquery/v2/projects/puddle-test/queries",
+    "body": "{\"query\":\"SELECT * FROM (SELECT c.name, o.total, o.placed_at, o.status, c.signed_up, c.active FROM orders o JOIN customers c ON c.id = o.customer_id ORDER BY o.id) AS puddle_query LIMIT 2\",\"useLegacySql\":false,\"timeoutMs\":30000,\"maxResults\":10000,\"defaultDataset\":{\"projectId\":\"puddle-test\",\"datasetId\":\"shop\"}}",
+    "status": 200,
+    "response": "{\"kind\":\"bigquery#queryResponse\",\"jobReference\":{\"projectId\":\"puddle-test\",\"jobId\":\"job_13\",\"location\":\"US\"},\"jobComplete\":true,\"schema\":{\"fields\":[{\"name\":\"name\",\"type\":\"STRING\",\"mode\":\"REQUIRED\"},{\"name\":\"total\",\"type\":\"NUMERIC\",\"mode\":\"NULLABLE\"},{\"name\":\"placed_at\",\"type\":\"TIMESTAMP\",\"mode\":\"NULLABLE\"},{\"name\":\"status\",\"type\":\"STRING\",\"mode\":\"NULLABLE\"},{\"name\":\"signed_up\",\"type\":\"DATE\",\"mode\":\"NULLABLE\"},{\"name\":\"active\",\"type\":\"BOOLEAN\",\"mode\":\"NULLABLE\"}]},\"rows\":[{\"f\":[{\"v\":\"Ada Lovelace\"},{\"v\":\"19.99\"},{\"v\":\"1711963800.0\"},{\"v\":\"shipped\"},{\"v\":\"2024-01-15\"},{\"v\":\"true\"}]},{\"f\":[{\"v\":\"Ada Lovelace\"},{\"v\":\"5.5\"},{\"v\":\"1712066400.0\"},{\"v\":\"placed\"},{\"v\":\"2024-01-15\"},{\"v\":\"true\"}]}],\"totalRows\":\"2\"}"
+  }
+]

@@ -7,12 +7,16 @@ import { resolve, sep } from 'node:path';
 import type { Connection, DriverId } from '../model';
 import { inProcessClient } from '../sqlite/client';
 import { SqliteService } from '../sqlite/service';
+import { bigqueryConnector } from './drivers/bigquery';
+import { clickhouseConnector } from './drivers/clickhouse';
 import { firebirdConnector } from './drivers/firebird';
 import { mysqlConnector } from './drivers/mysql';
 import { oracleConnector } from './drivers/oracle';
 import { sqlserverConnector } from './drivers/sqlserver';
 import { postgresConnector } from './drivers/postgres';
+import { snowflakeConnector } from './drivers/snowflake';
 import { sqliteConnector } from './drivers/sqlite';
+import { trinoConnector } from './drivers/trino';
 import { ConnectorError, type Connector, type ConnectorContext } from './types';
 
 export interface NodeOptions {
@@ -72,5 +76,9 @@ export function nodeConnectors(options: NodeOptions): Partial<Record<DriverId, C
     firebird: firebirdConnector(),
     sqlserver: sqlserverConnector(),
     oracle: oracleConnector(),
+    clickhouse: clickhouseConnector(),
+    bigquery: bigqueryConnector(),
+    snowflake: snowflakeConnector(),
+    trino: trinoConnector(),
   };
 }

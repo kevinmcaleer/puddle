@@ -44,6 +44,8 @@ jobs:
       PUDDLE_TEST_POSTGRES: postgres://postgres:puddle@localhost:5432/shop
       PUDDLE_TEST_MYSQL: mysql://root:puddle@localhost:3306/shop
       PUDDLE_TEST_FIREBIRD: firebird://SYSDBA:puddle@localhost:3050//var/lib/firebird/data/shop.fdb
+      # The ClickHouse flow reads the shop in the browser, straight from the container's HTTP interface.
+      PUDDLE_TEST_CLICKHOUSE: http://default:puddle@localhost:8123/shop
     services:
       postgres:
         image: postgres:16
@@ -68,6 +70,13 @@ jobs:
           FIREBIRD_DATABASE: shop.fdb
         ports:
           - 3050:3050
+      clickhouse:
+        image: clickhouse/clickhouse-server:24.8
+        env:
+          CLICKHOUSE_PASSWORD: puddle
+        ports:
+          - 8123:8123
+        options: --health-cmd "wget -qO- http://localhost:8123/ping" --health-interval 5s --health-timeout 5s --health-retries 20
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -78,6 +87,7 @@ jobs:
       - run: node scripts/seed-postgres.mjs "$PUDDLE_TEST_POSTGRES"
       - run: node scripts/seed-mysql.mjs "$PUDDLE_TEST_MYSQL"
       - run: node scripts/seed-firebird.mjs "$PUDDLE_TEST_FIREBIRD"
+      - run: node scripts/seed-clickhouse.mjs "$PUDDLE_TEST_CLICKHOUSE"
       - run: npx playwright install --with-deps ${{ matrix.browser }}
       - run: npm run e2e -- --shard=${{ matrix.shard }}/${{ matrix.shards }}
       - if: failure()
@@ -255,9 +265,12 @@ jobs:
 
   databases:
     # The server drivers against real databases: each family's tests (tests/connect/*.test.ts) run against a container
-    # seeded with tests/fixtures/db/seed*.sql. PostgreSQL, MySQL, MariaDB and Firebird are services; CockroachDB, SQL Server
-    # and Oracle are started by hand (no official healthcheck, or a start too slow for one). Each row also re-records the
-    # family's fixtures and prints them, so tests/fixtures/db/<family>/ can be refreshed from the log.
+    # seeded with tests/fixtures/db/seed*.sql. PostgreSQL, MySQL, MariaDB, Firebird and ClickHouse are services; CockroachDB,
+    # SQL Server, Oracle and Trino are started by hand (no official healthcheck, or a start too slow for one). BigQuery and
+    # Snowflake have no container: their rows run the stand-ins (scripts/*-stand-in.mjs), which answer in the APIs' shapes
+    # and check the signed sign-in with a key made for the job; a real project or account is the proof, when one is given.
+    # Each row also re-records the family's fixtures and prints them, so tests/fixtures/db/<family>/ can be refreshed from
+    # the log.
     name: ${{ matrix.name }} driver
     if: github.event_name != 'schedule'
     runs-on: ubuntu-latest
@@ -272,6 +285,10 @@ jobs:
           - { name: Firebird, driver: firebird, url: 'firebird://SYSDBA:puddle@localhost:3050//var/lib/firebird/data/shop.fdb', test: tests/connect/firebird.test.ts }
           - { name: SQL Server, driver: sqlserver, url: 'sqlserver://sa:Puddle%21Test1@localhost:1433/shop', test: tests/connect/sqlserver.test.ts }
           - { name: Oracle, driver: oracle, url: 'oracle://shop:puddle@localhost:1521/FREEPDB1', test: tests/connect/oracle.test.ts }
+          - { name: ClickHouse, driver: clickhouse, url: 'http://default:puddle@localhost:8123/shop', test: tests/connect/clickhouse.test.ts }
+          - { name: Trino, driver: trino, url: 'http://puddle@localhost:8080/memory/shop', test: tests/connect/trino.test.ts }
+          - { name: BigQuery (stand-in), driver: bigquery, url: 'bigquery://puddle-test/shop?key=/tmp/puddle-keys/bigquery-key.json&endpoint=http://127.0.0.1:18090', test: tests/connect/bigquery.test.ts }
+          - { name: Snowflake (stand-in), driver: snowflake, url: 'snowflake://puddle@xy12345.eu-west-2.aws/shop/public?key=/tmp/puddle-keys/test.p8&warehouse=compute_wh&url=http://127.0.0.1:18091', test: tests/connect/snowflake.test.ts }
     services:
       postgres:
         image: postgres:16
@@ -304,6 +321,13 @@ jobs:
           FIREBIRD_DATABASE: shop.fdb
         ports:
           - 3050:3050
+      clickhouse:
+        image: clickhouse/clickhouse-server:24.8
+        env:
+          CLICKHOUSE_PASSWORD: puddle
+        ports:
+          - 8123:8123
+        options: --health-cmd "wget -qO- http://localhost:8123/ping" --health-interval 5s --health-timeout 5s --health-retries 20
     env:
       # Each family reads its own variable; the others are unset for that matrix row.
       PUDDLE_TEST_POSTGRES: ${{ startsWith(matrix.url, 'postgres') && matrix.url || '' }}
@@ -313,6 +337,10 @@ jobs:
       PUDDLE_TEST_FIREBIRD: ${{ startsWith(matrix.url, 'firebird') && matrix.url || '' }}
       PUDDLE_TEST_SQLSERVER: ${{ startsWith(matrix.url, 'sqlserver') && matrix.url || '' }}
       PUDDLE_TEST_ORACLE: ${{ startsWith(matrix.url, 'oracle') && matrix.url || '' }}
+      PUDDLE_TEST_CLICKHOUSE: ${{ matrix.driver == 'clickhouse' && matrix.url || '' }}
+      PUDDLE_TEST_TRINO: ${{ matrix.driver == 'trino' && matrix.url || '' }}
+      PUDDLE_TEST_BIGQUERY: ${{ matrix.driver == 'bigquery' && matrix.url || '' }}
+      PUDDLE_TEST_SNOWFLAKE: ${{ matrix.driver == 'snowflake' && matrix.url || '' }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -326,6 +354,14 @@ jobs:
         run: docker run -d --name sqlserver -p 1433:1433 -e ACCEPT_EULA=Y -e 'MSSQL_SA_PASSWORD=Puddle!Test1' mcr.microsoft.com/mssql/server:2022-latest
       - if: matrix.driver == 'oracle'
         run: docker run -d --name oracle -p 1521:1521 -e ORACLE_PASSWORD=puddle -e APP_USER=shop -e APP_USER_PASSWORD=puddle gvenzl/oracle-free:23-slim-faststart
+      - if: matrix.driver == 'trino'
+        run: docker run -d --name trino -p 8080:8080 trinodb/trino:446
+      - if: matrix.driver == 'bigquery' || matrix.driver == 'snowflake'
+        run: |
+          node scripts/make-test-key.mjs /tmp/puddle-keys http://127.0.0.1:18090/token
+          (node scripts/bigquery-stand-in.mjs 18090 /tmp/puddle-keys/bigquery-key.json > /tmp/bigquery-stand-in.log 2>&1 &)
+          (node scripts/snowflake-stand-in.mjs 18091 /tmp/puddle-keys/test.p8 > /tmp/snowflake-stand-in.log 2>&1 &)
+          sleep 2
       - if: startsWith(matrix.url, 'postgres')
         run: node scripts/seed-postgres.mjs "$PUDDLE_TEST_POSTGRES"
       - if: startsWith(matrix.url, 'mysql')
@@ -336,12 +372,16 @@ jobs:
         run: node scripts/seed-sqlserver.mjs "$PUDDLE_TEST_SQLSERVER"
       - if: matrix.driver == 'oracle'
         run: node scripts/seed-oracle.mjs "$PUDDLE_TEST_ORACLE"
+      - if: matrix.driver == 'clickhouse'
+        run: node scripts/seed-clickhouse.mjs "$PUDDLE_TEST_CLICKHOUSE"
+      - if: matrix.driver == 'trino'
+        run: node scripts/seed-trino.mjs "$PUDDLE_TEST_TRINO"
       - run: npx vitest run ${{ matrix.test }} --project shared
       - name: Record the fixtures the unit tests replay, for refreshing tests/fixtures/db/${{ matrix.driver }}/
-        if: matrix.driver == 'firebird' || matrix.driver == 'sqlserver' || matrix.driver == 'oracle'
+        if: matrix.driver == 'firebird' || matrix.driver == 'sqlserver' || matrix.driver == 'oracle' || matrix.driver == 'clickhouse' || matrix.driver == 'trino'
         run: |
           node scripts/record-database.mjs ${{ matrix.driver }} "${{ matrix.url }}"
-          echo '::group::queries.json'; cat tests/fixtures/db/${{ matrix.driver }}/queries.json; echo '::endgroup::'
+          echo '::group::queries.json'; cat tests/fixtures/db/${{ matrix.driver }}/queries.json 2>/dev/null || cat tests/fixtures/db/${{ matrix.driver }}/exchanges.json; echo '::endgroup::'
           echo '::group::catalog.json'; cat tests/fixtures/db/${{ matrix.driver }}/catalog.json; echo '::endgroup::'
           git diff --stat -- tests/fixtures/db/${{ matrix.driver }}/
 
