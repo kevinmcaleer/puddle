@@ -46,6 +46,19 @@ describe('puddle-run schema, built', () => {
     expect(readFileSync(join(folder, 'schema.html'), 'utf8')).toBe(writeDocsHtml(schema, { title: 'Docs example', views: [], tokens: defaultDocsTokens() }));
   });
 
+  it('run writes the quality report in its three formats, the HTML rendered from the report document', () => {
+    // A regression test: the bundle once compiled the report's JSX to React.createElement with no React in scope.
+    writeFileSync(join(folder, 'v1.puddle.json'), readFileSync(join(root, 'tests/fixtures/projects/v1.puddle.json')));
+    writeFileSync(join(folder, 'customers.csv'), readFileSync(join(root, 'tests/fixtures/customers.csv')));
+    const r = spawnSync(process.execPath, [cli, 'run', 'v1.puddle.json'], { cwd: folder, encoding: 'utf8' });
+    expect(r.status, r.stderr).toBe(0);
+    const html = readFileSync(join(folder, 'out', 'customers-clean-up-format-1.quality.html'), 'utf8');
+    expect(html).toContain('<title>');
+    expect(html).toContain('Customers clean-up');
+    expect(readFileSync(join(folder, 'out', 'customers-clean-up-format-1.quality.md'), 'utf8')).toContain('# ');
+    expect(JSON.parse(readFileSync(join(folder, 'out', 'customers-clean-up-format-1.quality.json'), 'utf8'))).toMatchObject({ project: { name: 'Customers clean-up (format 1)' } });
+  });
+
   it('prints its usage, and exits 2 on arguments it doesn’t know', () => {
     expect(execFileSync(process.execPath, [cli, 'help'], { encoding: 'utf8' })).toContain('puddle-run schema <project.puddle.json | schema.dbml>');
     expect(puddleRun('docs.puddle.json', '--nope').status).toBe(2);
