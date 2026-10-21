@@ -40,6 +40,17 @@ jobs:
     env:
       E2E_BROWSERS: ${{ matrix.browser }}
       E2E_BROWSER_LOGS: '1'
+      # The PostgreSQL flow reads the shop from the service container below through puddle-connect.
+      PUDDLE_TEST_POSTGRES: postgres://postgres:puddle@localhost:5432/shop
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: puddle
+          POSTGRES_DB: shop
+        ports:
+          - 5432:5432
+        options: --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 10
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -47,6 +58,7 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      - run: node scripts/seed-postgres.mjs "$PUDDLE_TEST_POSTGRES"
       - run: npx playwright install --with-deps ${{ matrix.browser }}
       - run: npm run e2e -- --shard=${{ matrix.shard }}/${{ matrix.shards }}
       - if: failure()
@@ -234,10 +246,46 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
+  databases:
+    # The server drivers against real databases: each family's tests (tests/connect/*.test.ts) run against a container
+    # seeded with tests/fixtures/db/seed.sql. PostgreSQL is a service; CockroachDB is started by hand (no official healthcheck).
+    name: ${{ matrix.name }} driver
+    if: github.event_name != 'schedule'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { name: PostgreSQL, driver: postgres, url: 'postgres://postgres:puddle@localhost:5432/shop', test: tests/connect/postgres.test.ts }
+          - { name: CockroachDB, driver: cockroach, url: 'postgres://root@localhost:26257/shop', test: tests/connect/postgres.test.ts }
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: puddle
+          POSTGRES_DB: shop
+        ports:
+          - 5432:5432
+        options: --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      PUDDLE_TEST_POSTGRES: ${{ matrix.url }}
+      PUDDLE_TEST_POSTGRES_DRIVER: ${{ matrix.driver }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - if: matrix.driver == 'cockroach'
+        run: docker run -d --name cockroach -p 26257:26257 cockroachdb/cockroach:latest-v24.1 start-single-node --insecure
+      - run: node scripts/seed-postgres.mjs "$PUDDLE_TEST_POSTGRES"
+      - run: npx vitest run ${{ matrix.test }} --project shared
+
   publish:
     name: Publish the image
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    needs: [check, e2e, container, runner, connect]
+    needs: [check, e2e, container, runner, connect, databases]
     runs-on: ubuntu-latest
     permissions:
       contents: read

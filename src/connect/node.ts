@@ -1,11 +1,12 @@
 // The drivers as puddle-connect and the runner run them in Node: the same Connector interface, with a database
 // file read from a path on this computer (inside the folders the service may read) rather than picked in a page.
-// Drivers that need a database protocol (#206 onwards) register here as they land.
+// Drivers that need a database protocol register here as they land: the PostgreSQL family first.
 import { readFile } from 'node:fs/promises';
 import { resolve, sep } from 'node:path';
 import type { Connection, DriverId } from '../model';
 import { inProcessClient } from '../sqlite/client';
 import { SqliteService } from '../sqlite/service';
+import { postgresConnector } from './drivers/postgres';
 import { sqliteConnector } from './drivers/sqlite';
 import { ConnectorError, type Connector, type ConnectorContext } from './types';
 
@@ -56,5 +57,9 @@ export function nodeConnectors(options: NodeOptions): Partial<Record<DriverId, C
   return {
     sqlite: fileConnector(sqliteConnector('sqlite', client), options),
     libsql: fileConnector(sqliteConnector('libsql', client), options),
+    postgres: postgresConnector('postgres'),
+    redshift: postgresConnector('redshift'),
+    cockroach: postgresConnector('cockroach'),
+    greengage: postgresConnector('greengage'),
   };
 }

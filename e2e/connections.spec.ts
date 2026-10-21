@@ -30,14 +30,14 @@ test('a PostgreSQL connection is saved without its password and signed in for th
   await form.getByLabel('Password').fill('hunter2');
   await expect(form.getByLabel('Where it runs')).toHaveValue('local');
   await form.getByRole('button', { name: 'Test', exact: true }).click();
-  await expect(form.getByTestId('conn-test')).toHaveAttribute('data-ok', 'false');
-  // puddle-connect runs for the suite (started by the Playwright config), without a PostgreSQL driver yet.
-  await expect(form.getByTestId('conn-test')).toContainText('no postgres driver');
+  await expect(form.getByTestId('conn-test')).toHaveAttribute('data-ok', 'false', { timeout: 20_000 });
+  // puddle-connect runs for the suite (started by the Playwright config); there is no such host to reach.
+  await expect(form.getByTestId('conn-test')).toContainText('Nothing answers at db.local:5432');
   await form.getByRole('button', { name: 'Save connection' }).click();
 
-  // Saved: the tables are asked for next, which needs the service too; back to the list.
+  // Saved: the tables are asked for next, which fails the same way; back to the list.
   const picker = page.getByRole('dialog', { name: 'Read from PostgreSQL' });
-  await expect(picker).toContainText('no postgres driver');
+  await expect(picker).toContainText('Nothing answers at db.local:5432', { timeout: 20_000 });
   await page.keyboard.press('Escape');
   const row = list.getByTestId('connection-PostgreSQL');
   await expect(row).toContainText('PostgreSQL · kev@db.local:5432/shop · on this computer · signed in');
@@ -244,4 +244,54 @@ test('a SQLite file on this computer is read through puddle-connect: found at lo
   await expect(node(page, 'orders')).toHaveAttribute('data-status', 'ok', { timeout: 20_000 });
   await selectNode(page, 'orders');
   await expect(page.getByTestId('connection-read')).toContainText('4 rows');
+});
+
+// A PostgreSQL server (PUDDLE_TEST_POSTGRES, a URL to the seeded shop; CI starts one) read through puddle-connect:
+// connected and tested, a table added as a source, the database browsed, and its schema documented with its enum.
+test('a PostgreSQL database is read through puddle-connect: tested, a table added, browsed and its schema documented', async ({ page }) => {
+  const url = process.env.PUDDLE_TEST_POSTGRES;
+  test.skip(!url, 'PUDDLE_TEST_POSTGRES names no server');
+  const u = new URL(url!);
+  await openApp(page);
+  await page.getByRole('button', { name: 'Add', exact: true }).click();
+  await page.getByRole('menuitem', { name: /From database/ }).click();
+  const list = page.getByRole('dialog', { name: 'Add source from a database' });
+  await list.getByRole('button', { name: 'New connection' }).click();
+  await page.getByRole('dialog', { name: 'New connection' }).getByTestId('driver-grid').getByRole('listitem', { name: 'PostgreSQL', exact: true }).click();
+  const form = page.getByRole('dialog', { name: 'New PostgreSQL connection' });
+  await form.getByLabel('Host').fill(u.hostname);
+  await form.getByLabel('Port').fill(u.port || '5432');
+  await form.getByLabel('Database').fill(u.pathname.slice(1));
+  await form.getByLabel('User name').fill(decodeURIComponent(u.username));
+  await form.getByLabel('Password').fill(decodeURIComponent(u.password));
+  await expect(form.getByLabel('Where it runs')).toContainText('On this computer (found)');
+  await form.getByRole('button', { name: 'Test', exact: true }).click();
+  await expect(form.getByTestId('conn-test')).toHaveAttribute('data-ok', 'true', { timeout: 20_000 });
+  await expect(form.getByTestId('conn-test')).toContainText('3 tables');
+  await form.getByRole('button', { name: 'Save connection' }).click();
+
+  const picker = page.getByRole('dialog', { name: 'Read from PostgreSQL' });
+  await expect(picker.getByTestId('table-picker')).toContainText('orders', { timeout: 20_000 });
+  await picker.getByTestId('pick-orders').click();
+  await picker.getByRole('button', { name: 'Add 1 source' }).click();
+  await expect(node(page, 'orders')).toHaveAttribute('data-status', 'ok', { timeout: 20_000 });
+  await selectNode(page, 'orders');
+  await expect(page.getByTestId('connection-read')).toContainText('4 rows');
+
+  // Browse it and document it: the enum comes along, and the orders source is checked against its table.
+  await page.getByRole('button', { name: 'Add', exact: true }).click();
+  await page.getByRole('menuitem', { name: /From database/ }).click();
+  await list.getByTestId('connection-PostgreSQL').getByRole('button', { name: 'Browse' }).click();
+  const browser = page.getByTestId('database-browser');
+  await expect(browser).toContainText('2 tables, 1 view', { timeout: 20_000 });
+  await browser.getByRole('button', { name: 'Document the schema' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Document the schema' });
+  await expect(dialog.getByTestId('document-plan')).toContainText('3 tables, 1 ref and 1 enum', { timeout: 20_000 });
+  await dialog.getByRole('button', { name: 'Document', exact: true }).click();
+  await expect(dialog).toHaveCount(0);
+  await browser.getByRole('button', { name: 'Close the database browser' }).click();
+  await projectMenu(page, 'Schema');
+  const schema = page.getByTestId('schema-view');
+  await expect(schema.getByTestId('schema-group-PostgreSQL')).toBeVisible();
+  await expect(schema.getByTestId('schema-table-orders')).toContainText('order_status');
 });
