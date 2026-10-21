@@ -1,0 +1,250 @@
+{
+  "test": {
+    "ok": true,
+    "server": "Oracle Database 23.0.0, 3 tables"
+  },
+  "catalog": {
+    "tables": [
+      {
+        "name": "CUSTOMERS",
+        "kind": "table",
+        "columns": [
+          {
+            "name": "ID",
+            "type": "DECIMAL(10,0)",
+            "nullable": false
+          },
+          {
+            "name": "NAME",
+            "type": "VARCHAR",
+            "nullable": false
+          },
+          {
+            "name": "EMAIL",
+            "type": "VARCHAR",
+            "nullable": true
+          },
+          {
+            "name": "SIGNED_UP",
+            "type": "TIMESTAMP",
+            "nullable": true
+          },
+          {
+            "name": "ACTIVE",
+            "type": "DECIMAL(1,0)",
+            "nullable": false
+          }
+        ]
+      },
+      {
+        "name": "ORDERS",
+        "kind": "table",
+        "columns": [
+          {
+            "name": "ID",
+            "type": "DECIMAL(10,0)",
+            "nullable": false
+          },
+          {
+            "name": "CUSTOMER_ID",
+            "type": "DECIMAL(10,0)",
+            "nullable": false
+          },
+          {
+            "name": "TOTAL",
+            "type": "DECIMAL(10,2)",
+            "nullable": true
+          },
+          {
+            "name": "PLACED_AT",
+            "type": "TIMESTAMP",
+            "nullable": true
+          },
+          {
+            "name": "STATUS",
+            "type": "VARCHAR",
+            "nullable": false
+          }
+        ]
+      },
+      {
+        "name": "ORDER_TOTALS",
+        "kind": "view",
+        "columns": [
+          {
+            "name": "NAME",
+            "type": "VARCHAR",
+            "nullable": false
+          },
+          {
+            "name": "ORDERS",
+            "type": "DOUBLE",
+            "nullable": true
+          },
+          {
+            "name": "TOTAL",
+            "type": "DOUBLE",
+            "nullable": true
+          }
+        ]
+      }
+    ]
+  },
+  "detail": {
+    "tables": [
+      {
+        "name": "CUSTOMERS",
+        "kind": "table",
+        "note": "People who have ordered",
+        "columns": [
+          {
+            "name": "ID",
+            "type": "NUMBER(10,0)",
+            "pk": true,
+            "unique": false,
+            "notNull": true,
+            "increment": true
+          },
+          {
+            "name": "NAME",
+            "type": "VARCHAR2(100)",
+            "pk": false,
+            "unique": false,
+            "notNull": true,
+            "increment": false
+          },
+          {
+            "name": "EMAIL",
+            "type": "VARCHAR2(255)",
+            "pk": false,
+            "unique": true,
+            "notNull": false,
+            "increment": false,
+            "note": "Lower case"
+          },
+          {
+            "name": "SIGNED_UP",
+            "type": "DATE",
+            "pk": false,
+            "unique": false,
+            "notNull": false,
+            "increment": false
+          },
+          {
+            "name": "ACTIVE",
+            "type": "NUMBER(1,0)",
+            "pk": false,
+            "unique": false,
+            "notNull": true,
+            "increment": false,
+            "default": "1"
+          }
+        ],
+        "indexes": [],
+        "foreignKeys": []
+      },
+      {
+        "name": "ORDERS",
+        "kind": "table",
+        "columns": [
+          {
+            "name": "ID",
+            "type": "NUMBER(10,0)",
+            "pk": true,
+            "unique": false,
+            "notNull": true,
+            "increment": true
+          },
+          {
+            "name": "CUSTOMER_ID",
+            "type": "NUMBER(10,0)",
+            "pk": false,
+            "unique": false,
+            "notNull": true,
+            "increment": false
+          },
+          {
+            "name": "TOTAL",
+            "type": "NUMBER(10,2)",
+            "pk": false,
+            "unique": false,
+            "notNull": false,
+            "increment": false
+          },
+          {
+            "name": "PLACED_AT",
+            "type": "TIMESTAMP(6)",
+            "pk": false,
+            "unique": false,
+            "notNull": false,
+            "increment": false
+          },
+          {
+            "name": "STATUS",
+            "type": "VARCHAR2(10)",
+            "pk": false,
+            "unique": false,
+            "notNull": true,
+            "increment": false,
+            "default": "'placed'"
+          }
+        ],
+        "indexes": [
+          {
+            "name": "ORDERS_CUSTOMER",
+            "columns": [
+              "CUSTOMER_ID"
+            ],
+            "unique": false
+          }
+        ],
+        "foreignKeys": [
+          {
+            "name": "ORDERS_CUSTOMER_ID_FKEY",
+            "columns": [
+              "CUSTOMER_ID"
+            ],
+            "refTable": "CUSTOMERS",
+            "refColumns": [
+              "ID"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "ORDER_TOTALS",
+        "kind": "view",
+        "columns": [
+          {
+            "name": "NAME",
+            "type": "VARCHAR2(100)",
+            "pk": false,
+            "unique": false,
+            "notNull": true,
+            "increment": false
+          },
+          {
+            "name": "ORDERS",
+            "type": "NUMBER",
+            "pk": false,
+            "unique": false,
+            "notNull": false,
+            "increment": false
+          },
+          {
+            "name": "TOTAL",
+            "type": "NUMBER",
+            "pk": false,
+            "unique": false,
+            "notNull": false,
+            "increment": false
+          }
+        ],
+        "indexes": [],
+        "foreignKeys": [],
+        "sql": "SELECT c.name, count(o.id) AS orders, sum(o.total) AS total FROM customers c LEFT JOIN orders o ON o.customer_id = c.id GROUP BY c.name"
+      }
+    ],
+    "enums": []
+  }
+}

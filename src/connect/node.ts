@@ -1,12 +1,16 @@
 // The drivers as puddle-connect and the runner run them in Node: the same Connector interface, with a database
 // file read from a path on this computer (inside the folders the service may read) rather than picked in a page.
-// Drivers that need a database protocol register here as they land: the PostgreSQL and MySQL families so far.
+// Drivers that need a database protocol register here as they land: the PostgreSQL and MySQL families, Firebird,
+// SQL Server and Oracle so far.
 import { readFile } from 'node:fs/promises';
 import { resolve, sep } from 'node:path';
 import type { Connection, DriverId } from '../model';
 import { inProcessClient } from '../sqlite/client';
 import { SqliteService } from '../sqlite/service';
+import { firebirdConnector } from './drivers/firebird';
 import { mysqlConnector } from './drivers/mysql';
+import { oracleConnector } from './drivers/oracle';
+import { sqlserverConnector } from './drivers/sqlserver';
 import { postgresConnector } from './drivers/postgres';
 import { sqliteConnector } from './drivers/sqlite';
 import { ConnectorError, type Connector, type ConnectorContext } from './types';
@@ -65,5 +69,8 @@ export function nodeConnectors(options: NodeOptions): Partial<Record<DriverId, C
     mysql: mysqlConnector('mysql'),
     mariadb: mysqlConnector('mariadb'),
     tidb: mysqlConnector('tidb'),
+    firebird: firebirdConnector(),
+    sqlserver: sqlserverConnector(),
+    oracle: oracleConnector(),
   };
 }

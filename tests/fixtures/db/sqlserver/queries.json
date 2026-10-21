@@ -1,0 +1,960 @@
+[
+  {
+    "text": "SELECT CAST(SERVERPROPERTY('ProductVersion') AS nvarchar(128)) AS version, CAST(SERVERPROPERTY('Edition') AS nvarchar(128)) AS edition",
+    "rows": [
+      [
+        "16.0.4305.5",
+        "Developer Edition (64-bit)"
+      ]
+    ],
+    "fields": [
+      {
+        "name": "version",
+        "type": "NVarChar",
+        "dataLength": 256
+      },
+      {
+        "name": "edition",
+        "type": "NVarChar",
+        "dataLength": 256
+      }
+    ]
+  },
+  {
+    "text": "SELECT count(*) AS n FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_TYPE IN ('BASE TABLE', 'VIEW')",
+    "rows": [
+      [
+        3
+      ]
+    ],
+    "fields": [
+      {
+        "name": "n",
+        "type": "IntN",
+        "dataLength": 4
+      }
+    ]
+  },
+  {
+    "text": "SELECT TABLE_SCHEMA, TABLE_NAME, TABLE_TYPE FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_TYPE IN ('BASE TABLE', 'VIEW') ORDER BY TABLE_SCHEMA, TABLE_NAME",
+    "rows": [
+      [
+        "dbo",
+        "customers",
+        "BASE TABLE"
+      ],
+      [
+        "dbo",
+        "order_totals",
+        "VIEW"
+      ],
+      [
+        "dbo",
+        "orders",
+        "BASE TABLE"
+      ]
+    ],
+    "fields": [
+      {
+        "name": "TABLE_SCHEMA",
+        "type": "NVarChar",
+        "dataLength": 256
+      },
+      {
+        "name": "TABLE_NAME",
+        "type": "NVarChar",
+        "dataLength": 256
+      },
+      {
+        "name": "TABLE_TYPE",
+        "type": "VarChar",
+        "dataLength": 10
+      }
+    ]
+  },
+  {
+    "text": "SELECT TABLE_SCHEMA, TABLE_NAME, COLUMN_NAME, DATA_TYPE, CHARACTER_MAXIMUM_LENGTH, NUMERIC_PRECISION, NUMERIC_SCALE, DATETIME_PRECISION, IS_NULLABLE, COLUMN_DEFAULT, COLUMNPROPERTY(OBJECT_ID(QUOTENAME(TABLE_SCHEMA) + '.' + QUOTENAME(TABLE_NAME)), COLUMN_NAME, 'IsIdentity') AS IS_IDENTITY FROM INFORMATION_SCHEMA.COLUMNS ORDER BY TABLE_SCHEMA, TABLE_NAME, ORDINAL_POSITION",
+    "rows": [
+      [
+        "dbo",
+        "customers",
+        "id",
+        "int",
+        null,
+        10,
+        0,
+        null,
+        "NO",
+        null,
+        1
+      ],
+      [
+        "dbo",
+        "customers",
+        "name",
+        "nvarchar",
+        100,
+        null,
+        null,
+        null,
+        "NO",
+        null,
+        0
+      ],
+      [
+        "dbo",
+        "customers",
+        "email",
+        "nvarchar",
+        255,
+        null,
+        null,
+        null,
+        "YES",
+        null,
+        0
+      ],
+      [
+        "dbo",
+        "customers",
+        "signed_up",
+        "date",
+        null,
+        null,
+        null,
+        0,
+        "YES",
+        null,
+        0
+      ],
+      [
+        "dbo",
+        "customers",
+        "active",
+        "bit",
+        null,
+        null,
+        null,
+        null,
+        "NO",
+        "((1))",
+        0
+      ],
+      [
+        "dbo",
+        "order_totals",
+        "name",
+        "nvarchar",
+        100,
+        null,
+        null,
+        null,
+        "NO",
+        null,
+        0
+      ],
+      [
+        "dbo",
+        "order_totals",
+        "orders",
+        "int",
+        null,
+        10,
+        0,
+        null,
+        "YES",
+        null,
+        0
+      ],
+      [
+        "dbo",
+        "order_totals",
+        "total",
+        "decimal",
+        null,
+        38,
+        2,
+        null,
+        "YES",
+        null,
+        0
+      ],
+      [
+        "dbo",
+        "orders",
+        "id",
+        "int",
+        null,
+        10,
+        0,
+        null,
+        "NO",
+        null,
+        1
+      ],
+      [
+        "dbo",
+        "orders",
+        "customer_id",
+        "int",
+        null,
+        10,
+        0,
+        null,
+        "NO",
+        null,
+        0
+      ],
+      [
+        "dbo",
+        "orders",
+        "total",
+        "decimal",
+        null,
+        10,
+        2,
+        null,
+        "YES",
+        null,
+        0
+      ],
+      [
+        "dbo",
+        "orders",
+        "placed_at",
+        "datetime2",
+        null,
+        null,
+        null,
+        7,
+        "YES",
+        null,
+        0
+      ],
+      [
+        "dbo",
+        "orders",
+        "status",
+        "varchar",
+        10,
+        null,
+        null,
+        null,
+        "NO",
+        "('placed')",
+        0
+      ],
+      [
+        "dbo",
+        "orders",
+        "paid",
+        "money",
+        null,
+        19,
+        4,
+        null,
+        "YES",
+        null,
+        0
+      ]
+    ],
+    "fields": [
+      {
+        "name": "TABLE_SCHEMA",
+        "type": "NVarChar",
+        "dataLength": 256
+      },
+      {
+        "name": "TABLE_NAME",
+        "type": "NVarChar",
+        "dataLength": 256
+      },
+      {
+        "name": "COLUMN_NAME",
+        "type": "NVarChar",
+        "dataLength": 256
+      },
+      {
+        "name": "DATA_TYPE",
+        "type": "NVarChar",
+        "dataLength": 256
+      },
+      {
+        "name": "CHARACTER_MAXIMUM_LENGTH",
+        "type": "IntN",
+        "dataLength": 4
+      },
+      {
+        "name": "NUMERIC_PRECISION",
+        "type": "IntN",
+        "dataLength": 1
+      },
+      {
+        "name": "NUMERIC_SCALE",
+        "type": "IntN",
+        "dataLength": 4
+      },
+      {
+        "name": "DATETIME_PRECISION",
+        "type": "IntN",
+        "dataLength": 2
+      },
+      {
+        "name": "IS_NULLABLE",
+        "type": "VarChar",
+        "dataLength": 3
+      },
+      {
+        "name": "COLUMN_DEFAULT",
+        "type": "NVarChar",
+        "dataLength": 256
+      },
+      {
+        "name": "IS_IDENTITY",
+        "type": "IntN",
+        "dataLength": 4
+      }
+    ]
+  },
+  {
+    "text": "SELECT s.name AS TABLE_SCHEMA, t.name AS TABLE_NAME, SUM(p.rows) AS ROW_COUNT FROM sys.tables t JOIN sys.schemas s ON s.schema_id = t.schema_id JOIN sys.partitions p ON p.object_id = t.object_id AND p.index_id IN (0, 1) GROUP BY s.name, t.name",
+    "rows": [
+      [
+        "dbo",
+        "customers",
+        "3"
+      ],
+      [
+        "dbo",
+        "orders",
+        "4"
+      ]
+    ],
+    "fields": [
+      {
+        "name": "TABLE_SCHEMA",
+        "type": "NVarChar",
+        "dataLength": 256
+      },
+      {
+        "name": "TABLE_NAME",
+        "type": "NVarChar",
+        "dataLength": 256
+      },
+      {
+        "name": "ROW_COUNT",
+        "type": "IntN",
+        "dataLength": 8
+      }
+    ]
+  },
+  {
+    "text": "SELECT TABLE_SCHEMA, TABLE_NAME, TABLE_TYPE FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_TYPE IN ('BASE TABLE', 'VIEW') ORDER BY TABLE_SCHEMA, TABLE_NAME",
+    "rows": [
+      [
+        "dbo",
+        "customers",
+        "BASE TABLE"
+      ],
+      [
+        "dbo",
+        "order_totals",
+        "VIEW"
+      ],
+      [
+        "dbo",
+        "orders",
+        "BASE TABLE"
+      ]
+    ],
+    "fields": [
+      {
+        "name": "TABLE_SCHEMA",
+        "type": "NVarChar",
+        "dataLength": 256
+      },
+      {
+        "name": "TABLE_NAME",
+        "type": "NVarChar",
+        "dataLength": 256
+      },
+      {
+        "name": "TABLE_TYPE",
+        "type": "VarChar",
+        "dataLength": 10
+      }
+    ]
+  },
+  {
+    "text": "SELECT TABLE_SCHEMA, TABLE_NAME, COLUMN_NAME, DATA_TYPE, CHARACTER_MAXIMUM_LENGTH, NUMERIC_PRECISION, NUMERIC_SCALE, DATETIME_PRECISION, IS_NULLABLE, COLUMN_DEFAULT, COLUMNPROPERTY(OBJECT_ID(QUOTENAME(TABLE_SCHEMA) + '.' + QUOTENAME(TABLE_NAME)), COLUMN_NAME, 'IsIdentity') AS IS_IDENTITY FROM INFORMATION_SCHEMA.COLUMNS ORDER BY TABLE_SCHEMA, TABLE_NAME, ORDINAL_POSITION",
+    "rows": [
+      [
+        "dbo",
+        "customers",
+        "id",
+        "int",
+        null,
+        10,
+        0,
+        null,
+        "NO",
+        null,
+        1
+      ],
+      [
+        "dbo",
+        "customers",
+        "name",
+        "nvarchar",
+        100,
+        null,
+        null,
+        null,
+        "NO",
+        null,
+        0
+      ],
+      [
+        "dbo",
+        "customers",
+        "email",
+        "nvarchar",
+        255,
+        null,
+        null,
+        null,
+        "YES",
+        null,
+        0
+      ],
+      [
+        "dbo",
+        "customers",
+        "signed_up",
+        "date",
+        null,
+        null,
+        null,
+        0,
+        "YES",
+        null,
+        0
+      ],
+      [
+        "dbo",
+        "customers",
+        "active",
+        "bit",
+        null,
+        null,
+        null,
+        null,
+        "NO",
+        "((1))",
+        0
+      ],
+      [
+        "dbo",
+        "order_totals",
+        "name",
+        "nvarchar",
+        100,
+        null,
+        null,
+        null,
+        "NO",
+        null,
+        0
+      ],
+      [
+        "dbo",
+        "order_totals",
+        "orders",
+        "int",
+        null,
+        10,
+        0,
+        null,
+        "YES",
+        null,
+        0
+      ],
+      [
+        "dbo",
+        "order_totals",
+        "total",
+        "decimal",
+        null,
+        38,
+        2,
+        null,
+        "YES",
+        null,
+        0
+      ],
+      [
+        "dbo",
+        "orders",
+        "id",
+        "int",
+        null,
+        10,
+        0,
+        null,
+        "NO",
+        null,
+        1
+      ],
+      [
+        "dbo",
+        "orders",
+        "customer_id",
+        "int",
+        null,
+        10,
+        0,
+        null,
+        "NO",
+        null,
+        0
+      ],
+      [
+        "dbo",
+        "orders",
+        "total",
+        "decimal",
+        null,
+        10,
+        2,
+        null,
+        "YES",
+        null,
+        0
+      ],
+      [
+        "dbo",
+        "orders",
+        "placed_at",
+        "datetime2",
+        null,
+        null,
+        null,
+        7,
+        "YES",
+        null,
+        0
+      ],
+      [
+        "dbo",
+        "orders",
+        "status",
+        "varchar",
+        10,
+        null,
+        null,
+        null,
+        "NO",
+        "('placed')",
+        0
+      ],
+      [
+        "dbo",
+        "orders",
+        "paid",
+        "money",
+        null,
+        19,
+        4,
+        null,
+        "YES",
+        null,
+        0
+      ]
+    ],
+    "fields": [
+      {
+        "name": "TABLE_SCHEMA",
+        "type": "NVarChar",
+        "dataLength": 256
+      },
+      {
+        "name": "TABLE_NAME",
+        "type": "NVarChar",
+        "dataLength": 256
+      },
+      {
+        "name": "COLUMN_NAME",
+        "type": "NVarChar",
+        "dataLength": 256
+      },
+      {
+        "name": "DATA_TYPE",
+        "type": "NVarChar",
+        "dataLength": 256
+      },
+      {
+        "name": "CHARACTER_MAXIMUM_LENGTH",
+        "type": "IntN",
+        "dataLength": 4
+      },
+      {
+        "name": "NUMERIC_PRECISION",
+        "type": "IntN",
+        "dataLength": 1
+      },
+      {
+        "name": "NUMERIC_SCALE",
+        "type": "IntN",
+        "dataLength": 4
+      },
+      {
+        "name": "DATETIME_PRECISION",
+        "type": "IntN",
+        "dataLength": 2
+      },
+      {
+        "name": "IS_NULLABLE",
+        "type": "VarChar",
+        "dataLength": 3
+      },
+      {
+        "name": "COLUMN_DEFAULT",
+        "type": "NVarChar",
+        "dataLength": 256
+      },
+      {
+        "name": "IS_IDENTITY",
+        "type": "IntN",
+        "dataLength": 4
+      }
+    ]
+  },
+  {
+    "text": "SELECT s.name AS TABLE_SCHEMA, o.name AS TABLE_NAME, i.name AS INDEX_NAME, i.is_primary_key AS IS_PRIMARY, i.is_unique AS IS_UNIQUE, i.is_unique_constraint AS IS_UNIQUE_CONSTRAINT, c.name AS COLUMN_NAME, ic.key_ordinal AS KEY_ORDINAL FROM sys.indexes i JOIN sys.objects o ON o.object_id = i.object_id JOIN sys.schemas s ON s.schema_id = o.schema_id JOIN sys.index_columns ic ON ic.object_id = i.object_id AND ic.index_id = i.index_id JOIN sys.columns c ON c.object_id = ic.object_id AND c.column_id = ic.column_id WHERE o.is_ms_shipped = 0 AND i.type > 0 AND i.is_hypothetical = 0 AND ic.is_included_column = 0 ORDER BY s.name, o.name, i.name, ic.key_ordinal",
+    "rows": [
+      [
+        "dbo",
+        "customers",
+        "PK__customer__3213E83F0A1B2C3D",
+        true,
+        true,
+        false,
+        "id",
+        1
+      ],
+      [
+        "dbo",
+        "customers",
+        "UQ__customer__AB6E61641E2F3A4B",
+        false,
+        true,
+        true,
+        "email",
+        1
+      ],
+      [
+        "dbo",
+        "orders",
+        "PK__orders__3213E83F5C6D7E8F",
+        true,
+        true,
+        false,
+        "id",
+        1
+      ],
+      [
+        "dbo",
+        "orders",
+        "orders_customer",
+        false,
+        false,
+        false,
+        "customer_id",
+        1
+      ]
+    ],
+    "fields": [
+      {
+        "name": "TABLE_SCHEMA",
+        "type": "NVarChar",
+        "dataLength": 256
+      },
+      {
+        "name": "TABLE_NAME",
+        "type": "NVarChar",
+        "dataLength": 256
+      },
+      {
+        "name": "INDEX_NAME",
+        "type": "NVarChar",
+        "dataLength": 256
+      },
+      {
+        "name": "IS_PRIMARY",
+        "type": "Bit"
+      },
+      {
+        "name": "IS_UNIQUE",
+        "type": "Bit"
+      },
+      {
+        "name": "IS_UNIQUE_CONSTRAINT",
+        "type": "Bit"
+      },
+      {
+        "name": "COLUMN_NAME",
+        "type": "NVarChar",
+        "dataLength": 256
+      },
+      {
+        "name": "KEY_ORDINAL",
+        "type": "IntN",
+        "dataLength": 1
+      }
+    ]
+  },
+  {
+    "text": "SELECT s.name AS TABLE_SCHEMA, o.name AS TABLE_NAME, fk.name AS CONSTRAINT_NAME, c.name AS COLUMN_NAME, rs.name AS REF_SCHEMA, ro.name AS REF_TABLE, rc.name AS REF_COLUMN FROM sys.foreign_keys fk JOIN sys.foreign_key_columns fkc ON fkc.constraint_object_id = fk.object_id JOIN sys.objects o ON o.object_id = fk.parent_object_id JOIN sys.schemas s ON s.schema_id = o.schema_id JOIN sys.columns c ON c.object_id = fkc.parent_object_id AND c.column_id = fkc.parent_column_id JOIN sys.objects ro ON ro.object_id = fk.referenced_object_id JOIN sys.schemas rs ON rs.schema_id = ro.schema_id JOIN sys.columns rc ON rc.object_id = fkc.referenced_object_id AND rc.column_id = fkc.referenced_column_id ORDER BY s.name, o.name, fk.name, fkc.constraint_column_id",
+    "rows": [
+      [
+        "dbo",
+        "orders",
+        "orders_customer_id_fkey",
+        "customer_id",
+        "dbo",
+        "customers",
+        "id"
+      ]
+    ],
+    "fields": [
+      {
+        "name": "TABLE_SCHEMA",
+        "type": "NVarChar",
+        "dataLength": 256
+      },
+      {
+        "name": "TABLE_NAME",
+        "type": "NVarChar",
+        "dataLength": 256
+      },
+      {
+        "name": "CONSTRAINT_NAME",
+        "type": "NVarChar",
+        "dataLength": 256
+      },
+      {
+        "name": "COLUMN_NAME",
+        "type": "NVarChar",
+        "dataLength": 256
+      },
+      {
+        "name": "REF_SCHEMA",
+        "type": "NVarChar",
+        "dataLength": 256
+      },
+      {
+        "name": "REF_TABLE",
+        "type": "NVarChar",
+        "dataLength": 256
+      },
+      {
+        "name": "REF_COLUMN",
+        "type": "NVarChar",
+        "dataLength": 256
+      }
+    ]
+  },
+  {
+    "text": "SELECT s.name AS TABLE_SCHEMA, v.name AS TABLE_NAME, m.definition AS DEFINITION FROM sys.views v JOIN sys.schemas s ON s.schema_id = v.schema_id JOIN sys.sql_modules m ON m.object_id = v.object_id WHERE v.is_ms_shipped = 0",
+    "rows": [
+      [
+        "dbo",
+        "order_totals",
+        "CREATE VIEW order_totals AS SELECT c.name, count(o.id) AS orders, sum(o.total) AS total FROM customers c LEFT JOIN orders o ON o.customer_id = c.id GROUP BY c.name;\n"
+      ]
+    ],
+    "fields": [
+      {
+        "name": "TABLE_SCHEMA",
+        "type": "NVarChar",
+        "dataLength": 256
+      },
+      {
+        "name": "TABLE_NAME",
+        "type": "NVarChar",
+        "dataLength": 256
+      },
+      {
+        "name": "DEFINITION",
+        "type": "NVarChar",
+        "dataLength": 65535
+      }
+    ]
+  },
+  {
+    "text": "SELECT s.name AS TABLE_SCHEMA, o.name AS TABLE_NAME, c.name AS COLUMN_NAME, CAST(ep.value AS nvarchar(max)) AS NOTE FROM sys.extended_properties ep JOIN sys.objects o ON o.object_id = ep.major_id JOIN sys.schemas s ON s.schema_id = o.schema_id LEFT JOIN sys.columns c ON c.object_id = ep.major_id AND c.column_id = ep.minor_id AND ep.minor_id > 0 WHERE ep.class = 1 AND ep.name = 'MS_Description' AND o.type IN ('U', 'V')",
+    "rows": [
+      [
+        "dbo",
+        "customers",
+        null,
+        "People who have ordered"
+      ],
+      [
+        "dbo",
+        "customers",
+        "email",
+        "Lower case"
+      ]
+    ],
+    "fields": [
+      {
+        "name": "TABLE_SCHEMA",
+        "type": "NVarChar",
+        "dataLength": 256
+      },
+      {
+        "name": "TABLE_NAME",
+        "type": "NVarChar",
+        "dataLength": 256
+      },
+      {
+        "name": "COLUMN_NAME",
+        "type": "NVarChar",
+        "dataLength": 256
+      },
+      {
+        "name": "NOTE",
+        "type": "NVarChar",
+        "dataLength": 65535
+      }
+    ]
+  },
+  {
+    "text": "SELECT TOP (10) * FROM [dbo].[orders]",
+    "rows": [
+      [
+        101,
+        1,
+        "19.99",
+        "2024-04-01 09:30:00.000",
+        "shipped",
+        "19.9900"
+      ],
+      [
+        102,
+        1,
+        "5.50",
+        "2024-04-02 14:00:00.000",
+        "placed",
+        null
+      ],
+      [
+        103,
+        2,
+        "120.00",
+        "2024-04-03 11:15:00.000",
+        "returned",
+        "120.0000"
+      ],
+      [
+        104,
+        3,
+        "42.25",
+        "2024-04-04 16:45:00.000",
+        "placed",
+        null
+      ]
+    ],
+    "fields": [
+      {
+        "name": "id",
+        "type": "Int"
+      },
+      {
+        "name": "customer_id",
+        "type": "Int"
+      },
+      {
+        "name": "total",
+        "type": "DecimalN",
+        "dataLength": 17,
+        "precision": 10,
+        "scale": 2
+      },
+      {
+        "name": "placed_at",
+        "type": "DateTime2",
+        "scale": 7
+      },
+      {
+        "name": "status",
+        "type": "VarChar",
+        "dataLength": 10
+      },
+      {
+        "name": "paid",
+        "type": "MoneyN",
+        "dataLength": 8
+      }
+    ]
+  },
+  {
+    "text": "SET ROWCOUNT 2",
+    "rows": [],
+    "fields": []
+  },
+  {
+    "text": "SELECT c.name, o.total, o.placed_at, o.status, c.signed_up, c.active FROM orders o JOIN customers c ON c.id = o.customer_id ORDER BY o.id",
+    "rows": [
+      [
+        "Ada Lovelace",
+        "19.99",
+        "2024-04-01 09:30:00.000",
+        "shipped",
+        "2024-01-15",
+        true
+      ],
+      [
+        "Ada Lovelace",
+        "5.50",
+        "2024-04-02 14:00:00.000",
+        "placed",
+        "2024-01-15",
+        true
+      ]
+    ],
+    "fields": [
+      {
+        "name": "name",
+        "type": "NVarChar",
+        "dataLength": 200
+      },
+      {
+        "name": "total",
+        "type": "DecimalN",
+        "dataLength": 17,
+        "precision": 10,
+        "scale": 2
+      },
+      {
+        "name": "placed_at",
+        "type": "DateTime2",
+        "scale": 7
+      },
+      {
+        "name": "status",
+        "type": "VarChar",
+        "dataLength": 10
+      },
+      {
+        "name": "signed_up",
+        "type": "Date"
+      },
+      {
+        "name": "active",
+        "type": "Bit"
+      }
+    ]
+  }
+]

@@ -1,0 +1,265 @@
+{
+  "test": {
+    "ok": true,
+    "server": "SQL Server 16.0.4305 (Developer Edition (64-bit)), 3 tables"
+  },
+  "catalog": {
+    "tables": [
+      {
+        "name": "customers",
+        "kind": "table",
+        "columns": [
+          {
+            "name": "id",
+            "type": "INTEGER",
+            "nullable": false
+          },
+          {
+            "name": "name",
+            "type": "VARCHAR",
+            "nullable": false
+          },
+          {
+            "name": "email",
+            "type": "VARCHAR",
+            "nullable": true
+          },
+          {
+            "name": "signed_up",
+            "type": "DATE",
+            "nullable": true
+          },
+          {
+            "name": "active",
+            "type": "BOOLEAN",
+            "nullable": false
+          }
+        ],
+        "rows": 3
+      },
+      {
+        "name": "order_totals",
+        "kind": "view",
+        "columns": [
+          {
+            "name": "name",
+            "type": "VARCHAR",
+            "nullable": false
+          },
+          {
+            "name": "orders",
+            "type": "INTEGER",
+            "nullable": true
+          },
+          {
+            "name": "total",
+            "type": "DECIMAL(38,2)",
+            "nullable": true
+          }
+        ]
+      },
+      {
+        "name": "orders",
+        "kind": "table",
+        "columns": [
+          {
+            "name": "id",
+            "type": "INTEGER",
+            "nullable": false
+          },
+          {
+            "name": "customer_id",
+            "type": "INTEGER",
+            "nullable": false
+          },
+          {
+            "name": "total",
+            "type": "DECIMAL(10,2)",
+            "nullable": true
+          },
+          {
+            "name": "placed_at",
+            "type": "TIMESTAMP",
+            "nullable": true
+          },
+          {
+            "name": "status",
+            "type": "VARCHAR",
+            "nullable": false
+          },
+          {
+            "name": "paid",
+            "type": "DECIMAL(19,4)",
+            "nullable": true
+          }
+        ],
+        "rows": 4
+      }
+    ]
+  },
+  "detail": {
+    "tables": [
+      {
+        "name": "customers",
+        "kind": "table",
+        "note": "People who have ordered",
+        "columns": [
+          {
+            "name": "id",
+            "type": "int",
+            "pk": true,
+            "unique": false,
+            "notNull": true,
+            "increment": true
+          },
+          {
+            "name": "name",
+            "type": "nvarchar(100)",
+            "pk": false,
+            "unique": false,
+            "notNull": true,
+            "increment": false
+          },
+          {
+            "name": "email",
+            "type": "nvarchar(255)",
+            "pk": false,
+            "unique": true,
+            "notNull": false,
+            "increment": false,
+            "note": "Lower case"
+          },
+          {
+            "name": "signed_up",
+            "type": "date",
+            "pk": false,
+            "unique": false,
+            "notNull": false,
+            "increment": false
+          },
+          {
+            "name": "active",
+            "type": "bit",
+            "pk": false,
+            "unique": false,
+            "notNull": true,
+            "increment": false,
+            "default": "1"
+          }
+        ],
+        "indexes": [],
+        "foreignKeys": []
+      },
+      {
+        "name": "order_totals",
+        "kind": "view",
+        "columns": [
+          {
+            "name": "name",
+            "type": "nvarchar(100)",
+            "pk": false,
+            "unique": false,
+            "notNull": true,
+            "increment": false
+          },
+          {
+            "name": "orders",
+            "type": "int",
+            "pk": false,
+            "unique": false,
+            "notNull": false,
+            "increment": false
+          },
+          {
+            "name": "total",
+            "type": "decimal(38,2)",
+            "pk": false,
+            "unique": false,
+            "notNull": false,
+            "increment": false
+          }
+        ],
+        "indexes": [],
+        "foreignKeys": [],
+        "sql": "CREATE VIEW order_totals AS SELECT c.name, count(o.id) AS orders, sum(o.total) AS total FROM customers c LEFT JOIN orders o ON o.customer_id = c.id GROUP BY c.name;"
+      },
+      {
+        "name": "orders",
+        "kind": "table",
+        "columns": [
+          {
+            "name": "id",
+            "type": "int",
+            "pk": true,
+            "unique": false,
+            "notNull": true,
+            "increment": true
+          },
+          {
+            "name": "customer_id",
+            "type": "int",
+            "pk": false,
+            "unique": false,
+            "notNull": true,
+            "increment": false
+          },
+          {
+            "name": "total",
+            "type": "decimal(10,2)",
+            "pk": false,
+            "unique": false,
+            "notNull": false,
+            "increment": false
+          },
+          {
+            "name": "placed_at",
+            "type": "datetime2(7)",
+            "pk": false,
+            "unique": false,
+            "notNull": false,
+            "increment": false
+          },
+          {
+            "name": "status",
+            "type": "varchar(10)",
+            "pk": false,
+            "unique": false,
+            "notNull": true,
+            "increment": false,
+            "default": "'placed'"
+          },
+          {
+            "name": "paid",
+            "type": "money",
+            "pk": false,
+            "unique": false,
+            "notNull": false,
+            "increment": false
+          }
+        ],
+        "indexes": [
+          {
+            "name": "orders_customer",
+            "columns": [
+              "customer_id"
+            ],
+            "unique": false
+          }
+        ],
+        "foreignKeys": [
+          {
+            "name": "orders_customer_id_fkey",
+            "columns": [
+              "customer_id"
+            ],
+            "refTable": "customers",
+            "refColumns": [
+              "id"
+            ]
+          }
+        ]
+      }
+    ],
+    "enums": []
+  }
+}

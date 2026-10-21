@@ -1,0 +1,924 @@
+[
+  {
+    "text": "SELECT VERSION FROM PRODUCT_COMPONENT_VERSION WHERE ROWNUM = 1",
+    "rows": [
+      [
+        "23.0.0.0.0"
+      ]
+    ],
+    "fields": [
+      {
+        "name": "VERSION",
+        "dbTypeName": "VARCHAR2",
+        "byteSize": 80
+      }
+    ]
+  },
+  {
+    "text": "SELECT count(*) AS N FROM ALL_OBJECTS WHERE OWNER = SYS_CONTEXT('USERENV', 'CURRENT_SCHEMA') AND OBJECT_TYPE IN ('TABLE', 'VIEW')",
+    "rows": [
+      [
+        "3"
+      ]
+    ],
+    "fields": [
+      {
+        "name": "N",
+        "dbTypeName": "NUMBER",
+        "precision": 0,
+        "scale": -127
+      }
+    ]
+  },
+  {
+    "text": "SELECT t.TABLE_NAME, t.NUM_ROWS, c.COMMENTS FROM ALL_TABLES t LEFT JOIN ALL_TAB_COMMENTS c ON c.OWNER = t.OWNER AND c.TABLE_NAME = t.TABLE_NAME WHERE t.OWNER = SYS_CONTEXT('USERENV', 'CURRENT_SCHEMA') ORDER BY t.TABLE_NAME",
+    "rows": [
+      [
+        "CUSTOMERS",
+        null,
+        "People who have ordered"
+      ],
+      [
+        "ORDERS",
+        null,
+        null
+      ]
+    ],
+    "fields": [
+      {
+        "name": "TABLE_NAME",
+        "dbTypeName": "VARCHAR2",
+        "byteSize": 128
+      },
+      {
+        "name": "NUM_ROWS",
+        "dbTypeName": "NUMBER",
+        "precision": 0,
+        "scale": -127
+      },
+      {
+        "name": "COMMENTS",
+        "dbTypeName": "VARCHAR2",
+        "byteSize": 4000
+      }
+    ]
+  },
+  {
+    "text": "SELECT v.VIEW_NAME, v.TEXT_VC AS TEXT, c.COMMENTS FROM ALL_VIEWS v LEFT JOIN ALL_TAB_COMMENTS c ON c.OWNER = v.OWNER AND c.TABLE_NAME = v.VIEW_NAME WHERE v.OWNER = SYS_CONTEXT('USERENV', 'CURRENT_SCHEMA') ORDER BY v.VIEW_NAME",
+    "rows": [
+      [
+        "ORDER_TOTALS",
+        "SELECT c.name, count(o.id) AS orders, sum(o.total) AS total FROM customers c LEFT JOIN orders o ON o.customer_id = c.id GROUP BY c.name",
+        null
+      ]
+    ],
+    "fields": [
+      {
+        "name": "VIEW_NAME",
+        "dbTypeName": "VARCHAR2",
+        "byteSize": 128
+      },
+      {
+        "name": "TEXT",
+        "dbTypeName": "VARCHAR2",
+        "byteSize": 4000
+      },
+      {
+        "name": "COMMENTS",
+        "dbTypeName": "VARCHAR2",
+        "byteSize": 4000
+      }
+    ]
+  },
+  {
+    "text": "SELECT v.VIEW_NAME, v.TEXT, c.COMMENTS FROM ALL_VIEWS v LEFT JOIN ALL_TAB_COMMENTS c ON c.OWNER = v.OWNER AND c.TABLE_NAME = v.VIEW_NAME WHERE v.OWNER = SYS_CONTEXT('USERENV', 'CURRENT_SCHEMA') ORDER BY v.VIEW_NAME",
+    "rows": [
+      [
+        "ORDER_TOTALS",
+        "SELECT c.name, count(o.id) AS orders, sum(o.total) AS total FROM customers c LEFT JOIN orders o ON o.customer_id = c.id GROUP BY c.name",
+        null
+      ]
+    ],
+    "fields": [
+      {
+        "name": "VIEW_NAME",
+        "dbTypeName": "VARCHAR2",
+        "byteSize": 128
+      },
+      {
+        "name": "TEXT",
+        "dbTypeName": "LONG"
+      },
+      {
+        "name": "COMMENTS",
+        "dbTypeName": "VARCHAR2",
+        "byteSize": 4000
+      }
+    ]
+  },
+  {
+    "text": "SELECT TABLE_NAME, COLUMN_NAME, COLUMN_ID, DATA_TYPE, DATA_LENGTH, CHAR_LENGTH, DATA_PRECISION, DATA_SCALE, NULLABLE, DATA_DEFAULT FROM ALL_TAB_COLUMNS WHERE OWNER = SYS_CONTEXT('USERENV', 'CURRENT_SCHEMA') ORDER BY TABLE_NAME, COLUMN_ID",
+    "rows": [
+      [
+        "CUSTOMERS",
+        "ID",
+        "1",
+        "NUMBER",
+        "22",
+        "0",
+        "10",
+        "0",
+        "N",
+        null
+      ],
+      [
+        "CUSTOMERS",
+        "NAME",
+        "2",
+        "VARCHAR2",
+        "100",
+        "100",
+        null,
+        null,
+        "N",
+        null
+      ],
+      [
+        "CUSTOMERS",
+        "EMAIL",
+        "3",
+        "VARCHAR2",
+        "255",
+        "255",
+        null,
+        null,
+        "Y",
+        null
+      ],
+      [
+        "CUSTOMERS",
+        "SIGNED_UP",
+        "4",
+        "DATE",
+        "7",
+        "0",
+        null,
+        null,
+        "Y",
+        null
+      ],
+      [
+        "CUSTOMERS",
+        "ACTIVE",
+        "5",
+        "NUMBER",
+        "22",
+        "0",
+        "1",
+        "0",
+        "N",
+        "1 "
+      ],
+      [
+        "ORDERS",
+        "ID",
+        "1",
+        "NUMBER",
+        "22",
+        "0",
+        "10",
+        "0",
+        "N",
+        null
+      ],
+      [
+        "ORDERS",
+        "CUSTOMER_ID",
+        "2",
+        "NUMBER",
+        "22",
+        "0",
+        "10",
+        "0",
+        "N",
+        null
+      ],
+      [
+        "ORDERS",
+        "TOTAL",
+        "3",
+        "NUMBER",
+        "22",
+        "0",
+        "10",
+        "2",
+        "Y",
+        null
+      ],
+      [
+        "ORDERS",
+        "PLACED_AT",
+        "4",
+        "TIMESTAMP(6)",
+        "11",
+        "0",
+        null,
+        "6",
+        "Y",
+        null
+      ],
+      [
+        "ORDERS",
+        "STATUS",
+        "5",
+        "VARCHAR2",
+        "10",
+        "10",
+        null,
+        null,
+        "N",
+        "'placed' "
+      ],
+      [
+        "ORDER_TOTALS",
+        "NAME",
+        "1",
+        "VARCHAR2",
+        "100",
+        "100",
+        null,
+        null,
+        "N",
+        null
+      ],
+      [
+        "ORDER_TOTALS",
+        "ORDERS",
+        "2",
+        "NUMBER",
+        "22",
+        "0",
+        null,
+        "0",
+        "Y",
+        null
+      ],
+      [
+        "ORDER_TOTALS",
+        "TOTAL",
+        "3",
+        "NUMBER",
+        "22",
+        "0",
+        null,
+        null,
+        "Y",
+        null
+      ]
+    ],
+    "fields": [
+      {
+        "name": "TABLE_NAME",
+        "dbTypeName": "VARCHAR2",
+        "byteSize": 128
+      },
+      {
+        "name": "COLUMN_NAME",
+        "dbTypeName": "VARCHAR2",
+        "byteSize": 128
+      },
+      {
+        "name": "COLUMN_ID",
+        "dbTypeName": "NUMBER",
+        "precision": 0,
+        "scale": -127
+      },
+      {
+        "name": "DATA_TYPE",
+        "dbTypeName": "VARCHAR2",
+        "byteSize": 128
+      },
+      {
+        "name": "DATA_LENGTH",
+        "dbTypeName": "NUMBER",
+        "precision": 0,
+        "scale": -127
+      },
+      {
+        "name": "CHAR_LENGTH",
+        "dbTypeName": "NUMBER",
+        "precision": 0,
+        "scale": -127
+      },
+      {
+        "name": "DATA_PRECISION",
+        "dbTypeName": "NUMBER",
+        "precision": 0,
+        "scale": -127
+      },
+      {
+        "name": "DATA_SCALE",
+        "dbTypeName": "NUMBER",
+        "precision": 0,
+        "scale": -127
+      },
+      {
+        "name": "NULLABLE",
+        "dbTypeName": "VARCHAR2",
+        "byteSize": 1
+      },
+      {
+        "name": "DATA_DEFAULT",
+        "dbTypeName": "LONG"
+      }
+    ]
+  },
+  {
+    "text": "SELECT t.TABLE_NAME, t.NUM_ROWS, c.COMMENTS FROM ALL_TABLES t LEFT JOIN ALL_TAB_COMMENTS c ON c.OWNER = t.OWNER AND c.TABLE_NAME = t.TABLE_NAME WHERE t.OWNER = SYS_CONTEXT('USERENV', 'CURRENT_SCHEMA') ORDER BY t.TABLE_NAME",
+    "rows": [
+      [
+        "CUSTOMERS",
+        null,
+        "People who have ordered"
+      ],
+      [
+        "ORDERS",
+        null,
+        null
+      ]
+    ],
+    "fields": [
+      {
+        "name": "TABLE_NAME",
+        "dbTypeName": "VARCHAR2",
+        "byteSize": 128
+      },
+      {
+        "name": "NUM_ROWS",
+        "dbTypeName": "NUMBER",
+        "precision": 0,
+        "scale": -127
+      },
+      {
+        "name": "COMMENTS",
+        "dbTypeName": "VARCHAR2",
+        "byteSize": 4000
+      }
+    ]
+  },
+  {
+    "text": "SELECT v.VIEW_NAME, v.TEXT_VC AS TEXT, c.COMMENTS FROM ALL_VIEWS v LEFT JOIN ALL_TAB_COMMENTS c ON c.OWNER = v.OWNER AND c.TABLE_NAME = v.VIEW_NAME WHERE v.OWNER = SYS_CONTEXT('USERENV', 'CURRENT_SCHEMA') ORDER BY v.VIEW_NAME",
+    "rows": [
+      [
+        "ORDER_TOTALS",
+        "SELECT c.name, count(o.id) AS orders, sum(o.total) AS total FROM customers c LEFT JOIN orders o ON o.customer_id = c.id GROUP BY c.name",
+        null
+      ]
+    ],
+    "fields": [
+      {
+        "name": "VIEW_NAME",
+        "dbTypeName": "VARCHAR2",
+        "byteSize": 128
+      },
+      {
+        "name": "TEXT",
+        "dbTypeName": "VARCHAR2",
+        "byteSize": 4000
+      },
+      {
+        "name": "COMMENTS",
+        "dbTypeName": "VARCHAR2",
+        "byteSize": 4000
+      }
+    ]
+  },
+  {
+    "text": "SELECT TABLE_NAME, COLUMN_NAME, COLUMN_ID, DATA_TYPE, DATA_LENGTH, CHAR_LENGTH, DATA_PRECISION, DATA_SCALE, NULLABLE, DATA_DEFAULT FROM ALL_TAB_COLUMNS WHERE OWNER = SYS_CONTEXT('USERENV', 'CURRENT_SCHEMA') ORDER BY TABLE_NAME, COLUMN_ID",
+    "rows": [
+      [
+        "CUSTOMERS",
+        "ID",
+        "1",
+        "NUMBER",
+        "22",
+        "0",
+        "10",
+        "0",
+        "N",
+        null
+      ],
+      [
+        "CUSTOMERS",
+        "NAME",
+        "2",
+        "VARCHAR2",
+        "100",
+        "100",
+        null,
+        null,
+        "N",
+        null
+      ],
+      [
+        "CUSTOMERS",
+        "EMAIL",
+        "3",
+        "VARCHAR2",
+        "255",
+        "255",
+        null,
+        null,
+        "Y",
+        null
+      ],
+      [
+        "CUSTOMERS",
+        "SIGNED_UP",
+        "4",
+        "DATE",
+        "7",
+        "0",
+        null,
+        null,
+        "Y",
+        null
+      ],
+      [
+        "CUSTOMERS",
+        "ACTIVE",
+        "5",
+        "NUMBER",
+        "22",
+        "0",
+        "1",
+        "0",
+        "N",
+        "1 "
+      ],
+      [
+        "ORDERS",
+        "ID",
+        "1",
+        "NUMBER",
+        "22",
+        "0",
+        "10",
+        "0",
+        "N",
+        null
+      ],
+      [
+        "ORDERS",
+        "CUSTOMER_ID",
+        "2",
+        "NUMBER",
+        "22",
+        "0",
+        "10",
+        "0",
+        "N",
+        null
+      ],
+      [
+        "ORDERS",
+        "TOTAL",
+        "3",
+        "NUMBER",
+        "22",
+        "0",
+        "10",
+        "2",
+        "Y",
+        null
+      ],
+      [
+        "ORDERS",
+        "PLACED_AT",
+        "4",
+        "TIMESTAMP(6)",
+        "11",
+        "0",
+        null,
+        "6",
+        "Y",
+        null
+      ],
+      [
+        "ORDERS",
+        "STATUS",
+        "5",
+        "VARCHAR2",
+        "10",
+        "10",
+        null,
+        null,
+        "N",
+        "'placed' "
+      ],
+      [
+        "ORDER_TOTALS",
+        "NAME",
+        "1",
+        "VARCHAR2",
+        "100",
+        "100",
+        null,
+        null,
+        "N",
+        null
+      ],
+      [
+        "ORDER_TOTALS",
+        "ORDERS",
+        "2",
+        "NUMBER",
+        "22",
+        "0",
+        null,
+        "0",
+        "Y",
+        null
+      ],
+      [
+        "ORDER_TOTALS",
+        "TOTAL",
+        "3",
+        "NUMBER",
+        "22",
+        "0",
+        null,
+        null,
+        "Y",
+        null
+      ]
+    ],
+    "fields": [
+      {
+        "name": "TABLE_NAME",
+        "dbTypeName": "VARCHAR2",
+        "byteSize": 128
+      },
+      {
+        "name": "COLUMN_NAME",
+        "dbTypeName": "VARCHAR2",
+        "byteSize": 128
+      },
+      {
+        "name": "COLUMN_ID",
+        "dbTypeName": "NUMBER",
+        "precision": 0,
+        "scale": -127
+      },
+      {
+        "name": "DATA_TYPE",
+        "dbTypeName": "VARCHAR2",
+        "byteSize": 128
+      },
+      {
+        "name": "DATA_LENGTH",
+        "dbTypeName": "NUMBER",
+        "precision": 0,
+        "scale": -127
+      },
+      {
+        "name": "CHAR_LENGTH",
+        "dbTypeName": "NUMBER",
+        "precision": 0,
+        "scale": -127
+      },
+      {
+        "name": "DATA_PRECISION",
+        "dbTypeName": "NUMBER",
+        "precision": 0,
+        "scale": -127
+      },
+      {
+        "name": "DATA_SCALE",
+        "dbTypeName": "NUMBER",
+        "precision": 0,
+        "scale": -127
+      },
+      {
+        "name": "NULLABLE",
+        "dbTypeName": "VARCHAR2",
+        "byteSize": 1
+      },
+      {
+        "name": "DATA_DEFAULT",
+        "dbTypeName": "LONG"
+      }
+    ]
+  },
+  {
+    "text": "SELECT TABLE_NAME, COLUMN_NAME FROM ALL_TAB_IDENTITY_COLS WHERE OWNER = SYS_CONTEXT('USERENV', 'CURRENT_SCHEMA')",
+    "rows": [
+      [
+        "CUSTOMERS",
+        "ID"
+      ],
+      [
+        "ORDERS",
+        "ID"
+      ]
+    ],
+    "fields": [
+      {
+        "name": "TABLE_NAME",
+        "dbTypeName": "VARCHAR2",
+        "byteSize": 128
+      },
+      {
+        "name": "COLUMN_NAME",
+        "dbTypeName": "VARCHAR2",
+        "byteSize": 128
+      }
+    ]
+  },
+  {
+    "text": "SELECT TABLE_NAME, COLUMN_NAME, COMMENTS FROM ALL_COL_COMMENTS WHERE OWNER = SYS_CONTEXT('USERENV', 'CURRENT_SCHEMA') AND COMMENTS IS NOT NULL",
+    "rows": [
+      [
+        "CUSTOMERS",
+        "EMAIL",
+        "Lower case"
+      ]
+    ],
+    "fields": [
+      {
+        "name": "TABLE_NAME",
+        "dbTypeName": "VARCHAR2",
+        "byteSize": 128
+      },
+      {
+        "name": "COLUMN_NAME",
+        "dbTypeName": "VARCHAR2",
+        "byteSize": 128
+      },
+      {
+        "name": "COMMENTS",
+        "dbTypeName": "VARCHAR2",
+        "byteSize": 4000
+      }
+    ]
+  },
+  {
+    "text": "SELECT c.CONSTRAINT_NAME, c.CONSTRAINT_TYPE, c.TABLE_NAME, c.R_CONSTRAINT_NAME, c.INDEX_NAME, cc.COLUMN_NAME, cc.POSITION FROM ALL_CONSTRAINTS c JOIN ALL_CONS_COLUMNS cc ON cc.OWNER = c.OWNER AND cc.CONSTRAINT_NAME = c.CONSTRAINT_NAME WHERE c.OWNER = SYS_CONTEXT('USERENV', 'CURRENT_SCHEMA') AND c.CONSTRAINT_TYPE IN ('P', 'R', 'U') ORDER BY c.TABLE_NAME, c.CONSTRAINT_NAME, cc.POSITION",
+    "rows": [
+      [
+        "SYS_C008001",
+        "P",
+        "CUSTOMERS",
+        null,
+        "SYS_C008001",
+        "ID",
+        "1"
+      ],
+      [
+        "SYS_C008002",
+        "U",
+        "CUSTOMERS",
+        null,
+        "SYS_C008002",
+        "EMAIL",
+        "1"
+      ],
+      [
+        "ORDERS_CUSTOMER_ID_FKEY",
+        "R",
+        "ORDERS",
+        "SYS_C008001",
+        null,
+        "CUSTOMER_ID",
+        "1"
+      ],
+      [
+        "SYS_C008003",
+        "P",
+        "ORDERS",
+        null,
+        "SYS_C008003",
+        "ID",
+        "1"
+      ]
+    ],
+    "fields": [
+      {
+        "name": "CONSTRAINT_NAME",
+        "dbTypeName": "VARCHAR2",
+        "byteSize": 128
+      },
+      {
+        "name": "CONSTRAINT_TYPE",
+        "dbTypeName": "VARCHAR2",
+        "byteSize": 1
+      },
+      {
+        "name": "TABLE_NAME",
+        "dbTypeName": "VARCHAR2",
+        "byteSize": 128
+      },
+      {
+        "name": "R_CONSTRAINT_NAME",
+        "dbTypeName": "VARCHAR2",
+        "byteSize": 128
+      },
+      {
+        "name": "INDEX_NAME",
+        "dbTypeName": "VARCHAR2",
+        "byteSize": 128
+      },
+      {
+        "name": "COLUMN_NAME",
+        "dbTypeName": "VARCHAR2",
+        "byteSize": 128
+      },
+      {
+        "name": "POSITION",
+        "dbTypeName": "NUMBER",
+        "precision": 0,
+        "scale": -127
+      }
+    ]
+  },
+  {
+    "text": "SELECT i.INDEX_NAME, i.TABLE_NAME, i.UNIQUENESS, ic.COLUMN_NAME, ic.COLUMN_POSITION FROM ALL_INDEXES i JOIN ALL_IND_COLUMNS ic ON ic.INDEX_OWNER = i.OWNER AND ic.INDEX_NAME = i.INDEX_NAME WHERE i.OWNER = SYS_CONTEXT('USERENV', 'CURRENT_SCHEMA') ORDER BY i.TABLE_NAME, i.INDEX_NAME, ic.COLUMN_POSITION",
+    "rows": [
+      [
+        "SYS_C008001",
+        "CUSTOMERS",
+        "UNIQUE",
+        "ID",
+        "1"
+      ],
+      [
+        "SYS_C008002",
+        "CUSTOMERS",
+        "UNIQUE",
+        "EMAIL",
+        "1"
+      ],
+      [
+        "ORDERS_CUSTOMER",
+        "ORDERS",
+        "NONUNIQUE",
+        "CUSTOMER_ID",
+        "1"
+      ],
+      [
+        "SYS_C008003",
+        "ORDERS",
+        "UNIQUE",
+        "ID",
+        "1"
+      ]
+    ],
+    "fields": [
+      {
+        "name": "INDEX_NAME",
+        "dbTypeName": "VARCHAR2",
+        "byteSize": 128
+      },
+      {
+        "name": "TABLE_NAME",
+        "dbTypeName": "VARCHAR2",
+        "byteSize": 128
+      },
+      {
+        "name": "UNIQUENESS",
+        "dbTypeName": "VARCHAR2",
+        "byteSize": 9
+      },
+      {
+        "name": "COLUMN_NAME",
+        "dbTypeName": "VARCHAR2",
+        "byteSize": 128
+      },
+      {
+        "name": "COLUMN_POSITION",
+        "dbTypeName": "NUMBER",
+        "precision": 0,
+        "scale": -127
+      }
+    ]
+  },
+  {
+    "text": "SELECT * FROM \"ORDERS\" FETCH FIRST 10 ROWS ONLY",
+    "rows": [
+      [
+        "101",
+        "1",
+        "19.99",
+        "2024-04-01 09:30:00.000",
+        "shipped"
+      ],
+      [
+        "102",
+        "1",
+        "5.5",
+        "2024-04-02 14:00:00.000",
+        "placed"
+      ],
+      [
+        "103",
+        "2",
+        "120",
+        "2024-04-03 11:15:00.000",
+        "returned"
+      ],
+      [
+        "104",
+        "3",
+        "42.25",
+        "2024-04-04 16:45:00.000",
+        "placed"
+      ]
+    ],
+    "fields": [
+      {
+        "name": "ID",
+        "dbTypeName": "NUMBER",
+        "precision": 10,
+        "scale": 0
+      },
+      {
+        "name": "CUSTOMER_ID",
+        "dbTypeName": "NUMBER",
+        "precision": 10,
+        "scale": 0
+      },
+      {
+        "name": "TOTAL",
+        "dbTypeName": "NUMBER",
+        "precision": 10,
+        "scale": 2
+      },
+      {
+        "name": "PLACED_AT",
+        "dbTypeName": "TIMESTAMP",
+        "precision": 0,
+        "scale": 6
+      },
+      {
+        "name": "STATUS",
+        "dbTypeName": "VARCHAR2",
+        "byteSize": 10
+      }
+    ]
+  },
+  {
+    "text": "SELECT * FROM (SELECT c.name, o.total, o.placed_at, o.status, c.signed_up, c.active FROM orders o JOIN customers c ON c.id = o.customer_id ORDER BY o.id) puddle_query FETCH FIRST 2 ROWS ONLY",
+    "rows": [
+      [
+        "Ada Lovelace",
+        "19.99",
+        "2024-04-01 09:30:00.000",
+        "shipped",
+        "2024-01-15 00:00:00.000",
+        "1"
+      ],
+      [
+        "Ada Lovelace",
+        "5.5",
+        "2024-04-02 14:00:00.000",
+        "placed",
+        "2024-01-15 00:00:00.000",
+        "1"
+      ]
+    ],
+    "fields": [
+      {
+        "name": "NAME",
+        "dbTypeName": "VARCHAR2",
+        "byteSize": 100
+      },
+      {
+        "name": "TOTAL",
+        "dbTypeName": "NUMBER",
+        "precision": 10,
+        "scale": 2
+      },
+      {
+        "name": "PLACED_AT",
+        "dbTypeName": "TIMESTAMP",
+        "precision": 0,
+        "scale": 6
+      },
+      {
+        "name": "STATUS",
+        "dbTypeName": "VARCHAR2",
+        "byteSize": 10
+      },
+      {
+        "name": "SIGNED_UP",
+        "dbTypeName": "DATE"
+      },
+      {
+        "name": "ACTIVE",
+        "dbTypeName": "NUMBER",
+        "precision": 1,
+        "scale": 0
+      }
+    ]
+  }
+]
