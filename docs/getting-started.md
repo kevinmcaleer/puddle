@@ -18,9 +18,9 @@ You can leave the tour at any point with **Skip**, and pick it up again later fr
 
 ## Samples
 
-**Try a sample** opens one of six deliberately messy datasets as a new project. Each comes with a project note saying what is wrong with the data and where to start.
+**Try a sample** opens one of eight deliberately messy datasets as a new project. Each comes with a project note saying what is wrong with the data and where to start.
 
-![The Try a sample dialog listing the four samples](_static/screenshots/start-samples.png)
+![The Try a sample dialog listing the samples](_static/screenshots/start-samples.png)
 
 | Sample | What's wrong with it |
 | --- | --- |
@@ -28,6 +28,10 @@ You can leave the tour at any point with **Skip**, and pick it up again later fr
 | Sales | Dates written four ways, amounts with currency symbols, untidy regions. |
 | Orders and customers | Two tables to join, with customer ids that don't quite match. |
 | Monthly sales | A wide table to unpivot, with gaps written three ways. |
+| CRM export | A text export with comment lines, a footer, a header pasted in twice and ragged rows. |
+| SAP extract | A report printed to text: banners, separator lines, a page break and a total row. |
+| Skewed invoices | A spreadsheet where a cell was deleted part way down, so the rows below sit a column over. |
+| Merged report | A report sheet: a title, a two-row header, regions merged down their stores, subtotals and footnotes. |
 
 Samples are ordinary projects: change them as much as you like, and delete them from the projects list when you're done. They work offline too.
 
