@@ -6,7 +6,7 @@ import type { EngineClient } from '../engine';
 import { useProject, useProjectStore, type Project, type Source } from '../model';
 import { sourceFile } from './add';
 import { useAttachments } from './attachments';
-import { decodeText, isRewrittenText, readText, rewrittenCsv, rulerLines, type RewrittenTable } from './text';
+import { decodeText, isRewrittenText, readText, rewrittenCsv, rulerLines, type RewrittenFormat, type RewrittenTable } from './text';
 
 /**
  * Fixed-width text, pipe tables and structured text (YAML, TOML, INI, GeoJSON). DuckDB reads none of them, so Puddle reads them (./fixedWidth, ./pipes, src/structured) and hands
@@ -85,7 +85,7 @@ function remember(engine: EngineClient, id: string, file: string, input: Input, 
 
 const textOf = async (input: Input, encoding?: string) => (typeof input === 'string' ? input : decodeText(input instanceof Uint8Array ? input : new Uint8Array(await input.arrayBuffer()), encoding));
 
-async function read(engine: EngineClient, source: Source & { format: 'fixed' | 'pipes' }, input: Input, file: string) {
+async function read(engine: EngineClient, source: Source & { format: RewrittenFormat }, input: Input, file: string) {
   const id = source.id;
   const token = ++tokens;
   attempts.set(id, { file, input, token });
