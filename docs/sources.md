@@ -31,11 +31,26 @@ Puddle reads these formats:
 | Format | Extensions | Notes |
 | --- | --- | --- |
 | CSV and TSV | `.csv`, `.tsv`, `.tab`, `.txt` | The delimiter, header row, encoding and quoting are detected, and can be changed in the inspector. Ragged rows are padded rather than rejected. |
-| Excel | `.xlsx` | Choose the sheet, the header row and an optional cell range. |
+| Spreadsheets | `.xlsx`, `.xlsm`, `.xls`, `.xlsb`, `.ods`, `.fods`, `.numbers`, `.dbf`, `.dif`, `.slk`, `.wk1` | Excel in every format since 97 (macros in an `.xlsm` are ignored), OpenDocument, Apple Numbers, dBase and FoxPro tables (also the data part of a Shapefile), and the old SYLK, DIF and Lotus 1-2-3 formats, all read the same way. Choose the sheet and, when it holds several tables, which one; the header row and how many rows it takes; an optional cell range; and whether merged cells are filled. |
 | JSON and NDJSON | `.json`, `.ndjson`, `.jsonl` | An array of objects, or one object per line. |
 | Parquet | `.parquet`, `.pq` | Read directly, with its column types. |
-| XML | `.xml` | The repeating element is read as rows. See [XML](#xml). |
+| XML | `.xml`, `.kml`, `.gpx` | The repeating element is read as rows (a KML file's placemarks, a GPX track's points). See [XML](#xml). |
+| YAML, TOML and INI | `.yaml`, `.yml`, `.toml`, `.ini`, `.cfg` | The list or map of records in the file is read as rows; nested fields become dotted columns. See [YAML, TOML, INI and GeoJSON](#yaml-toml-ini-and-geojson). |
+| GeoJSON | `.geojson` | Each feature is a row: its properties as columns, its geometry as JSON. See [YAML, TOML, INI and GeoJSON](#yaml-toml-ini-and-geojson). |
+| Log files | `.log`, `.txt` | Web server access logs, syslog, IIS logs and application logs with a timestamp and a level, each line taken apart into columns; or a custom pattern. See [Log files](#log-files). |
+| Fixed width | `.txt`, `.prn`, `.dat` | Columns lined up with spaces, as mainframe and ERP reports print them. The boundaries are found from the columns of spaces and adjusted on a ruler. See [Fixed width and pipe tables](#fixed-width-and-pipe-tables). |
+| Pipe table | `.txt` | Rows between `|` characters, as SAP lists and Markdown tables have them. The lines around the table are left out. See [Fixed width and pipe tables](#fixed-width-and-pipe-tables). |
+| Word | `.docx` | The tables in a Word document. Choose the table; add the document's other tables as sources of their own. See [Word documents](#word-documents). |
+| PDF | `.pdf` | The tables in the text of a PDF (a statement, an invoice, a published report), not scans. Choose the table; add the others as sources of their own. See [PDF files](#pdf-files). |
 | Access | `.accdb`, `.mdb` | Choose the table; add the database's other tables as sources of their own. See [Access databases](#access-databases). |
+| Arrow | `.arrow`, `.feather`, `.ipc` | An Arrow IPC file, read with its column types. See [Compressed files, archives and Arrow files](#compressed-files-archives-and-arrow-files). |
+| Compressed files and archives | `.gz`, `.zip` | Any of the above inside a gzip file or a zip archive. A zip with several files opens to the first and offers the rest. See [Compressed files, archives and Arrow files](#compressed-files-archives-and-arrow-files). |
+
+## How a file's format is detected
+
+Puddle reads the start of each file and decides its format from what is there, not only from its name: a `.txt` file of pipe-delimited rows is read as a pipe table, a `.csv` that turns out to be JSON as JSON, a `.xls` saved from a web page that is really HTML as the table in it, and a file inside a `.gz` or `.zip` as what the bytes inside say. The name settles it only when the content could be read several ways. The format it chose is shown as **Format** in the inspector, where a wrong guess is one change away: pick another and every node after the source updates.
+
+When the content could be two or three things and Puddle can't tell, it asks instead of guessing, in a dialog headed **How should this file be read?**, with what it saw and the formats that fit. Choose one and **Read it this way**; the choice is saved with the project.
 
 ## Tables on a web page
 
@@ -123,6 +138,47 @@ The inspector lists every repeating element under **Record element**, with how m
 
 XML can come from a file, from a web address (Puddle recognises `.xml` addresses and servers that say they send XML, including Atom and RSS feeds), or pasted as text. Puddle reads it in your browser, a piece at a time, so a large file doesn't have to fit in memory as a document; the rows it finds do. `puddle-run` reads XML sources the same way.
 
+## Fixed width and pipe tables
+
+A report printed to text often has no delimiter at all: each column starts at the same character position on every line, padded with spaces. Puddle reads such a file as **fixed width**. It finds the boundaries from the columns of spaces that run down the table, cuts every line at them, trims the cells and names the columns from the first line. The inspector shows the first lines on a ruler with a marker at each boundary: click between two characters to add one, drag a marker to move it (or focus it and press the arrow keys), and click a marker (or press Delete) to remove it. Every node after the source updates as the boundaries change. The header row, lines to skip at the top and bottom, the encoding and the words that count as empty are read options as for CSV.
+
+An SAP list, and a Markdown table, writes its rows between `|` characters, with rules of dashes between them and banners, page headers and footers around them. Puddle reads such a file as a **pipe table**: only the lines between pipes are rows, rules and a header printed again on a later page are dropped, the empty columns the edge pipes would make are left out, and every cell is trimmed. The inspector says how many lines around the table were left out. A total row at the end is kept, and listed as a suggested fix on the Issues panel, because removing data is your call.
+
+Both are read in your browser into rows that DuckDB then types, so the amounts and dates are read as on any text file: German amounts with a trailing minus, as SAP writes them, are a Parse numbers fix away. `puddle-run` reads both the same way, with the boundaries the project saved.
+
+## Log files
+
+A log file has one entry per line in a shape its writer chose. Puddle knows four and reads the lines into columns, which DuckDB then types like any CSV:
+
+| Lines | Columns |
+|---|---|
+| Web server access log (Apache, nginx; the combined and common formats) | `host`, `ident`, `user`, `time` (as a timestamp), `method`, `path`, `protocol`, `status`, `bytes`, `referrer`, `agent` |
+| Syslog (the old `Oct 11 22:14:15 host process[pid]: message` line and RFC 5424) | `priority`, `time`, `host`, `process`, `pid`, `id`, `data`, `message` |
+| IIS log (W3C extended) | The fields the `#Fields:` line at the top names |
+| Application log | `time`, `level`, `message`; a line without a timestamp (a stack trace) joins the message above it |
+
+The shape is detected from the first lines and shown as **Lines** in the inspector, where another can be chosen. **Custom pattern** takes a regular expression with a named group for each column, such as `(?<time>\S+) (?<level>\w+) (?<message>.*)`; lines that fit no pattern are left out, and the inspector says how many. A `-` in an access or IIS log reads as empty. A log written as CSV, TSV or JSON lines is read as that format. `puddle-run` reads the same lines the same way.
+
+## YAML, TOML, INI and GeoJSON
+
+Configuration and small data sets often come as YAML, TOML or INI rather than CSV. Puddle parses the file and looks for the records in it: a list of objects (a YAML list, a TOML `[[array of tables]]`), or a map whose entries are records (INI sections, TOML `[server.alpha]` tables), where each entry becomes a row with its name in a `key` column. The biggest list wins; the inspector lists every place records were found under **Records**, and **The whole document, as one row** reads the top-level keys as columns. Nested maps become dotted columns (`owner.email`), lists inside a record are kept as JSON text, and a YAML file of several documents (separated by `---`) reads each as a row.
+
+A GeoJSON file reads each feature as a row: its `id` where it has one, its properties as columns and its geometry as JSON text, which a step can pull coordinates out of. KML and GPX files are XML, read with the placemarks or track points as the record element; a KMZ is a zipped KML and opens as one.
+
+The rows are typed by DuckDB as on any CSV, so numbers, dates and booleans written as text are a Parse step away. `puddle-run` reads all of them the same way.
+
+## Word documents
+
+A report or a specification often holds its data as a table in a Word document. Add the `.docx` file and Puddle reads its tables: the biggest opens first, and the inspector lists every table under **Table**, named by its caption or the heading above it, with its size. A cell merged across columns is repeated across them and one merged down rows takes the value above, so every row has every column, as Word shows it. The first row is the header unless **First row is the header** is turned off, and tracked deletions are left out.
+
+**Add the other tables** adds a source for each table not yet on the canvas, reading the same document. Old `.doc` files aren't read: open them in Word and save as `.docx`. The rows are typed by DuckDB as on any CSV, and `puddle-run` reads the same table.
+
+## PDF files
+
+A statement, an invoice or a published report often holds its figures as a table in a PDF. Add the file and Puddle reads the text of every page: lines of two or more pieces of text one under the other are a table, their pieces lined up into columns by where they sit on the page, so right-aligned amounts fall under their heading. The biggest table opens first; the inspector lists every table under **Table**, named by the line above it and its page, and **Add the other tables** adds the rest as sources sharing the file. The first row is the header unless **First row is the header** is turned off.
+
+Only text PDFs are read. A scanned page is a picture, and Puddle says so rather than guessing at it: export the table from the program that made the PDF, or run the scan through OCR first and add the text that gives. A PDF that needs a password is refused with a message to remove it. The rows are typed by DuckDB as on any CSV (amounts with thousands separators are a Parse numbers step away), and `puddle-run` reads the same table.
+
 ## Access databases
 
 An Access database (`.accdb`, or `.mdb` from Access 2003 and before) holds several tables. Add the file like any other and Puddle reads its first table; the inspector lists every table with its size under **Table**, so you can read another one instead. **Add the other tables** adds a source for each table not yet in the project, reading the same file, so you can join them on the canvas or see how they relate in the Relationships view.
@@ -148,6 +204,18 @@ Only the tables are read: queries, forms and reports stay in Access. Linked tabl
 
 Puddle reads the database in your browser; nothing is uploaded. When you open the project again, choose the database once and every table read from it connects. `puddle-run` reads Access tables the same way, with the same types.
 
+## Compressed files, archives and Arrow files
+
+A file inside a gzip file or a zip archive is added like any other: choose the `.gz` or `.zip`, and Puddle opens it for the file inside, which is read as what it is (a CSV, a workbook, an XML file, whatever the bytes say). The source is named for the file inside, and the canvas says where it came from ("CSV in zip").
+
+A gzipped CSV, TSV, JSON or NDJSON file is handed to DuckDB as it is and unpacked as it is read, so a large `.csv.gz` is never unpacked whole into memory. Anything else, and every file in a zip, is unpacked in your browser first.
+
+A zip with several files opens to its first data file. The inspector lists every file in the archive under **File inside**, so you can read another one instead, and **Add the other files** adds a source for each file not yet in the project, reading the same archive. Folders, and the `__MACOSX` and `.DS_Store` entries a Mac adds, are left out.
+
+An Arrow IPC file (`.arrow`, `.feather`, or `.ipc`) is read with its column types: whole numbers, decimals, dates, timestamps, booleans and text keep their types, and structured values (lists, structs) are read as JSON text. Like a workbook, the file is read into memory whole.
+
+When you open the project again, choose the archive once and every file read from it connects. `puddle-run` reads all three the same way, with the same types. Bzip2 and zstd files, and tar archives, aren't opened: unpack them, or pack the file as gzip or zip.
+
 ## Databases
 
 **Add › From database** reads tables from a database into sources. Pick a saved connection, or make one from the grid of databases; a connection needs the database's address and user name, and its password or token, which is kept in this tab only and never saved in the project, a recipe or a shared link. **Test** opens the connection and says what answered.
@@ -172,11 +240,11 @@ When you open the project again in another tab, a database file is chosen again,
 
 ## Read options
 
-Select a source to see how it is read in the inspector. For a CSV file that is the delimiter, whether the first row is the header, the encoding, the quote character and which values count as empty (such as `NA` or `n/a`). Change any of them and every node after the source updates.
+Select a source to see how it is read in the inspector. For a CSV file that is the delimiter, whether the first row is the header, the encoding, the quote character and which values count as empty (such as `NA` or `n/a`). Two more skip what isn't the table: **Skip lines at the top** leaves out a title, comment lines or a date above the header (blank lines included), and **Skip rows at the bottom** a row count, a signature or a footer after the last row. Puddle sets both from what it finds in the file, and the Issues panel offers them as fixes when it finds more (see {doc}`analysing`). Change any of them and every node after the source updates.
 
 ![A CSV source selected, with its read options in the inspector](_static/screenshots/screen-overview.png)
 
-An Excel source shows the workbook's sheets with their sizes, the header row it detected (often below a title or a few blank rows), and the cell range being read. An Access source shows the database's tables (see [Access databases](#access-databases)). An XML source shows its record element and what gets a row of its own (see [XML](#xml)).
+An Excel source shows the workbook's sheets with their sizes, the header row it detected (often below a title or a few blank rows), and the cell range being read. A sheet with several blocks of cells, with blank rows between them, holds several tables: the largest is read, **Table** picks another, and **Add the other tables** adds a source for each of the rest, reading the same file. A header over two or three rows (quarters merged over their months) is detected from the merged cells, or set with **Header rows**, and the names are joined (`Q1 Jan`). **Fill merged cells**, on by default, gives every cell of a merged cell its value, so a region merged down its stores is on each row; switched off, the rows below the first read as empty and the Issues panel lists the merged cells. An Access source shows the database's tables (see [Access databases](#access-databases)). An XML source shows its record element and what gets a row of its own (see [XML](#xml)). A fixed-width source shows its first lines on a ruler with the column boundaries (see [Fixed width and pipe tables](#fixed-width-and-pipe-tables)). A Word document, a PDF, an Access database or a zip archive shows which table or file inside it is read, and a log file which shape its lines have.
 
 A file source also has **Path to this file** under *On the runner*: where `puddle-run` finds the file when it runs the project outside the browser (see {doc}`self-hosting`). Left empty, the runner looks for the file by name beside the project file or in a `sources/` folder there.
 

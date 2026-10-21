@@ -1,5 +1,5 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
-import { addFiles, addStepNode, cell, fixture, node, openApp } from './helpers/app';
+import { addFiles, addStepNode, cell, fixture, node, openApp, selectNode } from './helpers/app';
 
 const steps = (page: Page) => page.getByRole('listbox', { name: 'Applied steps' }).getByRole('option');
 
@@ -37,7 +37,7 @@ const storedTemplates = (page: Page) =>
 test('a chain of nodes grouped and saved as a template goes into another project as a chain, with a missing column mapped or left off', async ({ page }) => {
   await openApp(page);
   await addFiles(page, [fixture('customers.csv')]);
-  await node(page, 'customers.csv').click();
+  await selectNode(page, 'customers.csv');
   await addStepNode(page, 'Trim whitespace');
   await addStepNode(page, 'Change case', 'Transform 2');
   await expect(steps(page)).toHaveText([/Changed name to title case/]);
@@ -65,7 +65,7 @@ test('a chain of nodes grouped and saved as a template goes into another project
   await page.getByRole('button', { name: 'New project' }).click();
   await addFiles(page, [fixture('contacts.csv')]);
   await expect(node(page, 'contacts.csv')).toHaveAttribute('data-status', 'ok');
-  await node(page, 'contacts.csv').click();
+  await selectNode(page, 'contacts.csv');
 
   let library = await openLibrary(page);
   await library.getByLabel('Search templates').fill('title-cases');
@@ -94,7 +94,7 @@ test('a chain of nodes grouped and saved as a template goes into another project
   await expect(inserted).toHaveAttribute('data-status', 'ok');
 
   // Left unmapped, the steps arrive turned off and say why.
-  await node(page, 'contacts.csv').click();
+  await selectNode(page, 'contacts.csv');
   library = await openLibrary(page);
   await templateList(library).getByRole('option', { name: 'Tidy names' }).click();
   await expect(library.getByLabel('Use for name')).toHaveValue('');
@@ -122,7 +122,7 @@ test('a chain of nodes grouped and saved as a template goes into another project
 test('templates are renamed, described and deleted from the library', async ({ page }) => {
   await openApp(page);
   await addFiles(page, [fixture('customers.csv')]);
-  await node(page, 'customers.csv').click();
+  await selectNode(page, 'customers.csv');
   await addStepNode(page, 'Trim whitespace');
   await page.getByRole('button', { name: 'Save as template' }).click();
   await page.getByRole('dialog', { name: 'Save as template' }).getByRole('button', { name: 'Save template' }).click();

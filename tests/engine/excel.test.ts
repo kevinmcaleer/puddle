@@ -63,7 +63,7 @@ describe('Excel sources', () => {
       state: 'ok',
       sheet: 'Sales',
       headerRow: 3,
-      range: 'A1:H7',
+      range: 'A3:H7',
       rows: 4,
       sheets: [
         { name: 'Sales', rows: 7, columns: 8 },
@@ -193,6 +193,6 @@ describe('Excel sources', () => {
     const entry = 'xl/workbook.xml';
     const s = await addFileSource(workbook('book.xlsx', new Uint8Array([0x50, 0x4b, 0x03, 0x04, 0x14, 0, 0, 0, 8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, entry.length, 0, 0, 0, ...new TextEncoder().encode(entry)])));
     await sync();
-    expect(useExcelReads.getState().reads[s.id]).toMatchObject({ state: 'failed', message: expect.stringMatching(/^This workbook can’t be read \(.+\)\. Open it in Excel, save it again as \.xlsx, and add it again\.$/) });
+    expect(useExcelReads.getState().reads[s.id]).toMatchObject({ state: 'failed', message: expect.stringMatching(/^This spreadsheet can’t be read \(.+\)\. Open it in your spreadsheet program, save it again as \.xlsx, and add it again\.$/) });
   });
 });

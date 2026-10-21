@@ -42,6 +42,7 @@ Every step a Transform node can hold, as the **Add** menu groups them. The same 
 | Step | What it does |
 | --- | --- |
 | Filter rows | Keeps (or removes) the rows that meet all, or any, of your conditions. |
+| Realign rows | Moves the cells of rows that sit a column to the left or right of where they belong (a cell deleted or inserted in a spreadsheet) back into line, from a row number down or on the rows matching conditions. The moved columns are read as text; Change type, Parse numbers or Parse dates after it give them their types back. |
 | Sort rows | Sorts by one or more columns, each ascending or descending. |
 | Remove top or bottom rows | Drops a number of rows from the start or the end, such as a title or a totals row. |
 | Remove blank rows | Drops rows where every column is blank, or where the columns you pick are. |

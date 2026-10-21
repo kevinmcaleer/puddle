@@ -5,6 +5,8 @@ import { join } from 'node:path';
 import { compile, compileExport, compileLoadCheck, describeFailure, FAILURE_COLUMN, LOAD_FAILURES, SchemaCache, sourceFileName } from '../../src/compiler';
 import { EngineClient, tableRows } from '../../src/engine/client';
 import { parseProject, type Project } from '../../src/model';
+import { writeDbml } from '../../src/schema';
+import { importSql } from '../../src/schema/sql';
 import { evaluateFlow, invalidateCaches, useFlowStore } from '../../src/flow/status';
 import { buildSchema } from '../../src/schemaTables/build';
 import { resetSchemaTables, syncSchemaTables, tableGate, useSchemaTables } from '../../src/schemaTables/state';
@@ -62,6 +64,24 @@ describe('building the schema', () => {
     await expect(engine.query(`INSERT INTO dbml_public.orders VALUES (1, 99, 1, 'pending')`)).rejects.toThrow();
     await expect(engine.query(`INSERT INTO dbml_public.orders VALUES (1, 10, -1, 'pending')`)).rejects.toThrow();
     await expect(engine.query(`INSERT INTO dbml_public.orders VALUES (1, 10, 1, 'lost')`)).rejects.toThrow();
+  });
+
+  it('holds the rows of an imported SQL dump: INSERT values and a COPY block become the table’s records', async () => {
+    const dump = `CREATE TABLE public.people (id integer PRIMARY KEY, name text NOT NULL, active boolean, score numeric(5,2));
+COPY public.people (id, name, active, score) FROM stdin;
+1\tAda\tt\t9.50
+2\tO'Brien, Pat\tf\t\\N
+\\.
+INSERT INTO public.people (id, name) VALUES (3, 'Linus');`;
+    const imported = importSql(dump, 'postgres');
+    expect(imported.rows).toBe(3);
+    const p = project([{ id: 'ppl', type: 'table', tableSpec: { table: 'people' } }], [], writeDbml(imported.schema));
+    expect((await buildSchema(engine, p)).tables['public.people']?.state).toBe('ok');
+    expect(await rows(p, 'ppl')).toEqual([
+      { id: 1, name: 'Ada', active: true, score: 9.5 },
+      { id: 2, name: "O'Brien, Pat", active: false, score: null },
+      { id: 3, name: 'Linus', active: null, score: null },
+    ]);
   });
 
   it('rebuilds from scratch when the DBML changes, dropping tables no longer in it', async () => {

@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { addFiles, expectRows, fixture, node, openApp } from './helpers/app';
+import { addFiles, expectRows, fixture, node, openApp, selectNode } from './helpers/app';
 
 const strip = (page: Page) => page.locator('.ui-strip');
 
@@ -13,7 +13,7 @@ test('the status strip profiles the selected column and tallies the viewed nodeâ
   await openApp(page);
   await addFiles(page, [fixture('customers.csv')]);
   await expect(node(page, 'customers.csv')).toHaveAttribute('data-status', 'ok', { timeout: 20_000 });
-  await node(page, 'customers.csv').click();
+  await selectNode(page, 'customers.csv');
   await expectRows(page, 4);
 
   await selectColumn(page, 0);
