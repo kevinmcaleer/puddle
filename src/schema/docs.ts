@@ -87,7 +87,7 @@ export function defaultDocsTokens(): DocsTokens {
 }
 
 export type DocsView = { name: string; svg: string };
-export type DocsHtmlOptions = { title: string; views: DocsView[]; tokens: DocsTokens };
+export type DocsHtmlOptions = { title: string; views: DocsView[]; tokens: DocsTokens; /** A cover line under the title: where the schema was documented from and when. */ subtitle?: string };
 
 /** How a ref reads from its `from` side. */
 const CARDINALITY: Record<Ref['op'], string> = { '<': 'one-to-many', '>': 'many-to-one', '-': 'one-to-one', '<>': 'many-to-many' };
@@ -244,6 +244,7 @@ export function writeDocsHtml(schema: DbmlSchema, options: DocsHtmlOptions): str
   const p = schema.project;
   const meta = [p?.name && `Project ${p.name}`, p?.databaseType && p.databaseType, `${count(schema.tables.length, 'table')}`, `${count(schema.refs.length, 'ref')}`, `${count(schema.enums.length, 'enum')}`].filter(Boolean) as string[];
   body.push(`<p class="docs-meta">${esc(meta.join(' · '))}</p>`);
+  if (options.subtitle) body.push(`<p class="docs-meta">${esc(options.subtitle)}</p>`);
   if (p?.note?.trim()) body.push(paragraphs(p.note, 'docs-project-note'));
   body.push(`</header>`);
 
@@ -401,7 +402,7 @@ const githubSlug = (text: string) =>
     .replace(/\s/g, '-');
 
 /** The same content as GitHub-flavoured Markdown, with the diagram as a Mermaid erDiagram. */
-export function writeDocsMarkdown(schema: DbmlSchema, options: { title: string }): string {
+export function writeDocsMarkdown(schema: DbmlSchema, options: { title: string; subtitle?: string }): string {
   // Headings in document order, so the anchors match the ones GitHub makes.
   const slug = slugger(githubSlug);
   slug(options.title);
@@ -424,6 +425,7 @@ export function writeDocsMarkdown(schema: DbmlSchema, options: { title: string }
   const p = schema.project;
   const meta = [p?.name && `Project ${p.name}`, p?.databaseType, count(schema.tables.length, 'table'), count(schema.refs.length, 'ref'), count(schema.enums.length, 'enum')].filter(Boolean) as string[];
   out.push(mdText(meta.join(' · ')), '');
+  if (options.subtitle) out.push(mdText(options.subtitle), '');
   if (p?.note?.trim()) out.push(mdNote(p.note), '');
 
   out.push('## Contents', '');

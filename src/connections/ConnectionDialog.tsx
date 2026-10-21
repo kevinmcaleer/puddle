@@ -6,8 +6,8 @@ import { runTest } from '../connect/context';
 import { useWorkspace } from '../persistence/workspace';
 import { addConnection, connectionSources, removeConnection, useProject, useProjectStore, type Catalog, type CatalogTable, type Connection, type ConnectionVia, type DriverId } from '../model';
 import { addConnectionSources, connectionNeeds, readCatalog, tableName } from '../sources/connection';
-import { Banner, Button, Dialog, Field, Select, Switch, TextInput } from '../ui';
-import { closeConnectionDialog, useConnectionDialog } from './dialog';
+import { Banner, Button, Dialog, Field, formatInstant, Select, Switch, TextInput } from '../ui';
+import { closeConnectionDialog, openDocumentSchema, useConnectionDialog } from './dialog';
 import { describeSettings, driver, DRIVERS, missingFields, SECRET_LABEL, VIA_LABEL, type Driver } from './drivers';
 import { rememberConnectionFile, useConnectionFiles } from './files';
 import { copyConnection, newConnection } from './form';
@@ -220,6 +220,7 @@ function ConnectionRow({ c, onEdit, onRemove, action }: { c: Connection; onEdit:
         <div className="truncate text-label text-ink-muted">
           {d.label} · {describeSettings(d, c.settings)} · {VIA_LABEL[c.via].toLowerCase()}
           {SECRET_LABEL[c.auth] ? ` · ${signedIn ? 'signed in' : 'not signed in'}` : ''}
+          {c.documentedAt ? ` · documented ${formatInstant(c.documentedAt)}` : ''}
         </div>
       </div>
       {action}
@@ -257,6 +258,7 @@ function ConnectionList({ mode, onNew, onEdit, onPick }: { mode: 'add' | 'manage
               action={
                 <>
                   <Button size="sm" variant="ghost" icon="search" onClick={() => (closeConnectionDialog(), useSession.getState().browseConnection(c.id))}>Browse</Button>
+                  {mode === 'manage' && <Button size="sm" variant="ghost" icon="schema" onClick={() => openDocumentSchema(c.id)}>Document</Button>}
                   {mode === 'add' && <Button size="sm" variant="secondary" icon="database" onClick={() => onPick(c)}>Choose tables</Button>}
                 </>
               }

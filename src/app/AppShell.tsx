@@ -42,6 +42,7 @@ import { openWebPageDialog } from '../sources/webPageDialog';
 import { ODataDialog } from '../sources/ODataDialog';
 import { ConnectionDialog } from '../connections/ConnectionDialog';
 import { DatabaseBrowser } from '../connections/DatabaseBrowser';
+import { DocumentSchemaDialog } from '../connections/DocumentSchemaDialog';
 import { openConnectionDialog } from '../connections/dialog';
 import { openODataDialog } from '../sources/odataDialog';
 import { cardKind } from '../canvas/kind';
@@ -462,6 +463,7 @@ export function AppShell() {
       <WebPageDialog />
       <ODataDialog />
       <ConnectionDialog />
+      <DocumentSchemaDialog />
       <SamplesDialog />
       <ShortcutsDialog />
       <TemplateDialogs />

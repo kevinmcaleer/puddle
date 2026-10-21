@@ -23,8 +23,9 @@ const orders = [
 
 const SQL = await initSqlJs();
 const db = new SQL.Database();
-db.run('CREATE TABLE customers (id INTEGER PRIMARY KEY, name TEXT NOT NULL, email TEXT, signed_up DATE, active BOOLEAN)');
+db.run('CREATE TABLE customers (id INTEGER PRIMARY KEY, name TEXT NOT NULL, email TEXT UNIQUE, signed_up DATE, active BOOLEAN DEFAULT 1)');
 db.run('CREATE TABLE orders (id INTEGER PRIMARY KEY, customer_id INTEGER NOT NULL REFERENCES customers(id), total REAL, placed_at DATETIME)');
+db.run('CREATE INDEX orders_customer ON orders (customer_id)');
 db.run('CREATE VIEW order_totals AS SELECT c.name, count(o.id) AS orders, sum(o.total) AS total FROM customers c LEFT JOIN orders o ON o.customer_id = c.id GROUP BY c.name');
 for (const r of customers) db.run('INSERT INTO customers VALUES (?, ?, ?, ?, ?)', r);
 for (const r of orders) db.run('INSERT INTO orders VALUES (?, ?, ?, ?)', r);
@@ -35,8 +36,10 @@ const path = join(out, 'shop.duckdb');
 rmSync(path, { force: true });
 const instance = await DuckDBInstance.create(path);
 const conn = await instance.connect();
-await conn.run('CREATE TABLE customers (id INTEGER PRIMARY KEY, name VARCHAR NOT NULL, email VARCHAR, signed_up DATE, active BOOLEAN)');
+await conn.run("CREATE TYPE order_status AS ENUM ('placed', 'shipped', 'returned')");
+await conn.run('CREATE TABLE customers (id INTEGER PRIMARY KEY, name VARCHAR NOT NULL, email VARCHAR UNIQUE, signed_up DATE, active BOOLEAN DEFAULT true)');
 await conn.run('CREATE TABLE orders (id INTEGER PRIMARY KEY, customer_id INTEGER NOT NULL REFERENCES customers(id), total DECIMAL(10,2), placed_at TIMESTAMP)');
+await conn.run('CREATE INDEX orders_customer ON orders (customer_id)');
 await conn.run('CREATE VIEW order_totals AS SELECT c.name, count(o.id) AS orders, sum(o.total) AS total FROM customers c LEFT JOIN orders o ON o.customer_id = c.id GROUP BY c.name');
 const q = (v) => (v === null ? 'NULL' : typeof v === 'string' ? `'${v}'` : String(v));
 for (const r of customers) await conn.run(`INSERT INTO customers VALUES (${q(r[0])}, ${q(r[1])}, ${q(r[2])}, ${q(r[3])}, ${r[4] ? 'true' : 'false'})`);

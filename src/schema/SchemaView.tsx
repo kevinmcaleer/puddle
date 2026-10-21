@@ -13,6 +13,7 @@ import { DbmlEditor, type DbmlEditorHandle } from './editor/DbmlEditor';
 import { EXAMPLE_DBML } from './example';
 import { parseDbml } from './parse';
 import { addTable } from './edit';
+import { documentedCover } from '../connections/document';
 import { ExportDocsDialog } from './ExportDocsDialog';
 import { ExportImageDialog } from './ExportImageDialog';
 import { ExportMermaidDialog } from './ExportMermaidDialog';
@@ -357,7 +358,7 @@ export function SchemaView() {
           }}
         />
       )}
-      {exporting === 'docs' && <ExportDocsDialog schema={shown} doc={project.schema} title={project.name || 'Schema'} onClose={() => setExporting(null)} />}
+      {exporting === 'docs' && <ExportDocsDialog schema={shown} doc={project.schema} title={project.name || 'Schema'} subtitle={documentedCover(project.connections)} onClose={() => setExporting(null)} />}
       {versioning && <VersionsDialog project={project} apply={apply} onClose={() => setVersioning(false)} />}
       {sharing && <ShareDialog doc={project.schema} onClose={() => setSharing(false)} />}
       {exporting === 'sql' && <ExportSqlDialog schema={schema} onClose={() => setExporting(null)} />}

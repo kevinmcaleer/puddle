@@ -1,5 +1,7 @@
 import { connectionFile, forgetConnectionFile, rememberConnectionFile, resetConnectionFiles, useConnectionFiles } from './files';
 
+// The shared project runs files in one worker without isolation: start clean as well as finish clean.
+beforeEach(() => resetConnectionFiles());
 afterEach(() => resetConnectionFiles());
 
 it('keeps a connection’s file for the tab and tells React which connections have one', () => {

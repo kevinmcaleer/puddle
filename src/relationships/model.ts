@@ -94,10 +94,11 @@ function statedPairs(project: Project): Array<{ from: End; to: End; via: Via }> 
       if (reads && p.node && nodeById(project, p.node)) pair(n.id, p.column ?? '', p.node, p.nodeColumn ?? '', { nodeId: n.id, kind: 'rule', ruleId: r.id, label: r.label });
     }
   }
-  // The schema's refs, between the Schema table nodes holding each end (every node for a table, as each holds its rows).
-  const tableNodes = project.nodes.filter((n) => n.type === 'table');
+  // The schema's refs, between the nodes holding each end: every Schema table node for a table (each holds its rows),
+  // and every source checked against it (a documented database's tables).
+  const tableNodes = project.nodes.filter((n) => n.type === 'table' || (n.type === 'source' && n.schemaCheck));
   if (tableNodes.length) {
-    const nodesFor = (schema: string, table: string) => tableNodes.filter((n) => n.type === 'table' && n.tableSpec.schema === schema && n.tableSpec.table === table);
+    const nodesFor = (schema: string, table: string) => tableNodes.filter((n) => (n.type === 'table' ? n.tableSpec.schema === schema && n.tableSpec.table === table : n.schemaCheck?.schema === schema && n.schemaCheck.table === table));
     for (const ref of projectSchema(project.schema.dbml).refs) {
       const fk = foreignKey(ref);
       if (!fk) continue;

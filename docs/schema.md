@@ -80,11 +80,12 @@ Views and detail levels change only the picture, never the DBML.
 
 ## Bringing a schema in
 
-There are three ways to start from a schema you already have.
+There are four ways to start from a schema you already have.
 
 - **Paste DBML.** A file from dbdiagram.io, or any other DBML, can be pasted straight into the editor.
 - **Import SQL.** Paste `CREATE TABLE` statements, or open a `.sql` file: a `pg_dump --schema-only`, a `mysqldump --no-data` or a SQL Server script. Puddle detects which database wrote it (PostgreSQL, MySQL and MariaDB, SQL Server, SQLite or DuckDB), or you can pick one under **Database**. It says how many tables and refs it found, and lists the statements it skipped, such as `INSERT` or `CREATE VIEW`, and anything it read with changes. If the schema already has DBML, **Into the schema** adds the tables to it or replaces it. The imported tables arrive selected on the diagram.
 - **From the project's own nodes.** In {doc}`relationships`, **Open in Schema** writes the project's tables and relationships into the schema as DBML.
+- **From a database.** **Document the schema**, in the database browser or on a connection under **Project › Databases**, reads what the database says about itself (tables, columns with their keys, defaults and not nulls, indexes, foreign keys as refs, enums, and views with their SQL as a note) and writes it into the editor as a table group named after the connection. Your own tables and notes stay as they are. Documenting again replaces what that group held and shows what changed since the last time, and each documenting saves a version labelled with the connection and the day. A source that reads a documented table is checked against it, so its keys and foreign keys become rules, and {doc}`relationships` draws the documented refs between the sources. See {ref}`Databases <sources-databases>`.
 
 ![Import SQL with a PostgreSQL script pasted in: 2 tables and 1 ref found, and 1 INSERT statement skipped](_static/screenshots/schema-import-sql.png)
 

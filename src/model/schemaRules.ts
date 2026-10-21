@@ -27,8 +27,9 @@ function readsAsFor(type: string): 'integer' | 'number' | 'date' | 'boolean' | u
   return undefined;
 }
 
-/** The Schema table node holding a table, if the project has one. */
-const tableNode = (project: Project, schema: string, table: string) => project.nodes.find((n) => n.type === 'table' && n.tableSpec.schema === schema && n.tableSpec.table === table);
+/** The node holding a table, if the project has one: its Schema table node, else a source checked against it (a documented database's table). */
+const tableNode = (project: Project, schema: string, table: string) =>
+  project.nodes.find((n) => n.type === 'table' && n.tableSpec.schema === schema && n.tableSpec.table === table) ?? project.nodes.find((n) => n.type === 'source' && n.schemaCheck?.schema === schema && n.schemaCheck.table === table);
 
 /** The rules a schema check derives for a node, as they would be written fresh. */
 export function deriveSchemaRules(project: Project, check: SchemaCheck, schema: DbmlSchema = schemaOf(project.schema.dbml)): Rule[] {

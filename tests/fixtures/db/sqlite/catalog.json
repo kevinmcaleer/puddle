@@ -1,0 +1,145 @@
+{
+  "tables": [
+    {
+      "name": "customers",
+      "kind": "table",
+      "columns": [
+        {
+          "name": "id",
+          "type": "INTEGER",
+          "pk": true,
+          "unique": false,
+          "notNull": true,
+          "increment": false
+        },
+        {
+          "name": "name",
+          "type": "TEXT",
+          "pk": false,
+          "unique": false,
+          "notNull": true,
+          "increment": false
+        },
+        {
+          "name": "email",
+          "type": "TEXT",
+          "pk": false,
+          "unique": true,
+          "notNull": false,
+          "increment": false
+        },
+        {
+          "name": "signed_up",
+          "type": "DATE",
+          "pk": false,
+          "unique": false,
+          "notNull": false,
+          "increment": false
+        },
+        {
+          "name": "active",
+          "type": "BOOLEAN",
+          "pk": false,
+          "unique": false,
+          "notNull": false,
+          "increment": false,
+          "default": "1"
+        }
+      ],
+      "indexes": [],
+      "foreignKeys": []
+    },
+    {
+      "name": "orders",
+      "kind": "table",
+      "columns": [
+        {
+          "name": "id",
+          "type": "INTEGER",
+          "pk": true,
+          "unique": false,
+          "notNull": true,
+          "increment": false
+        },
+        {
+          "name": "customer_id",
+          "type": "INTEGER",
+          "pk": false,
+          "unique": false,
+          "notNull": true,
+          "increment": false
+        },
+        {
+          "name": "total",
+          "type": "REAL",
+          "pk": false,
+          "unique": false,
+          "notNull": false,
+          "increment": false
+        },
+        {
+          "name": "placed_at",
+          "type": "DATETIME",
+          "pk": false,
+          "unique": false,
+          "notNull": false,
+          "increment": false
+        }
+      ],
+      "indexes": [
+        {
+          "name": "orders_customer",
+          "columns": [
+            "customer_id"
+          ],
+          "unique": false
+        }
+      ],
+      "foreignKeys": [
+        {
+          "columns": [
+            "customer_id"
+          ],
+          "refTable": "customers",
+          "refColumns": [
+            "id"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "order_totals",
+      "kind": "view",
+      "columns": [
+        {
+          "name": "name",
+          "type": "TEXT",
+          "pk": false,
+          "unique": false,
+          "notNull": false,
+          "increment": false
+        },
+        {
+          "name": "orders",
+          "type": "",
+          "pk": false,
+          "unique": false,
+          "notNull": false,
+          "increment": false
+        },
+        {
+          "name": "total",
+          "type": "",
+          "pk": false,
+          "unique": false,
+          "notNull": false,
+          "increment": false
+        }
+      ],
+      "indexes": [],
+      "foreignKeys": [],
+      "sql": "CREATE VIEW order_totals AS SELECT c.name, count(o.id) AS orders, sum(o.total) AS total FROM customers c LEFT JOIN orders o ON o.customer_id = c.id GROUP BY c.name"
+    }
+  ],
+  "enums": []
+}

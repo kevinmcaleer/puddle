@@ -11,9 +11,10 @@ import { driver, SECRET_LABEL } from '../connections/drivers';
 import { secretFor, useSecrets } from '../connections/secrets';
 import type { EngineClient } from '../engine';
 import { tableRows } from '../engine/client';
-import { addSource, newId, updateConnection, useProject, useProjectStore, type Catalog, type CatalogTable, type Connection, type ConnectionSource, type Project, type Source } from '../model';
+import { addSource, newId, setSchemaCheck, updateConnection, useProject, useProjectStore, type Catalog, type CatalogTable, type Connection, type ConnectionSource, type Project, type Source } from '../model';
 import { invalidateCaches } from '../flow/status';
 import { useSampleStore } from '../flow/sample';
+import { documentedTable } from '../schema/fromCatalog';
 import { markAttached } from './attachments';
 
 /**
@@ -238,6 +239,18 @@ export function addConnectionSources(connection: Connection, pick: ConnectionPic
   for (const s of added) markAttached(s.id);
   useProjectStore.getState().batch(() => {
     added.forEach((s, i) => useProjectStore.getState().apply((p) => addSource(p, s, { x: at.x, y: at.y + i * 128 })));
+    // A table the connection has documented is the source's check: its keys, not nulls and foreign keys become rules.
+    const current = project.connections.find((x) => x.id === connection.id) ?? connection;
+    if (current.documentedAt)
+      useProjectStore.getState().apply((p) => {
+        let next = p;
+        for (const s of added) {
+          const t = s.connection?.table && documentedTable(p.schema.dbml, current.name, s.connection.table);
+          const node = t && p.nodes.find((n) => n.type === 'source' && n.sourceId === s.id);
+          if (t && node) next = setSchemaCheck(next, node.id, { ...t, mapping: {} });
+        }
+        return next;
+      });
   });
   return added;
 }

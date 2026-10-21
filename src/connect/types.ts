@@ -40,6 +40,58 @@ export interface ReadRequest {
  */
 export type ReadResult = { ipc: Uint8Array; columns: { name: string; sqlType: string }[]; rows: number } | { relation: string; database?: string; columns?: { name: string; sqlType: string }[]; rows?: number };
 
+/** A column as the database declares it, for documenting the schema. */
+export interface DocColumn {
+  name: string;
+  type: string;
+  pk: boolean;
+  unique: boolean;
+  notNull: boolean;
+  increment: boolean;
+  /** The default as written in the database, or undefined. */
+  default?: string;
+  note?: string;
+}
+
+export interface DocIndex {
+  name?: string;
+  columns: string[];
+  unique: boolean;
+}
+
+/** A foreign key: these columns of the table reference `refColumns` of `refTable`. */
+export interface DocForeignKey {
+  name?: string;
+  columns: string[];
+  refSchema?: string;
+  refTable: string;
+  refColumns: string[];
+}
+
+export interface DocTable {
+  schema?: string;
+  name: string;
+  kind: 'table' | 'view';
+  note?: string;
+  columns: DocColumn[];
+  indexes: DocIndex[];
+  foreignKeys: DocForeignKey[];
+  /** A view's defining SQL. */
+  sql?: string;
+}
+
+export interface DocEnum {
+  schema?: string;
+  name: string;
+  values: string[];
+}
+
+/** Everything a driver can say about a database's schema (plan section 3.5), driver-neutral; src/schema/fromCatalog.ts turns it into DBML. */
+export interface CatalogDetail {
+  tables: DocTable[];
+  enums: DocEnum[];
+}
+
 export type TestOutcome = { ok: true; server: string } | { ok: false; reason: string };
 
 export interface Connector {
@@ -48,4 +100,6 @@ export interface Connector {
   test(ctx: ConnectorContext): Promise<TestOutcome>;
   catalog(ctx: ConnectorContext): Promise<Catalog>;
   read(ctx: ConnectorContext, req: ReadRequest): Promise<ReadResult>;
+  /** The schema in detail (keys, indexes, foreign keys, defaults, views, enums), for Document the schema; absent where the driver can't say. */
+  document?(ctx: ConnectorContext): Promise<CatalogDetail>;
 }

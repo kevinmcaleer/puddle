@@ -4,7 +4,7 @@ import { addFiles, cell, expectRows, fixture, node, openApp, saved, selectNode }
 // A database connection: made from the driver grid, tested (no service runs here, so the test says what to start),
 // saved in the project without its password, signed in for this tab, listed under Project › Databases and on the
 // home screen, and forgotten from there.
-const projectMenu = async (page: Page, item: string) => {
+const projectMenu = async (page: Page, item: string | RegExp) => {
   await page.getByTestId('project-menu').click();
   await page.getByRole('menuitem', { name: item }).click();
 };
@@ -173,4 +173,47 @@ test('the database browser lists a SQLite file’s tables, previews one, and add
   await expect(node(page, 'shop query')).toHaveAttribute('data-status', 'ok', { timeout: 20_000 });
   await browser.getByRole('button', { name: 'Close the database browser' }).click();
   await expect(page.getByTestId('inspector-tabs')).toBeVisible();
+});
+
+test('documenting a SQLite file writes its tables into the Schema view as a group, and the Relationships view draws the ref between two added tables', async ({ page }) => {
+  await openApp(page);
+  await addFiles(page, [fixture('db/shop.sqlite')]);
+  const picker = page.getByRole('dialog', { name: 'Read from shop' });
+  await expect(picker.getByTestId('table-picker')).toContainText('customers', { timeout: 20_000 });
+  await page.keyboard.press('Escape');
+  await page.getByRole('dialog', { name: 'Add source from a database' }).getByTestId('connection-shop').getByRole('button', { name: 'Browse' }).click();
+  const browser = page.getByTestId('database-browser');
+  await expect(browser).toContainText('2 tables, 1 view');
+
+  // Document the whole database: the dialog says what it will write, then writes it.
+  await browser.getByRole('button', { name: 'Document the schema' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Document the schema' });
+  await expect(dialog.getByTestId('document-plan')).toContainText('3 tables, 1 ref and 0 enums', { timeout: 20_000 });
+  await dialog.getByRole('button', { name: 'Document', exact: true }).click();
+  await expect(dialog).toHaveCount(0);
+
+  // Two tables added now are checked against their documented tables.
+  await browser.getByRole('checkbox', { name: 'Add customers' }).check();
+  await browser.getByRole('checkbox', { name: 'Add orders' }).check();
+  await browser.getByRole('button', { name: 'Add 2 tables' }).click();
+  await expect(node(page, 'orders')).toHaveAttribute('data-status', 'ok', { timeout: 20_000 });
+  await browser.getByRole('button', { name: 'Close the database browser' }).click();
+  await selectNode(page, 'orders');
+  await expect(page.getByTestId('inspector')).toContainText('Every customer_id exists in customers.id');
+
+  await projectMenu(page, 'Schema');
+  const schema = page.getByTestId('schema-view');
+  await expect(schema.getByTestId('schema-group-shop')).toBeVisible();
+  await expect(schema.getByTestId('schema-table-orders')).toContainText('customer_id');
+  await expect(schema.getByTestId('schema-ref-orders-customers')).toBeAttached();
+  await schema.getByRole('button', { name: 'Back to canvas' }).click();
+
+  await projectMenu(page, /Relationships/);
+  const rel = page.getByTestId('relationships');
+  await expect(rel.getByTestId('relationship-line')).toHaveCount(1);
+  await expect(rel.getByTestId('relationship').first()).toContainText('Ref in the schema');
+  // Documented, dated, in the Databases list.
+  await rel.getByRole('button', { name: 'Back to canvas' }).click();
+  await projectMenu(page, 'Databases');
+  await expect(page.getByRole('dialog', { name: 'Databases' }).getByTestId('connection-shop')).toContainText('documented');
 });

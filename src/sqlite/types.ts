@@ -16,6 +16,16 @@ export interface SqliteTableInfo {
   rows: number;
 }
 
+/** A table or view in detail, for documenting the schema: keys, indexes, foreign keys, defaults, and a view's SQL. */
+export interface SqliteTableDetail {
+  name: string;
+  kind: 'table' | 'view';
+  columns: { name: string; type: string; pk: boolean; unique: boolean; notNull: boolean; increment: boolean; default?: string }[];
+  indexes: { name: string; columns: string[]; unique: boolean }[];
+  foreignKeys: { columns: string[]; refTable: string; refColumns: string[] }[];
+  sql?: string;
+}
+
 /** A column read, with the DuckDB type it is loaded as. */
 export interface SqliteColumn extends SheetColumn {
   sqlType: string;
