@@ -16,6 +16,9 @@ async function selectColumns(page: Page, ...indexes: number[]) {
     await page.mouse.click(box.x + 100 + 120 * i, box.y + 20);
     if (k) await page.keyboard.up('Shift');
   }
+  // The quick fixes follow the selection a moment after the click (Firefox is slower): wait until they list as many
+  // columns as were clicked before a fix is picked, so the fix lands on the right columns.
+  await expect(page.getByTestId('quick-fixes')).toHaveAttribute('data-columns', new RegExp(`^([^,]+,){${indexes.length - 1}}[^,]+$`));
 }
 
 test.beforeEach(async ({ page }) => {

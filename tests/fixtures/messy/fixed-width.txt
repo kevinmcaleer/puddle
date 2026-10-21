@@ -1,0 +1,31 @@
+CUSTNO  NAME                  CITY            BALANCE SINCE     ST
+100200  Kofi Patel            Leeds         15,369.45 20240914  A
+100203  Mateo Smith           Cardiff       2,933.84- 20240904  A
+100206  Jade Brown            Cardiff        9,552.79 20240415  L
+100209  Jade Murphy           Glasgow        8,965.58 20240923  A
+100212  Chloe Patel           Bristol        8,226.12 20240203  A
+100215  Chloe Patel           Manchester              20241127  A
+100218  Chloe Kowalski        Leeds         12,017.35 20240909  L
+100221  Nora Chen             Leeds         10,028.81 20240928  A
+100224  Nora Kowalski         London       10,649.04- 20241107  A
+100227  Fatima Chen           Glasgow        4,343.21 20240702  A
+100230  Bob Garcia            Glasgow                 20240606  A
+100233  Hana Garcia           Manchester    19,324.73 20240913  A
+100236  Hana Garcia           Bristol       15,213.60 20240807  L
+100239  Jade Ali              Cardiff        8,506.68 20240225  A
+100242  Omar Ali              Glasgow       15,815.23 20240528  A
+100245  Fatima Nguyen         Manchester   13,501.62- 20240924  L
+100248  Dev Evans             Bristol        3,727.95 20241225  A
+100251  Mateo Garcia          Leeds         5,437.40- 20240925  A
+100254  Nora Garcia           Leeds            850.30 20241216  A
+100257  Jade Garcia           London         8,507.57 20241011  A
+100260  Dev Smith             Cardiff       11,459.09 20240426  A
+100263  Chloe Smith           Bristol        2,996.98 20240908  A
+100266  Leila Patel           Glasgow       3,201.50- 20240511  A
+100269  Hana Evans            Leeds          1,866.32 20240910  A
+100272  Leila Kowalski        Leeds          2,068.74 20240425  A
+100275  Leila Ali             Manchester    1,914.99- 20240209  A
+100278  Nora Nguyen           Glasgow       9,640.43- 20240615  L
+100281  Fatima Kowalski       Leeds         18,398.66 20240605  A
+100284  Hana Jones            Leeds         3,737.28- 20240702  A
+100287  Kofi Garcia           Cardiff       19,578.40 20240112  L

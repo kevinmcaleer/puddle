@@ -172,8 +172,9 @@ export function compileShape(project: Project, target: Target, columns: string[]
   const header = named.length >= 2 ? named.map((c) => `${text(c)} = ${str(c)}`).join(' AND ') : 'false';
   const leading = columns.slice(0, 3);
   const firstFilled = `coalesce(${leading.map((c) => `nullif(${text(c)}, '')`).join(', ')})`;
-  // RE2 has no backreferences and \b fails after "*", so the words are spelt out, each ending the value or followed by a space or colon.
-  const totalWord = `regexp_extract(lower(${firstFilled}), '^(\\*+|grand total|sub ?totals?|totals?|sum)(\\s|:|$)', 1)`;
+  // RE2 has no backreferences and \b fails after "*", so the words are spelt out, each ending the value or followed by a
+  // space or colon; one word may come first ("North total"), and is kept so the fix names each total row's own words.
+  const totalWord = `regexp_extract(lower(${firstFilled}), '^((?:[a-z]+ )?(?:\\*+|grand total|sub ?totals?|totals?|sum))(\\s|:|$)', 1)`;
   const total = `${totalWord} <> ''`;
   const totalCol = `CASE ${leading.map((c) => `WHEN ${filled(c)} THEN ${str(c)}`).join(' ')} END`;
   const flags = `SELECT row_number() OVER () AS rn, ${blank} AS blank, ${narrow} AS narrow, ${separator} AS separator, ${header} AS header, ${total} AS total, ${totalWord} AS word, ${totalCol} AS col, ${text(first)} AS first FROM (${nodeSql(project, target, limit)})`;
@@ -191,4 +192,26 @@ export function compileShape(project: Project, target: Target, columns: string[]
     'count(*) - coalesce(max(rn) FILTER (WHERE NOT (blank OR narrow)), 0) AS bottom',
     `FROM (${flags})`,
   ].join(', ').replace(', FROM', ' FROM');
+}
+
+/**
+ * The kind of value in every cell, row by row, for finding rows whose cells sit a column to the left or right of
+ * where they belong (src/analysis/skew.ts): each row's kinds as one string (`sig`: e empty, n number, d date, b
+ * boolean, t text, x other), grouped, with how many rows have it and the first and last row number (file order).
+ */
+export function compileSkew(project: Project, target: Target, columns: { name: string; type: string }[], limit?: number): string {
+  if (columns.length < 2) throw new RangeError('Too few columns to look at.');
+  const kinds = columns.map((c) => {
+    const col = ident(c.name);
+    const t = c.type.toUpperCase();
+    if (/INT|DOUBLE|FLOAT|DECIMAL|REAL/.test(t)) return `CASE WHEN ${col} IS NULL THEN 'e' ELSE 'n' END`;
+    if (t === 'DATE' || t.startsWith('TIMESTAMP') || t === 'TIME') return `CASE WHEN ${col} IS NULL THEN 'e' ELSE 'd' END`;
+    if (t === 'BOOLEAN') return `CASE WHEN ${col} IS NULL THEN 'e' ELSE 'b' END`;
+    if (t === 'VARCHAR') {
+      const v = `nullif(trim(CAST(${col} AS VARCHAR)), '')`;
+      return `CASE WHEN ${v} IS NULL THEN 'e' WHEN ${looksLikeNumber(v)} THEN 'n' WHEN ${looksLikeDate(v)} THEN 'd' ELSE 't' END`;
+    }
+    return `CASE WHEN ${col} IS NULL THEN 'e' ELSE 'x' END`;
+  });
+  return `SELECT sig, count(*) AS n, min(rn) AS first, max(rn) AS last FROM (SELECT row_number() OVER () AS rn, concat(${kinds.join(', ')}) AS sig FROM (${nodeSql(project, target, limit)})) GROUP BY sig ORDER BY n DESC, first LIMIT 40`;
 }

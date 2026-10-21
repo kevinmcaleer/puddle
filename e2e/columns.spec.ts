@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { addFiles, addStep, addStepNode, cell, fixture, node, openApp } from './helpers/app';
+import { addFiles, addStep, addStepNode, cell, fixture, node, openApp, selectNode } from './helpers/app';
 
 const steps = (page: Page) => page.getByRole('listbox', { name: 'Applied steps' }).getByRole('option');
 const settings = (page: Page) => page.getByTestId('step-settings');
@@ -7,7 +7,7 @@ const settings = (page: Page) => page.getByTestId('step-settings');
 test.beforeEach(async ({ page }) => {
   await openApp(page);
   await addFiles(page, [fixture('customers.csv')]);
-  await node(page, 'customers.csv').click();
+  await selectNode(page, 'customers.csv');
 });
 
 test('a column from an expression, with column suggestions as you type', async ({ page }) => {
@@ -105,7 +105,7 @@ test('removing a column the next node relies on breaks the wire between them', a
   await settings(page).getByRole('button', { name: 'email', exact: true }).click();
   await expect(node(page, 'Transform 2')).toHaveAttribute('data-status', 'ok');
 
-  await node(page, 'Transform 1').click();
+  await selectNode(page, 'Transform 1');
   await addStep(page, 'Remove columns');
   await settings(page).getByRole('button', { name: 'email', exact: true }).click();
   await expect(node(page, 'Transform 2')).toHaveAttribute('data-status', 'error');

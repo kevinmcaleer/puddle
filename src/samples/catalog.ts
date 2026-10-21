@@ -119,17 +119,49 @@ This is a sample project. Delete it from the projects list when you’re done.`,
     title: 'SAP extract',
     projectName: 'Sample: SAP extract',
     blurb: 'A report printed to text: banners, separator lines, a page break and a total row.',
-    files: [{ file: 'sap-extract.txt', rows: 70 }],
+    files: [{ file: 'sap-extract.txt', rows: 61 }],
     note: `## SAP extract (sample)
 
-Vendor line items printed from SAP to a text file, as a report rather than a table. What’s wrong with it:
+Vendor line items printed from SAP to a text file, as a report rather than a table. Puddle reads it as a pipe table: the rows between the pipes, with the banner, the separator lines, the page break with its header printed again, and the footer left out, and the padding trimmed. What’s wrong with it once read:
 
-- **A banner** above the table and a **footer** below it. Puddle skips both when it reads the file.
-- **Separator lines** of dashes, and a **page break** with the banner and the header printed again.
-- **A total row** at the end, marked with an asterisk.
-- **Pipes** at both ends of every row, leaving an empty column at each side; values padded with spaces; amounts in German notation (7.625,43).
+- **A total row** at the end, marked with an asterisk, read as a row of the table.
+- **Amounts in German notation** (7.625,43) with a trailing minus for a negative, which read as text.
 
-Try it: **Fix all** on the Issues panel removes the separator lines, the second banner and the repeated header and trims the values. Remove the total row from its suggestion, then **Parse numbers** on the amount with the German locale.
+Try it: **Fix all** on the Issues panel parses the amounts with a comma for the decimal mark. Tick the total row's suggestion to remove it too, and the amounts sum to 192,474.66.
+
+This is a sample project. Delete it from the projects list when you’re done.`,
+  },
+  {
+    id: 'skewed',
+    title: 'Skewed invoices',
+    projectName: 'Sample: skewed invoices',
+    blurb: 'A spreadsheet where a cell was deleted part way down, so the rows below sit a column over.',
+    files: [{ file: 'skewed.xlsx', rows: 36 }],
+    note: `## Skewed invoices (sample)
+
+An invoice list kept in a spreadsheet. Someone deleted a cell in the Customer column on the 18th row, and every cell from there on moved a column to the left: the dates sit under Customer, the amounts under the dates, and the last column is empty from that row down. What’s wrong with it:
+
+- **Rows shifted one column left** from Customer, from the 18th row on. The Issues panel lists the shift as one issue, with **Realign rows** as its fix.
+- **Dates and amounts read as text** in the shifted rows, since the columns hold two kinds of value.
+
+Try it: with the source selected, use **Fix all** on the Issues panel. Realign rows moves the cells back, and the steps after it give the dates and amounts their types.
+
+This is a sample project. Delete it from the projects list when you’re done.`,
+  },
+  {
+    id: 'merged',
+    title: 'Merged report',
+    projectName: 'Sample: merged report',
+    blurb: 'A report sheet: a title, a two-row header, regions merged down their stores, subtotals and footnotes.',
+    files: [{ file: 'merged.xlsx', rows: 16 }],
+    note: `## Merged report (sample)
+
+A regional sales report laid out for reading, not for data: a title across the top, quarters merged over their months in a two-row header, each region merged down the stores it covers, a subtotal row per region and a grand total, an empty spacer column, and a table of footnotes under the main one. Puddle reads the report table on its own (the footnotes are listed under **Table** in the read options, to add as a source of their own), joins the two header rows into names such as Q1 Jan, and fills each region down its stores. What’s wrong with it once read:
+
+- **Total rows inside the data**: one per region and a grand total, which would count every figure twice.
+- **An empty column**: the spacer between the figures and the notes.
+
+Try it: with the source selected, open **Choose fixes** on the Issues panel, tick the total rows (a suggestion, since a total may be wanted) and apply: 11 stores remain, the spacer column gone.
 
 This is a sample project. Delete it from the projects list when you’re done.`,
   },

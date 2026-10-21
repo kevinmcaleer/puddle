@@ -9,6 +9,7 @@ import { detectDateFormats } from '../../src/dates';
 import { EngineClient, tableRows } from '../../src/engine/client';
 import { placeFixes, setParseOptions, type Project } from '../../src/model';
 import { sniff } from '../../src/sources/sniff';
+import { decodeText, isRewrittenTextSource, readText, rewrittenCsv } from '../../src/sources/text';
 import { createNodeBackend } from '../helpers/nodeBackend';
 import { flow, src } from '../helpers/projects';
 
@@ -23,7 +24,9 @@ async function open(name: string) {
   const data = new Uint8Array(readFileSync(join(__dirname, '../fixtures/messy', name)));
   const sniffed = sniff({ name, head: data, size: data.length });
   const source = src({ id: name.replace(/\W/g, '_'), format: sniffed.format, parseOptions: sniffed.parseOptions });
-  await engine.registerBuffer(sourceFileName(source), data);
+  // A pipe table or fixed-width text is read into rows first and handed to DuckDB as CSV (src/sources/rewrite.ts).
+  if (isRewrittenTextSource(source)) await engine.registerText(sourceFileName(source), rewrittenCsv(readText(source.format, decodeText(data, source.parseOptions.encoding), source.parseOptions)));
+  else await engine.registerBuffer(sourceFileName(source), data);
   return { sniffed, project: flow({ sources: [source], nodes: [{ id: 'in', type: 'source', sourceId: source.id }] }), sourceId: source.id };
 }
 
@@ -38,7 +41,14 @@ async function fixAll(project: Project, sourceId: string, chosen: (issues: Issue
   const before = await analyse(project, 'in');
   const { steps, readOptions } = await planFixes(chosen(before.issues), { available: before.columns, locale: project.settings.locale, detectDates: (column) => detectDateFormats(engine, project, { nodeId: 'in' }, column) });
   let fixed = project;
-  if (Object.keys(readOptions).length) fixed = setParseOptions(fixed, sourceId, { ...fixed.sources[0]!.parseOptions, ...readOptions });
+  if (Object.keys(readOptions).length) {
+    fixed = setParseOptions(fixed, sourceId, { ...fixed.sources[0]!.parseOptions, ...readOptions });
+    const source = fixed.sources[0]!;
+    if (isRewrittenTextSource(source)) {
+      const data = new Uint8Array(readFileSync(join(__dirname, '../fixtures/messy', source.name)));
+      await engine.registerText(sourceFileName(source), rewrittenCsv(readText(source.format, decodeText(data, source.parseOptions.encoding), source.parseOptions)));
+    }
+  }
   const placed = placeFixes(fixed, 'in', steps);
   const target = placed ? { project: placed.project, nodeId: placed.last.nodeId } : { project: fixed, nodeId: 'in' };
   const rows = tableRows((await engine.query(compile(target.project, { nodeId: target.nodeId }).sql)).table);
@@ -95,25 +105,16 @@ describe('messy.txt: comment lines, a footer, a header pasted in again, blank an
 });
 
 describe('sap-extract.txt: a banner, separator lines, a page break, a repeated header, a total row and a footer', () => {
-  it('opens with the banner and the footer skipped, the empty edge columns named, and each kind of non-data row an issue with a fix', async () => {
+  it('opens as a pipe table: eight named columns, the banner, rules, page header and footer left out, the total row a suggestion', async () => {
     const { sniffed, project } = await open('sap-extract.txt');
-    expect(sniffed.parseOptions).toEqual({
-      delimiter: '|',
-      header: true,
-      encoding: 'latin-1',
-      skip: 5,
-      skipBottom: 3,
-      columns: ['column0', 'Doc. no.', 'Vendor', 'Doc. date', 'Pstng date', 'Crcy', 'Amount in LC', 'Cost ctr', 'Text', 'column9'],
-    });
-    const { analysis, issues } = await analyse(project, 'in');
-    expect(analysis.facts.rows).toBe(70);
-    expect(analysis.facts.shape?.facts).toMatchObject({ header: 1, total: 1, totalEx: ['*'], totalCol: 'Doc. no.', bottom: 0 });
-    expect(keys(issues).slice(0, 3)).toEqual(['repeatedHeader', 'narrowRows', 'totalRows']);
-    // Separator lines, the second page's banner: rows with nothing past the first column.
-    const narrow = issues.find((i) => i.key === 'narrowRows')!;
-    expect(narrow.count).toBe(8);
-    expect(narrow.examples).toEqual(['------------']);
-    expect(narrow.fix).toMatchObject({ type: 'filterRows', params: { mode: 'remove', match: 'all' } });
+    expect(sniffed).toMatchObject({ format: 'pipes', parseOptions: { encoding: 'latin-1' } });
+    const { columns, analysis, issues } = await analyse(project, 'in');
+    expect(columns.map((c) => c.name)).toEqual(['Doc. no.', 'Vendor', 'Doc. date', 'Pstng date', 'Crcy', 'Amount in LC', 'Cost ctr', 'Text']);
+    // 60 line items and the total row: the reader keeps every row between pipes that isn't a rule or the header again.
+    expect(analysis.facts.rows).toBe(61);
+    expect(analysis.facts.shape?.facts).toMatchObject({ header: 0, narrow: 0, total: 1, totalEx: ['*'], totalCol: 'Doc. no.', bottom: 0 });
+    expect(keys(issues)).not.toContain('repeatedHeader');
+    expect(keys(issues)).not.toContain('narrowRows');
     // The total row is a suggestion: it may be wanted.
     const total = issues.find((i) => i.key === 'totalRows')!;
     expect(total.severity).toBe('suggest');
@@ -125,14 +126,17 @@ describe('sap-extract.txt: a banner, separator lines, a page break, a repeated h
     const { before, steps, rows, after } = await fixAll(project, sourceId, (issues) => issues.filter((i) => i.severity === 'fix' || i.kind === 'totalRows'));
     // The amounts are read with a comma for the decimal mark, as the column writes them, whatever the project's locale.
     expect(before.issues.find((i) => i.key === 'numbersAsText:Amount in LC')).toMatchObject({ severity: 'fix', fix: { type: 'parseNumbers', params: { decimal: ',', locale: '' } } });
-    expect(steps.map((s) => s.type)).toEqual(['removeNonPrinting', 'trimWhitespace', 'collapseSpaces', 'filterRows', 'filterRows', 'filterRows', 'emptyToNull', 'parseNumbers', 'parseDates', 'duplicateRows', 'removeColumns']);
+    // DuckDB reads the day-first dates itself from the rewritten CSV, so no Parse dates step is needed.
+    expect(before.columns.find((c) => c.name === 'Doc. date')?.type).toBe('DATE');
+    expect(steps.map((s) => s.type)).toEqual(['filterRows', 'parseNumbers']);
     expect(rows).toHaveLength(60);
     expect(rows.map((r) => r['Vendor'])).toContain('Müller GmbH');
     expect(rows[0]).toMatchObject({ 'Amount in LC': 891.36 });
     // A trailing minus is a negative, as SAP writes them.
     expect(rows.some((r) => (r['Amount in LC'] as number) < 0)).toBe(true);
-    expect(Object.keys(rows[0]!)).not.toContain('column9');
-    // With the asterisk gone, the document numbers are all digits, and the first padding column is empty: fixes for the next Fix all.
-    expect(keys(after.issues.filter((i) => i.severity === 'fix'))).toEqual(['emptyColumn:column0', 'numbersAsText:Doc. no.']);
+    expect(Math.round(rows.reduce((sum, r) => sum + (r['Amount in LC'] as number), 0) * 100) / 100).toBe(192474.66);
+    expect(after.columns.find((c) => c.name === 'Doc. date')?.type).toBe('DATE');
+    // With the asterisk gone, the document numbers are all digits: a fix for the next Fix all.
+    expect(keys(after.issues.filter((i) => i.severity === 'fix'))).toEqual(['numbersAsText:Doc. no.']);
   });
 });

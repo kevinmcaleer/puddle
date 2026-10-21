@@ -1,7 +1,9 @@
 // The report as React elements, laid out as the rules panel lays out rules (RuleRow, QualityBar, StatusBadge).
-import { QualityBar, StatusBadge } from '../ui';
-import type { QualityReport, ReportNode, ReportRule } from './build';
-import { HEAD_HASH_NOTE, NO_DATA_NOTE, overrideLine, reportTime, ruleFigures, SAMPLE_NOTE, sampleModeNote, STATUS_BADGE, STATUS_WORD, summaryLine } from './words';
+// The two components come from their own files, not the kit's index, so puddle-run (which writes the same HTML) bundles no more of the kit than it draws.
+import { QualityBar } from '../ui/QualityBar';
+import { StatusBadge } from '../ui/StatusBadge';
+import type { QualityReport, ReportAnalysis, ReportNode, ReportRule } from './build';
+import { analysisLine, HEAD_HASH_NOTE, NO_DATA_NOTE, OUTCOME_WORD, overrideLine, reportTime, ruleFigures, SAMPLE_NOTE, sampleModeNote, STATUS_BADGE, STATUS_WORD, summaryLine } from './words';
 
 function SampleTable({ rule }: { rule: ReportRule }) {
   const sample = rule.sample!;
@@ -53,12 +55,47 @@ function Rule({ rule }: { rule: ReportRule }) {
   );
 }
 
+/** The issues analysis found, with what became of each: fixed by Fix all, ignored, or still open. */
+function Issues({ analysis }: { analysis: ReportAnalysis }) {
+  return (
+    <div className="report-issues" data-testid="report-issues">
+      <h3 className="type-body-strong">Issues</h3>
+      <p className="type-label">{analysisLine(analysis)}</p>
+      {analysis.issues.length > 0 && (
+        <table className="report-table type-body">
+          <thead>
+            <tr>
+              <th>Outcome</th>
+              <th>Issue</th>
+              <th>Column</th>
+              <th className="num">Rows</th>
+            </tr>
+          </thead>
+          <tbody>
+            {analysis.issues.map((i) => (
+              <tr key={i.key} data-outcome={i.outcome}>
+                <td>
+                  <StatusBadge status={i.outcome === 'fixed' ? 'pass' : i.outcome === 'ignored' ? 'neutral' : 'warn'}>{OUTCOME_WORD[i.outcome]}</StatusBadge>
+                </td>
+                <td>{i.label}</td>
+                <td>{i.column ?? ''}</td>
+                <td className="num ui-mono">{i.count.toLocaleString('en-GB')}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+    </div>
+  );
+}
+
 function Node({ node }: { node: ReportNode }) {
   return (
     <section className="report-card">
       <h2 className="type-heading">{node.name}</h2>
       {node.onSample && <p className="type-label">Checked on the sample, so counts are of sampled rows.</p>}
       {node.rules.length ? node.rules.map((r) => <Rule key={r.id} rule={r} />) : <p className="type-body">No rules.</p>}
+      {node.analysis && <Issues analysis={node.analysis} />}
     </section>
   );
 }
