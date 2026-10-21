@@ -118,18 +118,6 @@ jobs:
           tags: puddle:ci
           build-args: PUDDLE_BUILD=${{ github.sha }}
           cache-from: type=gha
-      - name: Publish the puddle-connect image
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          file: Dockerfile.connect
-          platforms: linux/amd64,linux/arm64
-          push: true
-          tags: |
-            ghcr.io/${{ github.repository }}-connect:latest
-            ghcr.io/${{ github.repository }}-connect:${{ github.sha }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
       - name: Build the arm64 image
         uses: docker/build-push-action@v6
         with:
@@ -260,4 +248,15 @@ jobs:
             ghcr.io/${{ github.repository }}:latest
             ghcr.io/${{ github.repository }}:${{ github.sha }}
           build-args: PUDDLE_BUILD=${{ github.sha }}
+          cache-from: type=gha
+      - name: Publish the puddle-connect image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: Dockerfile.connect
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository }}-connect:latest
+            ghcr.io/${{ github.repository }}-connect:${{ github.sha }}
           cache-from: type=gha
