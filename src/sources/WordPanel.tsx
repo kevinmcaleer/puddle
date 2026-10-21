@@ -9,7 +9,7 @@ import { addWordTables, tablesNotAdded } from './word';
 
 const plural = (n: number, word: string) => `${n.toLocaleString('en-GB')} ${n === 1 ? word : `${word}s`}`;
 
-/** The inspector's read options for a Word document: which of its tables is read, and adding the others. */
+/** The inspector's read options for a Word document or a PDF: which of its tables is read, and adding the others. */
 export function WordOptions({ source, onChange }: { source: Source; onChange: (options: ParseOptions) => void }) {
   const project = useProject();
   const o = source.parseOptions;
@@ -23,7 +23,7 @@ export function WordOptions({ source, onChange }: { source: Source; onChange: (o
   const props = { options: o, onChange };
   return (
     <>
-      <Field label="Table" htmlFor="opt-table" hint="The tables in the document, named by their captions or the headings above them. The biggest is read unless another is chosen.">
+      <Field label="Table" htmlFor="opt-table" hint={source.format === 'pdf' ? 'The tables found in the text of the PDF, named by the line above each and its page. The biggest is read unless another is chosen.' : 'The tables in the document, named by their captions or the headings above them. The biggest is read unless another is chosen.'}>
         <Select id="opt-table" options={options} value={current} disabled={tables.length < 2} onChange={(e) => onChange({ ...o, table: e.target.value })} />
       </Field>
       {read?.state === 'ok' && (

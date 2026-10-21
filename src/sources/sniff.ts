@@ -10,7 +10,7 @@ import { detectBoundaries } from './fixedWidth';
 export type Confidence = 'sure' | 'likely' | 'unsure';
 
 /** A format the sniff can name but Puddle doesn't read, so the refusal can say what the file is. */
-export type OtherFormat = 'doc' | 'powerpoint' | 'zip' | 'gzip' | 'bzip2' | 'zstd' | 'sqlite' | 'pdf' | 'ole' | 'binary';
+export type OtherFormat = 'doc' | 'powerpoint' | 'zip' | 'gzip' | 'bzip2' | 'zstd' | 'sqlite' | 'ole' | 'binary';
 
 export interface Sniffed {
   format: SourceFormat;
@@ -123,7 +123,6 @@ const OTHER_NAMES: Record<OtherFormat, string> = {
   bzip2: 'a bzip2-compressed file',
   zstd: 'a zstd-compressed file',
   sqlite: 'a SQLite database',
-  pdf: 'a PDF',
   ole: 'an old Office file that isn’t a workbook',
   binary: 'a binary file',
 };
@@ -454,8 +453,8 @@ export function sniff({ name, head, size, tail }: SniffInput): Sniffed {
   const byName = knownFormat(name);
   const signature = signatureOf(head);
   if (signature) {
-    if (signature === 'xlsx' || signature === 'parquet' || signature === 'access' || signature === 'arrow' || signature === 'word') {
-      return { format: signature, confidence: 'sure', parseOptions: {}, alternatives: [], reason: `${signature === 'xlsx' ? 'A spreadsheet' : signature === 'parquet' ? 'A Parquet file' : signature === 'arrow' ? 'An Arrow file' : signature === 'word' ? 'A Word document' : 'A database'} by its signature.` };
+    if (signature === 'xlsx' || signature === 'parquet' || signature === 'access' || signature === 'arrow' || signature === 'word' || signature === 'pdf') {
+      return { format: signature, confidence: 'sure', parseOptions: {}, alternatives: [], reason: `${signature === 'xlsx' ? 'A spreadsheet' : signature === 'parquet' ? 'A Parquet file' : signature === 'arrow' ? 'An Arrow file' : signature === 'word' ? 'A Word document' : signature === 'pdf' ? 'A PDF' : 'A database'} by its signature.` };
     }
     // An old Office file whose streams weren't in the first megabyte: a workbook when the name says so.
     if (signature === 'ole' && byName === 'xlsx') return { format: 'xlsx', confidence: 'likely', parseOptions: {}, alternatives: [], reason: 'An old Office file, taken as a workbook from the file name.' };
@@ -467,7 +466,7 @@ export function sniff({ name, head, size, tail }: SniffInput): Sniffed {
   }
   const decoded = decodeHead(head, size == null || size <= head.length);
   if ('binary' in decoded) {
-    if (byName === 'parquet' || byName === 'xlsx' || byName === 'access' || byName === 'arrow' || byName === 'word') return { format: byName, confidence: 'likely', parseOptions: {}, alternatives: [], reason: 'Taken from the file name.' };
+    if (byName === 'parquet' || byName === 'xlsx' || byName === 'access' || byName === 'arrow' || byName === 'word' || byName === 'pdf') return { format: byName, confidence: 'likely', parseOptions: {}, alternatives: [], reason: 'Taken from the file name.' };
     throw refusal(name, 'binary');
   }
   // A flat OpenDocument spreadsheet (.fods) is XML; its name says which XML.

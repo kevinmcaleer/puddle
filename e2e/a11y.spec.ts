@@ -115,12 +115,15 @@ for (const theme of ['light', 'dark'] as const) {
     test('the query designer', async ({ page }) => {
       await openApp(page);
       await addFiles(page, [fixture('shop-customers.csv'), fixture('shop-orders.csv')]);
+      await expect(node(page, 'shop-customers.csv')).toHaveAttribute('data-status', 'ok', { timeout: 20_000 });
       await expect(node(page, 'shop-orders.csv')).toHaveAttribute('data-status', 'ok', { timeout: 20_000 });
       await selectNode(page, 'shop-customers.csv');
       await selectNode(page, 'shop-orders.csv', ['Shift']);
       await page.getByRole('button', { name: 'Add', exact: true }).click();
       await page.getByRole('menuitem', { name: /Query/ }).click();
       await expect(page.getByTestId('query-designer')).toBeVisible();
+      // Both tables with their columns, so the field dialog below can offer a join to the other table.
+      await expect(page.getByTestId('query-field-2-customer_id')).toBeVisible({ timeout: 20_000 });
 
       await expectAccessible(page, 'the query designer');
 

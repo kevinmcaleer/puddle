@@ -66,7 +66,7 @@ docker run --rm -v /srv/puddle/projects:/projects puddle-run:latest check /proje
 docker run --rm -v /srv/puddle/projects:/projects puddle-run:latest run /projects/orders.puddle.json
 ```
 
-Without Docker, `npm run build:runner` builds `dist-runner/puddle-run.mjs`, and `node dist-runner/puddle-run.mjs watch /srv/puddle/projects` runs it on any machine with Node 20 or later (the native DuckDB binding is downloaded by `npm ci` for the machine's own platform).
+Without Docker, `npm run build:runner` builds `dist-runner/puddle-run.mjs`, and `node dist-runner/puddle-run.mjs watch /srv/puddle/projects` runs it on any machine with Node 22 or later (pdf.js, which reads PDF sources, needs it; the native DuckDB binding is downloaded by `npm ci` for the machine's own platform).
 
 ### Schemas in a pipeline (puddle-run schema)
 

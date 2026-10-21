@@ -38,6 +38,7 @@ Puddle reads these formats:
 | Fixed width | `.txt`, `.prn`, `.dat` | Columns lined up with spaces, as mainframe and ERP reports print them. The boundaries are found from the columns of spaces and adjusted on a ruler. See [Fixed width and pipe tables](#fixed-width-and-pipe-tables). |
 | Pipe table | `.txt` | Rows between `|` characters, as SAP lists and Markdown tables have them. The lines around the table are left out. See [Fixed width and pipe tables](#fixed-width-and-pipe-tables). |
 | Word | `.docx` | The tables in a Word document. Choose the table; add the document's other tables as sources of their own. See [Word documents](#word-documents). |
+| PDF | `.pdf` | The tables in the text of a PDF (a statement, an invoice, a published report), not scans. Choose the table; add the others as sources of their own. See [PDF files](#pdf-files). |
 | Access | `.accdb`, `.mdb` | Choose the table; add the database's other tables as sources of their own. See [Access databases](#access-databases). |
 | Arrow | `.arrow`, `.feather`, `.ipc` | An Arrow IPC file, read with its column types. See [Compressed files, archives and Arrow files](#compressed-files-archives-and-arrow-files). |
 | Compressed files and archives | `.gz`, `.zip` | Any of the above inside a gzip file or a zip archive. A zip with several files opens to the first and offers the rest. See [Compressed files, archives and Arrow files](#compressed-files-archives-and-arrow-files). |
@@ -162,6 +163,12 @@ The rows are typed by DuckDB as on any CSV, so numbers, dates and booleans writt
 A report or a specification often holds its data as a table in a Word document. Add the `.docx` file and Puddle reads its tables: the biggest opens first, and the inspector lists every table under **Table**, named by its caption or the heading above it, with its size. A cell merged across columns is repeated across them and one merged down rows takes the value above, so every row has every column, as Word shows it. The first row is the header unless **First row is the header** is turned off, and tracked deletions are left out.
 
 **Add the other tables** adds a source for each table not yet on the canvas, reading the same document. Old `.doc` files aren't read: open them in Word and save as `.docx`. The rows are typed by DuckDB as on any CSV, and `puddle-run` reads the same table.
+
+## PDF files
+
+A statement, an invoice or a published report often holds its figures as a table in a PDF. Add the file and Puddle reads the text of every page: lines of two or more pieces of text one under the other are a table, their pieces lined up into columns by where they sit on the page, so right-aligned amounts fall under their heading. The biggest table opens first; the inspector lists every table under **Table**, named by the line above it and its page, and **Add the other tables** adds the rest as sources sharing the file. The first row is the header unless **First row is the header** is turned off.
+
+Only text PDFs are read. A scanned page is a picture, and Puddle says so rather than guessing at it: export the table from the program that made the PDF, or run the scan through OCR first and add the text that gives. A PDF that needs a password is refused with a message to remove it. The rows are typed by DuckDB as on any CSV (amounts with thousands separators are a Parse numbers step away), and `puddle-run` reads the same table.
 
 ## Access databases
 

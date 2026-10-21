@@ -19,7 +19,8 @@ import { readFeed } from '../sources/odata';
 import { placeSources, type SourcePlace } from './sources';
 import type { RunnerDb } from './db';
 import { tableToCsv, xmlToTable } from '../xml';
-import { decodeText, isRewrittenText, readText, readWord, rewrittenCsv } from '../sources/text';
+import { loadPdfPages } from '../pdf/node';
+import { decodeText, isRewrittenText, readPdf, readText, readWord, rewrittenCsv } from '../sources/text';
 
 export const RUN_LOG_SCHEMA = 'puddle-run/1';
 
@@ -130,6 +131,9 @@ async function stage(places: SourcePlace[], stageDir: string, { fetchText, fetch
         const xml = source.kind === 'clipboard' ? source.clipboard!.text : source.kind === 'url' ? await fetchOrThrow(fetchText, p.path) : await bytes();
         const o = source.parseOptions;
         writeFileSync(target, tableToCsv(await xmlToTable(xml, { record: o.record, expand: o.expand })));
+      } else if (source.format === 'pdf') {
+        // The table of the PDF the project reads, as in the browser (pdf.js, a runtime dependency of puddle-run).
+        writeFileSync(target, rewrittenCsv(readPdf(await loadPdfPages(source.kind === 'url' ? await fetchBytes(fetchImpl, p.path) : await bytes()), source.parseOptions)));
       } else if (source.format === 'word') {
         // The table of the document the project reads, as in the browser, then DuckDB reads the CSV.
         writeFileSync(target, rewrittenCsv(await readWord(source.kind === 'url' ? await fetchBytes(fetchImpl, p.path) : await bytes(), source.parseOptions)));

@@ -178,4 +178,11 @@ describe('reading a table of a Word document', () => {
     expect(sourceFileName({ ...word, file: { ...word.file!, headHash: 'h2' } })).not.toBe(sourceFileName(word));
     expect(sourceRelation({ ...word, parseOptions: { nullStrings: ['n/a'] } })).toContain(`nullstr = ['', 'n/a']`);
   });
+
+  it('reads a PDF’s table the same way, under a name of its own', () => {
+    const pdf: Source = { ...word, format: 'pdf', name: 'statement.pdf' };
+    expect(sourceFileName(pdf)).toMatch(/^src_w_[0-9a-f]{12}\.csv$/);
+    expect(sourceFileName(pdf)).not.toBe(sourceFileName(word));
+    expect(sourceRelation(pdf)).toBe(`read_csv('${sourceFileName(pdf)}', header = true, delim = ',', quote = '"', escape = '"', null_padding = true)`);
+  });
 });
