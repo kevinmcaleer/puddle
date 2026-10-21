@@ -162,6 +162,8 @@ DuckDB
 
 Once the connection is saved, **Read from** lists the database's tables and views with their columns and sizes. Tick the ones to read, or write a query in the database's own SQL, and set how many rows to read at most (empty reads them all). Each table and the query become a source on the canvas, read through the connection with the types the database declares.
 
+**Browse**, on a connection in the list or in a connection source's inspector, opens the database browser in the inspector's place: the database's schemas, tables and views with their columns and types, a search over table and column names, a preview of a table's first 100 rows when its name is clicked, and checkboxes with **Add N tables** to add the ticked ones as sources (or drag a table onto the canvas). A query typed in its box becomes a source with **Add query**. **Refresh** reads the tables again.
+
 A connection source's inspector shows its table or query and the row limit; change either and the rows are read again, or press **Refresh** to read them again as they are now. **Edit** opens the connection. The catalogue is kept on the connection, so the inspector lists the other tables without connecting again.
 
 Databases behind a server (PostgreSQL, MySQL, SQL Server and the rest of the grid) are read through puddle-connect, a small service on your computer or on the Pi, which is being built (Phase 6). Until a driver lands, its connection can be made and kept, but not read.

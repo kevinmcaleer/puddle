@@ -26,5 +26,8 @@ export function compileConnectionLoad(table: string, columns: { name: string; sq
 /** Everything in a loaded table (for describing its columns). */
 export const compileTableSelect = (table: string) => `SELECT * FROM ${ident(table)}`;
 
+/** The first rows of a relation a driver returned (a qualified table name or a subquery in brackets, SQL already). */
+export const compileRelationPreview = (relation: string, limit: number) => `SELECT * FROM ${relation} LIMIT ${Math.max(1, Math.floor(limit))}`;
+
 /** How many rows a loaded table has. */
 export const compileTableCount = (table: string) => `SELECT count(*) AS n FROM ${ident(table)}`;

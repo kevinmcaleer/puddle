@@ -136,3 +136,41 @@ test('a DuckDB file chosen from Add › Choose files opens its table picker, and
   await expect(cell(page, 1, 0)).toHaveText('Ada Lovelace');
   await expect(page.getByTestId('connection-panel')).toContainText('shop (DuckDB)');
 });
+
+// The database browser: opened from the connection list, searched, a table previewed, two tables and a query added.
+test('the database browser lists a SQLite file’s tables, previews one, and adds ticked tables and a query as sources', async ({ page }) => {
+  await openApp(page);
+  await addFiles(page, [fixture('db/shop.sqlite')]);
+  const picker = page.getByRole('dialog', { name: 'Read from shop' });
+  await expect(picker.getByTestId('table-picker')).toContainText('customers', { timeout: 20_000 });
+  await page.keyboard.press('Escape');
+  const list = page.getByRole('dialog', { name: 'Add source from a database' });
+  await list.getByTestId('connection-shop').getByRole('button', { name: 'Browse' }).click();
+  await expect(list).toHaveCount(0);
+
+  const browser = page.getByTestId('database-browser');
+  await expect(browser.getByTestId('browser-name')).toHaveText('shop');
+  await expect(browser).toContainText('2 tables, 1 view');
+  await expect(browser.getByRole('tree', { name: 'Tables' }).getByRole('listitem')).toHaveCount(3);
+  await browser.getByLabel('Search tables and columns').fill('ord');
+  await expect(browser.getByRole('tree', { name: 'Tables' }).getByRole('listitem')).toHaveCount(2);
+  await expect(browser.getByTestId('browse-customers')).toHaveCount(0);
+  await browser.getByRole('button', { name: 'Show the columns of orders' }).click();
+  await expect(browser.getByRole('list', { name: 'Columns of orders' })).toContainText('customer_id');
+  await browser.getByTestId('browse-orders').getByRole('button', { name: 'orders', exact: true }).click();
+  await expect(browser.getByTestId('browse-preview')).toHaveAttribute('data-rows', '4', { timeout: 20_000 });
+  await expect(browser.getByTestId('browse-preview')).toContainText('19.99');
+
+  await browser.getByRole('button', { name: 'Close the preview' }).click();
+  await browser.getByLabel('Search tables and columns').fill('');
+  await browser.getByRole('checkbox', { name: 'Add customers' }).check();
+  await browser.getByRole('checkbox', { name: 'Add orders' }).check();
+  await browser.getByRole('button', { name: 'Add 2 tables' }).click();
+  await expect(node(page, 'customers')).toHaveAttribute('data-status', 'ok', { timeout: 20_000 });
+  await expect(node(page, 'orders')).toHaveAttribute('data-status', 'ok', { timeout: 20_000 });
+  await browser.getByLabel('Query').fill('SELECT name FROM customers ORDER BY name');
+  await browser.getByRole('button', { name: 'Add query' }).click();
+  await expect(node(page, 'shop query')).toHaveAttribute('data-status', 'ok', { timeout: 20_000 });
+  await browser.getByRole('button', { name: 'Close the database browser' }).click();
+  await expect(page.getByTestId('inspector-tabs')).toBeVisible();
+});

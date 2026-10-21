@@ -1,7 +1,8 @@
+import { tableFromIPC } from 'apache-arrow';
 import { useEffect } from 'react';
 import { create } from 'zustand';
 import { useEngineStore } from '../app/engine';
-import { compileConnectionLoad, compileTableCount, compileTableSelect, dropTable, sourceTableName } from '../compiler';
+import { compileConnectionLoad, compileRelationPreview, compileTableCount, compileTableSelect, dropTable, sourceTableName } from '../compiler';
 import { connectorFor } from '../connect/browser';
 import { contextFor } from '../connect/context';
 import type { ReadResult } from '../connect/types';
@@ -9,6 +10,7 @@ import { connectionFile, useConnectionFiles } from '../connections/files';
 import { driver, SECRET_LABEL } from '../connections/drivers';
 import { secretFor, useSecrets } from '../connections/secrets';
 import type { EngineClient } from '../engine';
+import { tableRows } from '../engine/client';
 import { addSource, newId, updateConnection, useProject, useProjectStore, type Catalog, type CatalogTable, type Connection, type ConnectionSource, type Project, type Source } from '../model';
 import { invalidateCaches } from '../flow/status';
 import { useSampleStore } from '../flow/sample';
@@ -214,13 +216,15 @@ export interface ConnectionPick {
   tables?: CatalogTable[];
   query?: string;
   limit?: number;
+  /** Where the first source goes (a drop point); below the existing sources otherwise. */
+  at?: { x: number; y: number };
 }
 
-/** Add a source for each table picked, and one for the query, below the existing sources, as one undo step. */
+/** Add a source for each table picked, and one for the query, below the existing sources (or at `at`), as one undo step. */
 export function addConnectionSources(connection: Connection, pick: ConnectionPick): Source[] {
   const project = useProjectStore.getState().history.present;
   const sources = project.nodes.filter((n) => n.type === 'source');
-  const at = sources.length ? { x: Math.min(...sources.map((n) => n.position.x)), y: Math.max(...sources.map((n) => n.position.y)) + 128 } : { x: 80, y: 80 };
+  const at = pick.at ?? (sources.length ? { x: Math.min(...sources.map((n) => n.position.x)), y: Math.max(...sources.map((n) => n.position.y)) + 128 } : { x: 80, y: 80 });
   const base = { kind: 'connection' as const, format: 'connection' as const, parseOptions: {}, detectedSchema: [] };
   const added: Source[] = (pick.tables ?? []).map((t) => ({
     ...base,
@@ -236,4 +240,18 @@ export function addConnectionSources(connection: Connection, pick: ConnectionPic
     added.forEach((s, i) => useProjectStore.getState().apply((p) => addSource(p, s, { x: at.x, y: at.y + i * 128 })));
   });
   return added;
+}
+
+/** The first rows of a table, for the database browser's preview: read through the connection, never loaded as a source. */
+export async function previewTable(connection: Connection, table: { schema?: string; name: string }, limit = 100): Promise<{ columns: string[]; rows: Record<string, unknown>[] }> {
+  const connector = await connectorFor(connection);
+  const r = await connector.read(contextFor(connection), { table, limit });
+  if ('ipc' in r) {
+    const t = tableFromIPC(r.ipc);
+    return { columns: t.schema.fields.map((f) => f.name), rows: tableRows(t) };
+  }
+  const engine = useEngineStore.getState().engine;
+  if (!engine) throw new Error('DuckDB is still starting. Try again in a moment.');
+  const result = await engine.query(compileRelationPreview(r.relation, limit), { priority: 'background', label: 'Previewing a table' });
+  return { columns: result.columns.map((c) => c.name), rows: tableRows(result.table) };
 }

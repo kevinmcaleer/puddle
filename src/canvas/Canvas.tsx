@@ -70,6 +70,8 @@ import { GroupFrame, GroupNode, type GroupFlowNode, type GroupFrameFlowNode } fr
 import { groupCardId, groupFrameId, groupIdOf, inHandle, outHandle } from './groupIds';
 import { RefEdge, type RefFlowEdge } from './RefEdge';
 import { WireEdge, type WireFlowEdge } from './WireEdge';
+import { TABLE_DRAG_TYPE, type TableDrag } from '../connections/browserTree';
+import { addConnectionSources } from '../sources/connection';
 import './canvas.css';
 
 const nodeTypes = { puddle: PuddleNode, group: GroupNode, frame: GroupFrame };
@@ -481,6 +483,15 @@ export function Canvas({ onAddSource, onLayout }: { onAddSource: () => void; onL
     e.preventDefault();
     setDropping(false);
     const at = rf.screenToFlowPosition({ x: e.clientX, y: e.clientY });
+    // A table dragged from the database browser becomes a connection source where it lands.
+    const table = e.dataTransfer.getData(TABLE_DRAG_TYPE);
+    if (table) {
+      const drag = JSON.parse(table) as TableDrag;
+      const connection = useProjectStore.getState().history.present.connections.find((c) => c.id === drag.connectionId);
+      const t = connection?.catalog?.tables.find((x) => x.name === drag.table.name && x.schema === drag.table.schema);
+      if (connection && t) addConnectionSources(connection, { tables: [t], at });
+      return;
+    }
     // Handles (Chromium) must be asked for before anything is awaited, while the drop's data is still readable.
     await addFiles(await droppedFiles(e.dataTransfer), at);
   };
@@ -492,7 +503,7 @@ export function Canvas({ onAddSource, onLayout }: { onAddSource: () => void; onL
       data-testid="canvas"
       onFocus={onFocus}
       onDragOver={(e) => {
-        if (e.dataTransfer.types.includes('Files')) {
+        if (e.dataTransfer.types.includes('Files') || e.dataTransfer.types.includes(TABLE_DRAG_TYPE)) {
           e.preventDefault();
           setDropping(true);
         }
