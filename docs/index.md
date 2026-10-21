@@ -16,6 +16,7 @@ New to Puddle? Read {doc}`getting-started`, which opens a sample and walks throu
 
 getting-started
 sources
+databases
 canvas
 cleaning
 combining
