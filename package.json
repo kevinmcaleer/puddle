@@ -24,7 +24,7 @@
     "fetch-extensions": "node scripts/fetch-duckdb-extensions.mjs public/duckdb-extensions",
     "build:runner": "node scripts/build-runner.mjs && node scripts/runner-package.mjs",
     "runner": "npm run build:runner && node dist-runner/puddle-run.mjs",
-    "build:connect": "esbuild src/connect/server.ts --bundle --platform=node --target=node20 --format=esm --external:sql.js --external:pg --external:mysql2 --outfile=dist-connect/puddle-connect.mjs --log-level=warning && node scripts/connect-package.mjs",
+    "build:connect": "esbuild src/connect/server.ts --bundle --platform=node --target=node20 --format=esm --external:sql.js --external:pg --external:mysql2 --external:node-firebird --external:tedious --external:oracledb --outfile=dist-connect/puddle-connect.mjs --log-level=warning && node scripts/connect-package.mjs",
     "connect": "npm run build:connect && node dist-connect/puddle-connect.mjs"
   },
   "dependencies": {
@@ -46,12 +46,15 @@
     "markdown-it": "15.0.2",
     "mdb-reader": "^3.2.0",
     "mysql2": "^3.24.6",
+    "node-firebird": "^2.19.0",
+    "oracledb": "^26.0.0",
     "pdfjs-dist": "^6.4.299",
     "pg": "^8.23.1",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
     "smol-toml": "^1.9.1",
     "sql.js": "^1.15.1",
+    "tedious": "^20.3.8",
     "xlsx": "file:vendor/xlsx-0.20.3.tgz",
     "zod": "^4.6.7",
     "zustand": "^5.0.15"

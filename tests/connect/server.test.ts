@@ -34,7 +34,7 @@ describe('puddle-connect', () => {
 
   it('says what it is and answers CORS for its origins only', async () => {
     const r = await fetch(`${base}/health`, { headers: { Origin: 'http://localhost:4173' } });
-    expect(await r.json()).toEqual({ version: expect.any(String), drivers: ['sqlite', 'libsql', 'postgres', 'redshift', 'cockroach', 'greengage', 'mysql', 'mariadb', 'tidb'], allowlist: false });
+    expect(await r.json()).toEqual({ version: expect.any(String), drivers: ['sqlite', 'libsql', 'postgres', 'redshift', 'cockroach', 'greengage', 'mysql', 'mariadb', 'tidb', 'firebird', 'sqlserver', 'oracle'], allowlist: false });
     expect(r.headers.get('access-control-allow-origin')).toBe('http://localhost:4173');
     const other = await fetch(`${base}/health`, { headers: { Origin: 'https://evil.example' } });
     expect(other.headers.get('access-control-allow-origin')).toBeNull();
@@ -75,7 +75,7 @@ describe('puddle-connect', () => {
     expect(await write.text()).toMatch(/not DELETE/);
     const two = await post(base, 'read', { driver: 'sqlite', settings: { path: shop }, query: 'SELECT 1; SELECT 2' });
     expect(two.status).toBe(400);
-    const none = await post(base, 'test', { driver: 'sqlserver', settings: { host: 'db.local' } });
+    const none = await post(base, 'test', { driver: 'sqlanywhere', settings: { host: 'db.local' } });
     expect(none.status).toBe(501);
     expect((await post(base, 'test', {})).status).toBe(400);
     expect((await fetch(`${base}/test`, { method: 'POST', body: '{not json' })).status).toBe(400);

@@ -43,6 +43,7 @@ jobs:
       # The PostgreSQL and MySQL flows read the shop from the service containers below through puddle-connect.
       PUDDLE_TEST_POSTGRES: postgres://postgres:puddle@localhost:5432/shop
       PUDDLE_TEST_MYSQL: mysql://root:puddle@localhost:3306/shop
+      PUDDLE_TEST_FIREBIRD: firebird://SYSDBA:puddle@localhost:3050//var/lib/firebird/data/shop.fdb
     services:
       postgres:
         image: postgres:16
@@ -60,6 +61,13 @@ jobs:
         ports:
           - 3306:3306
         options: --health-cmd "mysqladmin ping -h 127.0.0.1 -ppuddle" --health-interval 5s --health-timeout 5s --health-retries 20
+      firebird:
+        image: firebirdsql/firebird:3
+        env:
+          FIREBIRD_ROOT_PASSWORD: puddle
+          FIREBIRD_DATABASE: shop.fdb
+        ports:
+          - 3050:3050
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -69,6 +77,7 @@ jobs:
       - run: npm ci
       - run: node scripts/seed-postgres.mjs "$PUDDLE_TEST_POSTGRES"
       - run: node scripts/seed-mysql.mjs "$PUDDLE_TEST_MYSQL"
+      - run: node scripts/seed-firebird.mjs "$PUDDLE_TEST_FIREBIRD"
       - run: npx playwright install --with-deps ${{ matrix.browser }}
       - run: npm run e2e -- --shard=${{ matrix.shard }}/${{ matrix.shards }}
       - if: failure()
@@ -246,7 +255,9 @@ jobs:
 
   databases:
     # The server drivers against real databases: each family's tests (tests/connect/*.test.ts) run against a container
-    # seeded with tests/fixtures/db/seed.sql. PostgreSQL is a service; CockroachDB is started by hand (no official healthcheck).
+    # seeded with tests/fixtures/db/seed*.sql. PostgreSQL, MySQL, MariaDB and Firebird are services; CockroachDB, SQL Server
+    # and Oracle are started by hand (no official healthcheck, or a start too slow for one). Each row also re-records the
+    # family's fixtures and prints them, so tests/fixtures/db/<family>/ can be refreshed from the log.
     name: ${{ matrix.name }} driver
     if: github.event_name != 'schedule'
     runs-on: ubuntu-latest
@@ -258,6 +269,9 @@ jobs:
           - { name: CockroachDB, driver: cockroach, url: 'postgres://root@localhost:26257/shop', test: tests/connect/postgres.test.ts }
           - { name: MySQL, driver: mysql, url: 'mysql://root:puddle@localhost:3306/shop', test: tests/connect/mysql.test.ts }
           - { name: MariaDB, driver: mariadb, url: 'mysql://root:puddle@localhost:3307/shop', test: tests/connect/mysql.test.ts }
+          - { name: Firebird, driver: firebird, url: 'firebird://SYSDBA:puddle@localhost:3050//var/lib/firebird/data/shop.fdb', test: tests/connect/firebird.test.ts }
+          - { name: SQL Server, driver: sqlserver, url: 'sqlserver://sa:Puddle%21Test1@localhost:1433/shop', test: tests/connect/sqlserver.test.ts }
+          - { name: Oracle, driver: oracle, url: 'oracle://shop:puddle@localhost:1521/FREEPDB1', test: tests/connect/oracle.test.ts }
     services:
       postgres:
         image: postgres:16
@@ -283,12 +297,22 @@ jobs:
         ports:
           - 3307:3306
         options: --health-cmd "healthcheck.sh --connect --innodb_initialized" --health-interval 5s --health-timeout 5s --health-retries 20
+      firebird:
+        image: firebirdsql/firebird:3
+        env:
+          FIREBIRD_ROOT_PASSWORD: puddle
+          FIREBIRD_DATABASE: shop.fdb
+        ports:
+          - 3050:3050
     env:
-      # The PostgreSQL family reads PUDDLE_TEST_POSTGRES, the MySQL family PUDDLE_TEST_MYSQL; the other is unset for that matrix row.
+      # Each family reads its own variable; the others are unset for that matrix row.
       PUDDLE_TEST_POSTGRES: ${{ startsWith(matrix.url, 'postgres') && matrix.url || '' }}
       PUDDLE_TEST_POSTGRES_DRIVER: ${{ matrix.driver }}
       PUDDLE_TEST_MYSQL: ${{ startsWith(matrix.url, 'mysql') && matrix.url || '' }}
       PUDDLE_TEST_MYSQL_DRIVER: ${{ matrix.driver }}
+      PUDDLE_TEST_FIREBIRD: ${{ startsWith(matrix.url, 'firebird') && matrix.url || '' }}
+      PUDDLE_TEST_SQLSERVER: ${{ startsWith(matrix.url, 'sqlserver') && matrix.url || '' }}
+      PUDDLE_TEST_ORACLE: ${{ startsWith(matrix.url, 'oracle') && matrix.url || '' }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -298,11 +322,28 @@ jobs:
       - run: npm ci
       - if: matrix.driver == 'cockroach'
         run: docker run -d --name cockroach -p 26257:26257 cockroachdb/cockroach:latest-v24.1 start-single-node --insecure
+      - if: matrix.driver == 'sqlserver'
+        run: docker run -d --name sqlserver -p 1433:1433 -e ACCEPT_EULA=Y -e 'MSSQL_SA_PASSWORD=Puddle!Test1' mcr.microsoft.com/mssql/server:2022-latest
+      - if: matrix.driver == 'oracle'
+        run: docker run -d --name oracle -p 1521:1521 -e ORACLE_PASSWORD=puddle -e APP_USER=shop -e APP_USER_PASSWORD=puddle gvenzl/oracle-free:23-slim-faststart
       - if: startsWith(matrix.url, 'postgres')
         run: node scripts/seed-postgres.mjs "$PUDDLE_TEST_POSTGRES"
       - if: startsWith(matrix.url, 'mysql')
         run: node scripts/seed-mysql.mjs "$PUDDLE_TEST_MYSQL"
+      - if: matrix.driver == 'firebird'
+        run: node scripts/seed-firebird.mjs "$PUDDLE_TEST_FIREBIRD"
+      - if: matrix.driver == 'sqlserver'
+        run: node scripts/seed-sqlserver.mjs "$PUDDLE_TEST_SQLSERVER"
+      - if: matrix.driver == 'oracle'
+        run: node scripts/seed-oracle.mjs "$PUDDLE_TEST_ORACLE"
       - run: npx vitest run ${{ matrix.test }} --project shared
+      - name: Record the fixtures the unit tests replay, for refreshing tests/fixtures/db/${{ matrix.driver }}/
+        if: matrix.driver == 'firebird' || matrix.driver == 'sqlserver' || matrix.driver == 'oracle'
+        run: |
+          node scripts/record-database.mjs ${{ matrix.driver }} "${{ matrix.url }}"
+          echo '::group::queries.json'; cat tests/fixtures/db/${{ matrix.driver }}/queries.json; echo '::endgroup::'
+          echo '::group::catalog.json'; cat tests/fixtures/db/${{ matrix.driver }}/catalog.json; echo '::endgroup::'
+          git diff --stat -- tests/fixtures/db/${{ matrix.driver }}/
 
   publish:
     name: Publish the image
