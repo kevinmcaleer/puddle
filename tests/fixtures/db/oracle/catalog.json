@@ -11,7 +11,7 @@
         "columns": [
           {
             "name": "ID",
-            "type": "DECIMAL(10,0)",
+            "type": "BIGINT",
             "nullable": false
           },
           {
@@ -31,7 +31,7 @@
           },
           {
             "name": "ACTIVE",
-            "type": "DECIMAL(1,0)",
+            "type": "INTEGER",
             "nullable": false
           }
         ]
@@ -42,12 +42,12 @@
         "columns": [
           {
             "name": "ID",
-            "type": "DECIMAL(10,0)",
+            "type": "BIGINT",
             "nullable": false
           },
           {
             "name": "CUSTOMER_ID",
-            "type": "DECIMAL(10,0)",
+            "type": "BIGINT",
             "nullable": false
           },
           {

@@ -900,12 +900,7 @@
     ]
   },
   {
-    "text": "SET ROWCOUNT 2",
-    "rows": [],
-    "fields": []
-  },
-  {
-    "text": "SELECT c.name, o.total, o.placed_at, o.status, c.signed_up, c.active FROM orders o JOIN customers c ON c.id = o.customer_id ORDER BY o.id",
+    "text": "SET ROWCOUNT 2;\nBEGIN TRANSACTION;\nSELECT c.name, o.total, o.placed_at, o.status, c.signed_up, c.active FROM orders o JOIN customers c ON c.id = o.customer_id ORDER BY o.id;\nROLLBACK TRANSACTION",
     "rows": [
       [
         "Ada Lovelace",
@@ -956,5 +951,10 @@
         "type": "Bit"
       }
     ]
+  },
+  {
+    "text": "BEGIN TRANSACTION;\nUPDATE customers SET name = 'x';\nROLLBACK TRANSACTION",
+    "rows": [],
+    "fields": []
   }
 ]
