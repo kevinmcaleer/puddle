@@ -24,6 +24,8 @@ interface SessionState {
   relationshipsOpen: boolean;
   /** The right-hand dock (the inspector) is showing. */
   inspectorOpen: boolean;
+  /** The database browser pane shows this connection in the inspector's place; null shows the inspector. */
+  browsingConnectionId: string | null;
   /** The results dock is showing its table. */
   resultsOpen: boolean;
   /** The scratch SQL console is open under the results table. */
@@ -50,6 +52,8 @@ interface SessionState {
   /** Show the relationships view in place of the canvas (closing any query designer), or go back to the canvas. */
   setRelationshipsOpen: (open: boolean) => void;
   setInspectorOpen: (open: boolean) => void;
+  /** Show the database browser for a connection in the inspector's place (opening the dock), or close it with null. */
+  browseConnection: (connectionId: string | null) => void;
   setResultsOpen: (open: boolean) => void;
   /** Show or hide the console; showing it also shows the results dock it sits in. */
   setConsoleOpen: (open: boolean) => void;
@@ -72,6 +76,7 @@ export const useSession = create<SessionState>((set) => ({
   schemaOpen: false,
   relationshipsOpen: false,
   inspectorOpen: true,
+  browsingConnectionId: null,
   resultsOpen: true,
   consoleOpen: false,
   shortcutsOpen: false,
@@ -89,16 +94,17 @@ export const useSession = create<SessionState>((set) => ({
   selectStep: (selectedStepId) => set({ selectedStepId }),
   setSelectedColumns: (selectedColumns) => set({ selectedColumns }),
   notify: (notice) => set({ notice }),
-  setInspectorTab: (inspectorTab) => set({ inspectorTab, inspectorOpen: true }),
+  setInspectorTab: (inspectorTab) => set({ inspectorTab, inspectorOpen: true, browsingConnectionId: null }),
   openDesigner: (designerNodeId) =>
     set((s) => (designerNodeId ? { designerNodeId, schemaOpen: false, relationshipsOpen: false, selectedNodeId: designerNodeId, selectedNodeIds: [designerNodeId], selectedStepId: null, inspectorTab: 'node' } : { designerNodeId: null, selectedNodeIds: s.selectedNodeIds })),
   setSchemaOpen: (schemaOpen) => set(schemaOpen ? { schemaOpen, relationshipsOpen: false, designerNodeId: null } : { schemaOpen }),
   setRelationshipsOpen: (relationshipsOpen) => set(relationshipsOpen ? { relationshipsOpen, schemaOpen: false, designerNodeId: null } : { relationshipsOpen }),
   setInspectorOpen: (inspectorOpen) => set({ inspectorOpen }),
+  browseConnection: (browsingConnectionId) => set(browsingConnectionId ? { browsingConnectionId, inspectorOpen: true } : { browsingConnectionId }),
   setResultsOpen: (resultsOpen) => set({ resultsOpen }),
   setConsoleOpen: (consoleOpen) => set(consoleOpen ? { consoleOpen, resultsOpen: true } : { consoleOpen }),
   setShortcutsOpen: (shortcutsOpen) => set({ shortcutsOpen }),
-  requestAddStep: () => set({ addStepPending: true, inspectorOpen: true, inspectorTab: 'node' }),
+  requestAddStep: () => set({ addStepPending: true, inspectorOpen: true, inspectorTab: 'node', browsingConnectionId: null }),
   clearAddStep: () => set({ addStepPending: false }),
   requestAddMenu: () => set({ addMenuPending: true }),
   clearAddMenu: () => set({ addMenuPending: false }),

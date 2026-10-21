@@ -43,6 +43,7 @@ import { WebPageDialog } from '../sources/WebPageDialog';
 import { openWebPageDialog } from '../sources/webPageDialog';
 import { ODataDialog } from '../sources/ODataDialog';
 import { ConnectionDialog } from '../connections/ConnectionDialog';
+import { DatabaseBrowser } from '../connections/DatabaseBrowser';
 import { openConnectionDialog } from '../connections/dialog';
 import { openODataDialog } from '../sources/odataDialog';
 import { cardKind } from '../canvas/kind';
@@ -254,6 +255,7 @@ export function AppShell() {
   const canUndo = useProjectStore((s) => s.history.past.length > 0);
   const canRedo = useProjectStore((s) => s.history.future.length > 0);
   const inspectorOpen = useSession((s) => s.inspectorOpen);
+  const browsing = useSession((s) => s.browsingConnectionId);
   const consoleOpen = useSession((s) => s.consoleOpen);
   const designerId = useSession((s) => s.designerNodeId);
   const selectedId = useSession((s) => s.selectedNodeId);
@@ -443,7 +445,7 @@ export function AppShell() {
 
           {inspectorOpen && (
             <aside ref={inspector} tabIndex={-1} className="min-h-0 overflow-hidden border-l border-line bg-surface-panel focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-brand" aria-label="Inspector" data-testid="inspector">
-              <Inspector />
+              {browsing ? <DatabaseBrowser connectionId={browsing} /> : <Inspector />}
             </aside>
           )}
         </div>

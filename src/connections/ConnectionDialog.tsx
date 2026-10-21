@@ -254,7 +254,12 @@ function ConnectionList({ mode, onNew, onEdit, onPick }: { mode: 'add' | 'manage
               c={c}
               onEdit={() => onEdit(c, false)}
               onRemove={() => remove(c)}
-              action={mode === 'add' ? <Button size="sm" variant="secondary" icon="database" onClick={() => onPick(c)}>Choose tables</Button> : undefined}
+              action={
+                <>
+                  <Button size="sm" variant="ghost" icon="search" onClick={() => (closeConnectionDialog(), useSession.getState().browseConnection(c.id))}>Browse</Button>
+                  {mode === 'add' && <Button size="sm" variant="secondary" icon="database" onClick={() => onPick(c)}>Choose tables</Button>}
+                </>
+              }
             />
           ))}
         </ul>

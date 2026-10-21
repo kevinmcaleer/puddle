@@ -10,7 +10,7 @@ import { contextFor } from '../../src/connect/context';
 import { rememberConnectionFile, resetConnectionFiles } from '../../src/connections/files';
 import { EngineClient, tableRows } from '../../src/engine/client';
 import { createProject, removeNodes, updateConnectionSource, useProjectStore, type Connection, type Project } from '../../src/model';
-import { addConnectionSources, connectionNeeds, connectionReady, readCatalog, refreshConnectionSource, resetConnectionSources, syncConnectionSources, useConnectionReads } from '../../src/sources/connection';
+import { addConnectionSources, connectionNeeds, connectionReady, previewTable, readCatalog, refreshConnectionSource, resetConnectionSources, syncConnectionSources, useConnectionReads } from '../../src/sources/connection';
 import { attachProject } from '../../src/sources/attach';
 import { useAttachments } from '../../src/sources/attachments';
 import { inProcessClient, setSqliteClient } from '../../src/sqlite/client';
@@ -159,6 +159,23 @@ describe('SQLite connection sources', () => {
     expect(useConnectionReads.getState().reads[s!.id]).toBeUndefined();
   });
 
+  it('previews a table’s first rows without loading a source, and places a dropped table where it landed', async () => {
+    const c = connect('sqlite');
+    const before = await tables();
+    expect(await previewTable(c, { name: 'orders' }, 2)).toEqual({
+      columns: ['id', 'customer_id', 'total', 'placed_at'],
+      rows: [
+        { id: 101, customer_id: 1, total: 19.99, placed_at: '2024-04-01 09:30:00' },
+        { id: 102, customer_id: 1, total: 5.5, placed_at: '2024-04-02 14:00:00' },
+      ],
+    });
+    // Nothing was loaded into DuckDB for it.
+    expect(await tables()).toEqual(before);
+    await expect(previewTable(c, { name: 'nowhere' })).rejects.toThrow('nowhere');
+    const [s] = addConnectionSources(c, { tables: [{ name: 'orders', kind: 'table', columns: [] }], at: { x: 300, y: 500 } });
+    expect(project().nodes.find((n) => n.type === 'source' && n.sourceId === s!.id)!.position).toEqual({ x: 300, y: 500 });
+  });
+
   it('reads a LibSQL file as a SQLite file', async () => {
     const c = connect('libsql');
     const [s] = addConnectionSources(c, { tables: [{ name: 'customers', kind: 'table', columns: [] }] });
@@ -195,5 +212,6 @@ describe('DuckDB file connection sources', () => {
     // The query ran with the file as the default database, and the in-memory one is the default again.
     expect(tableRows((await engine.query('SELECT current_database() AS db')).table)).toEqual([{ db: 'memory' }]);
     expect(await tables()).toContain(sourceTableName(orders!));
+    expect(await previewTable(c, { name: 'customers' }, 1)).toMatchObject({ columns: ['id', 'name', 'email', 'signed_up', 'active'], rows: [{ id: 1, name: 'Ada Lovelace' }] });
   });
 });

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { ConnectionFileButton } from '../connections/ConnectionDialog';
+import { useSession } from '../app/session';
 import { openConnectionDialog } from '../connections/dialog';
 import { driver, SECRET_LABEL } from '../connections/drivers';
 import { useConnectionFiles } from '../connections/files';
@@ -69,6 +70,7 @@ export function ConnectionPanel({ source }: { source: Source & { connection: Con
       <div className="flex flex-col gap-3" data-testid="connection-panel" data-state={read?.state ?? 'none'}>
         <div className="flex items-center gap-2">
           <span className="min-w-0 flex-1 truncate text-body-strong">{connection ? `${connection.name} (${driver(connection.driver).label})` : 'Connection removed'}</span>
+          {connection && <Button size="sm" variant="ghost" icon="search" onClick={() => useSession.getState().browseConnection(connection.id)}>Browse</Button>}
           {connection && <Button size="sm" variant="ghost" icon="text" onClick={() => openConnectionDialog('manage', connection.id)}>Edit</Button>}
         </div>
         {c.table ? (
