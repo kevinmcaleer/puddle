@@ -295,3 +295,49 @@ test('a PostgreSQL database is read through puddle-connect: tested, a table adde
   await expect(schema.getByTestId('schema-group-PostgreSQL')).toBeVisible();
   await expect(schema.getByTestId('schema-table-orders')).toContainText('order_status');
 });
+
+// A MySQL server (PUDDLE_TEST_MYSQL; CI starts one) read through puddle-connect: tested, a table added as a source,
+// and the schema documented with the ENUM column as an enum.
+test('a MySQL database is read through puddle-connect: tested, a table added and its schema documented', async ({ page }) => {
+  const url = process.env.PUDDLE_TEST_MYSQL;
+  test.skip(!url, 'PUDDLE_TEST_MYSQL names no server');
+  const u = new URL(url!);
+  await openApp(page);
+  await page.getByRole('button', { name: 'Add', exact: true }).click();
+  await page.getByRole('menuitem', { name: /From database/ }).click();
+  const list = page.getByRole('dialog', { name: 'Add source from a database' });
+  await list.getByRole('button', { name: 'New connection' }).click();
+  await page.getByRole('dialog', { name: 'New connection' }).getByTestId('driver-grid').getByRole('listitem', { name: 'MySQL', exact: true }).click();
+  const form = page.getByRole('dialog', { name: 'New MySQL connection' });
+  await form.getByLabel('Host').fill(u.hostname);
+  await form.getByLabel('Port').fill(u.port || '3306');
+  await form.getByLabel('Database').fill(u.pathname.slice(1));
+  await form.getByLabel('User name').fill(decodeURIComponent(u.username));
+  await form.getByLabel('Password').fill(decodeURIComponent(u.password));
+  await form.getByRole('button', { name: 'Test', exact: true }).click();
+  await expect(form.getByTestId('conn-test')).toHaveAttribute('data-ok', 'true', { timeout: 20_000 });
+  await expect(form.getByTestId('conn-test')).toContainText('3 tables');
+  await form.getByRole('button', { name: 'Save connection' }).click();
+
+  const picker = page.getByRole('dialog', { name: 'Read from MySQL' });
+  await expect(picker.getByTestId('table-picker')).toContainText('orders', { timeout: 20_000 });
+  await picker.getByTestId('pick-orders').click();
+  await picker.getByRole('button', { name: 'Add 1 source' }).click();
+  await expect(node(page, 'orders')).toHaveAttribute('data-status', 'ok', { timeout: 20_000 });
+  await selectNode(page, 'orders');
+  await expect(page.getByTestId('connection-read')).toContainText('4 rows');
+
+  await page.getByRole('button', { name: 'Add', exact: true }).click();
+  await page.getByRole('menuitem', { name: /From database/ }).click();
+  await list.getByTestId('connection-MySQL').getByRole('button', { name: 'Browse' }).click();
+  const browser = page.getByTestId('database-browser');
+  await expect(browser).toContainText('2 tables, 1 view', { timeout: 20_000 });
+  await browser.getByRole('button', { name: 'Document the schema' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Document the schema' });
+  await expect(dialog.getByTestId('document-plan')).toContainText('3 tables, 1 ref and 1 enum', { timeout: 20_000 });
+  await dialog.getByRole('button', { name: 'Document', exact: true }).click();
+  await expect(dialog).toHaveCount(0);
+  await browser.getByRole('button', { name: 'Close the database browser' }).click();
+  await projectMenu(page, 'Schema');
+  await expect(page.getByTestId('schema-view').getByTestId('schema-table-orders')).toContainText('orders_status');
+});

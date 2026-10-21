@@ -1,0 +1,1676 @@
+[
+  {
+    "text": "SELECT VERSION() AS version",
+    "rows": [
+      {
+        "version": {
+          "bytes": "MTAuMTEuMTQtTWFyaWFEQi0wdWJ1bnR1MC4yNC4wNC4x"
+        }
+      }
+    ],
+    "fields": [
+      {
+        "characterSet": 224,
+        "name": "version",
+        "columnLength": 132,
+        "columnType": 253,
+        "flags": 1,
+        "decimals": 39
+      }
+    ]
+  },
+  {
+    "text": "SELECT count(*) AS n FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE()",
+    "rows": [
+      {
+        "n": {
+          "bytes": "Mw=="
+        }
+      }
+    ],
+    "fields": [
+      {
+        "characterSet": 63,
+        "name": "n",
+        "columnLength": 21,
+        "columnType": 8,
+        "flags": 129,
+        "decimals": 0
+      }
+    ]
+  },
+  {
+    "text": "SELECT TABLE_NAME, TABLE_TYPE, TABLE_ROWS, TABLE_COMMENT FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() ORDER BY TABLE_NAME",
+    "rows": [
+      {
+        "TABLE_NAME": {
+          "bytes": "Y3VzdG9tZXJz"
+        },
+        "TABLE_TYPE": {
+          "bytes": "QkFTRSBUQUJMRQ=="
+        },
+        "TABLE_ROWS": {
+          "bytes": "Mw=="
+        },
+        "TABLE_COMMENT": {
+          "bytes": "UGVvcGxlIHdobyBoYXZlIG9yZGVyZWQ="
+        }
+      },
+      {
+        "TABLE_NAME": {
+          "bytes": "b3JkZXJz"
+        },
+        "TABLE_TYPE": {
+          "bytes": "QkFTRSBUQUJMRQ=="
+        },
+        "TABLE_ROWS": {
+          "bytes": "NA=="
+        },
+        "TABLE_COMMENT": {
+          "bytes": ""
+        }
+      },
+      {
+        "TABLE_NAME": {
+          "bytes": "b3JkZXJfdG90YWxz"
+        },
+        "TABLE_TYPE": {
+          "bytes": "VklFVw=="
+        },
+        "TABLE_ROWS": null,
+        "TABLE_COMMENT": {
+          "bytes": "VklFVw=="
+        }
+      }
+    ],
+    "fields": [
+      {
+        "characterSet": 224,
+        "name": "TABLE_NAME",
+        "columnLength": 256,
+        "columnType": 253,
+        "flags": 4097,
+        "decimals": 0
+      },
+      {
+        "characterSet": 224,
+        "name": "TABLE_TYPE",
+        "columnLength": 256,
+        "columnType": 253,
+        "flags": 4097,
+        "decimals": 0
+      },
+      {
+        "characterSet": 63,
+        "name": "TABLE_ROWS",
+        "columnLength": 21,
+        "columnType": 8,
+        "flags": 4128,
+        "decimals": 0
+      },
+      {
+        "characterSet": 224,
+        "name": "TABLE_COMMENT",
+        "columnLength": 8192,
+        "columnType": 253,
+        "flags": 4097,
+        "decimals": 0
+      }
+    ]
+  },
+  {
+    "text": "SELECT TABLE_NAME, COLUMN_NAME, DATA_TYPE, COLUMN_TYPE, NUMERIC_PRECISION, NUMERIC_SCALE, IS_NULLABLE, COLUMN_DEFAULT, COLUMN_KEY, EXTRA, COLUMN_COMMENT FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() ORDER BY TABLE_NAME, ORDINAL_POSITION",
+    "rows": [
+      {
+        "TABLE_NAME": {
+          "bytes": "Y3VzdG9tZXJz"
+        },
+        "COLUMN_NAME": {
+          "bytes": "aWQ="
+        },
+        "DATA_TYPE": {
+          "bytes": "aW50"
+        },
+        "COLUMN_TYPE": {
+          "bytes": "aW50KDExKQ=="
+        },
+        "NUMERIC_PRECISION": {
+          "bytes": "MTA="
+        },
+        "NUMERIC_SCALE": {
+          "bytes": "MA=="
+        },
+        "IS_NULLABLE": {
+          "bytes": "Tk8="
+        },
+        "COLUMN_DEFAULT": null,
+        "COLUMN_KEY": {
+          "bytes": "UFJJ"
+        },
+        "EXTRA": {
+          "bytes": "YXV0b19pbmNyZW1lbnQ="
+        },
+        "COLUMN_COMMENT": {
+          "bytes": ""
+        }
+      },
+      {
+        "TABLE_NAME": {
+          "bytes": "Y3VzdG9tZXJz"
+        },
+        "COLUMN_NAME": {
+          "bytes": "bmFtZQ=="
+        },
+        "DATA_TYPE": {
+          "bytes": "dmFyY2hhcg=="
+        },
+        "COLUMN_TYPE": {
+          "bytes": "dmFyY2hhcigxMDAp"
+        },
+        "NUMERIC_PRECISION": null,
+        "NUMERIC_SCALE": null,
+        "IS_NULLABLE": {
+          "bytes": "Tk8="
+        },
+        "COLUMN_DEFAULT": null,
+        "COLUMN_KEY": {
+          "bytes": ""
+        },
+        "EXTRA": {
+          "bytes": ""
+        },
+        "COLUMN_COMMENT": {
+          "bytes": ""
+        }
+      },
+      {
+        "TABLE_NAME": {
+          "bytes": "Y3VzdG9tZXJz"
+        },
+        "COLUMN_NAME": {
+          "bytes": "ZW1haWw="
+        },
+        "DATA_TYPE": {
+          "bytes": "dmFyY2hhcg=="
+        },
+        "COLUMN_TYPE": {
+          "bytes": "dmFyY2hhcigyNTUp"
+        },
+        "NUMERIC_PRECISION": null,
+        "NUMERIC_SCALE": null,
+        "IS_NULLABLE": {
+          "bytes": "WUVT"
+        },
+        "COLUMN_DEFAULT": {
+          "bytes": "TlVMTA=="
+        },
+        "COLUMN_KEY": {
+          "bytes": "VU5J"
+        },
+        "EXTRA": {
+          "bytes": ""
+        },
+        "COLUMN_COMMENT": {
+          "bytes": "TG93ZXIgY2FzZQ=="
+        }
+      },
+      {
+        "TABLE_NAME": {
+          "bytes": "Y3VzdG9tZXJz"
+        },
+        "COLUMN_NAME": {
+          "bytes": "c2lnbmVkX3Vw"
+        },
+        "DATA_TYPE": {
+          "bytes": "ZGF0ZQ=="
+        },
+        "COLUMN_TYPE": {
+          "bytes": "ZGF0ZQ=="
+        },
+        "NUMERIC_PRECISION": null,
+        "NUMERIC_SCALE": null,
+        "IS_NULLABLE": {
+          "bytes": "WUVT"
+        },
+        "COLUMN_DEFAULT": {
+          "bytes": "TlVMTA=="
+        },
+        "COLUMN_KEY": {
+          "bytes": ""
+        },
+        "EXTRA": {
+          "bytes": ""
+        },
+        "COLUMN_COMMENT": {
+          "bytes": ""
+        }
+      },
+      {
+        "TABLE_NAME": {
+          "bytes": "Y3VzdG9tZXJz"
+        },
+        "COLUMN_NAME": {
+          "bytes": "YWN0aXZl"
+        },
+        "DATA_TYPE": {
+          "bytes": "dGlueWludA=="
+        },
+        "COLUMN_TYPE": {
+          "bytes": "dGlueWludCgxKQ=="
+        },
+        "NUMERIC_PRECISION": {
+          "bytes": "Mw=="
+        },
+        "NUMERIC_SCALE": {
+          "bytes": "MA=="
+        },
+        "IS_NULLABLE": {
+          "bytes": "WUVT"
+        },
+        "COLUMN_DEFAULT": {
+          "bytes": "MQ=="
+        },
+        "COLUMN_KEY": {
+          "bytes": ""
+        },
+        "EXTRA": {
+          "bytes": ""
+        },
+        "COLUMN_COMMENT": {
+          "bytes": ""
+        }
+      },
+      {
+        "TABLE_NAME": {
+          "bytes": "b3JkZXJz"
+        },
+        "COLUMN_NAME": {
+          "bytes": "aWQ="
+        },
+        "DATA_TYPE": {
+          "bytes": "aW50"
+        },
+        "COLUMN_TYPE": {
+          "bytes": "aW50KDExKQ=="
+        },
+        "NUMERIC_PRECISION": {
+          "bytes": "MTA="
+        },
+        "NUMERIC_SCALE": {
+          "bytes": "MA=="
+        },
+        "IS_NULLABLE": {
+          "bytes": "Tk8="
+        },
+        "COLUMN_DEFAULT": null,
+        "COLUMN_KEY": {
+          "bytes": "UFJJ"
+        },
+        "EXTRA": {
+          "bytes": "YXV0b19pbmNyZW1lbnQ="
+        },
+        "COLUMN_COMMENT": {
+          "bytes": ""
+        }
+      },
+      {
+        "TABLE_NAME": {
+          "bytes": "b3JkZXJz"
+        },
+        "COLUMN_NAME": {
+          "bytes": "Y3VzdG9tZXJfaWQ="
+        },
+        "DATA_TYPE": {
+          "bytes": "aW50"
+        },
+        "COLUMN_TYPE": {
+          "bytes": "aW50KDExKQ=="
+        },
+        "NUMERIC_PRECISION": {
+          "bytes": "MTA="
+        },
+        "NUMERIC_SCALE": {
+          "bytes": "MA=="
+        },
+        "IS_NULLABLE": {
+          "bytes": "Tk8="
+        },
+        "COLUMN_DEFAULT": null,
+        "COLUMN_KEY": {
+          "bytes": "TVVM"
+        },
+        "EXTRA": {
+          "bytes": ""
+        },
+        "COLUMN_COMMENT": {
+          "bytes": ""
+        }
+      },
+      {
+        "TABLE_NAME": {
+          "bytes": "b3JkZXJz"
+        },
+        "COLUMN_NAME": {
+          "bytes": "dG90YWw="
+        },
+        "DATA_TYPE": {
+          "bytes": "ZGVjaW1hbA=="
+        },
+        "COLUMN_TYPE": {
+          "bytes": "ZGVjaW1hbCgxMCwyKQ=="
+        },
+        "NUMERIC_PRECISION": {
+          "bytes": "MTA="
+        },
+        "NUMERIC_SCALE": {
+          "bytes": "Mg=="
+        },
+        "IS_NULLABLE": {
+          "bytes": "WUVT"
+        },
+        "COLUMN_DEFAULT": {
+          "bytes": "TlVMTA=="
+        },
+        "COLUMN_KEY": {
+          "bytes": ""
+        },
+        "EXTRA": {
+          "bytes": ""
+        },
+        "COLUMN_COMMENT": {
+          "bytes": ""
+        }
+      },
+      {
+        "TABLE_NAME": {
+          "bytes": "b3JkZXJz"
+        },
+        "COLUMN_NAME": {
+          "bytes": "cGxhY2VkX2F0"
+        },
+        "DATA_TYPE": {
+          "bytes": "ZGF0ZXRpbWU="
+        },
+        "COLUMN_TYPE": {
+          "bytes": "ZGF0ZXRpbWU="
+        },
+        "NUMERIC_PRECISION": null,
+        "NUMERIC_SCALE": null,
+        "IS_NULLABLE": {
+          "bytes": "WUVT"
+        },
+        "COLUMN_DEFAULT": {
+          "bytes": "TlVMTA=="
+        },
+        "COLUMN_KEY": {
+          "bytes": ""
+        },
+        "EXTRA": {
+          "bytes": ""
+        },
+        "COLUMN_COMMENT": {
+          "bytes": ""
+        }
+      },
+      {
+        "TABLE_NAME": {
+          "bytes": "b3JkZXJz"
+        },
+        "COLUMN_NAME": {
+          "bytes": "c3RhdHVz"
+        },
+        "DATA_TYPE": {
+          "bytes": "ZW51bQ=="
+        },
+        "COLUMN_TYPE": {
+          "bytes": "ZW51bSgncGxhY2VkJywnc2hpcHBlZCcsJ3JldHVybmVkJyk="
+        },
+        "NUMERIC_PRECISION": null,
+        "NUMERIC_SCALE": null,
+        "IS_NULLABLE": {
+          "bytes": "Tk8="
+        },
+        "COLUMN_DEFAULT": {
+          "bytes": "J3BsYWNlZCc="
+        },
+        "COLUMN_KEY": {
+          "bytes": ""
+        },
+        "EXTRA": {
+          "bytes": ""
+        },
+        "COLUMN_COMMENT": {
+          "bytes": ""
+        }
+      },
+      {
+        "TABLE_NAME": {
+          "bytes": "b3JkZXJfdG90YWxz"
+        },
+        "COLUMN_NAME": {
+          "bytes": "bmFtZQ=="
+        },
+        "DATA_TYPE": {
+          "bytes": "dmFyY2hhcg=="
+        },
+        "COLUMN_TYPE": {
+          "bytes": "dmFyY2hhcigxMDAp"
+        },
+        "NUMERIC_PRECISION": null,
+        "NUMERIC_SCALE": null,
+        "IS_NULLABLE": {
+          "bytes": "Tk8="
+        },
+        "COLUMN_DEFAULT": null,
+        "COLUMN_KEY": {
+          "bytes": ""
+        },
+        "EXTRA": {
+          "bytes": ""
+        },
+        "COLUMN_COMMENT": {
+          "bytes": ""
+        }
+      },
+      {
+        "TABLE_NAME": {
+          "bytes": "b3JkZXJfdG90YWxz"
+        },
+        "COLUMN_NAME": {
+          "bytes": "b3JkZXJz"
+        },
+        "DATA_TYPE": {
+          "bytes": "YmlnaW50"
+        },
+        "COLUMN_TYPE": {
+          "bytes": "YmlnaW50KDIxKQ=="
+        },
+        "NUMERIC_PRECISION": {
+          "bytes": "MTk="
+        },
+        "NUMERIC_SCALE": {
+          "bytes": "MA=="
+        },
+        "IS_NULLABLE": {
+          "bytes": "Tk8="
+        },
+        "COLUMN_DEFAULT": {
+          "bytes": "MA=="
+        },
+        "COLUMN_KEY": {
+          "bytes": ""
+        },
+        "EXTRA": {
+          "bytes": ""
+        },
+        "COLUMN_COMMENT": {
+          "bytes": ""
+        }
+      },
+      {
+        "TABLE_NAME": {
+          "bytes": "b3JkZXJfdG90YWxz"
+        },
+        "COLUMN_NAME": {
+          "bytes": "dG90YWw="
+        },
+        "DATA_TYPE": {
+          "bytes": "ZGVjaW1hbA=="
+        },
+        "COLUMN_TYPE": {
+          "bytes": "ZGVjaW1hbCgzMiwyKQ=="
+        },
+        "NUMERIC_PRECISION": {
+          "bytes": "MzI="
+        },
+        "NUMERIC_SCALE": {
+          "bytes": "Mg=="
+        },
+        "IS_NULLABLE": {
+          "bytes": "WUVT"
+        },
+        "COLUMN_DEFAULT": {
+          "bytes": "TlVMTA=="
+        },
+        "COLUMN_KEY": {
+          "bytes": ""
+        },
+        "EXTRA": {
+          "bytes": ""
+        },
+        "COLUMN_COMMENT": {
+          "bytes": ""
+        }
+      }
+    ],
+    "fields": [
+      {
+        "characterSet": 224,
+        "name": "TABLE_NAME",
+        "columnLength": 256,
+        "columnType": 253,
+        "flags": 4097,
+        "decimals": 0
+      },
+      {
+        "characterSet": 224,
+        "name": "COLUMN_NAME",
+        "columnLength": 256,
+        "columnType": 253,
+        "flags": 4097,
+        "decimals": 0
+      },
+      {
+        "characterSet": 224,
+        "name": "DATA_TYPE",
+        "columnLength": 256,
+        "columnType": 253,
+        "flags": 4097,
+        "decimals": 0
+      },
+      {
+        "characterSet": 224,
+        "name": "COLUMN_TYPE",
+        "columnLength": 786420,
+        "columnType": 252,
+        "flags": 4113,
+        "decimals": 0
+      },
+      {
+        "characterSet": 63,
+        "name": "NUMERIC_PRECISION",
+        "columnLength": 21,
+        "columnType": 8,
+        "flags": 4128,
+        "decimals": 0
+      },
+      {
+        "characterSet": 63,
+        "name": "NUMERIC_SCALE",
+        "columnLength": 21,
+        "columnType": 8,
+        "flags": 4128,
+        "decimals": 0
+      },
+      {
+        "characterSet": 224,
+        "name": "IS_NULLABLE",
+        "columnLength": 12,
+        "columnType": 253,
+        "flags": 4097,
+        "decimals": 0
+      },
+      {
+        "characterSet": 224,
+        "name": "COLUMN_DEFAULT",
+        "columnLength": 786384,
+        "columnType": 252,
+        "flags": 4112,
+        "decimals": 0
+      },
+      {
+        "characterSet": 224,
+        "name": "COLUMN_KEY",
+        "columnLength": 12,
+        "columnType": 253,
+        "flags": 4097,
+        "decimals": 0
+      },
+      {
+        "characterSet": 224,
+        "name": "EXTRA",
+        "columnLength": 320,
+        "columnType": 253,
+        "flags": 4097,
+        "decimals": 0
+      },
+      {
+        "characterSet": 224,
+        "name": "COLUMN_COMMENT",
+        "columnLength": 4096,
+        "columnType": 253,
+        "flags": 4097,
+        "decimals": 0
+      }
+    ]
+  },
+  {
+    "text": "SELECT TABLE_NAME, TABLE_TYPE, TABLE_ROWS, TABLE_COMMENT FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() ORDER BY TABLE_NAME",
+    "rows": [
+      {
+        "TABLE_NAME": {
+          "bytes": "Y3VzdG9tZXJz"
+        },
+        "TABLE_TYPE": {
+          "bytes": "QkFTRSBUQUJMRQ=="
+        },
+        "TABLE_ROWS": {
+          "bytes": "Mw=="
+        },
+        "TABLE_COMMENT": {
+          "bytes": "UGVvcGxlIHdobyBoYXZlIG9yZGVyZWQ="
+        }
+      },
+      {
+        "TABLE_NAME": {
+          "bytes": "b3JkZXJz"
+        },
+        "TABLE_TYPE": {
+          "bytes": "QkFTRSBUQUJMRQ=="
+        },
+        "TABLE_ROWS": {
+          "bytes": "NA=="
+        },
+        "TABLE_COMMENT": {
+          "bytes": ""
+        }
+      },
+      {
+        "TABLE_NAME": {
+          "bytes": "b3JkZXJfdG90YWxz"
+        },
+        "TABLE_TYPE": {
+          "bytes": "VklFVw=="
+        },
+        "TABLE_ROWS": null,
+        "TABLE_COMMENT": {
+          "bytes": "VklFVw=="
+        }
+      }
+    ],
+    "fields": [
+      {
+        "characterSet": 224,
+        "name": "TABLE_NAME",
+        "columnLength": 256,
+        "columnType": 253,
+        "flags": 4097,
+        "decimals": 0
+      },
+      {
+        "characterSet": 224,
+        "name": "TABLE_TYPE",
+        "columnLength": 256,
+        "columnType": 253,
+        "flags": 4097,
+        "decimals": 0
+      },
+      {
+        "characterSet": 63,
+        "name": "TABLE_ROWS",
+        "columnLength": 21,
+        "columnType": 8,
+        "flags": 4128,
+        "decimals": 0
+      },
+      {
+        "characterSet": 224,
+        "name": "TABLE_COMMENT",
+        "columnLength": 8192,
+        "columnType": 253,
+        "flags": 4097,
+        "decimals": 0
+      }
+    ]
+  },
+  {
+    "text": "SELECT TABLE_NAME, COLUMN_NAME, DATA_TYPE, COLUMN_TYPE, NUMERIC_PRECISION, NUMERIC_SCALE, IS_NULLABLE, COLUMN_DEFAULT, COLUMN_KEY, EXTRA, COLUMN_COMMENT FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() ORDER BY TABLE_NAME, ORDINAL_POSITION",
+    "rows": [
+      {
+        "TABLE_NAME": {
+          "bytes": "Y3VzdG9tZXJz"
+        },
+        "COLUMN_NAME": {
+          "bytes": "aWQ="
+        },
+        "DATA_TYPE": {
+          "bytes": "aW50"
+        },
+        "COLUMN_TYPE": {
+          "bytes": "aW50KDExKQ=="
+        },
+        "NUMERIC_PRECISION": {
+          "bytes": "MTA="
+        },
+        "NUMERIC_SCALE": {
+          "bytes": "MA=="
+        },
+        "IS_NULLABLE": {
+          "bytes": "Tk8="
+        },
+        "COLUMN_DEFAULT": null,
+        "COLUMN_KEY": {
+          "bytes": "UFJJ"
+        },
+        "EXTRA": {
+          "bytes": "YXV0b19pbmNyZW1lbnQ="
+        },
+        "COLUMN_COMMENT": {
+          "bytes": ""
+        }
+      },
+      {
+        "TABLE_NAME": {
+          "bytes": "Y3VzdG9tZXJz"
+        },
+        "COLUMN_NAME": {
+          "bytes": "bmFtZQ=="
+        },
+        "DATA_TYPE": {
+          "bytes": "dmFyY2hhcg=="
+        },
+        "COLUMN_TYPE": {
+          "bytes": "dmFyY2hhcigxMDAp"
+        },
+        "NUMERIC_PRECISION": null,
+        "NUMERIC_SCALE": null,
+        "IS_NULLABLE": {
+          "bytes": "Tk8="
+        },
+        "COLUMN_DEFAULT": null,
+        "COLUMN_KEY": {
+          "bytes": ""
+        },
+        "EXTRA": {
+          "bytes": ""
+        },
+        "COLUMN_COMMENT": {
+          "bytes": ""
+        }
+      },
+      {
+        "TABLE_NAME": {
+          "bytes": "Y3VzdG9tZXJz"
+        },
+        "COLUMN_NAME": {
+          "bytes": "ZW1haWw="
+        },
+        "DATA_TYPE": {
+          "bytes": "dmFyY2hhcg=="
+        },
+        "COLUMN_TYPE": {
+          "bytes": "dmFyY2hhcigyNTUp"
+        },
+        "NUMERIC_PRECISION": null,
+        "NUMERIC_SCALE": null,
+        "IS_NULLABLE": {
+          "bytes": "WUVT"
+        },
+        "COLUMN_DEFAULT": {
+          "bytes": "TlVMTA=="
+        },
+        "COLUMN_KEY": {
+          "bytes": "VU5J"
+        },
+        "EXTRA": {
+          "bytes": ""
+        },
+        "COLUMN_COMMENT": {
+          "bytes": "TG93ZXIgY2FzZQ=="
+        }
+      },
+      {
+        "TABLE_NAME": {
+          "bytes": "Y3VzdG9tZXJz"
+        },
+        "COLUMN_NAME": {
+          "bytes": "c2lnbmVkX3Vw"
+        },
+        "DATA_TYPE": {
+          "bytes": "ZGF0ZQ=="
+        },
+        "COLUMN_TYPE": {
+          "bytes": "ZGF0ZQ=="
+        },
+        "NUMERIC_PRECISION": null,
+        "NUMERIC_SCALE": null,
+        "IS_NULLABLE": {
+          "bytes": "WUVT"
+        },
+        "COLUMN_DEFAULT": {
+          "bytes": "TlVMTA=="
+        },
+        "COLUMN_KEY": {
+          "bytes": ""
+        },
+        "EXTRA": {
+          "bytes": ""
+        },
+        "COLUMN_COMMENT": {
+          "bytes": ""
+        }
+      },
+      {
+        "TABLE_NAME": {
+          "bytes": "Y3VzdG9tZXJz"
+        },
+        "COLUMN_NAME": {
+          "bytes": "YWN0aXZl"
+        },
+        "DATA_TYPE": {
+          "bytes": "dGlueWludA=="
+        },
+        "COLUMN_TYPE": {
+          "bytes": "dGlueWludCgxKQ=="
+        },
+        "NUMERIC_PRECISION": {
+          "bytes": "Mw=="
+        },
+        "NUMERIC_SCALE": {
+          "bytes": "MA=="
+        },
+        "IS_NULLABLE": {
+          "bytes": "WUVT"
+        },
+        "COLUMN_DEFAULT": {
+          "bytes": "MQ=="
+        },
+        "COLUMN_KEY": {
+          "bytes": ""
+        },
+        "EXTRA": {
+          "bytes": ""
+        },
+        "COLUMN_COMMENT": {
+          "bytes": ""
+        }
+      },
+      {
+        "TABLE_NAME": {
+          "bytes": "b3JkZXJz"
+        },
+        "COLUMN_NAME": {
+          "bytes": "aWQ="
+        },
+        "DATA_TYPE": {
+          "bytes": "aW50"
+        },
+        "COLUMN_TYPE": {
+          "bytes": "aW50KDExKQ=="
+        },
+        "NUMERIC_PRECISION": {
+          "bytes": "MTA="
+        },
+        "NUMERIC_SCALE": {
+          "bytes": "MA=="
+        },
+        "IS_NULLABLE": {
+          "bytes": "Tk8="
+        },
+        "COLUMN_DEFAULT": null,
+        "COLUMN_KEY": {
+          "bytes": "UFJJ"
+        },
+        "EXTRA": {
+          "bytes": "YXV0b19pbmNyZW1lbnQ="
+        },
+        "COLUMN_COMMENT": {
+          "bytes": ""
+        }
+      },
+      {
+        "TABLE_NAME": {
+          "bytes": "b3JkZXJz"
+        },
+        "COLUMN_NAME": {
+          "bytes": "Y3VzdG9tZXJfaWQ="
+        },
+        "DATA_TYPE": {
+          "bytes": "aW50"
+        },
+        "COLUMN_TYPE": {
+          "bytes": "aW50KDExKQ=="
+        },
+        "NUMERIC_PRECISION": {
+          "bytes": "MTA="
+        },
+        "NUMERIC_SCALE": {
+          "bytes": "MA=="
+        },
+        "IS_NULLABLE": {
+          "bytes": "Tk8="
+        },
+        "COLUMN_DEFAULT": null,
+        "COLUMN_KEY": {
+          "bytes": "TVVM"
+        },
+        "EXTRA": {
+          "bytes": ""
+        },
+        "COLUMN_COMMENT": {
+          "bytes": ""
+        }
+      },
+      {
+        "TABLE_NAME": {
+          "bytes": "b3JkZXJz"
+        },
+        "COLUMN_NAME": {
+          "bytes": "dG90YWw="
+        },
+        "DATA_TYPE": {
+          "bytes": "ZGVjaW1hbA=="
+        },
+        "COLUMN_TYPE": {
+          "bytes": "ZGVjaW1hbCgxMCwyKQ=="
+        },
+        "NUMERIC_PRECISION": {
+          "bytes": "MTA="
+        },
+        "NUMERIC_SCALE": {
+          "bytes": "Mg=="
+        },
+        "IS_NULLABLE": {
+          "bytes": "WUVT"
+        },
+        "COLUMN_DEFAULT": {
+          "bytes": "TlVMTA=="
+        },
+        "COLUMN_KEY": {
+          "bytes": ""
+        },
+        "EXTRA": {
+          "bytes": ""
+        },
+        "COLUMN_COMMENT": {
+          "bytes": ""
+        }
+      },
+      {
+        "TABLE_NAME": {
+          "bytes": "b3JkZXJz"
+        },
+        "COLUMN_NAME": {
+          "bytes": "cGxhY2VkX2F0"
+        },
+        "DATA_TYPE": {
+          "bytes": "ZGF0ZXRpbWU="
+        },
+        "COLUMN_TYPE": {
+          "bytes": "ZGF0ZXRpbWU="
+        },
+        "NUMERIC_PRECISION": null,
+        "NUMERIC_SCALE": null,
+        "IS_NULLABLE": {
+          "bytes": "WUVT"
+        },
+        "COLUMN_DEFAULT": {
+          "bytes": "TlVMTA=="
+        },
+        "COLUMN_KEY": {
+          "bytes": ""
+        },
+        "EXTRA": {
+          "bytes": ""
+        },
+        "COLUMN_COMMENT": {
+          "bytes": ""
+        }
+      },
+      {
+        "TABLE_NAME": {
+          "bytes": "b3JkZXJz"
+        },
+        "COLUMN_NAME": {
+          "bytes": "c3RhdHVz"
+        },
+        "DATA_TYPE": {
+          "bytes": "ZW51bQ=="
+        },
+        "COLUMN_TYPE": {
+          "bytes": "ZW51bSgncGxhY2VkJywnc2hpcHBlZCcsJ3JldHVybmVkJyk="
+        },
+        "NUMERIC_PRECISION": null,
+        "NUMERIC_SCALE": null,
+        "IS_NULLABLE": {
+          "bytes": "Tk8="
+        },
+        "COLUMN_DEFAULT": {
+          "bytes": "J3BsYWNlZCc="
+        },
+        "COLUMN_KEY": {
+          "bytes": ""
+        },
+        "EXTRA": {
+          "bytes": ""
+        },
+        "COLUMN_COMMENT": {
+          "bytes": ""
+        }
+      },
+      {
+        "TABLE_NAME": {
+          "bytes": "b3JkZXJfdG90YWxz"
+        },
+        "COLUMN_NAME": {
+          "bytes": "bmFtZQ=="
+        },
+        "DATA_TYPE": {
+          "bytes": "dmFyY2hhcg=="
+        },
+        "COLUMN_TYPE": {
+          "bytes": "dmFyY2hhcigxMDAp"
+        },
+        "NUMERIC_PRECISION": null,
+        "NUMERIC_SCALE": null,
+        "IS_NULLABLE": {
+          "bytes": "Tk8="
+        },
+        "COLUMN_DEFAULT": null,
+        "COLUMN_KEY": {
+          "bytes": ""
+        },
+        "EXTRA": {
+          "bytes": ""
+        },
+        "COLUMN_COMMENT": {
+          "bytes": ""
+        }
+      },
+      {
+        "TABLE_NAME": {
+          "bytes": "b3JkZXJfdG90YWxz"
+        },
+        "COLUMN_NAME": {
+          "bytes": "b3JkZXJz"
+        },
+        "DATA_TYPE": {
+          "bytes": "YmlnaW50"
+        },
+        "COLUMN_TYPE": {
+          "bytes": "YmlnaW50KDIxKQ=="
+        },
+        "NUMERIC_PRECISION": {
+          "bytes": "MTk="
+        },
+        "NUMERIC_SCALE": {
+          "bytes": "MA=="
+        },
+        "IS_NULLABLE": {
+          "bytes": "Tk8="
+        },
+        "COLUMN_DEFAULT": {
+          "bytes": "MA=="
+        },
+        "COLUMN_KEY": {
+          "bytes": ""
+        },
+        "EXTRA": {
+          "bytes": ""
+        },
+        "COLUMN_COMMENT": {
+          "bytes": ""
+        }
+      },
+      {
+        "TABLE_NAME": {
+          "bytes": "b3JkZXJfdG90YWxz"
+        },
+        "COLUMN_NAME": {
+          "bytes": "dG90YWw="
+        },
+        "DATA_TYPE": {
+          "bytes": "ZGVjaW1hbA=="
+        },
+        "COLUMN_TYPE": {
+          "bytes": "ZGVjaW1hbCgzMiwyKQ=="
+        },
+        "NUMERIC_PRECISION": {
+          "bytes": "MzI="
+        },
+        "NUMERIC_SCALE": {
+          "bytes": "Mg=="
+        },
+        "IS_NULLABLE": {
+          "bytes": "WUVT"
+        },
+        "COLUMN_DEFAULT": {
+          "bytes": "TlVMTA=="
+        },
+        "COLUMN_KEY": {
+          "bytes": ""
+        },
+        "EXTRA": {
+          "bytes": ""
+        },
+        "COLUMN_COMMENT": {
+          "bytes": ""
+        }
+      }
+    ],
+    "fields": [
+      {
+        "characterSet": 224,
+        "name": "TABLE_NAME",
+        "columnLength": 256,
+        "columnType": 253,
+        "flags": 4097,
+        "decimals": 0
+      },
+      {
+        "characterSet": 224,
+        "name": "COLUMN_NAME",
+        "columnLength": 256,
+        "columnType": 253,
+        "flags": 4097,
+        "decimals": 0
+      },
+      {
+        "characterSet": 224,
+        "name": "DATA_TYPE",
+        "columnLength": 256,
+        "columnType": 253,
+        "flags": 4097,
+        "decimals": 0
+      },
+      {
+        "characterSet": 224,
+        "name": "COLUMN_TYPE",
+        "columnLength": 786420,
+        "columnType": 252,
+        "flags": 4113,
+        "decimals": 0
+      },
+      {
+        "characterSet": 63,
+        "name": "NUMERIC_PRECISION",
+        "columnLength": 21,
+        "columnType": 8,
+        "flags": 4128,
+        "decimals": 0
+      },
+      {
+        "characterSet": 63,
+        "name": "NUMERIC_SCALE",
+        "columnLength": 21,
+        "columnType": 8,
+        "flags": 4128,
+        "decimals": 0
+      },
+      {
+        "characterSet": 224,
+        "name": "IS_NULLABLE",
+        "columnLength": 12,
+        "columnType": 253,
+        "flags": 4097,
+        "decimals": 0
+      },
+      {
+        "characterSet": 224,
+        "name": "COLUMN_DEFAULT",
+        "columnLength": 786384,
+        "columnType": 252,
+        "flags": 4112,
+        "decimals": 0
+      },
+      {
+        "characterSet": 224,
+        "name": "COLUMN_KEY",
+        "columnLength": 12,
+        "columnType": 253,
+        "flags": 4097,
+        "decimals": 0
+      },
+      {
+        "characterSet": 224,
+        "name": "EXTRA",
+        "columnLength": 320,
+        "columnType": 253,
+        "flags": 4097,
+        "decimals": 0
+      },
+      {
+        "characterSet": 224,
+        "name": "COLUMN_COMMENT",
+        "columnLength": 4096,
+        "columnType": 253,
+        "flags": 4097,
+        "decimals": 0
+      }
+    ]
+  },
+  {
+    "text": "SELECT TABLE_NAME, INDEX_NAME, NON_UNIQUE, SEQ_IN_INDEX, COLUMN_NAME FROM information_schema.STATISTICS WHERE TABLE_SCHEMA = DATABASE() ORDER BY TABLE_NAME, INDEX_NAME, SEQ_IN_INDEX",
+    "rows": [
+      {
+        "TABLE_NAME": {
+          "bytes": "Y3VzdG9tZXJz"
+        },
+        "INDEX_NAME": {
+          "bytes": "ZW1haWw="
+        },
+        "NON_UNIQUE": {
+          "bytes": "MA=="
+        },
+        "SEQ_IN_INDEX": {
+          "bytes": "MQ=="
+        },
+        "COLUMN_NAME": {
+          "bytes": "ZW1haWw="
+        }
+      },
+      {
+        "TABLE_NAME": {
+          "bytes": "Y3VzdG9tZXJz"
+        },
+        "INDEX_NAME": {
+          "bytes": "UFJJTUFSWQ=="
+        },
+        "NON_UNIQUE": {
+          "bytes": "MA=="
+        },
+        "SEQ_IN_INDEX": {
+          "bytes": "MQ=="
+        },
+        "COLUMN_NAME": {
+          "bytes": "aWQ="
+        }
+      },
+      {
+        "TABLE_NAME": {
+          "bytes": "b3JkZXJz"
+        },
+        "INDEX_NAME": {
+          "bytes": "b3JkZXJzX2N1c3RvbWVy"
+        },
+        "NON_UNIQUE": {
+          "bytes": "MQ=="
+        },
+        "SEQ_IN_INDEX": {
+          "bytes": "MQ=="
+        },
+        "COLUMN_NAME": {
+          "bytes": "Y3VzdG9tZXJfaWQ="
+        }
+      },
+      {
+        "TABLE_NAME": {
+          "bytes": "b3JkZXJz"
+        },
+        "INDEX_NAME": {
+          "bytes": "UFJJTUFSWQ=="
+        },
+        "NON_UNIQUE": {
+          "bytes": "MA=="
+        },
+        "SEQ_IN_INDEX": {
+          "bytes": "MQ=="
+        },
+        "COLUMN_NAME": {
+          "bytes": "aWQ="
+        }
+      }
+    ],
+    "fields": [
+      {
+        "characterSet": 224,
+        "name": "TABLE_NAME",
+        "columnLength": 256,
+        "columnType": 253,
+        "flags": 4097,
+        "decimals": 0
+      },
+      {
+        "characterSet": 224,
+        "name": "INDEX_NAME",
+        "columnLength": 256,
+        "columnType": 253,
+        "flags": 4097,
+        "decimals": 0
+      },
+      {
+        "characterSet": 63,
+        "name": "NON_UNIQUE",
+        "columnLength": 1,
+        "columnType": 8,
+        "flags": 4097,
+        "decimals": 0
+      },
+      {
+        "characterSet": 63,
+        "name": "SEQ_IN_INDEX",
+        "columnLength": 2,
+        "columnType": 3,
+        "flags": 4129,
+        "decimals": 0
+      },
+      {
+        "characterSet": 224,
+        "name": "COLUMN_NAME",
+        "columnLength": 256,
+        "columnType": 253,
+        "flags": 4097,
+        "decimals": 0
+      }
+    ]
+  },
+  {
+    "text": "SELECT TABLE_NAME, CONSTRAINT_NAME, COLUMN_NAME, REFERENCED_TABLE_SCHEMA, REFERENCED_TABLE_NAME, REFERENCED_COLUMN_NAME, ORDINAL_POSITION FROM information_schema.KEY_COLUMN_USAGE WHERE TABLE_SCHEMA = DATABASE() AND REFERENCED_TABLE_NAME IS NOT NULL ORDER BY TABLE_NAME, CONSTRAINT_NAME, ORDINAL_POSITION",
+    "rows": [
+      {
+        "TABLE_NAME": {
+          "bytes": "b3JkZXJz"
+        },
+        "CONSTRAINT_NAME": {
+          "bytes": "b3JkZXJzX2N1c3RvbWVyX2lkX2ZrZXk="
+        },
+        "COLUMN_NAME": {
+          "bytes": "Y3VzdG9tZXJfaWQ="
+        },
+        "REFERENCED_TABLE_SCHEMA": {
+          "bytes": "c2hvcA=="
+        },
+        "REFERENCED_TABLE_NAME": {
+          "bytes": "Y3VzdG9tZXJz"
+        },
+        "REFERENCED_COLUMN_NAME": {
+          "bytes": "aWQ="
+        },
+        "ORDINAL_POSITION": {
+          "bytes": "MQ=="
+        }
+      }
+    ],
+    "fields": [
+      {
+        "characterSet": 224,
+        "name": "TABLE_NAME",
+        "columnLength": 256,
+        "columnType": 253,
+        "flags": 4097,
+        "decimals": 0
+      },
+      {
+        "characterSet": 224,
+        "name": "CONSTRAINT_NAME",
+        "columnLength": 256,
+        "columnType": 253,
+        "flags": 4097,
+        "decimals": 0
+      },
+      {
+        "characterSet": 224,
+        "name": "COLUMN_NAME",
+        "columnLength": 256,
+        "columnType": 253,
+        "flags": 4097,
+        "decimals": 0
+      },
+      {
+        "characterSet": 224,
+        "name": "REFERENCED_TABLE_SCHEMA",
+        "columnLength": 256,
+        "columnType": 253,
+        "flags": 4096,
+        "decimals": 0
+      },
+      {
+        "characterSet": 224,
+        "name": "REFERENCED_TABLE_NAME",
+        "columnLength": 256,
+        "columnType": 253,
+        "flags": 4096,
+        "decimals": 0
+      },
+      {
+        "characterSet": 224,
+        "name": "REFERENCED_COLUMN_NAME",
+        "columnLength": 256,
+        "columnType": 253,
+        "flags": 4096,
+        "decimals": 0
+      },
+      {
+        "characterSet": 63,
+        "name": "ORDINAL_POSITION",
+        "columnLength": 10,
+        "columnType": 8,
+        "flags": 4097,
+        "decimals": 0
+      }
+    ]
+  },
+  {
+    "text": "SELECT TABLE_NAME, VIEW_DEFINITION FROM information_schema.VIEWS WHERE TABLE_SCHEMA = DATABASE()",
+    "rows": [
+      {
+        "TABLE_NAME": {
+          "bytes": "b3JkZXJfdG90YWxz"
+        },
+        "VIEW_DEFINITION": {
+          "bytes": "c2VsZWN0IGBjYC5gbmFtZWAgQVMgYG5hbWVgLGNvdW50KGBvYC5gaWRgKSBBUyBgb3JkZXJzYCxzdW0oYG9gLmB0b3RhbGApIEFTIGB0b3RhbGAgZnJvbSAoYHNob3BgLmBjdXN0b21lcnNgIGBjYCBsZWZ0IGpvaW4gYHNob3BgLmBvcmRlcnNgIGBvYCBvbihgb2AuYGN1c3RvbWVyX2lkYCA9IGBjYC5gaWRgKSkgZ3JvdXAgYnkgYGNgLmBuYW1lYA=="
+        }
+      }
+    ],
+    "fields": [
+      {
+        "characterSet": 224,
+        "name": "TABLE_NAME",
+        "columnLength": 256,
+        "columnType": 253,
+        "flags": 4097,
+        "decimals": 0
+      },
+      {
+        "characterSet": 224,
+        "name": "VIEW_DEFINITION",
+        "columnLength": 786420,
+        "columnType": 252,
+        "flags": 4113,
+        "decimals": 0
+      }
+    ]
+  },
+  {
+    "text": "SELECT * FROM `orders` LIMIT 10",
+    "rowMode": true,
+    "rows": [
+      [
+        {
+          "bytes": "MTAx"
+        },
+        {
+          "bytes": "MQ=="
+        },
+        {
+          "bytes": "MTkuOTk="
+        },
+        {
+          "bytes": "MjAyNC0wNC0wMSAwOTozMDowMA=="
+        },
+        {
+          "bytes": "c2hpcHBlZA=="
+        }
+      ],
+      [
+        {
+          "bytes": "MTAy"
+        },
+        {
+          "bytes": "MQ=="
+        },
+        {
+          "bytes": "NS41MA=="
+        },
+        {
+          "bytes": "MjAyNC0wNC0wMiAxNDowMDowMA=="
+        },
+        {
+          "bytes": "cGxhY2Vk"
+        }
+      ],
+      [
+        {
+          "bytes": "MTAz"
+        },
+        {
+          "bytes": "Mg=="
+        },
+        {
+          "bytes": "MTIwLjAw"
+        },
+        {
+          "bytes": "MjAyNC0wNC0wMyAxMToxNTowMA=="
+        },
+        {
+          "bytes": "cmV0dXJuZWQ="
+        }
+      ],
+      [
+        {
+          "bytes": "MTA0"
+        },
+        {
+          "bytes": "Mw=="
+        },
+        {
+          "bytes": "NDIuMjU="
+        },
+        {
+          "bytes": "MjAyNC0wNC0wNCAxNjo0NTowMA=="
+        },
+        {
+          "bytes": "cGxhY2Vk"
+        }
+      ]
+    ],
+    "fields": [
+      {
+        "characterSet": 63,
+        "name": "id",
+        "columnLength": 11,
+        "columnType": 3,
+        "flags": 16899,
+        "decimals": 0
+      },
+      {
+        "characterSet": 63,
+        "name": "customer_id",
+        "columnLength": 11,
+        "columnType": 3,
+        "flags": 20489,
+        "decimals": 0
+      },
+      {
+        "characterSet": 63,
+        "name": "total",
+        "columnLength": 12,
+        "columnType": 246,
+        "flags": 0,
+        "decimals": 2
+      },
+      {
+        "characterSet": 63,
+        "name": "placed_at",
+        "columnLength": 19,
+        "columnType": 12,
+        "flags": 128,
+        "decimals": 0
+      },
+      {
+        "characterSet": 224,
+        "name": "status",
+        "columnLength": 32,
+        "columnType": 254,
+        "flags": 257,
+        "decimals": 0
+      }
+    ]
+  },
+  {
+    "text": "SELECT * FROM (SELECT c.name, o.total, o.placed_at, o.status, c.signed_up, c.active FROM orders o JOIN customers c ON c.id = o.customer_id ORDER BY o.id) AS puddle_query LIMIT 2",
+    "rowMode": true,
+    "rows": [
+      [
+        {
+          "bytes": "QWRhIExvdmVsYWNl"
+        },
+        {
+          "bytes": "MTkuOTk="
+        },
+        {
+          "bytes": "MjAyNC0wNC0wMSAwOTozMDowMA=="
+        },
+        {
+          "bytes": "c2hpcHBlZA=="
+        },
+        {
+          "bytes": "MjAyNC0wMS0xNQ=="
+        },
+        {
+          "bytes": "MQ=="
+        }
+      ],
+      [
+        {
+          "bytes": "QWRhIExvdmVsYWNl"
+        },
+        {
+          "bytes": "NS41MA=="
+        },
+        {
+          "bytes": "MjAyNC0wNC0wMiAxNDowMDowMA=="
+        },
+        {
+          "bytes": "cGxhY2Vk"
+        },
+        {
+          "bytes": "MjAyNC0wMS0xNQ=="
+        },
+        {
+          "bytes": "MQ=="
+        }
+      ]
+    ],
+    "fields": [
+      {
+        "characterSet": 224,
+        "name": "name",
+        "columnLength": 400,
+        "columnType": 253,
+        "flags": 4097,
+        "decimals": 0
+      },
+      {
+        "characterSet": 63,
+        "name": "total",
+        "columnLength": 12,
+        "columnType": 246,
+        "flags": 0,
+        "decimals": 2
+      },
+      {
+        "characterSet": 63,
+        "name": "placed_at",
+        "columnLength": 19,
+        "columnType": 12,
+        "flags": 128,
+        "decimals": 0
+      },
+      {
+        "characterSet": 224,
+        "name": "status",
+        "columnLength": 32,
+        "columnType": 254,
+        "flags": 257,
+        "decimals": 0
+      },
+      {
+        "characterSet": 63,
+        "name": "signed_up",
+        "columnLength": 10,
+        "columnType": 10,
+        "flags": 128,
+        "decimals": 0
+      },
+      {
+        "characterSet": 63,
+        "name": "active",
+        "columnLength": 1,
+        "columnType": 1,
+        "flags": 0,
+        "decimals": 0
+      }
+    ]
+  }
+]
