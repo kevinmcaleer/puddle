@@ -1,0 +1,254 @@
+{
+  "test": {
+    "ok": true,
+    "server": "Trino 446, 3 tables"
+  },
+  "catalog": {
+    "tables": [
+      {
+        "name": "customers",
+        "kind": "table",
+        "columns": [
+          {
+            "name": "id",
+            "type": "INTEGER",
+            "nullable": true
+          },
+          {
+            "name": "name",
+            "type": "VARCHAR",
+            "nullable": true
+          },
+          {
+            "name": "email",
+            "type": "VARCHAR",
+            "nullable": true
+          },
+          {
+            "name": "signed_up",
+            "type": "DATE",
+            "nullable": true
+          },
+          {
+            "name": "active",
+            "type": "BOOLEAN",
+            "nullable": true
+          }
+        ]
+      },
+      {
+        "name": "order_totals",
+        "kind": "view",
+        "columns": [
+          {
+            "name": "name",
+            "type": "VARCHAR",
+            "nullable": true
+          },
+          {
+            "name": "orders",
+            "type": "BIGINT",
+            "nullable": true
+          },
+          {
+            "name": "total",
+            "type": "DECIMAL(38,2)",
+            "nullable": true
+          }
+        ]
+      },
+      {
+        "name": "orders",
+        "kind": "table",
+        "columns": [
+          {
+            "name": "id",
+            "type": "INTEGER",
+            "nullable": true
+          },
+          {
+            "name": "customer_id",
+            "type": "INTEGER",
+            "nullable": true
+          },
+          {
+            "name": "total",
+            "type": "DECIMAL(10,2)",
+            "nullable": true
+          },
+          {
+            "name": "placed_at",
+            "type": "TIMESTAMP",
+            "nullable": true
+          },
+          {
+            "name": "status",
+            "type": "VARCHAR",
+            "nullable": true
+          },
+          {
+            "name": "notes",
+            "type": "VARCHAR",
+            "nullable": true
+          },
+          {
+            "name": "tags",
+            "type": "JSON",
+            "nullable": true
+          }
+        ]
+      }
+    ]
+  },
+  "detail": {
+    "tables": [
+      {
+        "name": "customers",
+        "kind": "table",
+        "columns": [
+          {
+            "name": "id",
+            "type": "integer",
+            "pk": false,
+            "unique": false,
+            "notNull": false,
+            "increment": false
+          },
+          {
+            "name": "name",
+            "type": "varchar(100)",
+            "pk": false,
+            "unique": false,
+            "notNull": false,
+            "increment": false
+          },
+          {
+            "name": "email",
+            "type": "varchar(255)",
+            "pk": false,
+            "unique": false,
+            "notNull": false,
+            "increment": false,
+            "note": "Lower case"
+          },
+          {
+            "name": "signed_up",
+            "type": "date",
+            "pk": false,
+            "unique": false,
+            "notNull": false,
+            "increment": false
+          },
+          {
+            "name": "active",
+            "type": "boolean",
+            "pk": false,
+            "unique": false,
+            "notNull": false,
+            "increment": false
+          }
+        ],
+        "indexes": [],
+        "foreignKeys": []
+      },
+      {
+        "name": "order_totals",
+        "kind": "view",
+        "columns": [
+          {
+            "name": "name",
+            "type": "varchar(100)",
+            "pk": false,
+            "unique": false,
+            "notNull": false,
+            "increment": false
+          },
+          {
+            "name": "orders",
+            "type": "bigint",
+            "pk": false,
+            "unique": false,
+            "notNull": false,
+            "increment": false
+          },
+          {
+            "name": "total",
+            "type": "decimal(38,2)",
+            "pk": false,
+            "unique": false,
+            "notNull": false,
+            "increment": false
+          }
+        ],
+        "indexes": [],
+        "foreignKeys": [],
+        "sql": "SELECT c.name, count(o.id) AS orders, sum(o.total) AS total FROM customers c LEFT JOIN orders o ON o.customer_id = c.id GROUP BY c.name"
+      },
+      {
+        "name": "orders",
+        "kind": "table",
+        "columns": [
+          {
+            "name": "id",
+            "type": "integer",
+            "pk": false,
+            "unique": false,
+            "notNull": false,
+            "increment": false
+          },
+          {
+            "name": "customer_id",
+            "type": "integer",
+            "pk": false,
+            "unique": false,
+            "notNull": false,
+            "increment": false
+          },
+          {
+            "name": "total",
+            "type": "decimal(10,2)",
+            "pk": false,
+            "unique": false,
+            "notNull": false,
+            "increment": false
+          },
+          {
+            "name": "placed_at",
+            "type": "timestamp(3)",
+            "pk": false,
+            "unique": false,
+            "notNull": false,
+            "increment": false
+          },
+          {
+            "name": "status",
+            "type": "varchar(10)",
+            "pk": false,
+            "unique": false,
+            "notNull": false,
+            "increment": false
+          },
+          {
+            "name": "notes",
+            "type": "varchar",
+            "pk": false,
+            "unique": false,
+            "notNull": false,
+            "increment": false
+          },
+          {
+            "name": "tags",
+            "type": "array(varchar)",
+            "pk": false,
+            "unique": false,
+            "notNull": false,
+            "increment": false
+          }
+        ],
+        "indexes": [],
+        "foreignKeys": []
+      }
+    ],
+    "enums": []
+  }
+}

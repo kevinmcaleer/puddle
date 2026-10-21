@@ -55,7 +55,7 @@ export const DRIVERS: Driver[] = [
   { id: 'cockroach', label: 'CockroachDB', monogram: 'Cr', runsIn: SERVICE, auth: 'password', fields: [...host(26257), database(), user, { ...ssl, default: true }, sslVerify], community: true },
   { id: 'mariadb', label: 'MariaDB', monogram: 'Ma', runsIn: SERVICE, auth: 'password', fields: [...host(3306), database(), user, ssl, sslVerify], community: true },
   { id: 'tidb', label: 'TiDB', monogram: 'Ti', runsIn: SERVICE, auth: 'password', fields: [...host(4000), database(), user, { ...ssl, default: true }, sslVerify], community: true },
-  { id: 'bigquery', label: 'Google BigQuery', monogram: 'BQ', runsIn: ['browser', ...SERVICE], auth: 'oauth', fields: [{ key: 'project', label: 'Project', kind: 'text', required: true }, { key: 'dataset', label: 'Dataset', kind: 'text', hint: 'Empty lists every dataset.' }], note: 'Signs in with Google in the browser; a service-account key on the Pi.', community: true },
+  { id: 'bigquery', label: 'Google BigQuery', monogram: 'BQ', runsIn: ['browser', ...SERVICE], auth: 'key', fields: [{ key: 'project', label: 'Project', kind: 'text', required: true }, { key: 'dataset', label: 'Dataset', kind: 'text', hint: 'Empty lists every dataset.' }, { key: 'endpoint', label: 'Address', kind: 'text', hint: 'Empty for Google’s own, https://bigquery.googleapis.com.' }], note: 'Signs in with a service account’s JSON key, pasted whole; the token it gets can only read.', community: true },
   { id: 'redis', label: 'Redis', monogram: 'Rd', runsIn: ['browser', ...SERVICE], auth: 'password', fields: [...host(6379), { key: 'db', label: 'Database number', kind: 'number', default: 0 }, { ...user, required: false }, { key: 'rest', label: 'Upstash REST address', kind: 'text', hint: 'In the browser, a Redis with a REST interface (Upstash) is read directly; the token is the secret.' }], community: true },
   { id: 'greengage', label: 'GreengageDB', monogram: 'Gg', runsIn: SERVICE, auth: 'password', fields: [...host(5432), database(), user, ssl, sslVerify], community: true },
   { id: 'oracle', label: 'Oracle Database', monogram: 'Or', runsIn: SERVICE, auth: 'password', fields: [...host(1521), { key: 'service', label: 'Service name', kind: 'text', required: true }, user] },
@@ -70,7 +70,7 @@ export const DRIVERS: Driver[] = [
   { id: 'trino', label: 'Trino / Presto', monogram: 'Tr', runsIn: ['browser', ...SERVICE], auth: 'password', fields: [url('https://host:8443'), { key: 'catalog', label: 'Catalog', kind: 'text' }, { key: 'schema', label: 'Schema', kind: 'text' }, user], note: 'In the browser only when the cluster allows this site.' },
   { id: 'surrealdb', label: 'SurrealDB', monogram: 'Su', runsIn: ['browser', ...SERVICE], auth: 'password', fields: [url('https://host:8000'), { key: 'namespace', label: 'Namespace', kind: 'text', required: true }, database(), user] },
   { id: 'dynamodb', label: 'DynamoDB', monogram: 'Dy', runsIn: ['browser', ...SERVICE], auth: 'aws', fields: [{ key: 'region', label: 'Region', kind: 'text', placeholder: 'eu-west-2', required: true }, { key: 'accessKeyId', label: 'Access key id', kind: 'text', required: true }, { key: 'endpoint', label: 'Endpoint', kind: 'text', hint: 'Only for DynamoDB Local.' }], note: 'The secret access key is the secret.' },
-  { id: 'snowflake', label: 'Snowflake', monogram: 'Sf', runsIn: SERVICE, auth: 'keypair', fields: [{ key: 'account', label: 'Account', kind: 'text', placeholder: 'xy12345.eu-west-2', required: true }, user, { key: 'warehouse', label: 'Warehouse', kind: 'text' }, database(), { key: 'schema', label: 'Schema', kind: 'text' }, { key: 'role', label: 'Role', kind: 'text' }], note: 'Signs in with a private key.' },
+  { id: 'snowflake', label: 'Snowflake', monogram: 'Sf', runsIn: SERVICE, auth: 'keypair', fields: [{ key: 'account', label: 'Account', kind: 'text', placeholder: 'xy12345.eu-west-2', required: true }, user, { key: 'warehouse', label: 'Warehouse', kind: 'text' }, database(), { key: 'schema', label: 'Schema', kind: 'text' }, { key: 'role', label: 'Role', kind: 'text' }, { key: 'url', label: 'Address', kind: 'text', hint: 'Empty for the account’s own, https://<account>.snowflakecomputing.com.' }], note: 'Signs in with the user’s private key (PKCS#8). Give the user a read-only role.' },
   { id: 'hana', label: 'SAP HANA', monogram: 'HA', runsIn: SERVICE, auth: 'password', fields: [...host(39015), database('Database'), user, { ...ssl, default: true }], note: 'Beekeeper lists it as coming soon.' },
 ];
 
@@ -82,6 +82,7 @@ export const SECRET_LABEL: Record<ConnectionAuth, string | undefined> = {
   password: 'Password',
   token: 'Token',
   keypair: 'Private key',
+  key: 'Service-account key',
   aws: 'Secret access key',
   oauth: undefined,
   none: undefined,

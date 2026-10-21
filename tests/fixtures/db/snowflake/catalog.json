@@ -1,0 +1,295 @@
+{
+  "test": {
+    "ok": true,
+    "server": "Snowflake 9.31.2, 3 tables"
+  },
+  "catalog": {
+    "tables": [
+      {
+        "name": "CUSTOMERS",
+        "kind": "table",
+        "columns": [
+          {
+            "name": "ID",
+            "type": "BIGINT",
+            "nullable": false
+          },
+          {
+            "name": "NAME",
+            "type": "VARCHAR",
+            "nullable": false
+          },
+          {
+            "name": "EMAIL",
+            "type": "VARCHAR",
+            "nullable": true
+          },
+          {
+            "name": "SIGNED_UP",
+            "type": "DATE",
+            "nullable": true
+          },
+          {
+            "name": "ACTIVE",
+            "type": "BOOLEAN",
+            "nullable": true
+          }
+        ],
+        "rows": 3
+      },
+      {
+        "name": "ORDERS",
+        "kind": "table",
+        "columns": [
+          {
+            "name": "ID",
+            "type": "BIGINT",
+            "nullable": false
+          },
+          {
+            "name": "CUSTOMER_ID",
+            "type": "BIGINT",
+            "nullable": false
+          },
+          {
+            "name": "TOTAL",
+            "type": "DECIMAL(10,2)",
+            "nullable": true
+          },
+          {
+            "name": "PLACED_AT",
+            "type": "TIMESTAMP",
+            "nullable": true
+          },
+          {
+            "name": "DELIVERED_AT",
+            "type": "TIMESTAMP WITH TIME ZONE",
+            "nullable": true
+          },
+          {
+            "name": "STATUS",
+            "type": "VARCHAR",
+            "nullable": true
+          },
+          {
+            "name": "NOTES",
+            "type": "VARCHAR",
+            "nullable": true
+          },
+          {
+            "name": "TAGS",
+            "type": "JSON",
+            "nullable": true
+          },
+          {
+            "name": "SHIPPING",
+            "type": "JSON",
+            "nullable": true
+          }
+        ],
+        "rows": 4
+      },
+      {
+        "name": "ORDER_TOTALS",
+        "kind": "view",
+        "columns": [
+          {
+            "name": "NAME",
+            "type": "VARCHAR",
+            "nullable": true
+          },
+          {
+            "name": "ORDERS",
+            "type": "BIGINT",
+            "nullable": true
+          },
+          {
+            "name": "TOTAL",
+            "type": "DECIMAL(22,2)",
+            "nullable": true
+          }
+        ]
+      }
+    ]
+  },
+  "detail": {
+    "tables": [
+      {
+        "name": "CUSTOMERS",
+        "kind": "table",
+        "note": "People who have ordered",
+        "columns": [
+          {
+            "name": "ID",
+            "type": "NUMBER(10,0)",
+            "pk": true,
+            "unique": false,
+            "notNull": true,
+            "increment": false
+          },
+          {
+            "name": "NAME",
+            "type": "VARCHAR(100)",
+            "pk": false,
+            "unique": false,
+            "notNull": true,
+            "increment": false
+          },
+          {
+            "name": "EMAIL",
+            "type": "VARCHAR(255)",
+            "pk": false,
+            "unique": true,
+            "notNull": false,
+            "increment": false,
+            "note": "Lower case"
+          },
+          {
+            "name": "SIGNED_UP",
+            "type": "DATE",
+            "pk": false,
+            "unique": false,
+            "notNull": false,
+            "increment": false
+          },
+          {
+            "name": "ACTIVE",
+            "type": "BOOLEAN",
+            "pk": false,
+            "unique": false,
+            "notNull": false,
+            "increment": false
+          }
+        ],
+        "indexes": [],
+        "foreignKeys": []
+      },
+      {
+        "name": "ORDERS",
+        "kind": "table",
+        "columns": [
+          {
+            "name": "ID",
+            "type": "NUMBER(10,0)",
+            "pk": true,
+            "unique": false,
+            "notNull": true,
+            "increment": true
+          },
+          {
+            "name": "CUSTOMER_ID",
+            "type": "NUMBER(10,0)",
+            "pk": false,
+            "unique": false,
+            "notNull": true,
+            "increment": false
+          },
+          {
+            "name": "TOTAL",
+            "type": "NUMBER(10,2)",
+            "pk": false,
+            "unique": false,
+            "notNull": false,
+            "increment": false
+          },
+          {
+            "name": "PLACED_AT",
+            "type": "TIMESTAMP_NTZ",
+            "pk": false,
+            "unique": false,
+            "notNull": false,
+            "increment": false
+          },
+          {
+            "name": "DELIVERED_AT",
+            "type": "TIMESTAMP_TZ",
+            "pk": false,
+            "unique": false,
+            "notNull": false,
+            "increment": false
+          },
+          {
+            "name": "STATUS",
+            "type": "VARCHAR(10)",
+            "pk": false,
+            "unique": false,
+            "notNull": false,
+            "increment": false,
+            "default": "'placed'"
+          },
+          {
+            "name": "NOTES",
+            "type": "VARCHAR(16777216)",
+            "pk": false,
+            "unique": false,
+            "notNull": false,
+            "increment": false
+          },
+          {
+            "name": "TAGS",
+            "type": "ARRAY",
+            "pk": false,
+            "unique": false,
+            "notNull": false,
+            "increment": false
+          },
+          {
+            "name": "SHIPPING",
+            "type": "OBJECT",
+            "pk": false,
+            "unique": false,
+            "notNull": false,
+            "increment": false
+          }
+        ],
+        "indexes": [],
+        "foreignKeys": [
+          {
+            "name": "ORDERS_CUSTOMER_ID_FKEY",
+            "columns": [
+              "CUSTOMER_ID"
+            ],
+            "refTable": "CUSTOMERS",
+            "refColumns": [
+              "ID"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "ORDER_TOTALS",
+        "kind": "view",
+        "columns": [
+          {
+            "name": "NAME",
+            "type": "VARCHAR(100)",
+            "pk": false,
+            "unique": false,
+            "notNull": false,
+            "increment": false
+          },
+          {
+            "name": "ORDERS",
+            "type": "NUMBER(18,0)",
+            "pk": false,
+            "unique": false,
+            "notNull": false,
+            "increment": false
+          },
+          {
+            "name": "TOTAL",
+            "type": "NUMBER(22,2)",
+            "pk": false,
+            "unique": false,
+            "notNull": false,
+            "increment": false
+          }
+        ],
+        "indexes": [],
+        "foreignKeys": [],
+        "sql": "CREATE OR REPLACE VIEW ORDER_TOTALS AS SELECT c.name, COUNT(o.id) AS orders, SUM(o.total) AS total FROM orders o JOIN customers c ON c.id = o.customer_id GROUP BY c.name"
+      }
+    ],
+    "enums": []
+  }
+}

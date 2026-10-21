@@ -9,6 +9,9 @@ const BROWSER: Partial<Record<DriverId, () => Promise<{ default: Connector }>>> 
   sqlite: () => import('./drivers/sqlite'),
   libsql: () => import('./drivers/libsql'),
   duckdb: () => import('./drivers/duckdb'),
+  clickhouse: () => import('./drivers/clickhouse'),
+  trino: () => import('./drivers/trino'),
+  bigquery: () => import('./drivers/bigquery'),
 };
 
 const loaded = new Map<DriverId, Promise<Connector>>();

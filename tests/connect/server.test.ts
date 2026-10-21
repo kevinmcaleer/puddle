@@ -34,7 +34,7 @@ describe('puddle-connect', () => {
 
   it('says what it is and answers CORS for its origins only', async () => {
     const r = await fetch(`${base}/health`, { headers: { Origin: 'http://localhost:4173' } });
-    expect(await r.json()).toEqual({ version: expect.any(String), drivers: ['sqlite', 'libsql', 'postgres', 'redshift', 'cockroach', 'greengage', 'mysql', 'mariadb', 'tidb', 'firebird', 'sqlserver', 'oracle'], allowlist: false });
+    expect(await r.json()).toEqual({ version: expect.any(String), drivers: ['sqlite', 'libsql', 'postgres', 'redshift', 'cockroach', 'greengage', 'mysql', 'mariadb', 'tidb', 'firebird', 'sqlserver', 'oracle', 'clickhouse', 'bigquery', 'snowflake', 'trino'], allowlist: false });
     expect(r.headers.get('access-control-allow-origin')).toBe('http://localhost:4173');
     const other = await fetch(`${base}/health`, { headers: { Origin: 'https://evil.example' } });
     expect(other.headers.get('access-control-allow-origin')).toBeNull();
@@ -198,5 +198,10 @@ describe('the command line', () => {
     expect(targetHost({ url: 'https://ch.example:8443/x' })).toBe('ch.example');
     expect(targetHost({ url: 'not a url' })).toBe('not a url');
     expect(targetHost({ path: '/x' })).toBeUndefined();
+    // The warehouses reach their own hosts unless an address is given, so the allowlist still applies to them.
+    expect(targetHost({ project: 'p' }, 'bigquery')).toBe('bigquery.googleapis.com');
+    expect(targetHost({ project: 'p', endpoint: 'http://127.0.0.1:18090' }, 'bigquery')).toBe('127.0.0.1');
+    expect(targetHost({ account: 'xy12345.eu-west-2' }, 'snowflake')).toBe('xy12345.eu-west-2.snowflakecomputing.com');
+    expect(targetHost({ account: 'xy12345', url: 'https://xy12345.privatelink.snowflakecomputing.com' }, 'snowflake')).toBe('xy12345.privatelink.snowflakecomputing.com');
   });
 });

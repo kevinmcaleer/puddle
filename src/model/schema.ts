@@ -53,7 +53,7 @@ export const DriverIdZ = z.enum(DRIVER_IDS);
 export const ConnectionViaZ = z.enum(['browser', 'local', 'pi']);
 
 /** What a driver signs in with: a password, a token, a private key, an OAuth sign-in in the browser, AWS keys, or nothing. */
-export const ConnectionAuthZ = z.enum(['password', 'token', 'keypair', 'oauth', 'aws', 'none']);
+export const ConnectionAuthZ = z.enum(['password', 'token', 'keypair', 'key', 'oauth', 'aws', 'none']);
 
 export const CatalogColumnZ = z.object({ name: z.string(), type: z.string(), nullable: z.boolean().optional() });
 export const CatalogTableZ = z.object({

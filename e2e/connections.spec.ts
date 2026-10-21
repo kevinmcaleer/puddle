@@ -388,3 +388,52 @@ test('a Firebird database is read through puddle-connect: tested, a table added 
   await projectMenu(page, 'Schema');
   await expect(page.getByTestId('schema-view').getByTestId('schema-table-ORDERS')).toContainText('CUSTOMER_ID');
 });
+
+// A ClickHouse server (PUDDLE_TEST_CLICKHOUSE; CI starts one, locally scripts/clickhouse-stand-in.py serves) read in the
+// browser with no service: its HTTP interface answers the page directly. Tested, a table added as a source, and the
+// schema documented (ClickHouse has no foreign keys or enums to document). The customers table is the one added: the
+// orders table's array loads as JSON, which needs DuckDB's json extension from the network, and the array's own
+// conversion is covered by the driver's tests.
+test('a ClickHouse database is read in the browser with no service: tested, a table added and its schema documented', async ({ page }) => {
+  const url = process.env.PUDDLE_TEST_CLICKHOUSE;
+  test.skip(!url, 'PUDDLE_TEST_CLICKHOUSE names no server');
+  const u = new URL(url!);
+  await openApp(page);
+  await page.getByRole('button', { name: 'Add', exact: true }).click();
+  await page.getByRole('menuitem', { name: /From database/ }).click();
+  const list = page.getByRole('dialog', { name: 'Add source from a database' });
+  await list.getByRole('button', { name: 'New connection' }).click();
+  await page.getByRole('dialog', { name: 'New connection' }).getByTestId('driver-grid').getByRole('listitem', { name: 'ClickHouse', exact: true }).click();
+  const form = page.getByRole('dialog', { name: 'New ClickHouse connection' });
+  await expect(form.getByLabel('Where it runs')).toHaveValue('browser');
+  await form.getByLabel('Address').fill(u.origin);
+  await form.getByLabel('Database').fill(u.pathname.slice(1));
+  await form.getByLabel('User name').fill(decodeURIComponent(u.username) || 'default');
+  await form.getByLabel('Password').fill(decodeURIComponent(u.password));
+  await form.getByRole('button', { name: 'Test', exact: true }).click();
+  await expect(form.getByTestId('conn-test')).toHaveAttribute('data-ok', 'true', { timeout: 20_000 });
+  await expect(form.getByTestId('conn-test')).toContainText('3 tables');
+  await form.getByRole('button', { name: 'Save connection' }).click();
+
+  const picker = page.getByRole('dialog', { name: 'Read from ClickHouse' });
+  await expect(picker.getByTestId('table-picker')).toContainText('customers', { timeout: 20_000 });
+  await picker.getByTestId('pick-customers').click();
+  await picker.getByRole('button', { name: 'Add 1 source' }).click();
+  await expect(node(page, 'customers')).toHaveAttribute('data-status', 'ok', { timeout: 20_000 });
+  await selectNode(page, 'customers');
+  await expect(page.getByTestId('connection-read')).toContainText('3 rows');
+
+  await page.getByRole('button', { name: 'Add', exact: true }).click();
+  await page.getByRole('menuitem', { name: /From database/ }).click();
+  await list.getByTestId('connection-ClickHouse').getByRole('button', { name: 'Browse' }).click();
+  const browser = page.getByTestId('database-browser');
+  await expect(browser).toContainText('2 tables, 1 view', { timeout: 20_000 });
+  await browser.getByRole('button', { name: 'Document the schema' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Document the schema' });
+  await expect(dialog.getByTestId('document-plan')).toContainText('3 tables, 0 refs and 0 enums', { timeout: 20_000 });
+  await dialog.getByRole('button', { name: 'Document', exact: true }).click();
+  await expect(dialog).toHaveCount(0);
+  await browser.getByRole('button', { name: 'Close the database browser' }).click();
+  await projectMenu(page, 'Schema');
+  await expect(page.getByTestId('schema-view').getByTestId('schema-table-customers')).toContainText('email');
+});

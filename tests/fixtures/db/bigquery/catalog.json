@@ -1,0 +1,282 @@
+{
+  "test": {
+    "ok": true,
+    "server": "BigQuery project puddle-test, 3 tables"
+  },
+  "catalog": {
+    "tables": [
+      {
+        "name": "customers",
+        "kind": "table",
+        "columns": [
+          {
+            "name": "id",
+            "type": "BIGINT",
+            "nullable": false
+          },
+          {
+            "name": "name",
+            "type": "VARCHAR",
+            "nullable": false
+          },
+          {
+            "name": "email",
+            "type": "VARCHAR",
+            "nullable": true
+          },
+          {
+            "name": "signed_up",
+            "type": "DATE",
+            "nullable": true
+          },
+          {
+            "name": "active",
+            "type": "BOOLEAN",
+            "nullable": true
+          }
+        ],
+        "rows": 3
+      },
+      {
+        "name": "order_totals",
+        "kind": "view",
+        "columns": [
+          {
+            "name": "name",
+            "type": "VARCHAR",
+            "nullable": true
+          },
+          {
+            "name": "orders",
+            "type": "BIGINT",
+            "nullable": true
+          },
+          {
+            "name": "total",
+            "type": "DECIMAL(38,9)",
+            "nullable": true
+          }
+        ]
+      },
+      {
+        "name": "orders",
+        "kind": "table",
+        "columns": [
+          {
+            "name": "id",
+            "type": "BIGINT",
+            "nullable": false
+          },
+          {
+            "name": "customer_id",
+            "type": "BIGINT",
+            "nullable": false
+          },
+          {
+            "name": "total",
+            "type": "DECIMAL(38,9)",
+            "nullable": true
+          },
+          {
+            "name": "placed_at",
+            "type": "TIMESTAMP",
+            "nullable": true
+          },
+          {
+            "name": "status",
+            "type": "VARCHAR",
+            "nullable": true
+          },
+          {
+            "name": "notes",
+            "type": "VARCHAR",
+            "nullable": true
+          },
+          {
+            "name": "tags",
+            "type": "JSON",
+            "nullable": true
+          },
+          {
+            "name": "shipping",
+            "type": "JSON",
+            "nullable": true
+          }
+        ],
+        "rows": 4
+      }
+    ]
+  },
+  "detail": {
+    "tables": [
+      {
+        "name": "customers",
+        "kind": "table",
+        "note": "People who have ordered",
+        "columns": [
+          {
+            "name": "id",
+            "type": "INT64",
+            "pk": true,
+            "unique": false,
+            "notNull": true,
+            "increment": false
+          },
+          {
+            "name": "name",
+            "type": "STRING",
+            "pk": false,
+            "unique": false,
+            "notNull": true,
+            "increment": false
+          },
+          {
+            "name": "email",
+            "type": "STRING",
+            "pk": false,
+            "unique": false,
+            "notNull": false,
+            "increment": false,
+            "note": "Lower case"
+          },
+          {
+            "name": "signed_up",
+            "type": "DATE",
+            "pk": false,
+            "unique": false,
+            "notNull": false,
+            "increment": false
+          },
+          {
+            "name": "active",
+            "type": "BOOL",
+            "pk": false,
+            "unique": false,
+            "notNull": false,
+            "increment": false
+          }
+        ],
+        "indexes": [],
+        "foreignKeys": []
+      },
+      {
+        "name": "order_totals",
+        "kind": "view",
+        "columns": [
+          {
+            "name": "name",
+            "type": "STRING",
+            "pk": false,
+            "unique": false,
+            "notNull": false,
+            "increment": false
+          },
+          {
+            "name": "orders",
+            "type": "INT64",
+            "pk": false,
+            "unique": false,
+            "notNull": false,
+            "increment": false
+          },
+          {
+            "name": "total",
+            "type": "NUMERIC",
+            "pk": false,
+            "unique": false,
+            "notNull": false,
+            "increment": false
+          }
+        ],
+        "indexes": [],
+        "foreignKeys": [],
+        "sql": "SELECT c.name, COUNT(o.id) AS orders, SUM(o.total) AS total FROM `puddle-test.shop.orders` o JOIN `puddle-test.shop.customers` c ON c.id = o.customer_id GROUP BY c.name"
+      },
+      {
+        "name": "orders",
+        "kind": "table",
+        "columns": [
+          {
+            "name": "id",
+            "type": "INT64",
+            "pk": true,
+            "unique": false,
+            "notNull": true,
+            "increment": false
+          },
+          {
+            "name": "customer_id",
+            "type": "INT64",
+            "pk": false,
+            "unique": false,
+            "notNull": true,
+            "increment": false
+          },
+          {
+            "name": "total",
+            "type": "NUMERIC",
+            "pk": false,
+            "unique": false,
+            "notNull": false,
+            "increment": false
+          },
+          {
+            "name": "placed_at",
+            "type": "TIMESTAMP",
+            "pk": false,
+            "unique": false,
+            "notNull": false,
+            "increment": false
+          },
+          {
+            "name": "status",
+            "type": "STRING",
+            "pk": false,
+            "unique": false,
+            "notNull": false,
+            "increment": false,
+            "default": "'placed'"
+          },
+          {
+            "name": "notes",
+            "type": "STRING",
+            "pk": false,
+            "unique": false,
+            "notNull": false,
+            "increment": false
+          },
+          {
+            "name": "tags",
+            "type": "ARRAY<STRING>",
+            "pk": false,
+            "unique": false,
+            "notNull": false,
+            "increment": false
+          },
+          {
+            "name": "shipping",
+            "type": "STRUCT<city STRING, postcode STRING>",
+            "pk": false,
+            "unique": false,
+            "notNull": false,
+            "increment": false
+          }
+        ],
+        "indexes": [],
+        "foreignKeys": [
+          {
+            "name": "orders.customer_id",
+            "columns": [
+              "customer_id"
+            ],
+            "refTable": "customers",
+            "refColumns": [
+              "id"
+            ]
+          }
+        ]
+      }
+    ],
+    "enums": []
+  }
+}

@@ -1,0 +1,119 @@
+[
+  {
+    "method": "POST",
+    "url": "http://127.0.0.1:18080/v1/statement",
+    "body": "SELECT version() AS version",
+    "status": 200,
+    "response": "{\"id\":\"20241021_000000_00001_puddle\",\"infoUri\":\"http://127.0.0.1:18080/ui/query.html?20241021_000000_00001_puddle\",\"nextUri\":\"http://127.0.0.1:18080/v1/statement/queued/20241021_000000_00001_puddle/1\",\"stats\":{\"state\":\"QUEUED\"}}"
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:18080/v1/statement/queued/20241021_000000_00001_puddle/1",
+    "status": 200,
+    "response": "{\"id\":\"20241021_000000_00001_puddle\",\"infoUri\":\"\",\"columns\":[{\"name\":\"version\",\"type\":\"varchar\",\"typeSignature\":{\"rawType\":\"varchar\",\"arguments\":[]}}],\"data\":[[\"446\"]],\"stats\":{\"state\":\"FINISHED\"}}"
+  },
+  {
+    "method": "POST",
+    "url": "http://127.0.0.1:18080/v1/statement",
+    "body": "SELECT count(*) AS n FROM \"memory\".information_schema.tables WHERE table_schema <> 'information_schema' AND table_schema = 'shop'",
+    "status": 200,
+    "response": "{\"id\":\"20241021_000000_00002_puddle\",\"infoUri\":\"http://127.0.0.1:18080/ui/query.html?20241021_000000_00002_puddle\",\"nextUri\":\"http://127.0.0.1:18080/v1/statement/queued/20241021_000000_00002_puddle/1\",\"stats\":{\"state\":\"QUEUED\"}}"
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:18080/v1/statement/queued/20241021_000000_00002_puddle/1",
+    "status": 200,
+    "response": "{\"id\":\"20241021_000000_00002_puddle\",\"infoUri\":\"\",\"columns\":[{\"name\":\"n\",\"type\":\"bigint\",\"typeSignature\":{\"rawType\":\"bigint\",\"arguments\":[]}}],\"data\":[[3]],\"stats\":{\"state\":\"FINISHED\"}}"
+  },
+  {
+    "method": "POST",
+    "url": "http://127.0.0.1:18080/v1/statement",
+    "body": "SELECT table_schema, table_name, table_type FROM \"memory\".information_schema.tables WHERE table_schema <> 'information_schema' AND table_schema = 'shop' ORDER BY table_schema, table_name",
+    "status": 200,
+    "response": "{\"id\":\"20241021_000000_00003_puddle\",\"infoUri\":\"http://127.0.0.1:18080/ui/query.html?20241021_000000_00003_puddle\",\"nextUri\":\"http://127.0.0.1:18080/v1/statement/queued/20241021_000000_00003_puddle/1\",\"stats\":{\"state\":\"QUEUED\"}}"
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:18080/v1/statement/queued/20241021_000000_00003_puddle/1",
+    "status": 200,
+    "response": "{\"id\":\"20241021_000000_00003_puddle\",\"infoUri\":\"\",\"columns\":[{\"name\":\"table_schema\",\"type\":\"varchar\",\"typeSignature\":{\"rawType\":\"varchar\",\"arguments\":[]}},{\"name\":\"table_name\",\"type\":\"varchar\",\"typeSignature\":{\"rawType\":\"varchar\",\"arguments\":[]}},{\"name\":\"table_type\",\"type\":\"varchar\",\"typeSignature\":{\"rawType\":\"varchar\",\"arguments\":[]}}],\"data\":[[\"shop\",\"customers\",\"BASE TABLE\"],[\"shop\",\"order_totals\",\"VIEW\"],[\"shop\",\"orders\",\"BASE TABLE\"]],\"stats\":{\"state\":\"FINISHED\"}}"
+  },
+  {
+    "method": "POST",
+    "url": "http://127.0.0.1:18080/v1/statement",
+    "body": "SELECT table_schema, table_name, column_name, data_type, is_nullable, column_default, comment FROM \"memory\".information_schema.columns WHERE table_schema <> 'information_schema' AND table_schema = 'shop' ORDER BY table_schema, table_name, ordinal_position",
+    "status": 200,
+    "response": "{\"id\":\"20241021_000000_00004_puddle\",\"infoUri\":\"http://127.0.0.1:18080/ui/query.html?20241021_000000_00004_puddle\",\"nextUri\":\"http://127.0.0.1:18080/v1/statement/queued/20241021_000000_00004_puddle/1\",\"stats\":{\"state\":\"QUEUED\"}}"
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:18080/v1/statement/queued/20241021_000000_00004_puddle/1",
+    "status": 200,
+    "response": "{\"id\":\"20241021_000000_00004_puddle\",\"infoUri\":\"\",\"columns\":[{\"name\":\"table_schema\",\"type\":\"varchar\",\"typeSignature\":{\"rawType\":\"varchar\",\"arguments\":[]}},{\"name\":\"table_name\",\"type\":\"varchar\",\"typeSignature\":{\"rawType\":\"varchar\",\"arguments\":[]}},{\"name\":\"column_name\",\"type\":\"varchar\",\"typeSignature\":{\"rawType\":\"varchar\",\"arguments\":[]}},{\"name\":\"data_type\",\"type\":\"varchar\",\"typeSignature\":{\"rawType\":\"varchar\",\"arguments\":[]}},{\"name\":\"is_nullable\",\"type\":\"varchar\",\"typeSignature\":{\"rawType\":\"varchar\",\"arguments\":[]}},{\"name\":\"column_default\",\"type\":\"varchar\",\"typeSignature\":{\"rawType\":\"varchar\",\"arguments\":[]}},{\"name\":\"comment\",\"type\":\"varchar\",\"typeSignature\":{\"rawType\":\"varchar\",\"arguments\":[]}}],\"data\":[[\"shop\",\"customers\",\"id\",\"integer\",\"YES\",null,null],[\"shop\",\"customers\",\"name\",\"varchar(100)\",\"YES\",null,null],[\"shop\",\"customers\",\"email\",\"varchar(255)\",\"YES\",null,\"Lower case\"],[\"shop\",\"customers\",\"signed_up\",\"date\",\"YES\",null,null],[\"shop\",\"customers\",\"active\",\"boolean\",\"YES\",null,null],[\"shop\",\"order_totals\",\"name\",\"varchar(100)\",\"YES\",null,null],[\"shop\",\"order_totals\",\"orders\",\"bigint\",\"YES\",null,null],[\"shop\",\"order_totals\",\"total\",\"decimal(38,2)\",\"YES\",null,null],[\"shop\",\"orders\",\"id\",\"integer\",\"YES\",null,null],[\"shop\",\"orders\",\"customer_id\",\"integer\",\"YES\",null,null],[\"shop\",\"orders\",\"total\",\"decimal(10,2)\",\"YES\",null,null],[\"shop\",\"orders\",\"placed_at\",\"timestamp(3)\",\"YES\",null,null],[\"shop\",\"orders\",\"status\",\"varchar(10)\",\"YES\",null,null],[\"shop\",\"orders\",\"notes\",\"varchar\",\"YES\",null,null],[\"shop\",\"orders\",\"tags\",\"array(varchar)\",\"YES\",null,null]],\"stats\":{\"state\":\"FINISHED\"}}"
+  },
+  {
+    "method": "POST",
+    "url": "http://127.0.0.1:18080/v1/statement",
+    "body": "SELECT table_schema, table_name, table_type FROM \"memory\".information_schema.tables WHERE table_schema <> 'information_schema' AND table_schema = 'shop' ORDER BY table_schema, table_name",
+    "status": 200,
+    "response": "{\"id\":\"20241021_000000_00005_puddle\",\"infoUri\":\"http://127.0.0.1:18080/ui/query.html?20241021_000000_00005_puddle\",\"nextUri\":\"http://127.0.0.1:18080/v1/statement/queued/20241021_000000_00005_puddle/1\",\"stats\":{\"state\":\"QUEUED\"}}"
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:18080/v1/statement/queued/20241021_000000_00005_puddle/1",
+    "status": 200,
+    "response": "{\"id\":\"20241021_000000_00005_puddle\",\"infoUri\":\"\",\"columns\":[{\"name\":\"table_schema\",\"type\":\"varchar\",\"typeSignature\":{\"rawType\":\"varchar\",\"arguments\":[]}},{\"name\":\"table_name\",\"type\":\"varchar\",\"typeSignature\":{\"rawType\":\"varchar\",\"arguments\":[]}},{\"name\":\"table_type\",\"type\":\"varchar\",\"typeSignature\":{\"rawType\":\"varchar\",\"arguments\":[]}}],\"data\":[[\"shop\",\"customers\",\"BASE TABLE\"],[\"shop\",\"order_totals\",\"VIEW\"],[\"shop\",\"orders\",\"BASE TABLE\"]],\"stats\":{\"state\":\"FINISHED\"}}"
+  },
+  {
+    "method": "POST",
+    "url": "http://127.0.0.1:18080/v1/statement",
+    "body": "SELECT table_schema, table_name, column_name, data_type, is_nullable, column_default, comment FROM \"memory\".information_schema.columns WHERE table_schema <> 'information_schema' AND table_schema = 'shop' ORDER BY table_schema, table_name, ordinal_position",
+    "status": 200,
+    "response": "{\"id\":\"20241021_000000_00006_puddle\",\"infoUri\":\"http://127.0.0.1:18080/ui/query.html?20241021_000000_00006_puddle\",\"nextUri\":\"http://127.0.0.1:18080/v1/statement/queued/20241021_000000_00006_puddle/1\",\"stats\":{\"state\":\"QUEUED\"}}"
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:18080/v1/statement/queued/20241021_000000_00006_puddle/1",
+    "status": 200,
+    "response": "{\"id\":\"20241021_000000_00006_puddle\",\"infoUri\":\"\",\"columns\":[{\"name\":\"table_schema\",\"type\":\"varchar\",\"typeSignature\":{\"rawType\":\"varchar\",\"arguments\":[]}},{\"name\":\"table_name\",\"type\":\"varchar\",\"typeSignature\":{\"rawType\":\"varchar\",\"arguments\":[]}},{\"name\":\"column_name\",\"type\":\"varchar\",\"typeSignature\":{\"rawType\":\"varchar\",\"arguments\":[]}},{\"name\":\"data_type\",\"type\":\"varchar\",\"typeSignature\":{\"rawType\":\"varchar\",\"arguments\":[]}},{\"name\":\"is_nullable\",\"type\":\"varchar\",\"typeSignature\":{\"rawType\":\"varchar\",\"arguments\":[]}},{\"name\":\"column_default\",\"type\":\"varchar\",\"typeSignature\":{\"rawType\":\"varchar\",\"arguments\":[]}},{\"name\":\"comment\",\"type\":\"varchar\",\"typeSignature\":{\"rawType\":\"varchar\",\"arguments\":[]}}],\"data\":[[\"shop\",\"customers\",\"id\",\"integer\",\"YES\",null,null],[\"shop\",\"customers\",\"name\",\"varchar(100)\",\"YES\",null,null],[\"shop\",\"customers\",\"email\",\"varchar(255)\",\"YES\",null,\"Lower case\"],[\"shop\",\"customers\",\"signed_up\",\"date\",\"YES\",null,null],[\"shop\",\"customers\",\"active\",\"boolean\",\"YES\",null,null],[\"shop\",\"order_totals\",\"name\",\"varchar(100)\",\"YES\",null,null],[\"shop\",\"order_totals\",\"orders\",\"bigint\",\"YES\",null,null],[\"shop\",\"order_totals\",\"total\",\"decimal(38,2)\",\"YES\",null,null],[\"shop\",\"orders\",\"id\",\"integer\",\"YES\",null,null],[\"shop\",\"orders\",\"customer_id\",\"integer\",\"YES\",null,null],[\"shop\",\"orders\",\"total\",\"decimal(10,2)\",\"YES\",null,null],[\"shop\",\"orders\",\"placed_at\",\"timestamp(3)\",\"YES\",null,null],[\"shop\",\"orders\",\"status\",\"varchar(10)\",\"YES\",null,null],[\"shop\",\"orders\",\"notes\",\"varchar\",\"YES\",null,null],[\"shop\",\"orders\",\"tags\",\"array(varchar)\",\"YES\",null,null]],\"stats\":{\"state\":\"FINISHED\"}}"
+  },
+  {
+    "method": "POST",
+    "url": "http://127.0.0.1:18080/v1/statement",
+    "body": "SELECT table_schema, table_name, view_definition FROM \"memory\".information_schema.views WHERE table_schema <> 'information_schema' AND table_schema = 'shop'",
+    "status": 200,
+    "response": "{\"id\":\"20241021_000000_00007_puddle\",\"infoUri\":\"http://127.0.0.1:18080/ui/query.html?20241021_000000_00007_puddle\",\"nextUri\":\"http://127.0.0.1:18080/v1/statement/queued/20241021_000000_00007_puddle/1\",\"stats\":{\"state\":\"QUEUED\"}}"
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:18080/v1/statement/queued/20241021_000000_00007_puddle/1",
+    "status": 200,
+    "response": "{\"id\":\"20241021_000000_00007_puddle\",\"infoUri\":\"\",\"columns\":[{\"name\":\"table_schema\",\"type\":\"varchar\",\"typeSignature\":{\"rawType\":\"varchar\",\"arguments\":[]}},{\"name\":\"table_name\",\"type\":\"varchar\",\"typeSignature\":{\"rawType\":\"varchar\",\"arguments\":[]}},{\"name\":\"view_definition\",\"type\":\"varchar\",\"typeSignature\":{\"rawType\":\"varchar\",\"arguments\":[]}}],\"data\":[[\"shop\",\"order_totals\",\"SELECT c.name, count(o.id) AS orders, sum(o.total) AS total FROM customers c LEFT JOIN orders o ON o.customer_id = c.id GROUP BY c.name\"]],\"stats\":{\"state\":\"FINISHED\"}}"
+  },
+  {
+    "method": "POST",
+    "url": "http://127.0.0.1:18080/v1/statement",
+    "body": "SELECT * FROM \"orders\" LIMIT 10",
+    "status": 200,
+    "response": "{\"id\":\"20241021_000000_00008_puddle\",\"infoUri\":\"http://127.0.0.1:18080/ui/query.html?20241021_000000_00008_puddle\",\"nextUri\":\"http://127.0.0.1:18080/v1/statement/queued/20241021_000000_00008_puddle/1\",\"stats\":{\"state\":\"QUEUED\"}}"
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:18080/v1/statement/queued/20241021_000000_00008_puddle/1",
+    "status": 200,
+    "response": "{\"id\":\"20241021_000000_00008_puddle\",\"infoUri\":\"\",\"columns\":[{\"name\":\"id\",\"type\":\"integer\",\"typeSignature\":{\"rawType\":\"integer\",\"arguments\":[]}},{\"name\":\"customer_id\",\"type\":\"integer\",\"typeSignature\":{\"rawType\":\"integer\",\"arguments\":[]}},{\"name\":\"total\",\"type\":\"decimal(10,2)\",\"typeSignature\":{\"rawType\":\"decimal\",\"arguments\":[]}},{\"name\":\"placed_at\",\"type\":\"timestamp(3)\",\"typeSignature\":{\"rawType\":\"timestamp\",\"arguments\":[]}},{\"name\":\"status\",\"type\":\"varchar(10)\",\"typeSignature\":{\"rawType\":\"varchar\",\"arguments\":[]}},{\"name\":\"notes\",\"type\":\"varchar\",\"typeSignature\":{\"rawType\":\"varchar\",\"arguments\":[]}},{\"name\":\"tags\",\"type\":\"array(varchar)\",\"typeSignature\":{\"rawType\":\"array\",\"arguments\":[]}}],\"data\":[[101,1,\"19.99\",\"2024-04-01 09:30:00.000\",\"shipped\",\"Gift wrap\",[\"gift\",\"express\"]],[102,1,\"5.50\",\"2024-04-02 14:00:00.000\",\"placed\",null,[]],[103,2,\"120.00\",\"2024-04-03 11:15:00.000\",\"returned\",null,[\"bulk\"]],[104,3,\"42.25\",\"2024-04-04 16:45:00.000\",\"placed\",null,[]]],\"stats\":{\"state\":\"FINISHED\"}}"
+  },
+  {
+    "method": "POST",
+    "url": "http://127.0.0.1:18080/v1/statement",
+    "body": "SELECT * FROM (SELECT c.name, o.total, o.placed_at, o.status, c.signed_up, c.active FROM orders o JOIN customers c ON c.id = o.customer_id ORDER BY o.id) AS puddle_query LIMIT 2",
+    "status": 200,
+    "response": "{\"id\":\"20241021_000000_00009_puddle\",\"infoUri\":\"http://127.0.0.1:18080/ui/query.html?20241021_000000_00009_puddle\",\"nextUri\":\"http://127.0.0.1:18080/v1/statement/queued/20241021_000000_00009_puddle/1\",\"stats\":{\"state\":\"QUEUED\"}}"
+  },
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:18080/v1/statement/queued/20241021_000000_00009_puddle/1",
+    "status": 200,
+    "response": "{\"id\":\"20241021_000000_00009_puddle\",\"infoUri\":\"\",\"columns\":[{\"name\":\"name\",\"type\":\"varchar(100)\",\"typeSignature\":{\"rawType\":\"varchar\",\"arguments\":[]}},{\"name\":\"total\",\"type\":\"decimal(10,2)\",\"typeSignature\":{\"rawType\":\"decimal\",\"arguments\":[]}},{\"name\":\"placed_at\",\"type\":\"timestamp(3)\",\"typeSignature\":{\"rawType\":\"timestamp\",\"arguments\":[]}},{\"name\":\"status\",\"type\":\"varchar(10)\",\"typeSignature\":{\"rawType\":\"varchar\",\"arguments\":[]}},{\"name\":\"signed_up\",\"type\":\"date\",\"typeSignature\":{\"rawType\":\"date\",\"arguments\":[]}},{\"name\":\"active\",\"type\":\"boolean\",\"typeSignature\":{\"rawType\":\"boolean\",\"arguments\":[]}}],\"data\":[[\"Ada Lovelace\",\"19.99\",\"2024-04-01 09:30:00.000\",\"shipped\",\"2024-01-15\",true],[\"Ada Lovelace\",\"5.50\",\"2024-04-02 14:00:00.000\",\"placed\",\"2024-01-15\",true]],\"stats\":{\"state\":\"FINISHED\"}}"
+  }
+]
