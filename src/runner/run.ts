@@ -19,7 +19,7 @@ import { readFeed } from '../sources/odata';
 import { placeSources, type SourcePlace } from './sources';
 import type { RunnerDb } from './db';
 import { tableToCsv, xmlToTable } from '../xml';
-import { decodeText, isRewrittenText, readText, rewrittenCsv } from '../sources/text';
+import { decodeText, isRewrittenText, readText, readWord, rewrittenCsv } from '../sources/text';
 
 export const RUN_LOG_SCHEMA = 'puddle-run/1';
 
@@ -130,8 +130,11 @@ async function stage(places: SourcePlace[], stageDir: string, { fetchText, fetch
         const xml = source.kind === 'clipboard' ? source.clipboard!.text : source.kind === 'url' ? await fetchOrThrow(fetchText, p.path) : await bytes();
         const o = source.parseOptions;
         writeFileSync(target, tableToCsv(await xmlToTable(xml, { record: o.record, expand: o.expand })));
+      } else if (source.format === 'word') {
+        // The table of the document the project reads, as in the browser, then DuckDB reads the CSV.
+        writeFileSync(target, rewrittenCsv(await readWord(source.kind === 'url' ? await fetchBytes(fetchImpl, p.path) : await bytes(), source.parseOptions)));
       } else if (isRewrittenText(source)) {
-        // Fixed-width text and pipe tables: read into rows as in the browser, then DuckDB reads the CSV.
+        // Fixed-width text, pipe tables and structured text: read into rows as in the browser, then DuckDB reads the CSV.
         const text = source.kind === 'clipboard' ? source.clipboard!.text : source.kind === 'url' ? await fetchOrThrow(fetchText, p.path) : decodeText(await bytes(), source.parseOptions.encoding);
         writeFileSync(target, rewrittenCsv(readText(source.format, text, source.parseOptions)));
       } else if (source.kind === 'clipboard') writeFileSync(target, source.clipboard!.text);

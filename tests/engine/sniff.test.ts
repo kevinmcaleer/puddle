@@ -6,7 +6,7 @@ import { compile, sourceFileName } from '../../src/compiler';
 import { EngineClient } from '../../src/engine/client';
 import { tableRows } from '../../src/engine';
 import { sniff } from '../../src/sources/sniff';
-import { decodeText, isRewrittenText, readText, rewrittenCsv } from '../../src/sources/text';
+import { decodeText, isRewrittenTextSource, readText, rewrittenCsv } from '../../src/sources/text';
 import { createNodeBackend } from '../helpers/nodeBackend';
 import { flow, src } from '../helpers/projects';
 
@@ -23,7 +23,7 @@ const utf16le = (text: string) => bytes([0xff, 0xfe], Array.from(text).flatMap((
 async function read(name: string, data: Uint8Array) {
   const sniffed = sniff({ name, head: data.subarray(0, 1024 * 1024), size: data.length });
   const source = src({ id: `s_${name.replace(/\W/g, '_')}`, format: sniffed.format, parseOptions: sniffed.parseOptions });
-  if (isRewrittenText(source)) await engine.registerText(sourceFileName(source), rewrittenCsv(readText(source.format, decodeText(data, source.parseOptions.encoding), source.parseOptions)));
+  if (isRewrittenTextSource(source)) await engine.registerText(sourceFileName(source), rewrittenCsv(readText(source.format, decodeText(data, source.parseOptions.encoding), source.parseOptions)));
   else await engine.registerBuffer(sourceFileName(source), data);
   const project = flow({ sources: [source], nodes: [{ id: 'in', type: 'source', sourceId: source.id }] });
   const columns = await engine.describe(`SELECT * FROM (${compile(project, { nodeId: 'in' }).sql}) LIMIT 0`);

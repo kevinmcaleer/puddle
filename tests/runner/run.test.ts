@@ -250,6 +250,34 @@ describe('puddle-run', () => {
     expect(readFileSync(join(outDir, 'out3.csv'), 'utf8').trim().split('\n')[1]).toBe('1,Lighthouse,landmark,34.5,"{""type"":""Point"",""coordinates"":[-3.1,53.4]}"');
   });
 
+  it('reads the table of a Word document the browser chose, and the biggest when none was', async () => {
+    writeFileSync(join(folder, 'report.docx'), readFileSync(join(__dirname, '../fixtures/word/report.docx')));
+    const doc = (id: string, parseOptions: Source['parseOptions'] = {}) => ({ ...src({ id, format: 'word' as const }), name: 'report.docx', parseOptions, file: { originalName: 'report.docx', size: 1, lastModified: 0, headHash: 'h' } });
+    const p = flow({
+      sources: [doc('a'), doc('b', { table: '1' })],
+      nodes: [
+        { id: 'a', type: 'source', sourceId: 'a' },
+        { id: 'b', type: 'source', sourceId: 'b' },
+        { id: 'out', type: 'output', outputSpec: { format: 'csv', options: {} } },
+        { id: 'out2', type: 'output', outputSpec: { format: 'csv', options: {} } },
+      ],
+      wires: [
+        ['a', 'out', 0],
+        ['b', 'out2', 0],
+      ],
+    });
+    p.name = 'Word';
+    const outDir = join(folder, 'out-word');
+    const { log } = await runProject(p, { folder, outDir, db, now: () => new Date('2026-10-17T03:00:00Z') });
+    expect(log.sources.map((s) => s.problem)).toEqual([undefined, undefined]);
+    expect(log.outputs.map((o) => [o.nodeName, o.status, o.rows])).toEqual([
+      ['out', 'written', 3],
+      ['out2', 'written', 4],
+    ]);
+    expect(readFileSync(join(outDir, 'out.csv'), 'utf8').trim().split('\n')[0]).toBe('Name,Role & team,Role & team 2,Started');
+    expect(readFileSync(join(outDir, 'out2.csv'), 'utf8').trim().split('\n')).toEqual(['Region,Quarter,Amount', 'North,Q1,120.0', 'North,Q2,130.5', 'South,Q1,80.0', 'South,Q2,']);
+  });
+
   it('reads spreadsheets in every format with the sheet options the browser saved: an old .xls and a dBase table', async () => {
     writeFileSync(join(folder, 'sales.xls'), readFileSync(join(__dirname, '../fixtures/formats/sales.xls')));
     writeFileSync(join(folder, 'sales.dbf'), readFileSync(join(__dirname, '../fixtures/formats/sales.dbf')));
