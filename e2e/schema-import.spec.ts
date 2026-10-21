@@ -29,13 +29,14 @@ test('importing SQL: paste a script, see what was found and skipped, and the tab
   const dialog = page.getByRole('dialog', { name: 'Import SQL' });
   await dialog.getByLabel('SQL').fill(SQL);
   await expect(dialog.getByLabel('Database')).toContainText('Detected: MySQL and MariaDB');
-  await expect(dialog.getByTestId('import-sql-found')).toHaveText('2 tables, 1 ref found.');
-  await expect(dialog).toContainText('2 statements skipped: 1 INSERT, 1 CREATE VIEW');
+  await expect(dialog.getByTestId('import-sql-found')).toHaveText('2 tables, 1 ref, 1 row found.');
+  await expect(dialog).toContainText('1 statement skipped: 1 CREATE VIEW');
   await dialog.getByRole('button', { name: 'Import 2 tables' }).click();
 
   const text = page.getByRole('combobox', { name: 'DBML' });
   await expect(text).toHaveValue(/Table customers \{/);
   await expect(text).toHaveValue(/delete: cascade/);
+  await expect(text).toHaveValue(/records customers\(id, email\) \{\n {2}1, 'ada@example.com'\n\}/);
   await expect(page.getByTestId('schema-table-customers')).toHaveClass(/is-selected/);
   await expect(page.getByTestId('schema-table-orders')).toHaveClass(/is-selected/);
   await expect(page.getByTestId('schema-ref-orders-customers')).toBeAttached();

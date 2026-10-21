@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { expectRows, node, openApp } from './helpers/app';
+import { expectRows, node, openApp, selectNode } from './helpers/app';
 
 test('the CRM export sample opens with its comment lines and footer skipped, and Fix all leaves the clean table', async ({ page }) => {
   await openApp(page);
@@ -11,7 +11,7 @@ test('the CRM export sample opens with its comment lines and footer skipped, and
   await expectRows(page, 45);
 
   // The read options the sniff chose show in the inspector.
-  await node(page, 'messy.txt').click();
+  await selectNode(page, 'messy.txt');
   await expect(page.getByLabel('Delimiter')).toHaveValue(';');
   await expect(page.getByLabel('Skip lines at the top')).toHaveValue('2');
   await expect(page.getByLabel('Skip rows at the bottom')).toHaveValue('1');

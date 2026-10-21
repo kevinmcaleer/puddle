@@ -1,7 +1,7 @@
 // Where a diagram element with no saved place goes: beside something it is joined to, in the first spot that is free,
 // or else on a shelf under everything already drawn. Deterministic, so a table keeps its place from one keystroke to the
 // next without anything being saved.
-import { GAP, GUTTER, MARGIN, ROW } from './metrics';
+import { GAP, GUTTER, MARGIN, PAD, ROW } from './metrics';
 
 export interface Point {
   x: number;
@@ -106,6 +106,83 @@ export function placeNew(items: Sized[], placed: Record<string, Point>): Record<
     const first = next ?? todo.find((s) => left.has(s.id))!;
     onShelf(size.get(first.id)!);
     left.delete(first.id);
+  }
+  return out;
+}
+
+/** The frame drawn around boxes: padded, with a header row on top for the group's name. */
+export function frameOf(boxes: Rect[]): Rect | undefined {
+  if (!boxes.length) return undefined;
+  const x = Math.min(...boxes.map((r) => r.x));
+  const y = Math.min(...boxes.map((r) => r.y));
+  const w = Math.max(...boxes.map((r) => r.x + r.w)) - x;
+  const h = Math.max(...boxes.map((r) => r.y + r.h)) - y;
+  return { x: x - PAD, y: y - PAD - ROW, w: w + PAD * 2, h: h + PAD * 2 + ROW };
+}
+
+/**
+ * Places for the elements `placed` doesn't have, as `placeNew`, with each group's frame kept clear of the others. A
+ * group none of whose members has a place yet is laid out on its own and then placed as one block, frame and all, so
+ * its members don't mix with another group's; a group whose members all have places keeps anything new out of its
+ * frame. `groups` lists each group's members, each element in one group at most.
+ */
+export function placeGrouped(items: Sized[], placed: Record<string, Point>, groups: string[][]): Record<string, Point> {
+  const size = new Map(items.map((s) => [s.id, s]));
+  const blockOf = new Map<string, string>();
+  const blocks: { id: string; members: Sized[]; local: Record<string, Point>; frame: Rect }[] = [];
+  const obstacles: Sized[] = [];
+  const fixed: Record<string, Point> = { ...placed };
+  groups.forEach((ids, i) => {
+    const members = ids.map((id) => size.get(id)).filter((s) => s != null);
+    if (!members.length) return;
+    if (members.every((m) => placed[m.id])) {
+      const frame = frameOf(members.map((m) => ({ ...placed[m.id]!, w: m.w, h: m.h })))!;
+      const id = `frame:${i}`;
+      obstacles.push({ id, w: frame.w, h: frame.h, near: [] });
+      fixed[id] = { x: frame.x, y: frame.y };
+      return;
+    }
+    if (members.some((m) => placed[m.id])) return;
+    const inside = new Set(ids);
+    const local = placeNew(
+      members.map((m) => {
+        const keep = m.near.map((_, k) => k).filter((k) => inside.has(m.near[k]!));
+        return { ...m, near: keep.map((k) => m.near[k]!), after: m.after && keep.map((k) => m.after![k]!) };
+      }),
+      {},
+    );
+    const id = `block:${i}`;
+    blocks.push({ id, members, local, frame: frameOf(members.map((m) => ({ ...local[m.id]!, w: m.w, h: m.h })))! });
+    for (const m of members) blockOf.set(m.id, id);
+  });
+  if (!blocks.length && !obstacles.length) return placeNew(items, placed);
+
+  // Everything outside a block, then each block as one element joined to what its members are joined to.
+  const outerNear = (s: Sized, self?: string) => {
+    const near: string[] = [];
+    const after: boolean[] = [];
+    s.near.forEach((n, k) => {
+      const to = blockOf.get(n) ?? n;
+      if (to === self || near.includes(to)) return;
+      near.push(to);
+      after.push(s.after?.[k] ?? true);
+    });
+    return { near, after };
+  };
+  const outer: Sized[] = [
+    ...obstacles,
+    ...items.filter((s) => !blockOf.has(s.id)).map((s) => ({ ...s, ...outerNear(s) })),
+    ...blocks.map((b) => {
+      const joined = b.members.map((m) => outerNear(m, b.id));
+      return { id: b.id, w: b.frame.w, h: b.frame.h, near: joined.flatMap((j) => j.near), after: joined.flatMap((j) => j.after) };
+    }),
+  ];
+  const at = placeNew(outer, fixed);
+  const out: Record<string, Point> = {};
+  for (const s of items) if (!blockOf.has(s.id) && at[s.id]) out[s.id] = at[s.id]!;
+  for (const b of blocks) {
+    const to = at[b.id]!;
+    for (const m of b.members) out[m.id] = { x: to.x + b.local[m.id]!.x - b.frame.x, y: to.y + b.local[m.id]!.y - b.frame.y };
   }
   return out;
 }
