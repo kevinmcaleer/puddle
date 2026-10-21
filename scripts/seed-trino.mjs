@@ -32,16 +32,36 @@ async function run(sql) {
   }
 }
 
-// The cluster may still be starting (it answers 503 until it does): try for a while.
+// The cluster may still be starting: it answers 503 until the coordinator is up, and for a while after that the
+// coordinator accepts statements but has no worker to run them on ("No nodes available to run query"). Wait for
+// /v1/info to say it has started, then try each statement for a while.
+const NOT_READY = /No nodes available|Coordinator is still starting|Expected response code/;
+async function ready() {
+  const res = await fetch(`${u.origin}/v1/info`, { headers });
+  if (!res.ok) throw new Error(`${res.status} from /v1/info`);
+  const info = await res.json();
+  if (info.starting) throw new Error('Trino is still starting');
+}
+async function runWhenReady(sql) {
+  for (let attempt = 0; ; attempt++) {
+    try {
+      return await run(sql);
+    } catch (e) {
+      if (attempt >= 90 || !NOT_READY.test(String(e))) throw e;
+      await new Promise((r) => setTimeout(r, 2000));
+    }
+  }
+}
 for (let attempt = 0; ; attempt++) {
   try {
-    await run('SELECT 1');
+    await ready();
+    await runWhenReady('SELECT 1');
     break;
   } catch (e) {
     if (attempt >= 90) throw e;
     await new Promise((r) => setTimeout(r, 2000));
   }
 }
-for (const s of statements) await run(s);
-const [[n]] = await run('SELECT count(*) FROM memory.shop.orders');
+for (const s of statements) await runWhenReady(s);
+const [[n]] = await runWhenReady('SELECT count(*) FROM memory.shop.orders');
 console.log(`Seeded memory.shop at ${u.host}: ${n} orders.`);
