@@ -495,7 +495,7 @@ test('schema import and export', async ({ page }) => {
       "INSERT INTO suppliers (name) VALUES ('Acme');",
     ].join('\n'),
   );
-  await expect(dialog.getByTestId('import-sql-found')).toHaveText('2 tables, 1 ref found.');
+  await expect(dialog.getByTestId('import-sql-found')).toHaveText('2 tables, 1 ref, 1 row found.');
   await shot(page, 'schema-import-sql', dialog);
 });
 
