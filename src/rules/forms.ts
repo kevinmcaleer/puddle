@@ -1,7 +1,8 @@
 // The editor side of each rule type: its name in the Add rule menu, its form and its defaults.
 import { newId, type ColumnSchema, type Rule } from '../model';
 import { describeRule, PATTERN_PRESETS, ruleDef, type NodeNames } from '../compiler';
-import { schemaErrors, type FieldSpec } from '../steps';
+// From the forms module itself, not the steps index (which registers every step's editor), so the report's rule names reach puddle-run without them.
+import { schemaErrors, type FieldSpec } from '../steps/forms';
 
 export interface RuleForm {
   type: string;

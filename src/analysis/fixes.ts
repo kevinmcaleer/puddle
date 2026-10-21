@@ -16,10 +16,10 @@ export interface FixContext {
 
 /**
  * The order fixes run in: hidden and mangled characters and spaces first (so a padded repeated header matches its
- * names), rows out next, values put right, types changed, duplicates once values agree, then columns removed, split
+ * names), shifted rows back in line, rows out next, values put right, types changed, duplicates once values agree, then columns removed, split
  * or unpivoted, and renamed last so every step before names the columns as the data had them.
  */
-const ORDER = ['removeNonPrinting', 'fixMojibake', 'trimWhitespace', 'collapseSpaces', 'filterRows', 'removeBlankRows', 'emptyToNull', 'replaceValues', 'changeCase', 'findReplace', 'parseNumbers', 'parseDates', 'changeType', 'duplicateRows', 'removeColumns', 'splitByDelimiter', 'unpivot', 'renameColumns'];
+const ORDER = ['removeNonPrinting', 'fixMojibake', 'trimWhitespace', 'collapseSpaces', 'realignRows', 'filterRows', 'removeBlankRows', 'emptyToNull', 'replaceValues', 'changeCase', 'findReplace', 'parseNumbers', 'parseDates', 'changeType', 'duplicateRows', 'removeColumns', 'splitByDelimiter', 'unpivot', 'renameColumns'];
 
 /** Issues of the same fix type (and settings) share one step: a changeCase to title and one to upper stay apart. */
 const groupKey = (fix: StepFix) => `${fix.type}:${JSON.stringify(fix.params ?? {})}`;

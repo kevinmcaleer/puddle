@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { compileAnalysis, compileDistinctFacts, compileShape, compileValueCounts } from './analysis';
+import { compileAnalysis, compileDistinctFacts, compileShape, compileSkew, compileValueCounts } from './analysis';
 import { flow, src } from '../../tests/helpers/projects';
 
 const project = flow({ sources: [src({ id: 'a', format: 'csv' })], nodes: [{ id: 'in', type: 'source', sourceId: 'a' }] });
@@ -62,5 +62,20 @@ describe('a row limit', () => {
       expect(sql).toMatch(/\) LIMIT 500\)/);
     }
     expect(compileAnalysis(project, { nodeId: 'in' }, checks, ['name'])).not.toContain('LIMIT');
+  });
+});
+
+describe('compileSkew', () => {
+  it('groups the rows by the kind of value in each column, with the first and last row of each group', () => {
+    const sql = compileSkew(project, { nodeId: 'in' }, [{ name: 'id', type: 'BIGINT' }, { name: 'when', type: 'DATE' }, { name: 'ok', type: 'BOOLEAN' }, { name: 'note', type: 'VARCHAR' }, { name: 'blob', type: 'BLOB' }], 500);
+    expect(sql).toMatch(/^SELECT sig, count\(\*\) AS n, min\(rn\) AS first, max\(rn\) AS last FROM \(SELECT row_number\(\) OVER \(\) AS rn, concat\(/);
+    expect(sql).toContain(`CASE WHEN "id" IS NULL THEN 'e' ELSE 'n' END`);
+    expect(sql).toContain(`CASE WHEN "when" IS NULL THEN 'e' ELSE 'd' END`);
+    expect(sql).toContain(`CASE WHEN "ok" IS NULL THEN 'e' ELSE 'b' END`);
+    expect(sql).toContain(`CASE WHEN nullif(trim(CAST("note" AS VARCHAR)), '') IS NULL THEN 'e' WHEN`);
+    expect(sql).toContain(`THEN 'd' ELSE 't' END`);
+    expect(sql).toContain(`CASE WHEN "blob" IS NULL THEN 'e' ELSE 'x' END`);
+    expect(sql).toMatch(/\) LIMIT 500\)\) GROUP BY sig ORDER BY n DESC, first LIMIT 40$/);
+    expect(() => compileSkew(project, { nodeId: 'in' }, [{ name: 'id', type: 'BIGINT' }])).toThrow(/Too few columns/);
   });
 });

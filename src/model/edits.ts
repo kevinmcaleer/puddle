@@ -124,7 +124,7 @@ export function removeNodes(project: Project, ids: string[]): Project {
   return { ...p, sources: p.sources.filter((s) => used.has(s.id)), view: viewWithout(p) };
 }
 
-export function updateSource(project: Project, sourceId: string, patch: Partial<Pick<Source, 'parseOptions' | 'detectedSchema' | 'name' | 'file' | 'url' | 'expected'>>): Project {
+export function updateSource(project: Project, sourceId: string, patch: Partial<Pick<Source, 'parseOptions' | 'detectedSchema' | 'name' | 'format' | 'file' | 'url' | 'archive' | 'expected'>>): Project {
   return { ...project, sources: project.sources.map((s) => (s.id === sourceId ? { ...s, ...patch } : s)) };
 }
 

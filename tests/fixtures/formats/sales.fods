@@ -1,0 +1,122 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<office:document xmlns:office="urn:oasis:names:tc:opendocument:xmlns:office:1.0" xmlns:table="urn:oasis:names:tc:opendocument:xmlns:table:1.0" xmlns:style="urn:oasis:names:tc:opendocument:xmlns:style:1.0" xmlns:text="urn:oasis:names:tc:opendocument:xmlns:text:1.0" xmlns:draw="urn:oasis:names:tc:opendocument:xmlns:drawing:1.0" xmlns:fo="urn:oasis:names:tc:opendocument:xmlns:xsl-fo-compatible:1.0" xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:meta="urn:oasis:names:tc:opendocument:xmlns:meta:1.0" xmlns:number="urn:oasis:names:tc:opendocument:xmlns:datastyle:1.0" xmlns:presentation="urn:oasis:names:tc:opendocument:xmlns:presentation:1.0" xmlns:svg="urn:oasis:names:tc:opendocument:xmlns:svg-compatible:1.0" xmlns:chart="urn:oasis:names:tc:opendocument:xmlns:chart:1.0" xmlns:dr3d="urn:oasis:names:tc:opendocument:xmlns:dr3d:1.0" xmlns:math="http://www.w3.org/1998/Math/MathML" xmlns:form="urn:oasis:names:tc:opendocument:xmlns:form:1.0" xmlns:script="urn:oasis:names:tc:opendocument:xmlns:script:1.0" xmlns:ooo="http://openoffice.org/2004/office" xmlns:ooow="http://openoffice.org/2004/writer" xmlns:oooc="http://openoffice.org/2004/calc" xmlns:dom="http://www.w3.org/2001/xml-events" xmlns:xforms="http://www.w3.org/2002/xforms" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:sheet="urn:oasis:names:tc:opendocument:sh33tjs:1.0" xmlns:rpt="http://openoffice.org/2005/report" xmlns:of="urn:oasis:names:tc:opendocument:xmlns:of:1.2" xmlns:xhtml="http://www.w3.org/1999/xhtml" xmlns:grddl="http://www.w3.org/2003/g/data-view#" xmlns:tableooo="http://openoffice.org/2009/table" xmlns:drawooo="http://openoffice.org/2010/draw" xmlns:calcext="urn:org:documentfoundation:names:experimental:calc:xmlns:calcext:1.0" xmlns:loext="urn:org:documentfoundation:names:experimental:office:xmlns:loext:1.0" xmlns:field="urn:openoffice:names:experimental:ooo-ms-interop:xmlns:field:1.0" xmlns:formx="urn:openoffice:names:experimental:ooxml-odf-interop:xmlns:form:1.0" xmlns:css3t="http://www.w3.org/TR/css3-text/" office:version="1.2" xmlns:config="urn:oasis:names:tc:opendocument:xmlns:config:1.0" office:mimetype="application/vnd.oasis.opendocument.spreadsheet">
+<office:meta><meta:generator>SheetJS 0.20.3</meta:generator></office:meta>
+ <office:automatic-styles>
+  <style:style style:name="ta1" style:family="table" style:master-page-name="mp1">
+   <style:table-properties table:display="true" style:writing-mode="lr-tb"/>
+  </style:style>
+  <number:date-style style:name="N37" number:automatic-order="true">
+   <number:month number:style="long"/>
+   <number:text>/</number:text>
+   <number:day number:style="long"/>
+   <number:text>/</number:text>
+   <number:year/>
+  </number:date-style>
+<number:date-style style:name="N69"><number:year number:style="long"/><number:month number:style="long" number:textual="false"/><number:day number:style="long"/></number:date-style>
+<number:date-style style:name="N70"><number:year number:style="long"/><number:month number:style="long" number:textual="false"/><number:day number:style="long"/><number:hours number:style="long"/><number:text>:</number:text><number:minutes number:style="long"/></number:date-style>
+  <style:style style:name="ce1" style:family="table-cell" style:parent-style-name="Default" style:data-style-name="N37"/>
+<style:style style:name="ce69" style:family="table-cell" style:parent-style-name="Default" style:data-style-name="N69"/>
+<style:style style:name="ce70" style:family="table-cell" style:parent-style-name="Default" style:data-style-name="N70"/>
+ </office:automatic-styles>
+  <office:body>
+    <office:spreadsheet>
+      <table:table table:name="Sales" table:style-name="ta1">
+        <table:table-row>
+          <table:table-cell table:number-columns-spanned="8" table:number-rows-spanned="1" office:value-type="string"><text:p>Sales report 2026</text:p></table:table-cell>
+          <table:covered-table-cell/>
+          <table:covered-table-cell/>
+          <table:covered-table-cell/>
+          <table:covered-table-cell/>
+          <table:covered-table-cell/>
+          <table:covered-table-cell/>
+          <table:covered-table-cell/>
+        </table:table-row>
+        <table:table-row>
+          <table:table-cell />
+          <table:table-cell />
+          <table:table-cell />
+          <table:table-cell />
+          <table:table-cell />
+          <table:table-cell />
+          <table:table-cell />
+          <table:table-cell />
+        </table:table-row>
+        <table:table-row>
+          <table:table-cell office:value-type="string"><text:p>Region</text:p></table:table-cell>
+          <table:table-cell office:value-type="string"><text:p>Order date</text:p></table:table-cell>
+          <table:table-cell office:value-type="string"><text:p>Amount</text:p></table:table-cell>
+          <table:table-cell office:value-type="string"><text:p>Paid</text:p></table:table-cell>
+          <table:table-cell office:value-type="string"><text:p>Notes</text:p></table:table-cell>
+          <table:table-cell table:number-columns-spanned="2" table:number-rows-spanned="1" office:value-type="string"><text:p>Contact</text:p></table:table-cell>
+          <table:covered-table-cell/>
+          <table:table-cell />
+        </table:table-row>
+        <table:table-row>
+          <table:table-cell office:value-type="string"><text:p>North</text:p></table:table-cell>
+          <table:table-cell office:value-type="float" office:value="46027" table:style-name="ce69"><text:p>46027</text:p></table:table-cell>
+          <table:table-cell office:value-type="float" office:value="120.5"><text:p>120.5</text:p></table:table-cell>
+          <table:table-cell office:value-type="boolean" office:boolean-value="true"><text:p>TRUE</text:p></table:table-cell>
+          <table:table-cell office:value-type="string"><text:p>First order</text:p></table:table-cell>
+          <table:table-cell office:value-type="string"><text:p>Ann</text:p></table:table-cell>
+          <table:table-cell office:value-type="string"><text:p>ann@example.com</text:p></table:table-cell>
+          <table:table-cell office:value-type="float" office:value="1"><text:p>1</text:p></table:table-cell>
+        </table:table-row>
+        <table:table-row>
+          <table:table-cell office:value-type="string"><text:p>South</text:p></table:table-cell>
+          <table:table-cell office:value-type="float" office:value="46063" table:style-name="ce69"><text:p>46063</text:p></table:table-cell>
+          <table:table-cell office:value-type="float" office:value="80"><text:p>80</text:p></table:table-cell>
+          <table:table-cell office:value-type="boolean" office:boolean-value="false"><text:p>FALSE</text:p></table:table-cell>
+          <table:table-cell />
+          <table:table-cell office:value-type="string"><text:p>Bob</text:p></table:table-cell>
+          <table:table-cell office:value-type="string"><text:p>bob@example.com</text:p></table:table-cell>
+          <table:table-cell office:value-type="float" office:value="2"><text:p>2</text:p></table:table-cell>
+        </table:table-row>
+        <table:table-row>
+          <table:table-cell office:value-type="string"><text:p>East</text:p></table:table-cell>
+          <table:table-cell office:value-type="float" office:value="46096" table:style-name="ce69"><text:p>46096</text:p></table:table-cell>
+          <table:table-cell office:value-type="float" office:value="42.25"><text:p>42.25</text:p></table:table-cell>
+          <table:table-cell office:value-type="boolean" office:boolean-value="true"><text:p>TRUE</text:p></table:table-cell>
+          <table:table-cell office:value-type="string"><text:p>Rush</text:p></table:table-cell>
+          <table:table-cell office:value-type="string"><text:p>Cy</text:p></table:table-cell>
+          <table:table-cell office:value-type="string"><text:p>cy@example.com</text:p></table:table-cell>
+          <table:table-cell office:value-type="float" office:value="3"><text:p>3</text:p></table:table-cell>
+        </table:table-row>
+        <table:table-row>
+          <table:table-cell office:value-type="string"><text:p>West</text:p></table:table-cell>
+          <table:table-cell office:value-type="float" office:value="46112" table:style-name="ce69"><text:p>46112</text:p></table:table-cell>
+          <table:table-cell />
+          <table:table-cell office:value-type="boolean" office:boolean-value="false"><text:p>FALSE</text:p></table:table-cell>
+          <table:table-cell office:value-type="string"><text:p>Awaiting stock</text:p></table:table-cell>
+          <table:table-cell office:value-type="string"><text:p>Di</text:p></table:table-cell>
+          <table:table-cell office:value-type="string"><text:p>di@example.com</text:p></table:table-cell>
+          <table:table-cell office:value-type="float" office:value="4"><text:p>4</text:p></table:table-cell>
+        </table:table-row>
+      </table:table>
+      <table:table table:name="Visits" table:style-name="ta1">
+        <table:table-row>
+          <table:table-cell office:value-type="string"><text:p>Visitor</text:p></table:table-cell>
+          <table:table-cell office:value-type="string"><text:p>Arrived</text:p></table:table-cell>
+          <table:table-cell office:value-type="string"><text:p>Count</text:p></table:table-cell>
+          <table:table-cell office:value-type="string"><text:p>Mixed</text:p></table:table-cell>
+        </table:table-row>
+        <table:table-row>
+          <table:table-cell office:value-type="string"><text:p>Ann</text:p></table:table-cell>
+          <table:table-cell office:value-type="float" office:value="46027.39583333333" table:style-name="ce70"><text:p>46027.39583333333</text:p></table:table-cell>
+          <table:table-cell office:value-type="float" office:value="3"><text:p>3</text:p></table:table-cell>
+          <table:table-cell office:value-type="float" office:value="1"><text:p>1</text:p></table:table-cell>
+        </table:table-row>
+        <table:table-row>
+          <table:table-cell office:value-type="string"><text:p>Bob</text:p></table:table-cell>
+          <table:table-cell office:value-type="float" office:value="46028.58333333333" table:style-name="ce70"><text:p>46028.58333333333</text:p></table:table-cell>
+          <table:table-cell office:value-type="float" office:value="5"><text:p>5</text:p></table:table-cell>
+          <table:table-cell office:value-type="string"><text:p>two</text:p></table:table-cell>
+        </table:table-row>
+      </table:table>
+      <table:table table:name="Empty" table:style-name="ta1">
+        <table:table-row>
+          <table:table-cell />
+        </table:table-row>
+      </table:table>
+    </office:spreadsheet>
+  </office:body>
+</office:document>
