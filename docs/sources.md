@@ -28,10 +28,12 @@ Puddle reads these formats:
 | Format | Extensions | Notes |
 | --- | --- | --- |
 | CSV and TSV | `.csv`, `.tsv`, `.tab`, `.txt` | The delimiter, header row, encoding and quoting are detected, and can be changed in the inspector. Ragged rows are padded rather than rejected. |
-| Excel | `.xlsx` | Choose the sheet, the header row and an optional cell range. |
+| Excel | `.xlsx` | Choose the sheet and, when it holds several tables, which one; the header row and how many rows it takes; an optional cell range; and whether merged cells are filled. |
 | JSON and NDJSON | `.json`, `.ndjson`, `.jsonl` | An array of objects, or one object per line. |
 | Parquet | `.parquet`, `.pq` | Read directly, with its column types. |
 | XML | `.xml` | The repeating element is read as rows. See [XML](#xml). |
+| Fixed width | `.txt`, `.prn`, `.dat` | Columns lined up with spaces, as mainframe and ERP reports print them. The boundaries are found from the columns of spaces and adjusted on a ruler. See [Fixed width and pipe tables](#fixed-width-and-pipe-tables). |
+| Pipe table | `.txt` | Rows between `|` characters, as SAP lists and Markdown tables have them. The lines around the table are left out. See [Fixed width and pipe tables](#fixed-width-and-pipe-tables). |
 | Access | `.accdb`, `.mdb` | Choose the table; add the database's other tables as sources of their own. See [Access databases](#access-databases). |
 
 ## Tables on a web page
@@ -120,6 +122,14 @@ The inspector lists every repeating element under **Record element**, with how m
 
 XML can come from a file, from a web address (Puddle recognises `.xml` addresses and servers that say they send XML, including Atom and RSS feeds), or pasted as text. Puddle reads it in your browser, a piece at a time, so a large file doesn't have to fit in memory as a document; the rows it finds do. `puddle-run` reads XML sources the same way.
 
+## Fixed width and pipe tables
+
+A report printed to text often has no delimiter at all: each column starts at the same character position on every line, padded with spaces. Puddle reads such a file as **fixed width**. It finds the boundaries from the columns of spaces that run down the table, cuts every line at them, trims the cells and names the columns from the first line. The inspector shows the first lines on a ruler with a marker at each boundary: click between two characters to add one, drag a marker to move it (or focus it and press the arrow keys), and click a marker (or press Delete) to remove it. Every node after the source updates as the boundaries change. The header row, lines to skip at the top and bottom, the encoding and the words that count as empty are read options as for CSV.
+
+An SAP list, and a Markdown table, writes its rows between `|` characters, with rules of dashes between them and banners, page headers and footers around them. Puddle reads such a file as a **pipe table**: only the lines between pipes are rows, rules and a header printed again on a later page are dropped, the empty columns the edge pipes would make are left out, and every cell is trimmed. The inspector says how many lines around the table were left out. A total row at the end is kept, and listed as a suggested fix on the Issues panel, because removing data is your call.
+
+Both are read in your browser into rows that DuckDB then types, so the amounts and dates are read as on any text file: German amounts with a trailing minus, as SAP writes them, are a Parse numbers fix away. `puddle-run` reads both the same way, with the boundaries the project saved.
+
 ## Access databases
 
 An Access database (`.accdb`, or `.mdb` from Access 2003 and before) holds several tables. Add the file like any other and Puddle reads its first table; the inspector lists every table with its size under **Table**, so you can read another one instead. **Add the other tables** adds a source for each table not yet in the project, reading the same file, so you can join them on the canvas or see how they relate in the Relationships view.
@@ -151,7 +161,7 @@ Select a source to see how it is read in the inspector. For a CSV file that is t
 
 ![A CSV source selected, with its read options in the inspector](_static/screenshots/screen-overview.png)
 
-An Excel source shows the workbook's sheets with their sizes, the header row it detected (often below a title or a few blank rows), and the cell range being read. An Access source shows the database's tables (see [Access databases](#access-databases)). An XML source shows its record element and what gets a row of its own (see [XML](#xml)).
+An Excel source shows the workbook's sheets with their sizes, the header row it detected (often below a title or a few blank rows), and the cell range being read. A sheet with several blocks of cells, with blank rows between them, holds several tables: the largest is read, **Table** picks another, and **Add the other tables** adds a source for each of the rest, reading the same file. A header over two or three rows (quarters merged over their months) is detected from the merged cells, or set with **Header rows**, and the names are joined (`Q1 Jan`). **Fill merged cells**, on by default, gives every cell of a merged cell its value, so a region merged down its stores is on each row; switched off, the rows below the first read as empty and the Issues panel lists the merged cells. An Access source shows the database's tables (see [Access databases](#access-databases)). An XML source shows its record element and what gets a row of its own (see [XML](#xml)). A fixed-width source shows its first lines on a ruler with the column boundaries (see [Fixed width and pipe tables](#fixed-width-and-pipe-tables)).
 
 A file source also has **Path to this file** under *On the runner*: where `puddle-run` finds the file when it runs the project outside the browser (see {doc}`self-hosting`). Left empty, the runner looks for the file by name beside the project file or in a `sources/` folder there.
 

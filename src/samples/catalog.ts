@@ -119,17 +119,15 @@ This is a sample project. Delete it from the projects list when you’re done.`,
     title: 'SAP extract',
     projectName: 'Sample: SAP extract',
     blurb: 'A report printed to text: banners, separator lines, a page break and a total row.',
-    files: [{ file: 'sap-extract.txt', rows: 70 }],
+    files: [{ file: 'sap-extract.txt', rows: 61 }],
     note: `## SAP extract (sample)
 
-Vendor line items printed from SAP to a text file, as a report rather than a table. What’s wrong with it:
+Vendor line items printed from SAP to a text file, as a report rather than a table. Puddle reads it as a pipe table: the rows between the pipes, with the banner, the separator lines, the page break with its header printed again, and the footer left out, and the padding trimmed. What’s wrong with it once read:
 
-- **A banner** above the table and a **footer** below it. Puddle skips both when it reads the file.
-- **Separator lines** of dashes, and a **page break** with the banner and the header printed again.
-- **A total row** at the end, marked with an asterisk.
-- **Pipes** at both ends of every row, leaving an empty column at each side; values padded with spaces; amounts in German notation (7.625,43).
+- **A total row** at the end, marked with an asterisk, read as a row of the table.
+- **Amounts in German notation** (7.625,43) with a trailing minus for a negative, which read as text.
 
-Try it: **Fix all** on the Issues panel removes the separator lines, the second banner and the repeated header and trims the values. Remove the total row from its suggestion, then **Parse numbers** on the amount with the German locale.
+Try it: **Fix all** on the Issues panel parses the amounts with a comma for the decimal mark. Tick the total row's suggestion to remove it too, and the amounts sum to 192,474.66.
 
 This is a sample project. Delete it from the projects list when you’re done.`,
   },

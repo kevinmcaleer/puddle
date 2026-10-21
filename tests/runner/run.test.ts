@@ -7,7 +7,7 @@ import { openDb, type RunnerDb } from '../../src/runner/db';
 import { runProject, runSucceeded, type RunLog } from '../../src/runner/run';
 import { parseArgs, projectFiles, watch } from '../../src/runner/cli';
 import { sourceTableName } from '../../src/compiler';
-import { parseProject, type Project } from '../../src/model';
+import { parseProject, type Project, type Source } from '../../src/model';
 import { flow, src, step } from '../helpers/projects';
 
 let folder: string;
@@ -184,6 +184,39 @@ describe('puddle-run', () => {
     expect(csv[0]).toBe('Customer ID,Customer Name,City,Status,Signed up,Balance,Phone,Notes');
     expect(csv[1]).toContain('CU1000,kofi jones,Cardiff');
     expect(csv[csv.length - 1]).toContain('CU1039,dev smith');
+  });
+
+  it('reads fixed-width text at the boundaries the browser found, and a pipe table with the lines around it left out', async () => {
+    writeFileSync(join(folder, 'fixed-width.txt'), readFileSync(join(__dirname, '../fixtures/messy/fixed-width.txt')));
+    writeFileSync(join(folder, 'sap-extract.txt'), readFileSync(join(__dirname, '../fixtures/messy/sap-extract.txt')));
+    const text = (id: string, name: string, format: 'fixed' | 'pipes', parseOptions: Source['parseOptions']) => ({ ...src({ id, format }), name, parseOptions, file: { originalName: name, size: 1, lastModified: 0, headHash: 'h' } });
+    const p = flow({
+      sources: [text('f', 'fixed-width.txt', 'fixed', { boundaries: [8, 30, 43, 54, 64] }), text('s', 'sap-extract.txt', 'pipes', { encoding: 'latin-1' })],
+      nodes: [
+        { id: 'f', type: 'source', sourceId: 'f' },
+        { id: 's', type: 'source', sourceId: 's' },
+        { id: 'out', type: 'output', outputSpec: { format: 'csv', options: {} } },
+        { id: 'out2', type: 'output', outputSpec: { format: 'csv', options: {} } },
+      ],
+      wires: [
+        ['f', 'out', 0],
+        ['s', 'out2', 0],
+      ],
+    });
+    p.name = 'Reports';
+    const outDir = join(folder, 'out-text');
+    const { log } = await runProject(p, { folder, outDir, db, now: () => new Date('2026-10-17T03:00:00Z') });
+    expect(log.outputs.map((o) => [o.nodeName, o.status, o.rows])).toEqual([
+      ['out', 'written', 30],
+      ['out2', 'written', 61],
+    ]);
+    const fixed = readFileSync(join(outDir, 'out.csv'), 'utf8').trim().split('\n');
+    expect(fixed[0]).toBe('CUSTNO,NAME,CITY,BALANCE,SINCE,ST');
+    expect(fixed[1]).toBe('100200,Kofi Patel,Leeds,"15,369.45",20240914,A');
+    const sap = readFileSync(join(outDir, 'out2.csv'), 'utf8').trim().split('\n');
+    expect(sap[0]).toBe('Doc. no.,Vendor,Doc. date,Pstng date,Crcy,Amount in LC,Cost ctr,Text');
+    expect(sap.some((l) => l.includes('Müller GmbH'))).toBe(true);
+    expect(sap[sap.length - 1]).toMatch(/^\*,/);
   });
 
   it('reads the command line and lists a folder’s project files', () => {

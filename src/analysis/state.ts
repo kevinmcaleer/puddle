@@ -6,15 +6,18 @@ import { useEffect } from 'react';
 import { create } from 'zustand';
 import { useEngineStore } from '../app/engine';
 import { useSession } from '../app/session';
-import { compileAnalysis, compileCount, compileDistinctFacts, compileProfile, compileShape, compileTypeSniff, compileValueCounts, upstreamKey } from '../compiler';
+import { compileAnalysis, compileCount, compileDistinctFacts, compileProfile, compileShape, compileSkew, compileTypeSniff, compileValueCounts, upstreamKey } from '../compiler';
+import { detectDateFormats } from '../dates';
 import { tableRows, toEngineError, type EngineClient } from '../engine';
 import { useViewProject } from '../flow/sample';
 import { useFlowStore } from '../flow/status';
+import { isExcelSource, useExcelReads } from '../sources/excel';
 import { nodeById, useProject, type ColumnSchema, type GraphNode, type Project } from '../model';
 import { parseProfile, parseTypeSniff, type ColumnProfile } from '../results/profile';
 import { columnKind } from '../ui/columnKind';
 import { analysisChecks, findIssues, parseAnalysis, parseDistinctFacts, parseValueCounts, type AnalysisFacts } from './columns';
 import { parseShape } from './shape';
+import { findSkew, parseSkew, skewFix } from './skew';
 import { sortIssues, type Issue } from './issues';
 
 export interface NodeAnalysis {
@@ -64,11 +67,39 @@ export async function analyseNode(engine: EngineClient, project: Project, nodeId
       facts.columns[c]!.values = vc.map((v) => v.value).sort();
     }
   }
-  // A source read from delimited text: one more query for the rows around and inside the table that aren't data.
-  const source = textSourceOf(project, nodeId);
+  // Rows whose cells sit a column to the left or right of where they belong: the kinds of every row, grouped.
+  if (columns.length >= 2 && facts.rows >= 4) {
+    const groups = parseSkew(tableRows((await engine.query(compileSkew(project, target, columns, limit), opts('rows out of line'))).table));
+    const skew = findSkew(columns.map((c) => c.name), groups);
+    if (skew) {
+      // Dates moved into a column come as text: from a date column as ISO, from a text column in whatever way it writes them.
+      const { dateSources } = skewFix(columns, skew);
+      const formats: Record<string, string[]> = {};
+      for (const [column, sources] of Object.entries(dateSources)) {
+        const found = new Set<string>();
+        for (const name of sources) {
+          const type = columns.find((c) => c.name === name)?.type.toUpperCase() ?? 'VARCHAR';
+          if (type === 'DATE') found.add('%Y-%m-%d');
+          else if (type.startsWith('TIMESTAMP')) found.add('%Y-%m-%d %H:%M:%S');
+          else {
+            const detection = await detectDateFormats(engine, project, target, name, project.settings.locale);
+            for (const f of detection.formats ?? detection.ranked.slice(0, 1).map((r) => r.format)) found.add(f);
+          }
+        }
+        formats[column] = [...found];
+      }
+      facts.skew = { skew, fix: skewFix(columns, skew, formats) };
+    }
+  }
+  // A source read from delimited text or a sheet: one more query for the rows around and inside the table that aren't data.
+  const source = textSourceOf(project, nodeId) ?? sheetSourceOf(project, nodeId);
   if (source && columns.length) {
     const shapeRow = tableRows((await engine.query(compileShape(project, target, columns.map((c) => c.name), limit), opts('rows that aren’t data'))).table)[0] ?? {};
-    facts.shape = { facts: parseShape(shapeRow), options: source.parseOptions };
+    facts.shape = { facts: parseShape(shapeRow), options: source.parseOptions, ...(source.format === 'xlsx' ? { sheet: true } : {}) };
+  }
+  if (source?.format === 'xlsx') {
+    const read = useExcelReads.getState().reads[source.id];
+    if (read?.state === 'ok') facts.sheet = { merges: read.merges, filled: source.parseOptions.fillMerges !== false };
   }
   return { columns, profile, facts };
 }
@@ -76,12 +107,21 @@ export async function analyseNode(engine: EngineClient, project: Project, nodeId
 /** What an analysis stands for: the node's output, and the column-name style the issues are judged by. */
 const analysisKey = (project: Project, nodeId: string) => `${upstreamKey(project, { nodeId })}|${project.settings.columnNames}`;
 
-/** The source a node reads, when it is delimited text (CSV or TSV from a file, an address or the clipboard). */
+/** The source a node reads, when it is an Excel workbook. */
+export function sheetSourceOf(project: Project, nodeId: string) {
+  const node = nodeById(project, nodeId);
+  if (node?.type !== 'source') return undefined;
+  const source = project.sources.find((s) => s.id === node.sourceId);
+  return source && isExcelSource(source) ? source : undefined;
+}
+
+/** The source a node reads, when it is text (CSV, TSV, fixed width or a pipe table from a file, an address or the clipboard). */
 export function textSourceOf(project: Project, nodeId: string) {
   const node = nodeById(project, nodeId);
   if (node?.type !== 'source') return undefined;
   const source = project.sources.find((s) => s.id === node.sourceId);
-  return source && (source.format === 'csv' || source.format === 'tsv') && !source.url?.odata && !source.url?.table ? source : undefined;
+  const text = source && (source.format === 'csv' || source.format === 'tsv' || source.format === 'fixed' || source.format === 'pipes');
+  return text && !source.url?.odata && !source.url?.table ? source : undefined;
 }
 
 /** Which nodes to analyse now: every source that runs, plus the viewed and the selected node. */

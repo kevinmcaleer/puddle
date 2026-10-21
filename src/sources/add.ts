@@ -1,5 +1,5 @@
 import { useEngineStore } from '../app/engine';
-import { sourceFileName } from '../compiler';
+import { isRewritten, sourceFileName } from '../compiler';
 import type { EngineClient } from '../engine';
 import { invalidateCaches } from '../flow/status';
 import { addSource, newId, setSourceFormat, useProjectStore, type ParseOptions, type Source, type SourceFormat } from '../model';
@@ -53,8 +53,8 @@ export async function addFileSource(file: File, position = { x: 80, y: 80 }, han
   return source;
 }
 
-/** Excel is read by SheetJS into a table (see ./excel), Access by mdb-reader (see ./access), and XML into rows (see ./xml), not by DuckDB from the file. */
-const readByDuckDb = (format: SourceFormat) => format !== 'xlsx' && format !== 'xml' && format !== 'access';
+/** Excel is read by SheetJS into a table (see ./excel), Access by mdb-reader (see ./access), and XML, fixed-width text and pipe tables into rows (see ./xml, ./rewrite), not by DuckDB from the file. */
+const readByDuckDb = (format: SourceFormat) => format !== 'xlsx' && format !== 'access' && !isRewritten(format);
 
 /** Hand a source's file to DuckDB under the name its format reads, straight from the file handle (never copied). */
 export async function registerSourceFile(engine: Pick<EngineClient, 'registerFile'>, source: Source, file: File) {
@@ -99,8 +99,8 @@ export async function addClipboardSource(text: string, position = { x: 80, y: 80
     parseOptions,
     detectedSchema: [],
   };
-  // Pasted XML is read into rows by ./xml.
-  if (format !== 'xml') await engine.registerText(sourceFileName(source), text);
+  // Pasted XML is read into rows by ./xml, a pasted pipe table or fixed-width text by ./rewrite.
+  if (readByDuckDb(format)) await engine.registerText(sourceFileName(source), text);
   markAttached(source.id);
   useProjectStore.getState().apply((p) => addSource(p, source, position));
   return source;

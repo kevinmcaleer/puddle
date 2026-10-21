@@ -3,6 +3,7 @@
 // Format picker asks. Pure, so it is tested on bytes.
 import type { ParseOptions, SourceFormat } from '../model';
 import { knownFormat, SourceError } from './detect';
+import { detectBoundaries } from './fixedWidth';
 
 export type Confidence = 'sure' | 'likely' | 'unsure';
 
@@ -329,18 +330,20 @@ export function sniffText(text: string, tail?: string): Sniffed {
     return { format: 'json', confidence: 'sure', ...none, reason: 'Starts with a JSON object.' };
   }
 
-  // A pipe table (an SAP list, a Markdown table): rows between pipes, with rules of dashes.
+  // A pipe table (an SAP list, a Markdown table): rows between pipes, with rules of dashes. Read by src/sources/pipes.ts,
+  // which drops the lines around the table, the empty edge columns and the padding.
   const piped = lines.filter((l) => /^\s*\|.*\|\s*$/.test(l)).length;
   if (lines.length >= 3 && piped >= lines.length * 0.5) {
-    // The header is the widest line's count; its leading and trailing pipes make an empty first and last column, which
-    // DuckDB's own header detection then refuses, so the header is said outright.
-    const fields = Math.max(...lines.filter((l) => /^\s*\|.*\|\s*$/.test(l)).map((l) => countOutsideQuotes(l, '|') + 1));
-    const shape = sniffShape(raw, tailRaw, '|', fields);
-    return { format: 'csv', confidence: 'likely', parseOptions: { delimiter: '|', header: true, ...shapeOptions(shape, raw, '|', fields, true) }, alternatives: [], reason: withNotes('Rows between pipes, as an SAP list or a pipe table has them.', shape) };
+    const around = lines.length - piped;
+    return { format: 'pipes', confidence: 'likely', ...none, reason: `Rows between pipes, as an SAP list or a pipe table has them${around ? `, with ${around} ${around === 1 ? 'line' : 'lines'} around the table` : ''}.` };
   }
 
+  // Fixed-width: lines of much the same length with columns of spaces at the same offsets. Read by src/sources/fixedWidth.ts.
+  // Looked for first, since the thousands separators in a column of amounts make a comma-separated file of two fields:
+  // columns lined up with spaces win over commas when there are more of them.
+  const fixed = lines.length >= 5 && fixedWidthColumns(lines) >= 1 ? detectBoundaries(lines) : [];
   const found = sniffDelimiter(lines);
-  if (found && found.fields >= 2) {
+  if (found && found.fields >= 2 && !(found.delimiter === ',' && fixed.length + 1 > found.fields)) {
     const shape = sniffShape(raw, tailRaw, found.delimiter, found.fields);
     // The header question is asked of the table itself, not of the banner above it.
     const table = lines.filter((l) => countOutsideQuotes(l, found.delimiter) + 1 >= found.fields);
@@ -356,10 +359,7 @@ export function sniffText(text: string, tail?: string): Sniffed {
     };
   }
 
-  // Fixed-width: lines of much the same length with columns of spaces at the same offsets.
-  if (lines.length >= 5 && fixedWidthColumns(lines) >= 2) {
-    return { format: 'csv', confidence: 'unsure', ...none, reason: 'Columns at fixed positions, lined up with spaces. Puddle doesn’t read fixed-width text yet; choose a format, or save it as CSV.' };
-  }
+  if (fixed.length) return { format: 'fixed', confidence: 'likely', parseOptions: { boundaries: fixed }, alternatives: [], reason: `${fixed.length + 1} columns at fixed positions, lined up with spaces.` };
   if (/^---\s*$/m.test(first) || lines.filter((l) => /^\s*[\w.-]+:(\s|$)/.test(l)).length >= lines.length * 0.6) {
     return { format: 'csv', confidence: 'unsure', ...none, reason: 'Looks like YAML, which Puddle doesn’t read. Choose a format, or save the data as CSV.' };
   }

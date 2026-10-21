@@ -6,6 +6,7 @@ import { columnKind } from '../ui/columnKind';
 import { issueKey, type Issue, type IssueFix, type IssueKind, type StepFix } from './issues';
 import { tidyRenames } from './names';
 import { findShapeIssues, type ShapeFacts } from './shape';
+import { skewIssue, type Skew, type SkewFix } from './skew';
 import { nearDuplicates, type ValueCount } from './similar';
 
 /** Columns with at most about this many distinct values are read in full, to find the same value written several ways. */
@@ -96,12 +97,16 @@ export interface AnalysisFacts {
   rows: number;
   dups?: number;
   columns: Record<string, ColumnFacts>;
-  /** For a source read from delimited text: the rows around and inside the table that aren't data, and the read options it had. */
-  shape?: { facts: ShapeFacts; options: ParseOptions };
+  /** For a source read from delimited text or a sheet: the rows around and inside the table that aren't data, and the read options it had. */
+  shape?: { facts: ShapeFacts; options: ParseOptions; sheet?: boolean };
+  /** For a sheet: the merged cells in the rows read, and whether every cell of each took its value. */
+  sheet?: { merges: number; filled: boolean };
   /** The project's style for column names, as it was when the node was analysed. */
   columnNames?: ColumnNamesMode;
   /** When the table was too big to look at whole: the rows looked at (its first ones) and how many it has. */
   sample?: { rows: number; total: number };
+  /** Rows whose cells sit a column to the left or right of where they belong, with the steps that put them right. */
+  skew?: { skew: Skew; fix: SkewFix };
 }
 
 const list = (v: unknown): string[] | undefined => (v != null && typeof v === 'object' && Symbol.iterator in v ? Array.from(v as Iterable<unknown>).filter((x) => x != null).map(String) : undefined);
@@ -271,8 +276,14 @@ export function findIssues(columns: ColumnSchema[], profile: Record<string, Colu
   };
   if (!facts.rows) return out;
   const names = columns.map((c) => c.name);
-  const textOptions = facts.shape?.options;
-  if (facts.shape) out.push(...findShapeIssues(names, facts.shape.facts, facts.shape.options, ignored));
+  const textOptions = facts.shape && !facts.shape.sheet ? facts.shape.options : undefined;
+  if (facts.shape) out.push(...findShapeIssues(names, facts.shape.facts, facts.shape.options, ignored, facts.shape.sheet));
+  if (facts.sheet?.merges && !facts.sheet.filled)
+    add('mergedCells', undefined, { count: facts.sheet.merges, examples: [], severity: 'fix', fix: { readOptions: { fillMerges: true }, label: 'Fill merged cells' } });
+  // Shifted rows first: the columns they moved through are judged once they are back in line.
+  const skewed = facts.skew && { column: names[facts.skew.skew.at]!, issue: skewIssue(columns, facts.skew.skew, facts.skew.fix) };
+  if (skewed) add('skewedRows', skewed.column, skewed.issue);
+  const settled = skewed && skewed.issue.severity === 'fix' && !ignored.includes(issueKey('skewedRows', skewed.column, skewed.issue.value)) ? new Set(names.slice(facts.skew!.skew.at)) : undefined;
   if (facts.dups) add('duplicateRows', undefined, { count: facts.dups, share: facts.dups / facts.rows, examples: [], severity: 'fix', fix: { type: 'duplicateRows', params: { columns: [], keep: 'first' } } });
   const renames = tidyRenames(names, facts.columnNames ?? 'words');
   if (renames.length) add('untidyNames', undefined, { count: renames.length, examples: renames.slice(0, 3).map((r) => r.from), severity: 'fix', fix: { type: 'renameColumns', params: { renames } } });
@@ -285,7 +296,7 @@ export function findIssues(columns: ColumnSchema[], profile: Record<string, Colu
     const column = c.name;
     const p = profile[column];
     const x = facts.columns[column];
-    if (!x) return;
+    if (!x || settled?.has(column)) return;
     if (!x.nonNull || (x.blank != null && x.blank === x.nonNull)) {
       add('emptyColumn', column, { count: facts.rows, share: 1, examples: [], severity: 'fix', fix: { type: 'removeColumns' } });
       return;

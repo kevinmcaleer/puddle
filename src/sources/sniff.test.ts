@@ -133,11 +133,12 @@ describe('delimited text', () => {
     expect(sniffText('1,Ada,36\n2,Bob,41\n3,Cy,29\n').parseOptions).toEqual({ header: false });
   });
 
-  it('reads a pipe table or SAP list as pipe-delimited, and names fixed-width and YAML without reading them', () => {
-    expect(sniffText('|a|b|\n|---|---|\n|1|2|\n')).toMatchObject({ format: 'csv', confidence: 'likely', parseOptions: { delimiter: '|' } });
+  it('reads a pipe table or SAP list as a pipe table, fixed-width text with its boundaries, and names YAML without reading it', () => {
+    expect(sniffText('|a|b|\n|---|---|\n|1|2|\n')).toMatchObject({ format: 'pipes', confidence: 'likely', parseOptions: {} });
+    expect(sniffText('Title\n|a|b|\n|1|2|\n|3|4|\n')).toMatchObject({ format: 'pipes', reason: expect.stringContaining('1 line around the table') });
     const fixed = ['NAME      CITY     AGE', 'Ada       Leeds     36', 'Bob       York      41', 'Cy        Hull      29', 'Dee       Bath      33'];
     expect(fixedWidthColumns(fixed)).toBe(2);
-    expect(sniffText(fixed.join('\n'))).toMatchObject({ format: 'csv', confidence: 'unsure', reason: expect.stringContaining('fixed positions') });
+    expect(sniffText(fixed.join('\n'))).toMatchObject({ format: 'fixed', confidence: 'likely', parseOptions: { boundaries: [10, 19] }, reason: '3 columns at fixed positions, lined up with spaces.' });
     expect(sniffText('---\nname: Ada\ncity: Leeds\n')).toMatchObject({ confidence: 'unsure', reason: expect.stringContaining('YAML') });
     expect(sniffText('Dear all,\n\nHere are the notes.\nThanks.\n')).toMatchObject({ format: 'csv', confidence: 'unsure' });
   });
@@ -168,7 +169,7 @@ describe('the file name and the content', () => {
   it('asks when neither is sure, and takes the name’s word when the content says nothing', () => {
     expect(file('notes.txt', bytes('Dear all,\n\nHere are the notes.\n'))).toMatchObject({ format: 'csv', confidence: 'unsure' });
     expect(file('notes.csv', bytes('one\ntwo\nthree\n'))).toMatchObject({ format: 'csv', confidence: 'likely' });
-    expect(file('list.json', bytes('|a|b|\n|--|--|\n|1|2|\n'))).toMatchObject({ format: 'csv', confidence: 'unsure', alternatives: ['json'] });
+    expect(file('list.json', bytes('|a|b|\n|--|--|\n|1|2|\n'))).toMatchObject({ format: 'pipes', confidence: 'unsure', alternatives: ['json'] });
   });
 
   it('sets the encoding from the bytes, and keeps a UTF-16 CSV as CSV', () => {
@@ -177,8 +178,8 @@ describe('the file name and the content', () => {
     expect(file('orders.csv', bytes('caf', [0xe9], ',1\nth', [0xe9], ',2\n'))).toMatchObject({ parseOptions: { encoding: 'latin-1' } });
   });
 
-  it('reads the messy fixtures: the SAP extract as a pipe list in latin-1, the CRM export as semicolons', () => {
-    expect(file('sap-extract.txt', messy('sap-extract.txt'))).toMatchObject({ format: 'csv', parseOptions: { delimiter: '|', encoding: 'latin-1' } });
+  it('reads the messy fixtures: the SAP extract as a pipe table in latin-1, the CRM export as semicolons', () => {
+    expect(file('sap-extract.txt', messy('sap-extract.txt'))).toMatchObject({ format: 'pipes', confidence: 'likely', parseOptions: { encoding: 'latin-1' } });
     expect(file('messy.txt', messy('messy.txt'))).toMatchObject({ format: 'csv', parseOptions: { delimiter: ';' } });
     expect(file('messy.csv', fixture('messy.csv'))).toMatchObject({ format: 'csv', confidence: 'sure', parseOptions: {} });
     expect(file('bond-films.html', fixture('bond-films.html'))).toMatchObject({ format: 'xml', confidence: 'unsure' });

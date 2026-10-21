@@ -1,5 +1,5 @@
 import type { Source } from '../model';
-import { compileAccessLoad, sourceRelation, sourceTableName } from './sources';
+import { compileAccessLoad, sourceFileName, sourceRelation, sourceTableName } from './sources';
 
 const feed = (odata: NonNullable<NonNullable<Source['url']>['odata']>): Source => ({
   id: 'a',
@@ -82,5 +82,32 @@ describe('reading delimited text around a table', () => {
     expect(sourceRelation(text({ delimiter: '|', skipBottom: 2 }))).toBe(
       `(SELECT * EXCLUDE ("__puddle_row", "__puddle_total") FROM (SELECT *, row_number() OVER () AS "__puddle_row", count(*) OVER () AS "__puddle_total" FROM read_csv('src_a.csv', delim = '|', null_padding = true)) WHERE "__puddle_row" <= "__puddle_total" - 2)`,
     );
+  });
+});
+
+describe('reading fixed-width text and pipe tables', () => {
+  const text = (format: 'fixed' | 'pipes', parseOptions: Source['parseOptions'], headHash = 'h1'): Source => ({
+    id: 'a',
+    name: 'report.txt',
+    kind: 'file',
+    format,
+    file: { originalName: 'report.txt', size: 1, lastModified: 0, headHash },
+    parseOptions,
+    detectedSchema: [],
+  });
+
+  it('reads the CSV Puddle wrote from the text, named for the file and the read options', () => {
+    const name = sourceFileName(text('fixed', { boundaries: [8, 30] }));
+    expect(name).toMatch(/^src_a_[0-9a-f]{12}\.csv$/);
+    expect(sourceFileName(text('fixed', { boundaries: [8, 31] }))).not.toBe(name);
+    expect(sourceFileName(text('fixed', { boundaries: [8, 30], skip: 1 }))).not.toBe(name);
+    expect(sourceFileName(text('fixed', { boundaries: [8, 30] }, 'h2'))).not.toBe(name);
+    expect(sourceFileName(text('pipes', {}))).not.toBe(sourceFileName(text('pipes', { header: false })));
+    expect(sourceRelation(text('fixed', { boundaries: [8, 30] }))).toBe(`read_csv('${name}', header = true, delim = ',', quote = '"', escape = '"', null_padding = true)`);
+  });
+
+  it('applies the words for empty, with the empty cell always among them', () => {
+    const source = text('pipes', { nullStrings: ['N/A', ''] });
+    expect(sourceRelation(source)).toBe(`read_csv('${sourceFileName(source)}', header = true, delim = ',', quote = '"', escape = '"', null_padding = true, nullstr = ['', 'N/A'])`);
   });
 });
