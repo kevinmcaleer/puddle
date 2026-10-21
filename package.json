@@ -22,7 +22,7 @@
     "docs:screenshots": "playwright test -c docs/playwright.config.ts",
     "docs:tutorial-data": "node scripts/fetch-tutorial-data.mjs docs/_data",
     "fetch-extensions": "node scripts/fetch-duckdb-extensions.mjs public/duckdb-extensions",
-    "build:runner": "esbuild src/runner/cli.ts --bundle --platform=node --target=node20 --format=esm --external:@duckdb/node-api --outfile=dist-runner/puddle-run.mjs --log-level=warning && node scripts/runner-package.mjs",
+    "build:runner": "node scripts/build-runner.mjs && node scripts/runner-package.mjs",
     "runner": "npm run build:runner && node dist-runner/puddle-run.mjs"
   },
   "dependencies": {
@@ -38,11 +38,14 @@
     "apache-arrow": "^17.0.0",
     "buffer": "^6.0.3",
     "croner": "^10.0.1",
+    "js-yaml": "^5.5.0",
     "lucide-react": "^1.57.0",
     "markdown-it": "15.0.2",
     "mdb-reader": "^3.2.0",
+    "pdfjs-dist": "^6.4.299",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
+    "smol-toml": "^1.9.1",
     "xlsx": "file:vendor/xlsx-0.20.3.tgz",
     "zod": "^4.6.7",
     "zustand": "^5.0.15"

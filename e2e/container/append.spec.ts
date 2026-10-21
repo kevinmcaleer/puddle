@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { addFiles, expectRows, fixture, node, openApp } from '../helpers/app';
+import { addFiles, expectRows, fixture, node, openApp, selectNode } from '../helpers/app';
 
 // Parquet needs the self-hosted DuckDB extension, which only the container image serves.
 test('appending customers.csv to customers.parquet stacks the same columns', async ({ page, request }) => {
@@ -9,8 +9,8 @@ test('appending customers.csv to customers.parquet stacks the same columns', asy
   await addFiles(page, [fixture('customers.parquet'), fixture('customers.csv')]);
   await expect(node(page, 'customers.parquet')).toHaveAttribute('data-status', 'ok', { timeout: 30_000 });
   await expect(node(page, 'customers.csv')).toHaveAttribute('data-status', 'ok');
-  await node(page, 'customers.parquet').click();
-  await node(page, 'customers.csv').click({ modifiers: ['Shift'] });
+  await selectNode(page, 'customers.parquet');
+  await selectNode(page, 'customers.csv', ['Shift']);
   await page.getByTestId('group-bar').getByRole('button', { name: 'Append these' }).click();
 
   await expect(node(page, 'Append 1')).toHaveAttribute('data-status', 'ok');

@@ -3,8 +3,10 @@ import { useEngineStore } from '../app/engine';
 import { updateSource, useProject, useProjectStore, type Project } from '../model';
 import { useAttachments, type Attachment } from '../sources/attachments';
 import { accessReady, useAccessReads } from '../sources/access';
+import { arrowReady, useArrowReads } from '../sources/arrow';
 import { excelReady, useExcelReads } from '../sources/excel';
 import { tableGate, useSchemaTables } from '../schemaTables/state';
+import { rewriteReady, useRewrites } from '../sources/rewrite';
 import { useXmlReads, xmlReady } from '../sources/xml';
 import { syncKept } from './kept';
 import { useRerun } from './rerun';
@@ -16,7 +18,7 @@ import { evaluateFlow, useFlowStore } from './status';
  * A source that can't be read in this tab: its file isn't chosen again, or it is an Excel sheet, Access table or XML not read (yet) for
  * its current options. The sampled copy of a project has the same sources and options, so either copy will do.
  */
-const unreadable = (attachments: Record<string, Attachment>, project: Project, id: string) => (attachments[id] ?? 'detached') === 'detached' || !excelReady(project, id) || !accessReady(project, id) || !xmlReady(project, id);
+const unreadable = (attachments: Record<string, Attachment>, project: Project, id: string) => (attachments[id] ?? 'detached') === 'detached' || !excelReady(project, id) || !accessReady(project, id) || !arrowReady(project, id) || !xmlReady(project, id) || !rewriteReady(project, id);
 
 /**
  * Keep node statuses in step with the project: re-evaluate whenever it changes, bring kept results up to
@@ -31,7 +33,9 @@ export function useFlowEvaluation() {
   // An Excel sheet being read (or that can't be) is not readable yet, like a file not chosen again.
   const excel = useExcelReads((s) => s.reads);
   const access = useAccessReads((s) => s.reads);
+  const arrow = useArrowReads((s) => s.reads);
   const xml = useXmlReads((s) => s.reads);
+  const rewrites = useRewrites((s) => s.reads);
   const tick = useRerun((s) => s.tick);
   // Schema table nodes wait for their tables to be built.
   const tables = useSchemaTables((s) => s.built);
@@ -39,7 +43,7 @@ export function useFlowEvaluation() {
   useEffect(() => {
     if (!engine) return;
     void countSources(engine, project, (id) => !unreadable(attachments, project, id));
-  }, [engine, project, attachments, excel, access, xml, tick]);
+  }, [engine, project, attachments, excel, access, arrow, xml, rewrites, tick]);
 
   useEffect(() => {
     if (!engine) return;
@@ -62,5 +66,5 @@ export function useFlowEvaluation() {
         return next;
       });
     });
-  }, [engine, view, attachments, excel, access, xml, tick, tables]);
+  }, [engine, view, attachments, excel, access, arrow, xml, rewrites, tick, tables]);
 }

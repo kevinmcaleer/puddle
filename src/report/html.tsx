@@ -1,8 +1,6 @@
 // The report as one self-contained HTML file: the design system's tokens and components inlined, on light surfaces
-// that print well.
-import type { ReactElement } from 'react';
-import { flushSync } from 'react-dom';
-import { createRoot } from 'react-dom/client';
+// that print well. Rendered as static markup, so puddle-run writes the same file with no DOM.
+import { renderToStaticMarkup } from 'react-dom/server';
 import componentsCss from '../design-system/components.css?raw';
 import tokensCss from '../design-system/tokens.css?raw';
 import type { QualityReport } from './build';
@@ -22,6 +20,7 @@ body { margin: 0; background: var(--surface-panel); }
 .report-table th { color: var(--ink-muted); }
 .report-table td.num { text-align: right; }
 .report-hash { word-break: break-all; }
+.report-issues { display: flex; flex-direction: column; gap: var(--space-2); padding-top: var(--space-2); }
 .report .ui-rule { border-bottom: 1px solid var(--line); border-radius: 0; }
 .report .ui-rule:last-child { border-bottom: 0; }
 .report .ui-rule:hover { background: none; }
@@ -42,21 +41,11 @@ body { margin: 0; background: var(--surface-panel); }
 }
 `;
 
-/** Elements as markup, rendered by the React DOM the app already has into an element that is never shown. */
-function markup(element: ReactElement): string {
-  const host = document.createElement('div');
-  const root = createRoot(host);
-  flushSync(() => root.render(element));
-  const html = host.innerHTML;
-  root.unmount();
-  return html;
-}
-
 const escapeText = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
 export function reportHtml(report: QualityReport): string {
   const title = `Quality report: ${report.project.name}`;
-  const body = markup(<ReportDocument report={report} />);
+  const body = renderToStaticMarkup(<ReportDocument report={report} />);
   return `<!doctype html>
 <html lang="en" data-theme="light">
 <head>

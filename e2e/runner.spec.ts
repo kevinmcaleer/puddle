@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { addFiles, fixture, node, openApp } from './helpers/app';
+import { addFiles, fixture, node, openApp, selectNode } from './helpers/app';
 
 /** The open project's settings and sources, as the app holds them. */
 const held = (page: import('@playwright/test').Page) =>
@@ -15,7 +15,7 @@ test('a project takes a schedule and a source takes its path on the runner, both
   await expect(node(page, 'customers.csv')).toHaveAttribute('data-status', 'ok', { timeout: 20_000 });
 
   // The runner path sits on the source, under its read options.
-  await node(page, 'customers.csv').click();
+  await selectNode(page, 'customers.csv');
   await page.getByLabel('Path to this file').fill('sources/customers.csv');
   await page.getByLabel('Path to this file').press('Enter');
   await expect.poll(() => held(page)).toMatchObject({ path: 'sources/customers.csv' });

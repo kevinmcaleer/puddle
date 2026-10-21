@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { cell, fixture, node, openApp } from './helpers/app';
+import { cell, fixture, node, openApp, selectNode } from './helpers/app';
 import { expectAccessible } from './helpers/axe';
 
 const projectMenu = async (page: Page, item: string) => {
@@ -46,7 +46,7 @@ test('a gallery recipe and a matching file make a runnable project, and it expor
   await expect(attach).toHaveCount(0);
   await expect(node(page, 'Clean contacts')).toHaveAttribute('data-status', 'ok', { timeout: 20_000 });
   await expect(page.getByRole('dialog')).toHaveCount(0);
-  await node(page, 'Clean contacts').click();
+  await selectNode(page, 'Clean contacts');
   await expect(cell(page, 0, 0)).toHaveText('Alice Patel');
   await expect(cell(page, 1, 0)).toHaveText('alice.patel@example.com');
   await expect(cell(page, 3, 0)).toHaveText('Manchester');
@@ -92,10 +92,10 @@ test('a file whose columns differ is matched to the recipe’s, and steps needin
   await page.getByTestId('canvas-notice').getByRole('button', { name: 'Dismiss' }).click();
 
   await expect(node(page, 'Clean contacts')).toHaveAttribute('data-status', 'ok', { timeout: 20_000 });
-  await node(page, 'Tidy contacts').click();
+  await selectNode(page, 'Tidy contacts');
   const steps = page.getByRole('listbox', { name: 'Applied steps' }).getByRole('option');
   await expect(steps.first()).toContainText('Renamed full_name to name');
-  await node(page, 'Clean contacts').click();
+  await selectNode(page, 'Clean contacts');
   await expect(cell(page, 1, 0)).toHaveText('Ada Lovelace');
   await expect(cell(page, 2, 0)).toHaveText('ada@example.com');
 });

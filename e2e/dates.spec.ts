@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { addFiles, addStepNode, cell, fixture, node, openApp } from './helpers/app';
+import { addFiles, addStepNode, cell, fixture, openApp, selectNode } from './helpers/app';
 
 const steps = (page: Page) => page.getByRole('listbox', { name: 'Applied steps' }).getByRole('option');
 const settings = (page: Page) => page.getByTestId('step-settings');
@@ -8,7 +8,7 @@ const formats = (page: Page) => page.getByTestId('date-formats');
 test.beforeEach(async ({ page }) => {
   await openApp(page);
   await addFiles(page, [fixture('dates.csv')]);
-  await node(page, 'dates.csv').click();
+  await selectNode(page, 'dates.csv');
   await addStepNode(page, 'Parse dates');
 });
 

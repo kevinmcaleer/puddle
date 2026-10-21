@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { addFiles, addStepNode, cell, fixture, node, openApp } from './helpers/app';
+import { addFiles, addStepNode, cell, fixture, openApp, selectNode } from './helpers/app';
 
 const steps = (page: Page) => page.getByRole('listbox', { name: 'Applied steps' }).getByRole('option');
 const settings = (page: Page) => page.getByTestId('step-settings');
@@ -7,7 +7,7 @@ const chip = (page: Page, name: string) => settings(page).getByRole('button', { 
 
 /** A step from the Add menu, as a Transform after `file`'s source. */
 async function stepOn(page: Page, file: string, title: string) {
-  await node(page, file).click();
+  await selectNode(page, file);
   await addStepNode(page, title);
 }
 

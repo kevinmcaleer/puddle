@@ -143,7 +143,7 @@ function detailFor(node: GraphNode, sources: ReturnType<typeof useProject>['sour
   const s = sources.find((x) => x.id === node.sourceId);
   if (!s) return 'Source';
   if (s.kind === 'url' && s.url) return `${s.url.sample ? 'Sample' : hostOf(s.url.href)} · ${sourceFormatLabel(s)}`;
-  return s.kind === 'clipboard' ? `Source · Pasted ${formatLabel(s.format)}` : `Source · ${formatLabel(s.format)}`;
+  return s.kind === 'clipboard' ? `Source · Pasted ${formatLabel(s.format)}` : `Source · ${sourceFormatLabel(s)}`;
 }
 
 /**

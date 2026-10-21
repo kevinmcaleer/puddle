@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { addFiles, fixture, node, openApp, saved } from './helpers/app';
+import { addFiles, fixture, node, openApp, saved, selectNode } from './helpers/app';
 
 const projectMenu = async (page: Page, item: string) => {
   await page.getByTestId('project-menu').click();
@@ -12,7 +12,7 @@ test('undo in the editor: files added together go in one step, and Ctrl+Z works 
   await expect(node(page, 'customers.csv')).toHaveAttribute('data-status', 'ok');
   await expect(node(page, 'orders.tsv')).toHaveAttribute('data-status', 'ok');
 
-  await node(page, 'customers.csv').click();
+  await selectNode(page, 'customers.csv');
   const delimiter = page.getByLabel('Delimiter');
   const before = await delimiter.inputValue();
   await delimiter.focus();
