@@ -71,6 +71,24 @@ test('sources', async ({ page }) => {
   await shot(page, 'sources-access');
 });
 
+test('analysing a file', async ({ page }) => {
+  await start(page);
+  await openSample(page, 'crm');
+  await selectNode(page, 'messy.txt');
+  const issues = page.getByRole('region', { name: 'Issues' });
+  await expect(issues.getByTestId('issues')).toHaveAttribute('data-state', 'ok', { timeout: 30_000 });
+  await expect(issues.getByTestId('fix-all')).toBeVisible();
+  await shotPanel(page, 'analysing-issues', issues);
+  await issues.getByRole('button', { name: 'Choose fixes' }).click();
+  await shot(page, 'analysing-choose-fixes', page.getByRole('dialog', { name: 'Choose fixes' }));
+  await page.keyboard.press('Escape');
+  await issues.getByTestId('fix-all').getByRole('button', { name: /^Fix \d+ issues$/ }).click();
+  await expect(page.getByTestId('group-Fixes')).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByTestId('results-table')).toHaveAttribute('aria-label', /^Results of Transform \d+/, { timeout: 30_000 });
+  await page.getByRole('button', { name: 'Auto layout' }).click();
+  await shot(page, 'analysing-fixed');
+});
+
 /** Each fix opens a new node, whose table may still be loading: click name and city until they are the selection. */
 async function reselect(page: Page) {
   await expect(async () => {
@@ -144,8 +162,11 @@ test('the column menu', async ({ page }) => {
   await shot(page, 'column-menu-cell', menu);
   await page.keyboard.press('Escape');
 
-  await rightClickAt(page, 450);
-  await menu.getByRole('menuitem', { name: 'Replace values…' }).click();
+  // Under CI load the menu has been seen to close again before the item could be clicked: open it again if so.
+  await expect(async () => {
+    await rightClickAt(page, 450);
+    await menu.getByRole('menuitem', { name: 'Replace values…' }).click({ timeout: 5_000 });
+  }).toPass({ timeout: 60_000 });
   await shot(page, 'column-menu-replace', page.getByRole('dialog', { name: 'Replace values in city' }));
   await page.getByRole('dialog').getByRole('button', { name: 'Replace' }).click();
   await expect(steps(page)).toHaveCount(1);
