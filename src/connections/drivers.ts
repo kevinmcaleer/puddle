@@ -13,6 +13,8 @@ export interface DriverField {
   /** The value a new connection starts with. */
   default?: string | number | boolean;
   required?: boolean;
+  /** Shown (and required) only when the connection runs on one of these routes; every route when absent. */
+  when?: ConnectionVia[];
 }
 
 export interface Driver {
@@ -45,7 +47,7 @@ const SERVICE: ConnectionVia[] = ['local', 'pi'];
 export const DRIVERS: Driver[] = [
   { id: 'postgres', label: 'PostgreSQL', monogram: 'Pg', runsIn: SERVICE, auth: 'password', fields: [...host(5432), database(), user, ssl], community: true },
   { id: 'mysql', label: 'MySQL', monogram: 'My', runsIn: SERVICE, auth: 'password', fields: [...host(3306), database(), user, ssl], community: true },
-  { id: 'sqlite', label: 'SQLite', monogram: 'SL', runsIn: ['browser'], auth: 'none', fields: [file('Database file')], note: 'A .sqlite or .db file, read in the browser.', community: true },
+  { id: 'sqlite', label: 'SQLite', monogram: 'SL', runsIn: ['browser', ...SERVICE], auth: 'none', fields: [{ ...file('Database file'), when: ['browser'] }, { key: 'path', label: 'Path of the database file', kind: 'text', placeholder: '/data/shop.sqlite', hint: 'On the computer running puddle-connect, inside the folders it may read.', required: true, when: SERVICE }], note: 'A .sqlite or .db file, read in the browser or by puddle-connect.', community: true },
   { id: 'sqlserver', label: 'SQL Server', monogram: 'MS', runsIn: SERVICE, auth: 'password', fields: [...host(1433), database(), user, { key: 'domain', label: 'Domain', kind: 'text', hint: 'For a Windows login. Empty for a SQL login.' }, { key: 'encrypt', label: 'Encrypt', kind: 'boolean', default: true }], community: true },
   { id: 'redshift', label: 'Amazon Redshift', monogram: 'Rs', runsIn: SERVICE, auth: 'password', fields: [...host(5439), database(), user, { ...ssl, default: true }], community: true },
   { id: 'cockroach', label: 'CockroachDB', monogram: 'Cr', runsIn: SERVICE, auth: 'password', fields: [...host(26257), database(), user, { ...ssl, default: true }], community: true },
@@ -92,14 +94,18 @@ export function defaultSettings(d: Driver): Record<string, string | number | boo
   return out;
 }
 
+/** The fields a connection shows on its route. */
+export const fieldsFor = (d: Driver, via: ConnectionVia): DriverField[] => d.fields.filter((f) => !f.when || f.when.includes(via));
+
 /** The required fields of a driver that are still empty, by label. */
-export function missingFields(d: Driver, settings: Record<string, string | number | boolean>): string[] {
-  return d.fields.filter((f) => f.required && (settings[f.key] === undefined || settings[f.key] === '')).map((f) => f.label);
+export function missingFields(d: Driver, settings: Record<string, string | number | boolean>, via: ConnectionVia = 'browser'): string[] {
+  return fieldsFor(d, via).filter((f) => f.required && (settings[f.key] === undefined || settings[f.key] === '')).map((f) => f.label);
 }
 
 /** A connection's settings as one line for lists: "kev@db.local:5432/shop", "shop.duckdb", or the address. */
 export function describeSettings(d: Driver, settings: Record<string, string | number | boolean>): string {
   const s = (k: string) => (settings[k] === undefined || settings[k] === '' ? undefined : String(settings[k]));
+  if (s('path')) return s('path')!;
   if (s('file')) return s('file')!;
   if (s('url')) return s('url')!;
   const where = s('host') ? `${s('host')}${s('port') ? `:${s('port')}` : ''}` : s('account') ?? s('project') ?? s('region') ?? '';

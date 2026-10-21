@@ -18,6 +18,8 @@ export interface ConnectorContext {
   file?: Blob;
   /** The engine, for a driver that reads through DuckDB itself (DuckDB files). */
   engine?: EngineLike;
+  /** Set when the read is cancelled; a driver that can stop early checks it. */
+  signal?: AbortSignal;
 }
 
 /** The little of the engine a driver may use. */

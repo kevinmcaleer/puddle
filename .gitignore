@@ -1,6 +1,7 @@
 node_modules
 dist
 dist-runner
+dist-connect
 coverage
 test-results
 playwright-report

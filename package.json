@@ -23,7 +23,9 @@
     "docs:tutorial-data": "node scripts/fetch-tutorial-data.mjs docs/_data",
     "fetch-extensions": "node scripts/fetch-duckdb-extensions.mjs public/duckdb-extensions",
     "build:runner": "node scripts/build-runner.mjs && node scripts/runner-package.mjs",
-    "runner": "npm run build:runner && node dist-runner/puddle-run.mjs"
+    "runner": "npm run build:runner && node dist-runner/puddle-run.mjs",
+    "build:connect": "esbuild src/connect/server.ts --bundle --platform=node --target=node20 --format=esm --external:sql.js --outfile=dist-connect/puddle-connect.mjs --log-level=warning && node scripts/connect-package.mjs",
+    "connect": "npm run build:connect && node dist-connect/puddle-connect.mjs"
   },
   "dependencies": {
     "@dagrejs/dagre": "^3.1.1",

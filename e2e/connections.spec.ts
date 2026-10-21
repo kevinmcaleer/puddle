@@ -31,12 +31,13 @@ test('a PostgreSQL connection is saved without its password and signed in for th
   await expect(form.getByLabel('Where it runs')).toHaveValue('local');
   await form.getByRole('button', { name: 'Test', exact: true }).click();
   await expect(form.getByTestId('conn-test')).toHaveAttribute('data-ok', 'false');
-  await expect(form.getByTestId('conn-test')).toContainText('npx puddle-connect');
+  // puddle-connect runs for the suite (started by the Playwright config), without a PostgreSQL driver yet.
+  await expect(form.getByTestId('conn-test')).toContainText('no postgres driver');
   await form.getByRole('button', { name: 'Save connection' }).click();
 
   // Saved: the tables are asked for next, which needs the service too; back to the list.
   const picker = page.getByRole('dialog', { name: 'Read from PostgreSQL' });
-  await expect(picker).toContainText('npx puddle-connect');
+  await expect(picker).toContainText('no postgres driver');
   await page.keyboard.press('Escape');
   const row = list.getByTestId('connection-PostgreSQL');
   await expect(row).toContainText('PostgreSQL · kev@db.local:5432/shop · on this computer · signed in');
@@ -216,4 +217,31 @@ test('documenting a SQLite file writes its tables into the Schema view as a grou
   await rel.getByRole('button', { name: 'Back to canvas' }).click();
   await projectMenu(page, 'Databases');
   await expect(page.getByRole('dialog', { name: 'Databases' }).getByTestId('connection-shop')).toContainText('documented');
+});
+
+test('a SQLite file on this computer is read through puddle-connect: found at localhost, tested, and a table read', async ({ page }) => {
+  await openApp(page);
+  await page.getByRole('button', { name: 'Add', exact: true }).click();
+  await page.getByRole('menuitem', { name: /From database/ }).click();
+  const list = page.getByRole('dialog', { name: 'Add source from a database' });
+  await list.getByRole('button', { name: 'New connection' }).click();
+  await page.getByRole('dialog', { name: 'New connection' }).getByTestId('driver-grid').getByRole('listitem', { name: 'SQLite', exact: true }).click();
+  const form = page.getByRole('dialog', { name: 'New SQLite connection' });
+  // The service started by the test suite answers at localhost:8765, so the route says so, and the file is a path there.
+  await form.getByLabel('Where it runs').selectOption('local');
+  await expect(form.getByLabel('Where it runs')).toContainText('On this computer (found)');
+  await expect(form.getByRole('button', { name: 'Choose file' })).toHaveCount(0);
+  await form.getByLabel('Path of the database file').fill(`${process.cwd()}/tests/fixtures/db/shop.sqlite`);
+  await form.getByRole('button', { name: 'Test', exact: true }).click();
+  await expect(form.getByTestId('conn-test')).toHaveAttribute('data-ok', 'true');
+  await expect(form.getByTestId('conn-test')).toContainText('SQLite file, 3 tables');
+  await form.getByRole('button', { name: 'Save connection' }).click();
+
+  const picker = page.getByRole('dialog', { name: 'Read from SQLite' });
+  await expect(picker.getByTestId('table-picker')).toContainText('orders', { timeout: 20_000 });
+  await picker.getByTestId('pick-orders').click();
+  await picker.getByRole('button', { name: 'Add 1 source' }).click();
+  await expect(node(page, 'orders')).toHaveAttribute('data-status', 'ok', { timeout: 20_000 });
+  await selectNode(page, 'orders');
+  await expect(page.getByTestId('connection-read')).toContainText('4 rows');
 });

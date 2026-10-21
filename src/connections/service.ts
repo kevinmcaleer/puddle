@@ -25,6 +25,8 @@ export function serviceBase(via: ConnectionVia, base = typeof document === 'unde
 export interface Health {
   version: string;
   drivers: string[];
+  /** Whether the service limits the hosts it reaches to an allowlist. */
+  allowlist?: boolean;
 }
 
 export type Fetch = typeof fetch;
@@ -37,7 +39,7 @@ export async function probe(via: Exclude<ConnectionVia, 'browser'>, fetchImpl: F
     const res = await fetchImpl(`${serviceBase(via)}/health`, { signal: controller.signal, headers: headersFor(via) });
     if (!res.ok) return undefined;
     const body = (await res.json()) as Partial<Health>;
-    return { version: String(body.version ?? ''), drivers: Array.isArray(body.drivers) ? body.drivers.map(String) : [] };
+    return { version: String(body.version ?? ''), drivers: Array.isArray(body.drivers) ? body.drivers.map(String) : [], ...(typeof body.allowlist === 'boolean' ? { allowlist: body.allowlist } : {}) };
   } catch {
     return undefined;
   } finally {
@@ -88,7 +90,10 @@ export async function testConnection(connection: Pick<Connection, 'driver' | 'se
     return { ok: false, detail: notRunning(connection.via) };
   }
   if (res.status === 401) return { ok: false, detail: 'The Pi’s service refused the token. Check it under Where it runs.' };
-  if (!res.ok) return { ok: false, detail: `The service answered ${res.status}.` };
+  if (!res.ok) {
+    const text = await res.text().catch(() => '');
+    return { ok: false, detail: text || `The service answered ${res.status}.` };
+  }
   const body = (await res.json()) as { ok?: boolean; server?: string; reason?: string };
   return body.ok ? { ok: true, detail: body.server ?? 'Connected' } : { ok: false, detail: body.reason ?? 'The database refused the connection.' };
 }

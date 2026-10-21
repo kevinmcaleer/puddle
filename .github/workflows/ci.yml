@@ -118,7 +118,6 @@ jobs:
           tags: puddle:ci
           build-args: PUDDLE_BUILD=${{ github.sha }}
           cache-from: type=gha
-          cache-to: type=gha,mode=max
       - name: Build the arm64 image
         uses: docker/build-push-action@v6
         with:
@@ -186,10 +185,47 @@ jobs:
           test -s /tmp/projects/out/*.run.json
           grep -q '"status": "written"' /tmp/projects/out/*.run.json
 
+  connect:
+    name: puddle-connect
+    if: github.event_name != 'schedule'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run build:connect
+      - name: Start the service, read a SQLite fixture through it, and check its refusals
+        run: |
+          PUDDLE_CONNECT_FILES=$PWD/tests/fixtures/db node dist-connect/puddle-connect.mjs --port 8765 > /tmp/connect.log 2>&1 &
+          for i in $(seq 1 20); do curl -sf http://127.0.0.1:8765/health && break; sleep 0.5; done
+          curl -sf http://127.0.0.1:8765/health | grep -q '"sqlite"'
+          body='{"driver":"sqlite","settings":{"path":"'$PWD'/tests/fixtures/db/shop.sqlite"},"table":{"name":"customers"}}'
+          curl -sf -D /tmp/headers -o /tmp/rows.arrow -H 'Content-Type: application/json' -d "$body" http://127.0.0.1:8765/read
+          grep -qi 'puddle-rows: 3' /tmp/headers
+          test -s /tmp/rows.arrow
+          # A file outside the folders it may read, and a statement that writes, are refused.
+          curl -s -o /dev/null -w '%{http_code}' -H 'Content-Type: application/json' -d '{"driver":"sqlite","settings":{"path":"/etc/passwd"},"table":{"name":"x"}}' http://127.0.0.1:8765/catalog | grep -q 422
+          curl -s -o /dev/null -w '%{http_code}' -H 'Content-Type: application/json' -d '{"driver":"sqlite","settings":{"path":"'$PWD'/tests/fixtures/db/shop.sqlite"},"query":"DELETE FROM customers"}' http://127.0.0.1:8765/read | grep -q 400
+          cat /tmp/connect.log
+          ! grep -q hunter2 /tmp/connect.log
+      - name: The image builds for amd64 and arm64
+        uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: Dockerfile.connect
+          platforms: linux/amd64,linux/arm64
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
   publish:
     name: Publish the image
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    needs: [check, e2e, container, runner]
+    needs: [check, e2e, container, runner, connect]
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -212,4 +248,15 @@ jobs:
             ghcr.io/${{ github.repository }}:latest
             ghcr.io/${{ github.repository }}:${{ github.sha }}
           build-args: PUDDLE_BUILD=${{ github.sha }}
+          cache-from: type=gha
+      - name: Publish the puddle-connect image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: Dockerfile.connect
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository }}-connect:latest
+            ghcr.io/${{ github.repository }}-connect:${{ github.sha }}
           cache-from: type=gha

@@ -64,7 +64,8 @@ function needOf(connection: Connection | undefined): string {
 /** What a connection still needs from this tab before it can be read: its file, or its secret; nothing when it has both. */
 export function connectionNeeds(connection: Connection): 'file' | 'secret' | undefined {
   const d = driver(connection.driver);
-  const fileDriver = d.fields.some((f) => f.kind === 'file');
+  // A file is picked in the page; a connection through puddle-connect names a path on that computer instead.
+  const fileDriver = connection.via === 'browser' && d.fields.some((f) => f.kind === 'file');
   const viaFile = fileDriver && (d.fields.some((f) => f.kind === 'file' && f.required) || !!connection.settings.file);
   if (viaFile && !connectionFile(connection.id)) return 'file';
   // A file needs no sign-in (a LibSQL file is read like SQLite); the service behind the same driver does.
