@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { addFiles, addStepWithT, expectRows, fixture, node, openApp, saved } from './helpers/app';
+import { addFiles, addStepWithT, expectRows, fixture, node, openApp, saved, selectNode } from './helpers/app';
 
 test('nodes group into one card with their inputs and outputs, open and close, and ungroup', async ({ page }) => {
   await openApp(page);
@@ -11,8 +11,8 @@ test('nodes group into one card with their inputs and outputs, open and close, a
   await expect(node(page, 'Output 1')).toHaveAttribute('data-status', 'ok');
 
   // G groups the selected nodes, as Ctrl+G does in Blender; the card shows what comes in and what goes out.
-  await node(page, 'messy.csv').click();
-  await node(page, 'Transform 1').click({ modifiers: ['Shift'] });
+  await selectNode(page, 'messy.csv');
+  await selectNode(page, 'Transform 1', ['Shift']);
   await page.keyboard.press('g');
   const card = page.getByTestId('group-Group 1');
   await expect(card).toBeVisible();

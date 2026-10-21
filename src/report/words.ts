@@ -1,6 +1,6 @@
 // What every report format says the same way: status words, times, counts and the file name.
 import type { Status } from '../ui';
-import type { QualityReport, ReportFormat, ReportRule, ReportStatus } from './build';
+import type { IssueOutcome, QualityReport, ReportAnalysis, ReportFormat, ReportRule, ReportStatus } from './build';
 
 export const STATUS_WORD: Record<ReportStatus, string> = {
   pass: 'Pass',
@@ -30,6 +30,14 @@ export const count = (n: number, one: string, many = `${one}s`) => `${n.toLocale
 export function summaryLine(r: QualityReport): string {
   const parts = (Object.keys(STATUS_WORD) as ReportStatus[]).filter((s) => r.summary[s]).map((s) => `${r.summary[s]} ${STATUS_WORD[s].toLowerCase()}`);
   return `${count(r.summary.rules, 'rule')}${parts.length ? `: ${parts.join(', ')}` : ''}.`;
+}
+
+export const OUTCOME_WORD: Record<IssueOutcome, string> = { fixed: 'Fixed', ignored: 'Ignored', open: 'Open' };
+
+/** "7 issues found 16 Oct 2026, 17:20 UTC: 6 fixed, 1 ignored." */
+export function analysisLine(a: ReportAnalysis): string {
+  const parts = (Object.keys(OUTCOME_WORD) as IssueOutcome[]).filter((o) => a[o]).map((o) => `${a[o]} ${OUTCOME_WORD[o].toLowerCase()}`);
+  return `${a.found ? count(a.found, 'issue') : 'No issues'} found ${reportTime(a.at)} in ${count(a.rows, 'row')}${parts.length ? `: ${parts.join(', ')}` : ''}.`;
 }
 
 /** The figures of one rule, e.g. "2 of 4 rows fail (50%)", or what stands in for them. */

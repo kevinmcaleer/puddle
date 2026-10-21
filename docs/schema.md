@@ -83,10 +83,10 @@ Views and detail levels change only the picture, never the DBML.
 There are three ways to start from a schema you already have.
 
 - **Paste DBML.** A file from dbdiagram.io, or any other DBML, can be pasted straight into the editor.
-- **Import SQL.** Paste `CREATE TABLE` statements, or open a `.sql` file: a `pg_dump --schema-only`, a `mysqldump --no-data` or a SQL Server script. Puddle detects which database wrote it (PostgreSQL, MySQL and MariaDB, SQL Server, SQLite or DuckDB), or you can pick one under **Database**. It says how many tables and refs it found, and lists the statements it skipped, such as `INSERT` or `CREATE VIEW`, and anything it read with changes. If the schema already has DBML, **Into the schema** adds the tables to it or replaces it. The imported tables arrive selected on the diagram.
+- **Import SQL.** Paste `CREATE TABLE` statements, or open a `.sql` file: a `pg_dump`, a `mysqldump` or a SQL Server script. Puddle detects which database wrote it (PostgreSQL, MySQL and MariaDB, SQL Server, SQLite or DuckDB), or you can pick one under **Database**. The rows of a dump, written as `INSERT … VALUES` or as a `COPY … FROM stdin` block, become the tables' records, so a Schema table node holds the data the dump held. It says how many tables, refs and rows it found, and lists the statements it skipped, such as `CREATE VIEW`, and anything it read with changes. If the schema already has DBML, **Into the schema** adds the tables to it or replaces it. The imported tables arrive selected on the diagram.
 - **From the project's own nodes.** In {doc}`relationships`, **Open in Schema** writes the project's tables and relationships into the schema as DBML.
 
-![Import SQL with a PostgreSQL script pasted in: 2 tables and 1 ref found, and 1 INSERT statement skipped](_static/screenshots/schema-import-sql.png)
+![Import SQL with a PostgreSQL script pasted in: 2 tables, 1 ref and 1 row found](_static/screenshots/schema-import-sql.png)
 
 Everything is read in your browser; nothing is uploaded.
 

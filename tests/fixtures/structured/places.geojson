@@ -1,0 +1,5 @@
+{"type":"FeatureCollection","features":[
+{"type":"Feature","id":1,"properties":{"name":"Lighthouse","kind":"landmark","height":34.5},"geometry":{"type":"Point","coordinates":[-3.1,53.4]}},
+{"type":"Feature","id":2,"properties":{"name":"Pier","kind":"landmark","height":null},"geometry":{"type":"LineString","coordinates":[[-3.1,53.4],[-3.11,53.41]]}},
+{"type":"Feature","properties":{"name":"Park","kind":"green","height":2},"geometry":null}
+]}

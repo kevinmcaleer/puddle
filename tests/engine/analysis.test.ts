@@ -34,10 +34,10 @@ const analyse = async (source: typeof messy) => {
 };
 
 describe('analysing a node', () => {
-  it('finds each of messy.csv’s problems in five queries, with counts and examples from the data', async () => {
+  it('finds each of messy.csv’s problems in eight queries, with counts and examples from the data', async () => {
     const { issues, analysis } = await analyse(messy);
-    // Count, profile, type sniff, the exact counts, the distinct values per column, the values of the few-valued columns, and the shape of the text file.
-    expect(queries).toBe(7);
+    // Count, profile, type sniff, the exact counts, the distinct values per column, the values of the few-valued columns, the rows out of line, and the shape of the text file.
+    expect(queries).toBe(8);
     expect(analysis.facts.rows).toBe(5);
     // price (£1,234.50, (12.00), € 7,5) reads as numbers once symbols and brackets are allowed for; DuckDB reads joined (31/01/2024) as dates itself.
     expect(issues.map((i) => i.key)).toEqual(['duplicateRows', 'nonPrinting:name', 'edgeSpaces:name', 'doubleSpaces:name', 'emptyText:name', 'edgeSpaces:city', 'numbersAsText:price']);

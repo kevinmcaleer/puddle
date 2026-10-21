@@ -166,10 +166,10 @@ export async function expectRows(page: Page, rows: number) {
   await expect(page.getByTestId('results-table')).toHaveAttribute('data-rows', String(rows), { timeout: 20_000 });
 }
 
-/** Read the viewed result's first rows the way the grid gets them, through the store and engine. */
+/** The columns the inspector lists for a node, once it has run: selected through selectNode, since Firefox can take a plain click on a settling node as a drag that selects nothing. */
 export async function columnsOf(page: Page, nodeName: string): Promise<string[]> {
   await expect(node(page, nodeName)).toHaveAttribute('data-status', 'ok', { timeout: 20_000 });
-  await node(page, nodeName).click();
+  await selectNode(page, nodeName);
   // The inspector lists the columns a moment after the click; read them once the first is there (Firefox is slower).
   const columns = page.getByTestId('inspector-columns').locator('.ui-col');
   await expect(columns.first()).toBeVisible({ timeout: 10_000 });

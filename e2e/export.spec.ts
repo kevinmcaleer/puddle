@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { addFiles, expectRows, fixture, node, openApp } from './helpers/app';
+import { addFiles, expectRows, fixture, node, openApp, selectNode } from './helpers/app';
 
 const bar = (page: Page) => page.locator('.ui-resultsbar');
 const log = (page: Page) => page.getByTestId('export-log');
@@ -8,7 +8,7 @@ async function customersToOutput(page: Page) {
   await openApp(page);
   await addFiles(page, [fixture('customers.csv')]);
   await expect(node(page, 'customers.csv')).toHaveAttribute('data-status', 'ok', { timeout: 20_000 });
-  await node(page, 'customers.csv').click();
+  await selectNode(page, 'customers.csv');
   await page.getByRole('button', { name: 'Add', exact: true }).click();
   await page.getByRole('menuitem', { name: 'Output' }).click();
   await expect(node(page, 'Output 1')).toHaveAttribute('data-status', 'ok');
@@ -16,7 +16,7 @@ async function customersToOutput(page: Page) {
 
 test('an Output node exports CSV through DuckDB and logs it', async ({ page }) => {
   await customersToOutput(page);
-  await node(page, 'Output 1').click();
+  await selectNode(page, 'Output 1');
   await expectRows(page, 4);
 
   const download = page.waitForEvent('download');
@@ -41,7 +41,7 @@ test('an Output node exports CSV through DuckDB and logs it', async ({ page }) =
 
 test('the menu beside the export button exports another format in one go', async ({ page }) => {
   await customersToOutput(page);
-  await node(page, 'Output 1').click();
+  await selectNode(page, 'Output 1');
   await expectRows(page, 4);
 
   await bar(page).getByRole('button', { name: 'Export as', exact: true }).click();
@@ -59,7 +59,7 @@ test('the menu beside the export button exports another format in one go', async
 
 test('a failing rule upstream blocks the export, which can be overridden and is logged', async ({ page }) => {
   await customersToOutput(page);
-  await node(page, 'customers.csv').click();
+  await selectNode(page, 'customers.csv');
   await page.getByRole('button', { name: 'Add rule' }).click();
   await page.getByRole('menuitem', { name: 'No leading or trailing spaces', exact: true }).click();
   await page.getByTestId('rule-settings').getByRole('button', { name: 'name', exact: true }).click();
@@ -67,7 +67,7 @@ test('a failing rule upstream blocks the export, which can be overridden and is 
 
   await expect(node(page, 'Output 1')).toHaveAttribute('data-export', 'blocked');
   await expect(node(page, 'Output 1')).toContainText('Export blocked');
-  await node(page, 'Output 1').click();
+  await selectNode(page, 'Output 1');
   const blocked = bar(page).getByTestId('export-blocked');
   await expect(blocked).toContainText('Export blocked');
   await expect(blocked).toContainText('No leading or trailing spaces in name fails on 2 rows in customers.csv.');
@@ -83,7 +83,7 @@ test('a failing rule upstream blocks the export, which can be overridden and is 
   await expect(log(page)).toContainText('Exported anyway past No leading or trailing spaces in name (customers.csv)');
 
   // A warning doesn't block.
-  await node(page, 'customers.csv').click();
+  await selectNode(page, 'customers.csv');
   const ruleName = page.getByTestId('rules').getByRole('button', { name: 'No leading or trailing spaces in name' });
   if ((await ruleName.getAttribute('aria-pressed')) !== 'true') await ruleName.click();
   await page.getByTestId('rule-settings').getByLabel('Severity').selectOption('warn');
@@ -100,7 +100,7 @@ test('copy an Output node to the clipboard as tab-separated text', async ({ page
   test.skip(browserName !== 'chromium', 'Playwright can grant clipboard permissions in Chromium only.');
   await context.grantPermissions(['clipboard-read', 'clipboard-write']);
   await customersToOutput(page);
-  await node(page, 'Output 1').click();
+  await selectNode(page, 'Output 1');
   await page.getByLabel('Format').selectOption('clipboard');
   await bar(page).getByRole('button', { name: 'Copy to clipboard' }).click();
   await expect(page.getByTestId('canvas-notice')).toContainText('Copied 4 rows from Output 1.');
@@ -150,7 +150,7 @@ async function strictClipboard(page: Page, { refuse = false } = {}) {
 test('the clipboard copy is asked for during the click, so browsers that need that still take it', async ({ page }) => {
   await strictClipboard(page);
   await customersToOutput(page);
-  await node(page, 'Output 1').click();
+  await selectNode(page, 'Output 1');
   await page.getByLabel('Format').selectOption('clipboard');
   await bar(page).getByRole('button', { name: 'Copy to clipboard' }).click();
   await expect(page.getByTestId('canvas-notice')).toContainText('Copied 4 rows from Output 1.');
@@ -163,7 +163,7 @@ test('the clipboard copy is asked for during the click, so browsers that need th
 test('a browser that refuses the clipboard gets a plain way out', async ({ page }) => {
   await strictClipboard(page, { refuse: true });
   await customersToOutput(page);
-  await node(page, 'Output 1').click();
+  await selectNode(page, 'Output 1');
   await page.getByLabel('Format').selectOption('clipboard');
   await bar(page).getByRole('button', { name: 'Copy to clipboard' }).click();
   await expect(page.getByTestId('canvas-notice')).toContainText('This browser won’t let Puddle use the clipboard. Export a file instead.');

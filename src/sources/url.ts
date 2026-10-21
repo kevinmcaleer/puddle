@@ -3,8 +3,9 @@ import { whenEngine } from '../app/engine';
 import { sourceFileName } from '../compiler';
 import { invalidateCaches } from '../flow/status';
 import { addSource, newId, setSourceFormat, updateSource, useProjectStore, type Source, type SourceFormat } from '../model';
+import { rememberFile } from './add';
 import { markAttached } from './attachments';
-import { formatFromName, knownFormat } from './detect';
+import { isArchiveName, knownFormat } from './detect';
 import { parseAddress, UrlSourceError, type UrlErrorKind } from './address';
 import { HEAD_BYTES, headHash } from './hash';
 import { sniff, TAIL_BYTES } from './sniff';
@@ -13,6 +14,8 @@ import type { HtmlTable } from './html';
 import { fetchTable, tableFetched } from './webpage';
 import { fetchFeed, type FeedSpec, type ReadOptions } from './odata';
 import { rememberSignIn, signInFor } from './odataSignIn';
+import { isRewrittenText } from './text';
+import { rememberRewriteInput } from './rewrite';
 import { rememberXml } from './xml';
 
 /**
@@ -62,6 +65,17 @@ const BY_CONTENT_TYPE: Record<string, SourceFormat> = {
   'application/x-parquet': 'parquet',
   'application/parquet': 'parquet',
   'application/xml': 'xml',
+  'application/yaml': 'yaml',
+  'application/x-yaml': 'yaml',
+  'text/yaml': 'yaml',
+  'text/x-yaml': 'yaml',
+  'application/toml': 'toml',
+  'text/x-ini': 'ini',
+  'application/geo+json': 'geojson',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document': 'word',
+  'application/pdf': 'pdf',
+  'application/vnd.google-earth.kml+xml': 'xml',
+  'application/gpx+xml': 'xml',
   'text/xml': 'xml',
   'application/atom+xml': 'xml',
   'application/rss+xml': 'xml',
@@ -76,10 +90,9 @@ export function formatFromContentType(contentType: string | null | undefined): S
 /** The file's format: from the address's extension, else the server's Content-Type, or say how to choose one. */
 export function formatFromAddress(url: URL, contentType?: string | null): SourceFormat {
   const name = nameFromAddress(url);
+  if (isArchiveName(name)) throw new UrlSourceError('Puddle reads a compressed file or a zip archive from a chosen file, not from a web address yet. Download it and add the file.', 'format');
   const byName = knownFormat(name);
-  if (byName === 'xlsx') throw new UrlSourceError('Excel workbooks can’t be read from a web address yet. Download the file and drop it here instead.', 'format');
   if (byName) return byName;
-  if (/\.xls$/i.test(name)) formatFromName(name);
   const byType = formatFromContentType(contentType);
   if (byType) return byType;
   throw new UrlSourceError('Puddle can’t tell this file’s format from its address or the server’s reply. Choose the format and add it again.', 'format');
@@ -187,9 +200,15 @@ export function addressOf(source: Source): URL | string {
   return sampleAddress(sample, base);
 }
 
-/** Hand what was fetched to DuckDB under the source's file name, replacing what was there. XML is read into rows first (./xml). */
+/**
+ * Hand what was fetched to DuckDB under the source's file name, replacing what was there. XML is read into rows
+ * first (./xml); a workbook, fetched whole, goes to the Excel worker as a chosen file would (./excel).
+ */
 async function register(source: Source, fetched: Fetched) {
   if (source.format === 'xml') return void rememberXml(source.id, fetched.data!);
+  if (source.format === 'xlsx') return void rememberFile(source.id, new File([fetched.data! as Uint8Array<ArrayBuffer>], source.name));
+  // Fixed-width text, pipe tables and structured text are read into rows first too (./rewrite).
+  if (isRewrittenText(source)) return void rememberRewriteInput(source.id, fetched.data!);
   const engine = await whenEngine();
   const name = sourceFileName(source);
   await engine.dropFile(name).catch(() => undefined);
@@ -276,7 +295,8 @@ function sniffSample(source: Source, fetched: Fetched) {
   if (!data || !source.url?.sample || Object.keys(source.parseOptions).length || (source.format !== 'csv' && source.format !== 'tsv')) return;
   const tail = data.length > HEAD_BYTES ? data.subarray(data.length - TAIL_BYTES) : undefined;
   const sniffed = sniff({ name: source.name, head: data.subarray(0, HEAD_BYTES), size: data.length, tail });
-  if ((sniffed.format !== 'csv' && sniffed.format !== 'tsv') || sniffed.confidence === 'unsure') return;
+  const text = sniffed.format === 'csv' || sniffed.format === 'tsv' || sniffed.format === 'fixed' || sniffed.format === 'pipes';
+  if (!text || sniffed.confidence === 'unsure') return;
   if (sniffed.format === source.format && !Object.keys(sniffed.parseOptions).length) return;
   useProjectStore.getState().amend((p) => setSourceFormat(p, source.id, sniffed.format, sniffed.parseOptions));
 }
@@ -303,8 +323,9 @@ export function loadUrlSource(source: Source, opts: FetchOptions & { refresh?: b
         : await fetchAddress(addressOf(source), { ...opts, format: source.format, shipped: isShippedFile(source.url.sample) });
       // Sniffed before the bytes go to the engine, which takes the buffer with them.
       sniffSample(source, fetched);
-      await register(source, fetched);
+      // Registered as the sniff left it: a sample read as a pipe table goes to Puddle's reader, not to DuckDB as CSV.
       const current = useProjectStore.getState().history.present.sources.find((s) => s.id === source.id);
+      await register(current ?? source, fetched);
       const before = current?.url?.headHash ?? source.url.headHash;
       const changed = before != null && before !== fetched.headHash;
       if (current?.url && (current.url.headHash !== fetched.headHash || current.url.size !== fetched.size))

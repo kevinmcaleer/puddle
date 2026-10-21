@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { addFiles, expectRows, fixture, node, openApp } from './helpers/app';
+import { addFiles, expectRows, fixture, node, openApp, selectNode } from './helpers/app';
 
 test('a source shows the issues analysis found, on its card, in the strip and in the inspector; one can be ignored and brought back', async ({ page }) => {
   await openApp(page);
@@ -11,7 +11,7 @@ test('a source shows the issues analysis found, on its card, in the strip and in
   await expect(page.getByTestId('strip-issues')).toHaveAttribute('data-count', '7');
 
   // The inspector lists each with its count, examples and fix.
-  await node(page, 'messy.csv').click();
+  await selectNode(page, 'messy.csv');
   const issues = page.getByTestId('issues');
   await expect(issues).toHaveAttribute('data-state', 'ok');
   await expect(issues.getByTestId('issue-duplicateRows')).toContainText('Duplicate rows');

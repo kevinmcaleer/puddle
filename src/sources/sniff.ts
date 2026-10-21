@@ -1,13 +1,16 @@
 // What a file is, from its bytes: the signature for binary formats, the encoding and the shape of the text for the
 // rest. Content wins over the file name when it is unambiguous (plan D24); when it isn't, the result says so and the
 // Format picker asks. Pure, so it is tested on bytes.
+import type { ArchiveKind } from '../archive';
+import { detectLogPreset, logPresetLabel } from '../logs';
 import type { ParseOptions, SourceFormat } from '../model';
-import { knownFormat, SourceError } from './detect';
+import { knownFormat, READS, SourceError } from './detect';
+import { detectBoundaries } from './fixedWidth';
 
 export type Confidence = 'sure' | 'likely' | 'unsure';
 
 /** A format the sniff can name but Puddle doesn't read, so the refusal can say what the file is. */
-export type OtherFormat = 'xls' | 'xlsb' | 'ods' | 'word' | 'powerpoint' | 'zip' | 'gzip' | 'bzip2' | 'zstd' | 'arrow' | 'sqlite' | 'pdf' | 'ole' | 'binary';
+export type OtherFormat = 'doc' | 'powerpoint' | 'zip' | 'gzip' | 'bzip2' | 'zstd' | 'sqlite' | 'ole' | 'binary';
 
 export interface Sniffed {
   format: SourceFormat;
@@ -48,17 +51,59 @@ function zipEntries(bytes: Uint8Array): string[] {
   return names;
 }
 
-/** The format a binary signature names: one Puddle reads, or one it can name in the refusal. */
+/** Whether the bytes hold this text as UTF-16LE, as the stream names in an old Office file are written. */
+function hasUtf16(bytes: Uint8Array, text: string): boolean {
+  const needle = new Uint8Array(text.length * 2);
+  for (let i = 0; i < text.length; i++) needle[i * 2] = text.charCodeAt(i);
+  outer: for (let at = 0; at + needle.length <= bytes.length; at++) {
+    for (let i = 0; i < needle.length; i++) if (bytes[at + i] !== needle[i]) continue outer;
+    return true;
+  }
+  return false;
+}
+
+/**
+ * A dBase file: a version byte, a last-updated date, then the header length (32 bytes, 32 per field, a terminator,
+ * and in Visual FoxPro a 263-byte back link) and a record length.
+ */
+function isDbf(head: Uint8Array): boolean {
+  if (head.length < 32) return false;
+  if (![0x02, 0x03, 0x30, 0x31, 0x32, 0x43, 0x63, 0x83, 0x8b, 0x8e, 0xcb, 0xf5, 0xfb].includes(head[0]!)) return false;
+  const month = head[2]!;
+  const day = head[3]!;
+  if (month < 1 || month > 12 || day < 1 || day > 31) return false;
+  const headerLength = head[8]! | (head[9]! << 8);
+  const recordLength = head[10]! | (head[11]! << 8);
+  return headerLength >= 33 && ((headerLength - 1) % 32 === 0 || (headerLength - 264) % 32 === 0) && recordLength >= 1;
+}
+
+/**
+ * The format a binary signature names: one Puddle reads, or one it can name in the refusal. Every spreadsheet
+ * SheetJS reads is 'xlsx' (src/excel/formats.ts): a workbook in a zip (.xlsx, .xlsm, .xlsb), an OpenDocument
+ * spreadsheet, a Numbers document, an old Excel workbook in an OLE file, a dBase table, a Lotus 1-2-3 sheet, and
+ * the SYLK and DIF text formats.
+ */
 export function signatureOf(head: Uint8Array): SourceFormat | OtherFormat | undefined {
   if (startsWith(head, 0x50, 0x4b, 0x03, 0x04)) {
     const entries = zipEntries(head);
-    if (entries.some((e) => e.startsWith('xl/'))) return entries.some((e) => /^xl\/worksheets\/sheet\d+\.bin$/.test(e)) || entries.includes('xl/workbook.bin') ? 'xlsb' : 'xlsx';
-    if (entries.includes('mimetype') || entries.includes('content.xml')) return 'ods';
+    if (entries.some((e) => e.startsWith('xl/'))) return 'xlsx';
+    if (entries.includes('mimetype') || entries.includes('content.xml')) return 'xlsx';
+    if (entries.some((e) => e.startsWith('Index/') || e === 'Index.zip' || e.startsWith('Metadata/'))) return 'xlsx';
     if (entries.some((e) => e.startsWith('word/'))) return 'word';
     if (entries.some((e) => e.startsWith('ppt/'))) return 'powerpoint';
     return 'zip';
   }
-  if (startsWith(head, 0xd0, 0xcf, 0x11, 0xe0)) return 'ole';
+  if (startsWith(head, 0xd0, 0xcf, 0x11, 0xe0)) {
+    // The streams of an old Office file say which program wrote it; a workbook's is Workbook (BIFF8) or Book (BIFF5).
+    if (hasUtf16(head, 'WordDocument')) return 'doc';
+    if (hasUtf16(head, 'PowerPoint Document')) return 'powerpoint';
+    if (hasUtf16(head, 'Workbook') || hasUtf16(head, 'Book')) return 'xlsx';
+    return 'ole';
+  }
+  if (startsWith(head, 0x00, 0x00, 0x02, 0x00, 0x06, 0x04)) return 'xlsx';
+  if (ascii(head, 0, 'ID;P')) return 'xlsx';
+  if (ascii(head, 0, 'TABLE\r\n0,1\r\n') || ascii(head, 0, 'TABLE\n0,1\n')) return 'xlsx';
+  if (isDbf(head)) return 'xlsx';
   if (ascii(head, 0, 'PAR1')) return 'parquet';
   if (ascii(head, 0, 'ARROW1')) return 'arrow';
   if (ascii(head, 0, 'SQLite format 3\0')) return 'sqlite';
@@ -71,29 +116,28 @@ export function signatureOf(head: Uint8Array): SourceFormat | OtherFormat | unde
 }
 
 const OTHER_NAMES: Record<OtherFormat, string> = {
-  xls: 'the old Excel format (.xls)',
-  xlsb: 'an Excel binary workbook (.xlsb)',
-  ods: 'an OpenDocument spreadsheet (.ods)',
-  word: 'a Word document',
+  doc: 'an old Word document (.doc)',
   powerpoint: 'a PowerPoint presentation',
   zip: 'a zip archive',
   gzip: 'a gzip-compressed file',
   bzip2: 'a bzip2-compressed file',
   zstd: 'a zstd-compressed file',
-  arrow: 'an Arrow file',
   sqlite: 'a SQLite database',
-  pdf: 'a PDF',
-  ole: 'an old Office file (.xls or .doc)',
+  ole: 'an old Office file that isn’t a workbook',
   binary: 'a binary file',
 };
 
-const READS = 'Add a CSV, TSV, JSON, NDJSON, Parquet, Excel (.xlsx), XML or Access (.accdb, .mdb) file.';
+/** A gzip-compressed file or a zip archive, which src/sources/archive.ts opens for the file inside. */
+export const archiveKindOf = (head: Uint8Array): ArchiveKind | undefined => {
+  const signature = signatureOf(head);
+  return signature === 'gzip' || signature === 'zip' ? signature : undefined;
+};
 
 /** The refusal for a format Puddle can name but not read, as the brand book words it: what it is, then what to do. */
 export function refusal(name: string, other: OtherFormat): SourceError {
-  if (other === 'xls' || other === 'ole') return new SourceError(`${name} is in the old Excel format (.xls), which Puddle doesn’t read. Open it in Excel and save it as .xlsx or CSV, then add that.`);
-  if (other === 'xlsb' || other === 'ods') return new SourceError(`${name} is ${OTHER_NAMES[other]}, which Puddle doesn’t read yet. Save it as .xlsx or CSV, then add that.`);
-  if (other === 'gzip' || other === 'bzip2' || other === 'zstd' || other === 'zip') return new SourceError(`${name} is ${OTHER_NAMES[other]}, which Puddle doesn’t open yet. Unpack it and add the file inside.`);
+  if (other === 'bzip2' || other === 'zstd') return new SourceError(`${name} is ${OTHER_NAMES[other]}, which Puddle doesn’t open. Unpack it and add the file inside, or pack it as gzip or zip.`);
+  if (other === 'gzip' || other === 'zip') return new SourceError(`${name} is ${OTHER_NAMES[other]}, which Puddle opens from a chosen file: unpack it and add the file inside, or choose the archive itself.`);
+  if (other === 'doc') return new SourceError(`${name} is ${OTHER_NAMES[other]}, which Puddle doesn’t read. Open it in Word and save it as a .docx file, then add that.`);
   return new SourceError(`${name} is ${OTHER_NAMES[other]}, which Puddle doesn’t read. ${READS}`);
 }
 
@@ -322,25 +366,35 @@ export function sniffText(text: string, tail?: string): Sniffed {
     }
     return { format: 'xml', confidence: 'sure', ...none, reason: 'Starts with an XML tag.' };
   }
-  if (t.startsWith('[')) return { format: 'json', confidence: 'sure', ...none, reason: 'Starts with a JSON array.' };
+  // A [section] heading on its own line opens an INI or TOML file, not a JSON array.
+  if (t.startsWith('[') && !/^\[\[?[\w.\-"' ]+\]\]?\s*$/.test(first)) return { format: 'json', confidence: 'sure', ...none, reason: 'Starts with a JSON array.' };
   if (t.startsWith('{')) {
+    // GeoJSON names itself near the top: a FeatureCollection or one Feature.
+    if (/^\{[\s\S]{0,2000}"type"\s*:\s*"Feature(Collection)?"/.test(t)) return { format: 'geojson', confidence: 'sure', ...none, reason: 'A GeoJSON feature collection.' };
     const objects = lines.filter((l) => /^\{.*\}\s*,?$/.test(l.trim()));
     if (lines.length >= 2 && objects.length === lines.length) return { format: 'ndjson', confidence: 'sure', ...none, reason: 'One JSON object per line.' };
     return { format: 'json', confidence: 'sure', ...none, reason: 'Starts with a JSON object.' };
   }
 
-  // A pipe table (an SAP list, a Markdown table): rows between pipes, with rules of dashes.
+  // A log: lines in one of the shapes src/logs knows (an access log, syslog, IIS, a timestamped app log). Looked for
+  // before the delimiter: an access log's spaces and quotes would otherwise read as a ragged CSV.
+  const preset = detectLogPreset(lines);
+  if (preset) return { format: 'log', confidence: 'likely', parseOptions: { preset }, alternatives: [], reason: `Lines in the shape of ${preset === 'combined' ? 'a web server access log' : preset === 'iis' ? 'an IIS log' : preset === 'syslog' ? 'syslog' : 'an application log, each starting with a timestamp'} (${logPresetLabel(preset)}).` };
+
+  // A pipe table (an SAP list, a Markdown table): rows between pipes, with rules of dashes. Read by src/sources/pipes.ts,
+  // which drops the lines around the table, the empty edge columns and the padding.
   const piped = lines.filter((l) => /^\s*\|.*\|\s*$/.test(l)).length;
   if (lines.length >= 3 && piped >= lines.length * 0.5) {
-    // The header is the widest line's count; its leading and trailing pipes make an empty first and last column, which
-    // DuckDB's own header detection then refuses, so the header is said outright.
-    const fields = Math.max(...lines.filter((l) => /^\s*\|.*\|\s*$/.test(l)).map((l) => countOutsideQuotes(l, '|') + 1));
-    const shape = sniffShape(raw, tailRaw, '|', fields);
-    return { format: 'csv', confidence: 'likely', parseOptions: { delimiter: '|', header: true, ...shapeOptions(shape, raw, '|', fields, true) }, alternatives: [], reason: withNotes('Rows between pipes, as an SAP list or a pipe table has them.', shape) };
+    const around = lines.length - piped;
+    return { format: 'pipes', confidence: 'likely', ...none, reason: `Rows between pipes, as an SAP list or a pipe table has them${around ? `, with ${around} ${around === 1 ? 'line' : 'lines'} around the table` : ''}.` };
   }
 
+  // Fixed-width: lines of much the same length with columns of spaces at the same offsets. Read by src/sources/fixedWidth.ts.
+  // Looked for first, since the thousands separators in a column of amounts make a comma-separated file of two fields:
+  // columns lined up with spaces win over commas when there are more of them.
+  const fixed = lines.length >= 5 && fixedWidthColumns(lines) >= 1 ? detectBoundaries(lines) : [];
   const found = sniffDelimiter(lines);
-  if (found && found.fields >= 2) {
+  if (found && found.fields >= 2 && !(found.delimiter === ',' && fixed.length + 1 > found.fields)) {
     const shape = sniffShape(raw, tailRaw, found.delimiter, found.fields);
     // The header question is asked of the table itself, not of the banner above it.
     const table = lines.filter((l) => countOutsideQuotes(l, found.delimiter) + 1 >= found.fields);
@@ -356,12 +410,18 @@ export function sniffText(text: string, tail?: string): Sniffed {
     };
   }
 
-  // Fixed-width: lines of much the same length with columns of spaces at the same offsets.
-  if (lines.length >= 5 && fixedWidthColumns(lines) >= 2) {
-    return { format: 'csv', confidence: 'unsure', ...none, reason: 'Columns at fixed positions, lined up with spaces. Puddle doesn’t read fixed-width text yet; choose a format, or save it as CSV.' };
+  if (fixed.length) return { format: 'fixed', confidence: 'likely', parseOptions: { boundaries: fixed }, alternatives: [], reason: `${fixed.length + 1} columns at fixed positions, lined up with spaces.` };
+  // TOML and INI: [section] headings and key = value lines. TOML quotes its strings and has arrays and [[tables]]; INI doesn't.
+  const content = lines.filter((l) => !/^\s*[;#]/.test(l));
+  const sections = content.filter((l) => /^\s*\[\[?[^\]]+\]\]?\s*$/.test(l)).length;
+  const assignments = content.filter((l) => /^\s*[\w.\-"']+\s*=/.test(l)).length;
+  if (content.length >= 2 && sections + assignments >= content.length * 0.8 && assignments >= 1) {
+    const toml = content.some((l) => /^\s*\[\[[^\]]+\]\]\s*$/.test(l) || /=\s*("|'|\[|\{|true\s*$|false\s*$)/.test(l));
+    return { format: toml ? 'toml' : 'ini', confidence: 'likely', ...none, reason: toml ? 'Key = value lines with quoted strings or [[tables]], as TOML has them.' : 'Key = value lines under [section] headings, as an INI file has them.' };
   }
-  if (/^---\s*$/m.test(first) || lines.filter((l) => /^\s*[\w.-]+:(\s|$)/.test(l)).length >= lines.length * 0.6) {
-    return { format: 'csv', confidence: 'unsure', ...none, reason: 'Looks like YAML, which Puddle doesn’t read. Choose a format, or save the data as CSV.' };
+  // YAML: key: value lines, a --- document marker, or a list of - items.
+  if (/^---\s*$/m.test(first) || content.filter((l) => /^\s*(-\s+)?[\w.-]+:(\s|$)/.test(l) || /^\s*-\s+\S/.test(l)).length >= content.length * 0.6) {
+    return { format: 'yaml', confidence: 'likely', ...none, reason: 'Key: value lines, as YAML has them.' };
   }
   return { format: 'csv', confidence: 'unsure', ...none, reason: lines.length ? 'Plain lines with no separator Puddle recognises.' : 'The file is empty.' };
 }
@@ -393,10 +453,12 @@ export function sniff({ name, head, size, tail }: SniffInput): Sniffed {
   const byName = knownFormat(name);
   const signature = signatureOf(head);
   if (signature) {
-    if (signature === 'xlsx' || signature === 'parquet' || signature === 'access') {
-      return { format: signature, confidence: 'sure', parseOptions: {}, alternatives: [], reason: `A ${signature === 'xlsx' ? 'workbook' : signature === 'parquet' ? 'Parquet file' : 'database'} by its signature.` };
+    if (signature === 'xlsx' || signature === 'parquet' || signature === 'access' || signature === 'arrow' || signature === 'word' || signature === 'pdf') {
+      return { format: signature, confidence: 'sure', parseOptions: {}, alternatives: [], reason: `${signature === 'xlsx' ? 'A spreadsheet' : signature === 'parquet' ? 'A Parquet file' : signature === 'arrow' ? 'An Arrow file' : signature === 'word' ? 'A Word document' : signature === 'pdf' ? 'A PDF' : 'A database'} by its signature.` };
     }
-    throw refusal(name, signature === 'ole' && /\.xls$/i.test(name) ? 'xls' : (signature as OtherFormat));
+    // An old Office file whose streams weren't in the first megabyte: a workbook when the name says so.
+    if (signature === 'ole' && byName === 'xlsx') return { format: 'xlsx', confidence: 'likely', parseOptions: {}, alternatives: [], reason: 'An old Office file, taken as a workbook from the file name.' };
+    throw refusal(name, signature as OtherFormat);
   }
   if (!head.length) {
     if (byName) return { format: byName, confidence: 'likely', parseOptions: {}, alternatives: [], reason: 'The file is empty.' };
@@ -404,9 +466,11 @@ export function sniff({ name, head, size, tail }: SniffInput): Sniffed {
   }
   const decoded = decodeHead(head, size == null || size <= head.length);
   if ('binary' in decoded) {
-    if (byName === 'parquet' || byName === 'xlsx' || byName === 'access') return { format: byName, confidence: 'likely', parseOptions: {}, alternatives: [], reason: 'Taken from the file name.' };
+    if (byName === 'parquet' || byName === 'xlsx' || byName === 'access' || byName === 'arrow' || byName === 'word' || byName === 'pdf') return { format: byName, confidence: 'likely', parseOptions: {}, alternatives: [], reason: 'Taken from the file name.' };
     throw refusal(name, 'binary');
   }
+  // A flat OpenDocument spreadsheet (.fods) is XML; its name says which XML.
+  if (byName === 'xlsx' && /<office:document[\s>]/.test(decoded.text)) return { format: 'xlsx', confidence: 'sure', parseOptions: {}, alternatives: [], reason: 'A flat OpenDocument spreadsheet.' };
   const encoding: ParseOptions = decoded.encoding ? { encoding: decoded.encoding } : {};
   const whole = size == null || size <= head.length;
   const tailText = whole ? undefined : tail ? decodeTail(tail, decoded.encoding) : undefined;
@@ -419,6 +483,8 @@ export function sniff({ name, head, size, tail }: SniffInput): Sniffed {
     if (byName && content.confidence === 'unsure') return { ...content, format: byName, confidence: 'likely', parseOptions: encoding, reason: `${content.reason} Read as ${byName.toUpperCase()}, as the file name says.` };
     return { ...content, confidence: sure, parseOptions };
   }
+  // TOML and INI are one family: the name settles which, when the content saw the other.
+  if ((byName === 'toml' || byName === 'ini') && (content.format === 'toml' || content.format === 'ini')) return { ...content, format: byName, confidence: 'sure', parseOptions: encoding };
   // They disagree. Unambiguous content wins (D24): JSON named .csv reads as JSON. Otherwise the name has the final say.
   if (content.confidence === 'sure') return { ...content, parseOptions, alternatives: [byName], reason: `${content.reason} The name says ${byName.toUpperCase()}, but the content doesn’t.` };
   if (content.confidence === 'likely') return { ...content, parseOptions, confidence: 'unsure', alternatives: [byName], reason: `${content.reason} The name says ${byName.toUpperCase()}.` };

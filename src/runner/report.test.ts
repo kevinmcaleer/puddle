@@ -1,31 +1,38 @@
 import { describe, expect, it } from 'vitest';
 import { flow } from '../../tests/helpers/projects';
-import { qualityMarkdown, ruleStatus } from './report';
+import { reportFiles, runReport } from './report';
 
 describe('the runner’s quality report', () => {
-  it('grades each rule from its result and severity', () => {
-    expect(ruleStatus('fail', undefined)).toBe('pending');
-    expect(ruleStatus('fail', { state: 'ok', failures: 0, total: 9 })).toBe('pass');
-    expect(ruleStatus('fail', { state: 'ok', failures: 2, total: 9 })).toBe('fail');
-    expect(ruleStatus('warn', { state: 'ok', failures: 2, total: 9 })).toBe('warn');
-    expect(ruleStatus('warn', { state: 'error', message: 'x' })).toBe('error');
+  const p = flow({ nodes: [{ id: 'a', type: 'transform' }, { id: 'b', type: 'transform' }, { id: 'c', type: 'transform' }], wires: [] });
+  p.name = 'Shop';
+  p.nodes[0]!.rules = [
+    { id: 'r1', type: 'notEmpty', label: 'email is filled in', params: { column: 'email' }, severity: 'fail', enabled: true },
+    { id: 'r2', type: 'unique', label: 'id | unique', params: { columns: ['id'] }, severity: 'warn', enabled: true },
+  ];
+  p.nodes[1]!.analysis = { at: '2026-10-21T09:00:00.000Z', rows: 5, issues: [{ key: 'duplicateRows', kind: 'duplicateRows', label: 'Duplicate rows', count: 1, fixed: true }] };
+  const sources = [{ id: 's', name: 'shop.csv', kind: 'file' as const, format: 'csv' as const, rows: 10, headHash: 'abc' }];
+
+  it('is the browser’s report over every node with rules or a kept analysis, from the run’s rule results', () => {
+    const r = runReport(p, { a: { r1: { state: 'ok', failures: 3, total: 10 }, r2: { state: 'error', message: 'no such column' } } }, sources, '2026-10-21T10:00:00.000Z');
+    expect(r.schema).toBe('puddle-quality-report/1');
+    expect(r.scope).toBe('all');
+    expect(r.nodes.map((n) => n.name)).toEqual(['a', 'b']);
+    expect(r.nodes[0]!.rules.map((x) => [x.label, x.status, x.failed])).toEqual([
+      ['email is filled in', 'fail', 3],
+      ['id | unique', 'error', null],
+    ]);
+    expect(r.nodes[1]!.analysis).toMatchObject({ found: 1, fixed: 1 });
+    expect(r.sources).toEqual(sources);
+    expect(r.summary).toMatchObject({ rules: 2, fail: 1, error: 1 });
   });
 
-  it('writes a table per node with rules, and says so when there are none', () => {
-    const p = flow({ nodes: [{ id: 'a', type: 'transform' }, { id: 'b', type: 'transform' }], wires: [] });
-    p.name = 'Shop';
-    expect(qualityMarkdown(p, {}, '2026-10-17T03:00:00.000Z')).toBe('# Quality report: Shop\n\nGenerated 2026-10-17T03:00:00.000Z by puddle-run.\n\nNo rules are set on this project.\n');
-    p.nodes[0]!.rules = [
-      { id: 'r1', type: 'notEmpty', label: 'email is filled in', params: { column: 'email' }, severity: 'fail', enabled: true },
-      { id: 'r2', type: 'unique', label: 'id | unique', params: { column: 'id' }, severity: 'warn', enabled: true },
-      { id: 'r3', type: 'unique', label: 'off', params: { column: 'id' }, severity: 'warn', enabled: false },
-    ];
-    const md = qualityMarkdown(p, { a: { r1: { state: 'ok', failures: 3, total: 10 }, r2: { state: 'error', message: 'no such column' } } }, 'now');
-    expect(md).toContain('2 rules: 0 pass, 0 warn, 1 fail, 1 can’t run.');
-    expect(md).toContain('## a\n\n| Rule | Severity | Result | Failing rows |');
-    expect(md).toContain('| email is filled in | fail | Fail | 3 of 10 |');
-    expect(md).toContain('| id \\| unique | warn | Can’t run | no such column |');
-    expect(md).not.toContain('| off |');
-    expect(md).not.toContain('## b');
+  it('is written as Markdown, JSON and HTML, named after the project', () => {
+    const files = reportFiles(runReport(p, {}, sources, '2026-10-21T10:00:00.000Z'), 'shop');
+    expect(Object.keys(files)).toEqual(['shop.quality.md', 'shop.quality.json', 'shop.quality.html']);
+    expect(files['shop.quality.md']).toContain('# Quality report: Shop');
+    expect(files['shop.quality.md']).toContain('| Fixed | Duplicate rows |  | 1 |');
+    expect(JSON.parse(files['shop.quality.json']!).nodes[1].analysis.issues[0].outcome).toBe('fixed');
+    expect(files['shop.quality.html']!.startsWith('<!doctype html>')).toBe(true);
+    expect(files['shop.quality.html']).toContain('data-outcome="fixed"');
   });
 });

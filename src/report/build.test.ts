@@ -1,7 +1,7 @@
 import { flow, src } from '../../tests/helpers/projects';
 import type { RuleResult } from '../flow/rules';
 import type { Project, Rule } from '../model';
-import { buildReport, lastOverride, redactValues, REPORT_SCHEMA, reportNodeIds, reportPending, reportSources, type ReportInput } from './build';
+import { buildReport, lastOverride, redactValues, REPORT_SCHEMA, reportAnalysis, reportNodeIds, reportPending, reportSources, type ReportInput } from './build';
 
 const rule = (id: string, over: Partial<Rule> = {}): Rule => ({ id, type: 'noEdgeSpaces', label: `No leading or trailing spaces in ${id}`, enabled: true, severity: 'fail', params: { column: id }, ...over });
 const ok = (failures: number, total = 4): RuleResult => ({ state: 'ok', failures, total });
@@ -47,6 +47,12 @@ describe('which nodes a report covers', () => {
 
   it('every node with rules, wherever it is', () => {
     expect(reportNodeIds(p, 'clean', 'all').sort()).toEqual(['clean', 'in', 'side']);
+  });
+
+  it('includes a node with no rules whose analysis is kept, since the report says what became of its issues', () => {
+    const analysed = { ...p, nodes: p.nodes.map((n) => (n.id === 'in2' ? { ...n, analysis: { at: '2026-10-21T09:00:00.000Z', rows: 5, issues: [] } } : n)) };
+    expect(reportNodeIds(analysed, 'side', 'all').sort()).toEqual(['clean', 'in', 'in2', 'side']);
+    expect(reportNodeIds({ ...analysed, edges: [...analysed.edges, { id: 'w', from: { nodeId: 'in2' }, to: { nodeId: 'clean', port: 0 } }] }, 'out', 'node')).toEqual(['in', 'in2', 'clean', 'out']);
   });
 
   it('lists the sources those nodes read, once each', () => {
@@ -174,5 +180,38 @@ describe('buildReport', () => {
     // The Output node has no rules of its own, so nothing on it was checked on the sample.
     expect(r.nodes.map((n) => [n.id, n.onSample])).toEqual([['in', true], ['out', false]]);
     expect(buildReport(input(p, { results: { in: { results: { name: ok(1) } } } })).sampleRows).toBeNull();
+  });
+});
+
+describe('the issues a node keeps from its last analysis', () => {
+  const issues = [
+    { key: 'duplicateRows', kind: 'duplicateRows', label: 'Duplicate rows', count: 1, fixed: true },
+    { key: 'edgeSpaces:name', kind: 'edgeSpaces', column: 'name', label: 'Spaces at either end of name', count: 2 },
+    { key: 'nearDuplicate:city:Manchestr', kind: 'nearDuplicate', column: 'city', value: 'Manchestr', label: 'Manchestr in city, probably Manchester', count: 1 },
+  ];
+  const node = { ...project({}).nodes[1]!, analysis: { at: '2026-10-21T09:00:00.000Z', rows: 5, issues }, ignoredIssues: ['nearDuplicate:city:Manchestr'] };
+
+  it('gives each issue its outcome and counts them', () => {
+    expect(reportAnalysis(node)).toEqual({
+      at: '2026-10-21T09:00:00.000Z',
+      rows: 5,
+      found: 3,
+      fixed: 1,
+      ignored: 1,
+      open: 1,
+      issues: [
+        { key: 'duplicateRows', kind: 'duplicateRows', column: null, label: 'Duplicate rows', count: 1, outcome: 'fixed' },
+        { key: 'edgeSpaces:name', kind: 'edgeSpaces', column: 'name', label: 'Spaces at either end of name', count: 2, outcome: 'open' },
+        { key: 'nearDuplicate:city:Manchestr', kind: 'nearDuplicate', column: 'city', value: 'Manchestr', label: 'Manchestr in city, probably Manchester', count: 1, outcome: 'ignored' },
+      ],
+    });
+    expect(reportAnalysis(project({}).nodes[1]!)).toBeUndefined();
+  });
+
+  it('goes on the report’s node, after its rules', () => {
+    const p = project({});
+    const r = buildReport(input({ ...p, nodes: p.nodes.map((n) => (n.id === 'clean' ? node : n)) }));
+    expect(r.nodes.find((n) => n.id === 'clean')?.analysis).toMatchObject({ found: 3, fixed: 1, ignored: 1, open: 1 });
+    expect(r.nodes.find((n) => n.id === 'in')?.analysis).toBeUndefined();
   });
 });

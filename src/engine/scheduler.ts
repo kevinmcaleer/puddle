@@ -114,7 +114,7 @@ export class Scheduler {
           job.resolve(value);
         } catch (e) {
           if (job.preempted) {
-            console.warn(`[scheduler] "${job.label}" pre-empted after ${Math.round((this.clock() - began) / 1000)} s; requeued`);
+            console.warn(`[scheduler] "${job.label ?? job.priority}" pre-empted after ${Math.round((this.clock() - began) / 1000)} s; requeued`);
             job.preempted = false;
             job.controller = new AbortController();
             this.background.unshift(job);

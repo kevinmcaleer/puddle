@@ -30,12 +30,15 @@ export function ReportDialog({ node, onClose }: { node: GraphNode; onClose: () =
   useFlowStore((s) => s.nodes);
   const nodeIds = reportNodeIds(project, node.id, scope);
   const ruleCount = nodeIds.reduce((n, id) => n + (project.nodes.find((x) => x.id === id)?.rules.length ?? 0), 0);
+  // Nodes Fix all ran on (or an issue was ignored on) have issues to report, with or without rules.
+  const analysed = nodeIds.filter((id) => project.nodes.find((x) => x.id === id)?.analysis).length;
+  const something = ruleCount > 0 || analysed > 0;
   const waiting = reportWaiting(project, nodeIds);
   const n = Number(rows);
   const rowsProblem = withRows && (!Number.isInteger(n) || n < 0 || n > MAX_SAMPLE_ROWS) ? `Give a whole number from 0 to ${MAX_SAMPLE_ROWS}.` : undefined;
 
   const submit = async () => {
-    if (busy || rowsProblem || !ruleCount) return;
+    if (busy || rowsProblem || !something) return;
     if (waiting) return setError('Rules are still being checked. Try again in a moment.');
     setBusy(true);
     setError(undefined);
@@ -58,14 +61,20 @@ export function ReportDialog({ node, onClose }: { node: GraphNode; onClose: () =
         <Field
           label="Rules from"
           htmlFor="report-scope"
-          hint={ruleCount ? `${ruleCount} ${ruleCount === 1 ? 'rule' : 'rules'} on ${nodeIds.length} ${nodeIds.length === 1 ? 'node' : 'nodes'}.` : undefined}
-          error={ruleCount ? undefined : 'No rules to report on here.'}
+          hint={
+            something
+              ? [ruleCount ? `${ruleCount} ${ruleCount === 1 ? 'rule' : 'rules'} on ${nodeIds.length} ${nodeIds.length === 1 ? 'node' : 'nodes'}.` : '', analysed ? `Issues found and fixed on ${analysed} ${analysed === 1 ? 'node' : 'nodes'}.` : '']
+                  .filter(Boolean)
+                  .join(' ')
+              : undefined
+          }
+          error={something ? undefined : 'No rules or fixes to report on here.'}
         >
           <Select
             id="report-scope"
             options={[
               { value: 'node', label: node.type === 'output' ? 'This output and the nodes before it' : 'This node' },
-              { value: 'all', label: 'Every node with rules' },
+              { value: 'all', label: 'Every node with rules or fixes' },
             ]}
             value={scope}
             onChange={(e) => setScope(e.target.value as ReportScope)}
