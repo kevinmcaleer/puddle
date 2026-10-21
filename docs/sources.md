@@ -35,6 +35,8 @@ Puddle reads these formats:
 | Fixed width | `.txt`, `.prn`, `.dat` | Columns lined up with spaces, as mainframe and ERP reports print them. The boundaries are found from the columns of spaces and adjusted on a ruler. See [Fixed width and pipe tables](#fixed-width-and-pipe-tables). |
 | Pipe table | `.txt` | Rows between `|` characters, as SAP lists and Markdown tables have them. The lines around the table are left out. See [Fixed width and pipe tables](#fixed-width-and-pipe-tables). |
 | Access | `.accdb`, `.mdb` | Choose the table; add the database's other tables as sources of their own. See [Access databases](#access-databases). |
+| Arrow | `.arrow`, `.feather`, `.ipc` | An Arrow IPC file, read with its column types. See [Compressed files, archives and Arrow files](#compressed-files-archives-and-arrow-files). |
+| Compressed files and archives | `.gz`, `.zip` | Any of the above inside a gzip file or a zip archive. A zip with several files opens to the first and offers the rest. See [Compressed files, archives and Arrow files](#compressed-files-archives-and-arrow-files). |
 
 ## Tables on a web page
 
@@ -154,6 +156,18 @@ The columns keep their Access types:
 Only the tables are read: queries, forms and reports stay in Access. Linked tables point to data elsewhere, so they are left out; add that data directly. A database encrypted with a password can't be opened: in Access, remove the password (*File › Info › Decrypt Database*), save it, and add it again. Like an Excel workbook, the database is read into memory whole, so for a very large one (Puddle warns above 200 MB) export the tables you need from Access as CSV.
 
 Puddle reads the database in your browser; nothing is uploaded. When you open the project again, choose the database once and every table read from it connects. `puddle-run` reads Access tables the same way, with the same types.
+
+## Compressed files, archives and Arrow files
+
+A file inside a gzip file or a zip archive is added like any other: choose the `.gz` or `.zip`, and Puddle opens it for the file inside, which is read as what it is (a CSV, a workbook, an XML file, whatever the bytes say). The source is named for the file inside, and the canvas says where it came from ("CSV in zip").
+
+A gzipped CSV, TSV, JSON or NDJSON file is handed to DuckDB as it is and unpacked as it is read, so a large `.csv.gz` is never unpacked whole into memory. Anything else, and every file in a zip, is unpacked in your browser first.
+
+A zip with several files opens to its first data file. The inspector lists every file in the archive under **File inside**, so you can read another one instead, and **Add the other files** adds a source for each file not yet in the project, reading the same archive. Folders, and the `__MACOSX` and `.DS_Store` entries a Mac adds, are left out.
+
+An Arrow IPC file (`.arrow`, `.feather`, or `.ipc`) is read with its column types: whole numbers, decimals, dates, timestamps, booleans and text keep their types, and structured values (lists, structs) are read as JSON text. Like a workbook, the file is read into memory whole.
+
+When you open the project again, choose the archive once and every file read from it connects. `puddle-run` reads all three the same way, with the same types. Bzip2 and zstd files, and tar archives, aren't opened: unpack them, or pack the file as gzip or zip.
 
 ## Read options
 

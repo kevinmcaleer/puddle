@@ -2,5 +2,5 @@ import { formatLabel } from '../canvas/formatLabel';
 import type { SourceFormat } from '../model';
 
 /** The formats a file on disk can be read as, for the Format picker and the Format field. */
-export const FILE_FORMATS: SourceFormat[] = ['csv', 'tsv', 'fixed', 'pipes', 'json', 'ndjson', 'parquet', 'xlsx', 'xml', 'access'];
+export const FILE_FORMATS: SourceFormat[] = ['csv', 'tsv', 'fixed', 'pipes', 'json', 'ndjson', 'parquet', 'arrow', 'xlsx', 'xml', 'access'];
 export const FORMAT_OPTIONS = FILE_FORMATS.map((f) => ({ value: f, label: formatLabel(f) }));

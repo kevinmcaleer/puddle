@@ -1,3 +1,4 @@
+import { gzipEntryName } from '../archive';
 import { SPREADSHEET_EXTENSIONS } from '../excel/formats';
 import type { SourceFormat } from '../model';
 
@@ -18,24 +19,30 @@ const BY_EXTENSION: Record<string, SourceFormat> = {
   parquet: 'parquet',
   pq: 'parquet',
   xml: 'xml',
+  arrow: 'arrow',
+  feather: 'arrow',
+  ipc: 'arrow',
   mdb: 'access',
   accdb: 'access',
   // Every spreadsheet format SheetJS reads is the one source format 'xlsx' (src/excel/formats.ts).
   ...Object.fromEntries(SPREADSHEET_EXTENSIONS.map((ext) => [ext, 'xlsx' as const])),
 };
 
-export const ACCEPT = `.csv,.txt,.tsv,.tab,.json,.ndjson,.jsonl,.parquet,.pq,${SPREADSHEET_EXTENSIONS.map((e) => `.${e}`).join(',')},.xml,.mdb,.accdb,.dat,.log,.text,.prn`;
+export const ACCEPT = `.csv,.txt,.tsv,.tab,.json,.ndjson,.jsonl,.parquet,.pq,.arrow,.feather,.ipc,${SPREADSHEET_EXTENSIONS.map((e) => `.${e}`).join(',')},.xml,.mdb,.accdb,.gz,.zip,.dat,.log,.text,.prn`;
 
 /** What Puddle reads, for the refusals. */
-export const READS = 'Add a CSV, TSV, JSON, NDJSON, Parquet, spreadsheet (.xlsx, .xls, .ods, .numbers, .dbf), XML or Access (.accdb, .mdb) file.';
+export const READS = 'Add a CSV, TSV, JSON, NDJSON, Parquet, Arrow, spreadsheet (.xlsx, .xls, .ods, .numbers, .dbf), XML or Access (.accdb, .mdb) file, or a .gz or .zip holding one.';
 
 /** Plain-text extensions that say nothing about the shape inside; `sniff` reads it from the bytes. */
 export const TEXT_EXTENSIONS = new Set(['txt', 'dat', 'log', 'text', 'prn']);
 
 export const extensionOf = (name: string) => /\.([^.]+)$/.exec(name)?.[1]?.toLowerCase() ?? '';
 
-/** The format a file name's extension names, or undefined when Puddle doesn't know it. */
-export const knownFormat = (name: string): SourceFormat | undefined => BY_EXTENSION[extensionOf(name)];
+/** The format a file name's extension names (orders.csv.gz is a CSV), or undefined when Puddle doesn't know it. */
+export const knownFormat = (name: string): SourceFormat | undefined => BY_EXTENSION[extensionOf(gzipEntryName(name))];
+
+/** True for a name that says the file is compressed or an archive: it holds the file to read. */
+export const isArchiveName = (name: string) => /\.(gz|gzip|zip)$/i.test(name);
 
 /**
  * Pick the format from a file name alone (a file reconnected, or one at a web address), or say plainly why it can't

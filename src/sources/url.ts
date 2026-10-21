@@ -5,7 +5,7 @@ import { invalidateCaches } from '../flow/status';
 import { addSource, newId, setSourceFormat, updateSource, useProjectStore, type Source, type SourceFormat } from '../model';
 import { rememberFile } from './add';
 import { markAttached } from './attachments';
-import { knownFormat } from './detect';
+import { isArchiveName, knownFormat } from './detect';
 import { parseAddress, UrlSourceError, type UrlErrorKind } from './address';
 import { HEAD_BYTES, headHash } from './hash';
 import { sniff, TAIL_BYTES } from './sniff';
@@ -78,6 +78,7 @@ export function formatFromContentType(contentType: string | null | undefined): S
 /** The file's format: from the address's extension, else the server's Content-Type, or say how to choose one. */
 export function formatFromAddress(url: URL, contentType?: string | null): SourceFormat {
   const name = nameFromAddress(url);
+  if (isArchiveName(name)) throw new UrlSourceError('Puddle reads a compressed file or a zip archive from a chosen file, not from a web address yet. Download it and add the file.', 'format');
   const byName = knownFormat(name);
   if (byName) return byName;
   const byType = formatFromContentType(contentType);

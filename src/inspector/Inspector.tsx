@@ -25,6 +25,9 @@ import { ReattachButton } from '../sources/ReattachButton';
 import { UrlPanel } from '../sources/UrlPanel';
 import { isAccessSource } from '../sources/access';
 import { AccessPanel } from '../sources/AccessPanel';
+import { ArchivePanel, ArrowProblemBanner } from '../sources/ArchivePanel';
+import { isArchiveSource } from '../sources/archive';
+import { isArrowSource, useArrowReads } from '../sources/arrow';
 import { isExcelSource } from '../sources/excel';
 import { ExcelPanel } from '../sources/ExcelPanel';
 import { isXmlSource } from '../sources/xml';
@@ -145,6 +148,12 @@ function ProjectSettings() {
 }
 
 /** Where puddle-run finds this file on the machine it runs on; the browser never reads it. */
+/** An Arrow file that couldn't be read: the reason, in the inspector. */
+function ArrowFailure({ source }: { source: Source }) {
+  const failed = useArrowReads((s) => s.reads[source.id]?.state === 'failed');
+  return failed ? <div className="px-4 pt-3"><ArrowProblemBanner source={source} /></div> : null;
+}
+
 function RunnerPath({ source }: { source: Source }) {
   const apply = useProjectStore((s) => s.apply);
   const path = source.file?.path ?? '';
@@ -329,7 +338,9 @@ function NodeInspector({ node }: { node: GraphNode }) {
       </div>
       {source && source.kind === 'file' && <AttachmentBanner source={source} />}
       {source && source.kind === 'url' && <UrlPanel source={source} />}
+      {source && isArchiveSource(source) && <ArchivePanel source={source} />}
       {source && isExcelSource(source) && <ExcelPanel source={source} />}
+      {source && isArrowSource(source) && <ArrowFailure source={source} />}
       {source && isXmlSource(source) && <XmlPanel source={source} />}
       {source && isAccessSource(source) && <AccessPanel source={source} />}
       {source && hasParseOptions(source) && <SourceOptions source={source} />}

@@ -1,4 +1,4 @@
-import { ACCEPT, formatFromName, formatFromText, SourceError, sourceName } from './detect';
+import { ACCEPT, formatFromName, formatFromText, isArchiveName, knownFormat, SourceError, sourceName } from './detect';
 import { headHash } from './hash';
 
 describe('format from a file name', () => {
@@ -18,6 +18,10 @@ describe('format from a file name', () => {
     ['book.xls', 'xlsx'],
     ['book.xlsb', 'xlsx'],
     ['book.xlsm', 'xlsx'],
+    ['customers.arrow', 'arrow'],
+    ['customers.feather', 'arrow'],
+    ['orders.csv.gz', 'csv'],
+    ['book.xlsx.gz', 'xlsx'],
     ['book.ods', 'xlsx'],
     ['book.fods', 'xlsx'],
     ['book.numbers', 'xlsx'],
@@ -34,12 +38,17 @@ describe('format from a file name', () => {
   });
 
   it('refuses unknown formats with what it can read', () => {
-    expect(() => formatFromName('photo.png')).toThrow(/CSV, TSV, JSON, NDJSON, Parquet, spreadsheet \(\.xlsx, \.xls, \.ods, \.numbers, \.dbf\), XML or Access \(\.accdb, \.mdb\) file/);
+    expect(() => formatFromName('photo.png')).toThrow(/CSV, TSV, JSON, NDJSON, Parquet, Arrow, spreadsheet \(\.xlsx, \.xls, \.ods, \.numbers, \.dbf\), XML or Access \(\.accdb, \.mdb\) file, or a \.gz or \.zip holding one/);
     expect(() => formatFromName('README')).toThrow(SourceError);
   });
 
   it('accepts exactly the extensions it can read in the file chooser', () => {
-    for (const ext of ACCEPT.split(',')) expect(() => formatFromName(`f${ext}`)).not.toThrow();
+    // A .gz or .zip is opened for the file inside (src/sources/archive.ts), so its own name says no format.
+    for (const ext of ACCEPT.split(',')) if (!isArchiveName(`f${ext}`)) expect(() => formatFromName(`f${ext}`)).not.toThrow();
+    expect(ACCEPT.split(',').filter((ext) => isArchiveName(`f${ext}`))).toEqual(['.gz', '.zip']);
+    expect(knownFormat('data.gz')).toBeUndefined();
+    expect(isArchiveName('ORDERS.ZIP')).toBe(true);
+    expect(isArchiveName('orders.tgz')).toBe(false);
   });
 });
 
