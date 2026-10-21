@@ -7,6 +7,8 @@ beforeEach(() => {
   useProjectStore.getState().load(createProject('Files'));
   resetConnectionFiles();
 });
+// The shared project runs files in one worker without isolation: leave no files behind for the next file.
+afterEach(() => resetConnectionFiles());
 
 it('knows database files by their extension', () => {
   expect(databaseDriverFor('shop.sqlite')).toBe('sqlite');
