@@ -1,9 +1,10 @@
 // A quality report: what a project's rules found, as plain data every format is written from.
 import { ruleColumns, ruleRefs, ruleScope } from '../compiler';
 import type { RuleResult } from '../flow/rules';
-import { sampledUpstream, type Sample } from '../flow/sample';
+import { sampledUpstream, type Sample } from '../flow/sampling';
 import { nodeById, topoSort, upstreamIds, type GraphNode, type Project, type Rule, type Source } from '../model';
-import { ruleForm, ruleLabel } from '../rules';
+// The forms file itself, not the rules index, which reaches for the engine: this module runs in puddle-run too.
+import { ruleForm, ruleLabel } from '../rules/forms';
 import { qualified } from '../schema/model';
 
 /** Names the JSON format; bump the number when a field changes meaning or goes away (adding one doesn't). */
@@ -56,6 +57,36 @@ export interface ReportRule {
   sample?: ReportSample;
 }
 
+/** What became of an issue analysis found: Fix all fixed it, the user ignored it, or it is still there. */
+export type IssueOutcome = 'fixed' | 'ignored' | 'open';
+
+export interface ReportIssue {
+  key: string;
+  kind: string;
+  /** The column, or null for an issue about the whole table. */
+  column: string | null;
+  /** The value, for issues listed per value (a likely misspelling). */
+  value?: string;
+  /** The issue in words, as the Issues panel lists it. */
+  label: string;
+  /** Rows (or, for mixed capitals, values) the issue touched. */
+  count: number;
+  outcome: IssueOutcome;
+}
+
+/** The issues analysis last found in a node's output, with what became of each. */
+export interface ReportAnalysis {
+  /** When Fix all ran, or an issue was ignored: the analysis the node keeps is from then. */
+  at: string;
+  /** Rows the node had then. */
+  rows: number;
+  found: number;
+  fixed: number;
+  ignored: number;
+  open: number;
+  issues: ReportIssue[];
+}
+
 export interface ReportNode {
   id: string;
   name: string;
@@ -63,6 +94,8 @@ export interface ReportNode {
   /** Rules were checked on a sample of large sources, so counts are of sampled rows. */
   onSample: boolean;
   rules: ReportRule[];
+  /** Only for a node Fix all ran on or an issue was ignored on. */
+  analysis?: ReportAnalysis;
 }
 
 export interface ReportSource {
@@ -90,12 +123,33 @@ export interface QualityReport {
   nodes: ReportNode[];
 }
 
-/** The nodes a report covers, upstream first: for an Output node, it and every node before it that has rules. */
+/** A node the report has something to say about: it has rules, or analysis found issues that were fixed or ignored. */
+export const reportable = (node: GraphNode | undefined) => !!node && (node.rules.length > 0 || node.analysis != null);
+
+/** The nodes a report covers, upstream first: for an Output node, it and every node before it that has rules or an analysis. */
 export function reportNodeIds(project: Project, nodeId: string, scope: ReportScope): string[] {
   const node = nodeById(project, nodeId);
-  if (scope === 'all') return topoSort(project).filter((id) => nodeById(project, id)!.rules.length);
+  if (scope === 'all') return topoSort(project).filter((id) => reportable(nodeById(project, id)));
   if (node?.type !== 'output') return node ? [nodeId] : [];
-  return topoSort(project, upstreamIds(project, nodeId)).filter((id) => id === nodeId || nodeById(project, id)!.rules.length);
+  return topoSort(project, upstreamIds(project, nodeId)).filter((id) => id === nodeId || reportable(nodeById(project, id)));
+}
+
+/** The node's kept analysis as the report lists it: each issue with its outcome, and the counts. */
+export function reportAnalysis(node: GraphNode): ReportAnalysis | undefined {
+  const a = node.analysis;
+  if (!a) return undefined;
+  const ignored = node.ignoredIssues ?? [];
+  const issues = a.issues.map((i): ReportIssue => ({
+    key: i.key,
+    kind: i.kind,
+    column: i.column ?? null,
+    ...(i.value != null ? { value: i.value } : {}),
+    label: i.label,
+    count: i.count,
+    outcome: i.fixed ? 'fixed' : ignored.includes(i.key) ? 'ignored' : 'open',
+  }));
+  const of = (outcome: IssueOutcome) => issues.filter((i) => i.outcome === outcome).length;
+  return { at: a.at, rows: a.rows, found: issues.length, fixed: of('fixed'), ignored: of('ignored'), open: of('open'), issues };
 }
 
 /** The sources the given nodes read from, once each, in project order, with the Source node that reads each. */
@@ -190,7 +244,8 @@ export function buildReport({ project, nodeIds, scope, results, sample, sources,
         ...(sampleOf ? { sample: { ...sampleOf, rows: sampleOf.rows.slice(0, sampleLimit), ...(sampleOf.error ? { error: sampleOf.error } : {}) } } : {}),
       };
     });
-    return [{ id, name: node.name, type: node.type, onSample: rules.some((r) => r.enabled) && sampledUpstream(project, id, sample).length > 0, rules }];
+    const analysis = reportAnalysis(node);
+    return [{ id, name: node.name, type: node.type, onSample: rules.some((r) => r.enabled) && sampledUpstream(project, id, sample).length > 0, rules, ...(analysis ? { analysis } : {}) }];
   });
   return {
     schema: REPORT_SCHEMA,

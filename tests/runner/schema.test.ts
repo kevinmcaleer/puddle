@@ -3,8 +3,9 @@ import { execFileSync, spawnSync } from 'node:child_process';
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { build } from 'esbuild';
+import { build, type BuildOptions } from 'esbuild';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { runnerBuildOptions } from '../../scripts/build-runner.mjs';
 import { exportSql } from '../../src/compiler/ddl/export';
 import { createProject, setSchemaDbml } from '../../src/model';
 import { EXAMPLE_DBML } from '../../src/schema/example';
@@ -18,7 +19,7 @@ beforeAll(async () => {
   folder = mkdtempSync(join(tmpdir(), 'puddle-schema-'));
   // Beside the repository's node_modules, so the native DuckDB binding the bundle leaves out is found.
   cli = join(root, 'node_modules', '.cache', `puddle-run-schema-${process.pid}.mjs`);
-  await build({ entryPoints: [join(root, 'src/runner/cli.ts')], bundle: true, platform: 'node', target: 'node20', format: 'esm', external: ['@duckdb/node-api'], outfile: cli, logLevel: 'warning' });
+  await build({ ...(runnerBuildOptions as BuildOptions), entryPoints: [join(root, 'src/runner/cli.ts')], outfile: cli });
   writeFileSync(join(folder, 'docs.puddle.json'), JSON.stringify(setSchemaDbml(createProject('Docs example'), EXAMPLE_DBML)));
   writeFileSync(join(folder, 'broken.dbml'), 'Table a {\n  id int [pk\n}\n');
 }, 60_000);

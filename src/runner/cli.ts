@@ -2,19 +2,22 @@
 //   puddle-run run <project.puddle.json> [--out <folder>]
 //   puddle-run watch <folder> [--out <folder>] [--poll <seconds>]
 //   puddle-run check <project.puddle.json>
+//   puddle-run analyse <file>
 //   puddle-run schema <project.puddle.json | schema.dbml> [--check] [--ddl <dialect> <out.sql>] …
 import { readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { basename, dirname, join, resolve } from 'node:path';
 import process from 'node:process';
 import { Cron } from 'croner';
 import { readProjectFile } from '../persistence/migrate';
-import type { Project } from '../model';
+import { analyseFile, describeAnalysis, sniffFile } from './analyse';
+import type { Project, Source } from '../model';
 import { openDb } from './db';
 import { runProject, runSucceeded } from './run';
 import { nextRun, scheduleProblem } from './schedule';
 import { SCHEMA_USAGE, schemaCommand } from './schema';
 import { placeSources } from './sources';
 import { existsSync } from 'node:fs';
+import { formatLabel } from '../canvas/formatLabel';
 
 const say = (line: string) => console.log(`${new Date().toISOString()} ${line}`);
 
@@ -45,28 +48,61 @@ export async function runOnce(path: string, out?: string): Promise<boolean> {
   }
 }
 
+/**
+ * A file found for a source whose content no longer looks like the format the project reads it as: the file was
+ * replaced by something else, or saved in another format. Only a sure or likely sniff of a plain file is trusted;
+ * an archive is read by its entry, and a sniff that can't tell says nothing.
+ */
+export function formatChanged(source: Source, path: string): string | undefined {
+  if (source.kind !== 'file' || source.archive) return undefined;
+  let sniffed;
+  try {
+    sniffed = sniffFile(path);
+  } catch (e) {
+    return `looks like ${e instanceof Error ? e.message : String(e)}`;
+  }
+  if (sniffed.confidence === 'unsure' || sniffed.format === source.format) return undefined;
+  // CSV and TSV are read by the same reader, with the delimiter the project saved.
+  if ((sniffed.format === 'csv' || sniffed.format === 'tsv') && (source.format === 'csv' || source.format === 'tsv')) return undefined;
+  return `now looks like ${formatLabel(sniffed.format)}, not ${formatLabel(source.format)} as the project reads it (${sniffed.reason.replace(/\.$/, '')})`;
+}
+
 /** Say what a run of this project would do: its sources, its outputs and its schedule. */
-export function check(path: string): boolean {
+export function check(path: string, out = (line: string) => console.log(line)): boolean {
   const file = resolve(path);
   const project = readProject(file);
   const folder = dirname(file);
   let ok = true;
-  console.log(`${project.name}`);
+  out(`${project.name}`);
   for (const p of placeSources(project, folder, existsSync)) {
     if (p.path === undefined) ok = false;
-    console.log(`  source ${p.source.name}: ${p.path === undefined ? p.reason : p.path || 'pasted text'}`);
+    const changed = p.path ? formatChanged(p.source, p.path) : undefined;
+    if (changed) ok = false;
+    out(`  source ${p.source.name}: ${p.path === undefined ? p.reason : p.path || 'pasted text'}${changed ? `; ${changed}` : ''}`);
   }
-  for (const n of project.nodes) if (n.type === 'output') console.log(`  output ${n.name}: ${n.outputSpec.format}`);
+  for (const n of project.nodes) if (n.type === 'output') out(`  output ${n.name}: ${n.outputSpec.format}`);
   const schedule = project.settings.schedule;
-  if (!schedule) console.log('  schedule: none (set one in the Project tab to run it from a folder)');
+  if (!schedule) out('  schedule: none (set one in the Project tab to run it from a folder)');
   else {
     const problem = scheduleProblem(schedule);
     if (problem) {
       ok = false;
-      console.log(`  schedule: “${schedule}” ${problem}`);
-    } else console.log(`  schedule: ${schedule}, next at ${nextRun(schedule)?.toISOString() ?? 'never'}`);
+      out(`  schedule: “${schedule}” ${problem}`);
+    } else out(`  schedule: ${schedule}, next at ${nextRun(schedule)?.toISOString() ?? 'never'}`);
   }
   return ok;
+}
+
+/** Sniff, read and analyse one file, and print what the Issues panel would list. True when nothing is wrong with it. */
+export async function analyse(path: string, out = (line: string) => console.log(line)): Promise<boolean> {
+  const db = await openDb();
+  try {
+    const result = await analyseFile(path, db, { fetchText, fetchImpl: fetch });
+    for (const line of describeAnalysis(result)) out(line);
+    return result.issues.every((i) => i.severity === 'info');
+  } finally {
+    await db.close();
+  }
 }
 
 interface Watched {
@@ -172,6 +208,7 @@ const USAGE = `puddle-run: run Puddle projects outside the browser, on DuckDB's 
   puddle-run run <project.puddle.json> [--out <folder>]    run every Output node once
   puddle-run watch <folder> [--out <folder>] [--poll <s>]   run each project on its schedule
   puddle-run check <project.puddle.json>                    say where its sources are and when it runs
+  puddle-run analyse <file>                                 list the issues the editor would find in a file
   puddle-run schema <project.puddle.json | schema.dbml> …   check the schema, write its SQL, docs or a migration
 
 Outputs, the run log (<project>.run.json) and the quality report (<project>.quality.md) go to --out,
@@ -188,6 +225,7 @@ async function main(argv: string[]) {
   }
   if (command === 'run' && target) process.exitCode = (await runOnce(target, out)) ? 0 : 1;
   else if (command === 'check' && target) process.exitCode = check(target) ? 0 : 1;
+  else if (command === 'analyse' && target) process.exitCode = (await analyse(target)) ? 0 : 1;
   else if (command === 'watch' && target) {
     const stop = watch(target, { out, pollMs: poll ? poll * 1000 : undefined });
     const quit = () => {

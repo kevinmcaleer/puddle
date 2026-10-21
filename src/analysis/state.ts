@@ -6,123 +6,44 @@ import { useEffect } from 'react';
 import { create } from 'zustand';
 import { useEngineStore } from '../app/engine';
 import { useSession } from '../app/session';
-import { compileAnalysis, compileCount, compileDistinctFacts, compileProfile, compileShape, compileSkew, compileTypeSniff, compileValueCounts, upstreamKey } from '../compiler';
-import { detectDateFormats } from '../dates';
+import { upstreamKey } from '../compiler';
 import { tableRows, toEngineError, type EngineClient } from '../engine';
 import { useViewProject } from '../flow/sample';
 import { useFlowStore } from '../flow/status';
-import { isExcelSource, useExcelReads } from '../sources/excel';
+import { useExcelReads } from '../sources/excel';
 import { nodeById, useProject, type ColumnSchema, type GraphNode, type Project } from '../model';
-import { parseProfile, parseTypeSniff, type ColumnProfile } from '../results/profile';
-import { columnKind } from '../ui/columnKind';
-import { analysisChecks, findIssues, parseAnalysis, parseDistinctFacts, parseValueCounts, type AnalysisFacts } from './columns';
-import { parseShape } from './shape';
-import { findSkew, parseSkew, skewFix } from './skew';
+import { ANALYSIS_ROWS, analyseWith, type NodeAnalysis } from './analyse';
+import { findIssues } from './columns';
 import { sortIssues, type Issue } from './issues';
 
-export interface NodeAnalysis {
-  columns: ColumnSchema[];
-  profile: Record<string, ColumnProfile>;
-  facts: AnalysisFacts;
-}
+export type { NodeAnalysis } from './analyse';
+export { ANALYSIS_ROWS, sheetSourceOf, textSourceOf } from './analyse';
 
 export type AnalysisEntry = { key: string; state: 'pending' } | { key: string; state: 'ok'; analysis: NodeAnalysis } | { key: string; state: 'error'; message: string };
 
 export const useAnalysisStore = create<{ nodes: Record<string, AnalysisEntry> }>(() => ({ nodes: {} }));
 
-/** How many rows of a table are looked at: its first this many, when it has more, so a big file is analysed in seconds (three million taxi trips took minutes). */
-export const ANALYSIS_ROWS = 200_000;
-
 const background = (nodeId: string, what: string) => ({ priority: 'background' as const, label: `Analysing ${what}`, supersede: `analyse:${nodeId}` });
 
-/**
- * Count, profile and sniff a node's output (as the results table does), then one query for the exact counts, one
- * grouped per column for what the distinct values say, one for the values of columns with few of them, and for text
- * sources one for the rows that aren't data.
- */
-export async function analyseNode(engine: EngineClient, project: Project, nodeId: string, columns: ColumnSchema[], sample = ANALYSIS_ROWS): Promise<NodeAnalysis> {
-  const target = { nodeId };
-  const opts = (what: string) => background(nodeId, what);
-  const total = Number(Object.values(tableRows((await engine.query(compileCount(project, target), opts('rows'))).table)[0] ?? {})[0] ?? 0);
-  // A big table is looked at through its first rows: the whole of three million rows of trips took minutes.
-  const limit = total > sample ? sample : undefined;
-  const profile = parseProfile(tableRows((await engine.query(compileProfile(project, target, limit), opts('columns'))).table));
-  const text = columns.filter((c) => columnKind(c.type) === 'text').map((c) => c.name);
-  if (text.length) {
-    const looks = parseTypeSniff(tableRows((await engine.query(compileTypeSniff(project, target, text, limit), opts('text'))).table)[0] ?? {}, text);
-    for (const [c, l] of Object.entries(looks)) if (profile[c]) profile[c] = { ...profile[c], ...l };
-  }
-  const checks = analysisChecks(columns, profile);
-  const row = tableRows((await engine.query(compileAnalysis(project, target, checks, columns.map((c) => c.name), limit), opts('values'))).table)[0] ?? {};
-  const facts = parseAnalysis(row, checks);
-  facts.columnNames = project.settings.columnNames;
-  if (limit) facts.sample = { rows: limit, total };
-  if (checks.length) parseDistinctFacts(tableRows((await engine.query(compileDistinctFacts(project, target, checks, limit), opts('distinct values'))).table), checks, facts.columns);
-  const valued = checks.filter((c) => c.values).map((c) => c.column);
-  if (valued.length) {
-    const counts = parseValueCounts(tableRows((await engine.query(compileValueCounts(project, target, valued, limit), opts('value counts'))).table));
-    for (const c of valued) {
-      const vc = counts[c] ?? [];
-      facts.columns[c]!.valueCounts = vc;
-      facts.columns[c]!.values = vc.map((v) => v.value).sort();
-    }
-  }
-  // Rows whose cells sit a column to the left or right of where they belong: the kinds of every row, grouped.
-  if (columns.length >= 2 && facts.rows >= 4) {
-    const groups = parseSkew(tableRows((await engine.query(compileSkew(project, target, columns, limit), opts('rows out of line'))).table));
-    const skew = findSkew(columns.map((c) => c.name), groups);
-    if (skew) {
-      // Dates moved into a column come as text: from a date column as ISO, from a text column in whatever way it writes them.
-      const { dateSources } = skewFix(columns, skew);
-      const formats: Record<string, string[]> = {};
-      for (const [column, sources] of Object.entries(dateSources)) {
-        const found = new Set<string>();
-        for (const name of sources) {
-          const type = columns.find((c) => c.name === name)?.type.toUpperCase() ?? 'VARCHAR';
-          if (type === 'DATE') found.add('%Y-%m-%d');
-          else if (type.startsWith('TIMESTAMP')) found.add('%Y-%m-%d %H:%M:%S');
-          else {
-            const detection = await detectDateFormats(engine, project, target, name, project.settings.locale);
-            for (const f of detection.formats ?? detection.ranked.slice(0, 1).map((r) => r.format)) found.add(f);
-          }
-        }
-        formats[column] = [...found];
-      }
-      facts.skew = { skew, fix: skewFix(columns, skew, formats) };
-    }
-  }
-  // A source read from delimited text or a sheet: one more query for the rows around and inside the table that aren't data.
-  const source = textSourceOf(project, nodeId) ?? sheetSourceOf(project, nodeId);
-  if (source && columns.length) {
-    const shapeRow = tableRows((await engine.query(compileShape(project, target, columns.map((c) => c.name), limit), opts('rows that aren’t data'))).table)[0] ?? {};
-    facts.shape = { facts: parseShape(shapeRow), options: source.parseOptions, ...(source.format === 'xlsx' ? { sheet: true } : {}) };
-  }
-  if (source?.format === 'xlsx') {
-    const read = useExcelReads.getState().reads[source.id];
-    if (read?.state === 'ok') facts.sheet = { merges: read.merges, filled: source.parseOptions.fillMerges !== false };
-  }
-  return { columns, profile, facts };
+/** The analysis (analyse.ts) on the engine, at background priority, with the Excel worker's merges for a workbook. */
+export function analyseNode(engine: EngineClient, project: Project, nodeId: string, columns: ColumnSchema[], sample = ANALYSIS_ROWS): Promise<NodeAnalysis> {
+  return analyseWith(
+    {
+      rows: async (sql, what) => tableRows((await engine.query(sql, background(nodeId, what))).table),
+      sheetMerges: (source) => {
+        const read = useExcelReads.getState().reads[source.id];
+        return read?.state === 'ok' ? { merges: read.merges, filled: source.parseOptions.fillMerges !== false } : undefined;
+      },
+    },
+    project,
+    nodeId,
+    columns,
+    sample,
+  );
 }
 
 /** What an analysis stands for: the node's output, and the column-name style the issues are judged by. */
 const analysisKey = (project: Project, nodeId: string) => `${upstreamKey(project, { nodeId })}|${project.settings.columnNames}`;
-
-/** The source a node reads, when it is an Excel workbook. */
-export function sheetSourceOf(project: Project, nodeId: string) {
-  const node = nodeById(project, nodeId);
-  if (node?.type !== 'source') return undefined;
-  const source = project.sources.find((s) => s.id === node.sourceId);
-  return source && isExcelSource(source) ? source : undefined;
-}
-
-/** The source a node reads, when it is text (CSV, TSV, fixed width or a pipe table from a file, an address or the clipboard). */
-export function textSourceOf(project: Project, nodeId: string) {
-  const node = nodeById(project, nodeId);
-  if (node?.type !== 'source') return undefined;
-  const source = project.sources.find((s) => s.id === node.sourceId);
-  const text = source && (source.format === 'csv' || source.format === 'tsv' || source.format === 'fixed' || source.format === 'pipes');
-  return text && !source.url?.odata && !source.url?.table ? source : undefined;
-}
 
 /** Which nodes to analyse now: every source that runs, plus the viewed and the selected node. */
 export function nodesToAnalyse(project: Project, viewedId: string | null | undefined, selectedId: string | null | undefined): string[] {

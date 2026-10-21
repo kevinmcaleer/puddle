@@ -9,12 +9,13 @@ import { readEntry } from '../archive';
 import { arrowColumns, readArrowFile } from '../arrow/read';
 import { openDatabase, readTable } from '../access/read';
 import { parseWorkbook, readSheet } from '../excel/read';
-import { compileAccessLoad, compileExport, compileLoadCheck, compileRules, describeFailure, exportFileName, fullData, readsCompressed, SchemaCache, sourceFileName, sourceTableName, str } from '../compiler';
+import { compileAccessLoad, compileCount, compileExport, compileLoadCheck, compileRules, describeFailure, exportFileName, fullData, readsCompressed, SchemaCache, sourceFileName, sourceTableName, str } from '../compiler';
 import { buildSchema } from '../schemaTables/build';
 import { describeBlock, exportGate, type BlockingRule } from '../flow/gate';
 import type { RuleResult } from '../flow/ruleResult';
 import { nodeById, topoSort, upstreamIds, type OutputNode, type Project } from '../model';
-import { qualityMarkdown } from './report';
+import { reportFiles, runReport } from './report';
+import type { QualityReport, ReportSource } from '../report/build';
 import { readFeed } from '../sources/odata';
 import { placeSources, type SourcePlace } from './sources';
 import type { RunnerDb } from './db';
@@ -188,24 +189,55 @@ async function checkAllRules(db: RunnerDb, project: Project, log: (line: string)
   return results;
 }
 
+export interface Staged {
+  places: SourcePlace[];
+  /** Why a source couldn't be placed or read, by source id. */
+  problems: Map<string, string>;
+  /** Take the staged files away. */
+  done(): void;
+}
+
+/**
+ * Put the project's sources where its compiled SQL reads them and point DuckDB there, so any node of the project can
+ * be queried on `opts.db` until `done()`.
+ */
+export async function stageProject(full: Project, opts: Pick<RunOptions, 'folder' | 'db' | 'fetchText' | 'fetchImpl'>): Promise<Staged> {
+  const stageDir = mkdtempSync(join(tmpdir(), 'puddle-run-'));
+  const places = placeSources(full, opts.folder, existsSync);
+  const loads = new Map<string, string>();
+  const problems = await stage(places, stageDir, opts, loads);
+  // The compiled SQL reads `src_<id>.csv` by bare name; DuckDB looks for it here.
+  await opts.db.query(`SET file_search_path = ${str(stageDir)}`);
+  for (const [id, sql] of loads) await opts.db.query(sql).catch((e: unknown) => problems.set(id, `couldn’t be read: ${e instanceof Error ? e.message : String(e)}`));
+  return { places, problems, done: () => rmSync(stageDir, { recursive: true, force: true }) };
+}
+
+/** The sources as the report lists them: each one's row count (none when it couldn't be read) and head hash. */
+async function reportSources(db: RunnerDb, full: Project, staged: Staged): Promise<ReportSource[]> {
+  return Promise.all(
+    staged.places.map(async ({ source }): Promise<ReportSource> => {
+      const node = full.nodes.find((n) => n.type === 'source' && n.sourceId === source.id);
+      const rows = node && !staged.problems.has(source.id) ? await db.query(compileCount(full, { nodeId: node.id })).then((r) => Number(Object.values(r[0] ?? {})[0] ?? 0)).catch(() => null) : null;
+      return { id: source.id, name: source.name, kind: source.kind, format: source.format, rows, headHash: source.file?.headHash || source.url?.headHash || null };
+    }),
+  );
+}
+
 /** Run every Output node of the project once. Never throws for one output's sake: each gets its own status. */
-export async function runProject(project: Project, opts: RunOptions): Promise<{ log: RunLog; report: string }> {
+export async function runProject(project: Project, opts: RunOptions): Promise<{ log: RunLog; report: string; quality: QualityReport }> {
   const now = opts.now ?? (() => new Date());
   const say = opts.log ?? (() => undefined);
   const started = now();
   const full = fullData(project);
-  const stageDir = mkdtempSync(join(tmpdir(), 'puddle-run-'));
   mkdirSync(opts.outDir, { recursive: true });
   const outputs: OutputRun[] = [];
   let rules: RunLog['rules'] = {};
-  const places = placeSources(full, opts.folder, existsSync);
+  const staged = await stageProject(full, opts);
+  const { places, problems } = staged;
+  let sources: ReportSource[] = [];
   try {
-    const loads = new Map<string, string>();
-    const problems = await stage(places, stageDir, opts, loads);
-    // The compiled SQL reads `src_<id>.csv` by bare name; DuckDB looks for it here.
-    await opts.db.query(`SET file_search_path = ${str(stageDir)}`);
-    for (const [id, sql] of loads) await opts.db.query(sql).catch((e: unknown) => problems.set(id, `couldn’t be read: ${e instanceof Error ? e.message : String(e)}`));
     for (const [id, why] of problems) say(`Source ${full.sources.find((s) => s.id === id)?.name ?? id} ${why}.`);
+    sources = await reportSources(opts.db, full, staged);
 
     // Schema table nodes read the project's DBML built as tables, as in the browser.
     const tableNodes = full.nodes.filter((n) => n.type === 'table');
@@ -266,7 +298,7 @@ export async function runProject(project: Project, opts: RunOptions): Promise<{ 
       }
     }
   } finally {
-    rmSync(stageDir, { recursive: true, force: true });
+    staged.done();
   }
   const finished = now();
   const log: RunLog = {
@@ -279,11 +311,12 @@ export async function runProject(project: Project, opts: RunOptions): Promise<{ 
     outputs,
     rules,
   };
-  const report = qualityMarkdown(full, rules, finished.toISOString());
+  const quality = runReport(full, rules, sources, finished.toISOString());
   const slug = projectSlug(project.name);
   writeFileSync(join(opts.outDir, `${slug}.run.json`), JSON.stringify(log, null, 2) + '\n');
-  writeFileSync(join(opts.outDir, `${slug}.quality.md`), report);
-  return { log, report };
+  const files = reportFiles(quality, slug);
+  for (const [name, text] of Object.entries(files)) writeFileSync(join(opts.outDir, name), text);
+  return { log, report: files[`${slug}.quality.md`]!, quality };
 }
 
 /** True when every Output node was written. */
