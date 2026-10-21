@@ -11,6 +11,7 @@ import { addFileSource } from '../../src/sources/add';
 import { useAttachments } from '../../src/sources/attachments';
 import { resetRewrites, syncRewrites, useRewrites } from '../../src/sources/rewrite';
 import { addWordTables, tablesNotAdded } from '../../src/sources/word';
+import type { WordTableInfo } from '../../src/word';
 import { createNodeBackend } from '../helpers/nodeBackend';
 
 const fixture = (name: string) => new File([readFileSync(join(__dirname, '../fixtures/pdf', name)) as Uint8Array<ArrayBuffer>], name);
@@ -41,7 +42,7 @@ describe('a PDF', () => {
     expect(useRewrites.getState().reads[s.id]).toMatchObject({ state: 'ok', rows: 4, columns: 4, table: 1 });
     expect(await types(s.id)).toEqual(['Date DATE', 'Description VARCHAR', 'Paid in VARCHAR', 'Paid out VARCHAR']);
     expect((await rows(s.id))[1]).toEqual({ Date: new Date('2026-10-03T00:00:00Z').getTime(), Description: 'Grocer on the corner', 'Paid in': null, 'Paid out': '48.20' });
-    const tables = (useRewrites.getState().reads[s.id] as { tables: { index: number; label: string }[] }).tables;
+    const tables = (useRewrites.getState().reads[s.id] as { tables: WordTableInfo[] }).tables;
     expect(tables.map((t) => t.label)).toEqual(['Transactions (page 1)', 'Summary (page 2)']);
     const added = await addWordTables(s, tablesNotAdded(project(), s, tables));
     expect(added.map((a) => [a.name, a.format, a.parseOptions.table])).toEqual([['Summary (page 2)', 'pdf', '2']]);

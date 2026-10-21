@@ -39,7 +39,7 @@ describe('tables in a PDF’s text', () => {
   it('says a scan has no text, and what a file that isn’t a PDF is', async () => {
     await expect(loadPdfPages(fixture('scan.pdf'))).rejects.toThrow(NO_TEXT);
     await expect(loadPdfPages(new Uint8Array([1, 2, 3]))).rejects.toThrow(/isn’t a PDF Puddle can read/);
-    const noDoc = { getDocument: () => ({ promise: Promise.reject(new Error('No password given')) }) };
+    const noDoc = { getDocument: () => ({ promise: Promise.reject(new Error('No password given')), destroy: async () => undefined }) };
     await expect(readPdfPages(new Uint8Array(), noDoc)).rejects.toThrow(/needs a password/);
   });
 });
