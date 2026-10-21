@@ -191,24 +191,27 @@ describe('merged.xlsx: a report with a merged title, a two-row header, regions m
     expect(regions.map((m) => m.e.r - m.s.r + 1)).toEqual([3, 4, 2, 2]);
   });
 
-  it('detects the first header row below the title, so the month row is read as data and the merged names repeat', () => {
+  it('reads the table below the title with its two header rows joined, the regions filled down their stores, and the spacer column empty', () => {
     const data = readSheet(wb);
-    expect(data.headerRow).toBe(4);
-    expect(data.columns.map((c) => c.name)).toEqual(['Region', 'Store', 'Q1', 'Q1_2', 'Q1_3', 'Q2', 'Q2_2', 'Q2_3', 'Column I', 'Notes']);
-    expect(data.columns[2]!.values[0]).toBe('Jan');
+    expect(data).toMatchObject({ range: 'A4:J21', headerRow: 4, headerRows: 2, merges: 4 });
+    expect(data.columns.map((c) => c.name)).toEqual(['Region', 'Store', 'Q1 Jan', 'Q1 Feb', 'Q1 Mar', 'Q2 Apr', 'Q2 May', 'Q2 Jun', 'Column I', 'Notes']);
+    expect(data.columns[2]!.values[0]).toBe(263);
+    const col = (name: string) => data.columns.find((c) => c.name === name)!.values;
+    const region = col('Region'), store = col('Store');
+    expect(region.slice(0, 4)).toEqual(['North', 'North', 'North', null]);
+    expect(region.filter((v) => v != null)).toHaveLength(11);
+    // The subtotal and grand total rows stay inside the data, for the shape detector to list.
+    expect(store.filter((v) => typeof v === 'string' && v.endsWith(' total'))).toEqual(['North total', 'South total', 'Scotland total', 'Wales total', 'Grand total']);
+    expect(col('Column I').every((v) => v == null)).toBe(true);
+    expect(col('Notes').some((v) => typeof v === 'string' && v.length > 5)).toBe(true);
     expect(guessHeaderRow([1, 1, 0, 6, 6, 8])).toBe(3);
   });
 
-  it('leaves the region empty below each merged cell, keeps subtotal and grand total rows inside the data, and has footnotes below', () => {
-    const data = readSheet(wb, { headerRow: 5 });
-    const col = (name: string) => data.columns.find((c) => c.name === name)!.values;
-    const region = col('Region'), store = col('Store');
-    // After the four regions come the footnotes island's first column, read as if it were more regions.
-    expect(region.filter((v) => v != null)).toEqual(['North', 'South', 'Scotland', 'Wales', 'Footnotes', 'Code', 'Q1', 'Q2', 'GBP thousands']);
-    expect(store.filter((v) => typeof v === 'string' && v.endsWith(' total'))).toEqual(['North total', 'South total', 'Scotland total', 'Wales total', 'Grand total']);
-    expect(store.slice(-4)).toEqual(['Meaning', 'January to March', 'April to June', 'Rounded to the nearest thousand']);
-    // The spacer column has nothing in it; the notes are free text.
-    expect(col('Column I').every((v) => v == null)).toBe(true);
-    expect(col('Notes').some((v) => typeof v === 'string' && v.length > 5)).toBe(true);
+  it('lists the footnotes as a table of their own, read with its own header', () => {
+    const data = readSheet(wb);
+    expect(data.tables.map((t) => t.range)).toEqual(['A4:J21', 'A24:B28']);
+    const notes = readSheet(wb, { range: 'A24:B28' });
+    expect(notes.columns.map((c) => c.name)).toEqual(['Code', 'Meaning']);
+    expect(notes.columns[0]!.values).toEqual(['Q1', 'Q2', 'GBP thousands']);
   });
 });

@@ -1,0 +1,50 @@
+ID;PSheetJS;N;E
+P;PGeneral
+P;Pyyyy-mm-dd
+F;P0;DG0G8;M255
+B;Y7;X8;D0 0 7 6
+O;L;D;B;K47;G100 0.001
+C;Y1;X1;K"Sales report 2026"
+
+C;Y3;X1;K"Region"
+C;Y3;X2;K"Order date"
+C;Y3;X3;K"Amount"
+C;Y3;X4;K"Paid"
+C;Y3;X5;K"Notes"
+C;Y3;X6;K"Contact"
+C;Y4;X1;K"North"
+F;P1;Y4;X2
+C;Y4;X2;K46027
+C;Y4;X3;K120.5
+C;Y4;X4;KTRUE
+C;Y4;X5;K"First order"
+C;Y4;X6;K"Ann"
+C;Y4;X7;K"ann@example.com"
+C;Y4;X8;K1
+C;Y5;X1;K"South"
+F;P1;Y5;X2
+C;Y5;X2;K46063
+C;Y5;X3;K80
+C;Y5;X4;KFALSE
+C;Y5;X6;K"Bob"
+C;Y5;X7;K"bob@example.com"
+C;Y5;X8;K2
+C;Y6;X1;K"East"
+F;P1;Y6;X2
+C;Y6;X2;K46096
+C;Y6;X3;K42.25
+C;Y6;X4;KTRUE
+C;Y6;X5;K"Rush"
+C;Y6;X6;K"Cy"
+C;Y6;X7;K"cy@example.com"
+C;Y6;X8;K3
+C;Y7;X1;K"West"
+F;P1;Y7;X2
+C;Y7;X2;K46112
+C;Y7;X3;K#N/A
+C;Y7;X4;KFALSE
+C;Y7;X5;K"Awaiting stock"
+C;Y7;X6;K"Di"
+C;Y7;X7;K"di@example.com"
+C;Y7;X8;K4
+E

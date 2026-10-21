@@ -194,7 +194,7 @@ test('a table moved in the designer stays where it was put, with its join lines 
   await expect.poll(async () => Math.round((await path.boundingBox())!.height)).toBeGreaterThan(50);
 
   await page.getByRole('button', { name: 'Back to canvas' }).click();
-  await node(page, 'Query 1').click();
+  await selectNode(page, 'Query 1');
   await page.getByRole('button', { name: 'Open query designer' }).click();
   await expect(page.getByTestId('query-join-line')).toHaveCount(1);
   expect(await tablePlace(page, 1)).toEqual(moved);

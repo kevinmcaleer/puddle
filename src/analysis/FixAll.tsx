@@ -23,7 +23,7 @@ export function FixAll({ node, align = 'end' }: { node: GraphNode; align?: 'star
   const run = (issues: Issue[]) => {
     if (!issues.length || busy) return;
     setBusy(true);
-    void applyFixes(node, issues, entry.analysis.columns).finally(() => setBusy(false));
+    void applyFixes(node, issues, entry.analysis).finally(() => setBusy(false));
   };
   const n = chosen.length;
   return (

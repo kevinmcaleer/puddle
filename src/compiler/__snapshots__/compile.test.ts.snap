@@ -116,7 +116,7 @@ exports[`sources > parquet with {} 1`] = `"read_parquet('src_x.parquet')"`;
 
 exports[`sources > tsv with {} 1`] = `"read_csv('src_x.tsv', delim = '	', null_padding = true)"`;
 
-exports[`sources > xlsx with {} 1`] = `""src_x_87c4bb5369a4""`;
+exports[`sources > xlsx with {} 1`] = `""src_x_5fdeb3941a48""`;
 
 exports[`step snapshots > absoluteValue {"columns":["id"]} 1`] = `
 "WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv', null_padding = true)),
@@ -391,6 +391,18 @@ SELECT * FROM "n_clean_s0""
 exports[`step snapshots > promoteHeaders {"renames":[{"from":"id","to":"ID"},{"from":"name","to":"name"}]} 1`] = `
 "WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv', null_padding = true)),
   "n_clean_s0" AS (SELECT * RENAME ("id" AS "ID") FROM "n_src" OFFSET 1)
+SELECT * FROM "n_clean_s0""
+`;
+
+exports[`step snapshots > realignRows {"rows":"from","from":19,"columns":["id","name","email","joined"],"direction":"left","by":2} 1`] = `
+"WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv', null_padding = true)),
+  "n_clean_s0" AS (SELECT * EXCLUDE ("__puddle_row") REPLACE (CASE WHEN "__puddle_row" >= 19 THEN CAST("email" AS VARCHAR) ELSE CAST("id" AS VARCHAR) END AS "id", CASE WHEN "__puddle_row" >= 19 THEN CAST("joined" AS VARCHAR) ELSE CAST("name" AS VARCHAR) END AS "name", CASE WHEN "__puddle_row" >= 19 THEN NULL ELSE CAST("email" AS VARCHAR) END AS "email", CASE WHEN "__puddle_row" >= 19 THEN NULL ELSE CAST("joined" AS VARCHAR) END AS "joined") FROM (SELECT row_number() OVER () AS "__puddle_row", * FROM "n_src"))
+SELECT * FROM "n_clean_s0""
+`;
+
+exports[`step snapshots > realignRows {"rows":"where","conditions":[{"column":"email","op":"empty","value":""}],"match":"all","matchCase":false,"columns":["name","email","joined"],"direction":"right","by":1} 1`] = `
+"WITH "n_src" AS (SELECT * FROM read_csv('src_cust.csv', null_padding = true)),
+  "n_clean_s0" AS (SELECT * EXCLUDE ("__puddle_row") REPLACE (CASE WHEN coalesce((coalesce(trim(CAST("email" AS VARCHAR)), '') = ''), false) THEN NULL ELSE CAST("name" AS VARCHAR) END AS "name", CASE WHEN coalesce((coalesce(trim(CAST("email" AS VARCHAR)), '') = ''), false) THEN CAST("name" AS VARCHAR) ELSE CAST("email" AS VARCHAR) END AS "email", CASE WHEN coalesce((coalesce(trim(CAST("email" AS VARCHAR)), '') = ''), false) THEN CAST("email" AS VARCHAR) ELSE CAST("joined" AS VARCHAR) END AS "joined") FROM (SELECT row_number() OVER () AS "__puddle_row", * FROM "n_src"))
 SELECT * FROM "n_clean_s0""
 `;
 
