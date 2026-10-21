@@ -1,7 +1,8 @@
 // The SQL DDL importer: reads a script's CREATE TABLE, ALTER TABLE, CREATE INDEX, CREATE TYPE … AS ENUM and comment
-// statements into the schema model, and counts every other statement it skips by kind. It is tolerant: what it can't
+// statements into the schema model, a dump's rows (INSERT … VALUES and COPY … FROM stdin) into its records, and counts
+// every other statement it skips by kind. It is tolerant: what it can't
 // read inside a table becomes a warning, and the rest of the script still imports.
-import { emptySchema, type DbmlEnum, type DbmlSchema, type Ref, type Table } from '../model';
+import { emptySchema, type DbmlEnum, type DbmlSchema, type RecordValue, type Records, type Ref, type Table } from '../model';
 import { Cursor, splitTop } from './cursor';
 import { DEFAULT_SCHEMAS, detectDialect, type SqlDialect } from './dialect';
 import { splitStatements, type Statement, type Token } from './lexer';
@@ -26,6 +27,8 @@ export interface SqlImport {
   /** Most frequent first. */
   skipped: SkippedStatements[];
   warnings: SqlWarning[];
+  /** Rows read from INSERT and COPY statements into the schema's records. */
+  rows: number;
 }
 
 const MODIFIERS = new Set(['OR', 'REPLACE', 'ALTER', 'TEMP', 'TEMPORARY', 'GLOBAL', 'LOCAL', 'UNLOGGED', 'UNIQUE', 'CLUSTERED', 'NONCLUSTERED', 'RECURSIVE', 'TRUSTED', 'PROCEDURAL']);
@@ -65,6 +68,130 @@ export function importSql(sql: string, dialect: SqlDialect = detectDialect(sql))
     return schema.tables.find((t) => t.schema === s && t.name === name) ?? schema.tables.find(same);
   };
   const missing = (parts: string[], line: number, what: string) => ctx.warn(`Skipped ${what}: there is no table "${parts.join('.')}" before it`, line);
+  let rows = 0;
+
+  /**
+   * The one records block a table's rows go into (DBML takes one per table): its columns are the table's, plus any a
+   * column list names that the table lacks; a row given fewer columns leaves the rest empty.
+   */
+  function recordsFor(table: Table, columns: string[] | undefined): { block: Records; place: number[] } {
+    let block = schema.records.find((r) => r.schema === table.schema && r.table === table.name && !r.example);
+    if (!block) schema.records.push((block = { schema: table.schema, table: table.name, columns: table.columns.map((c) => c.name), implicit: false, inline: false, example: false, rows: [] }));
+    const names = columns ?? table.columns.map((c) => c.name);
+    const place = names.map((name) => {
+      const lower = name.toLowerCase();
+      let i = block.columns.findIndex((c) => c.toLowerCase() === lower);
+      if (i < 0) {
+        i = block.columns.length;
+        block.columns.push(name);
+        for (const row of block.rows) row.push({ kind: 'empty', value: '' });
+      }
+      return i;
+    });
+    return { block, place };
+  }
+
+  /** A row's values in the block's column order, empty where the row gave none. */
+  const placed = (block: Records, place: number[], values: RecordValue[]): RecordValue[] => {
+    const row: RecordValue[] = block.columns.map(() => ({ kind: 'empty', value: '' }));
+    values.forEach((v, i) => (row[place[i]!] = v));
+    return row;
+  };
+
+  /** A value of an INSERT row: a literal as its kind, anything else as an expression. */
+  function insertValue(c: Cursor, tokens: Token[]): RecordValue {
+    const [t, u] = tokens;
+    if (tokens.length === 1 && t) {
+      if (t.kind === 'string') return { kind: 'string', value: t.value };
+      if (t.kind === 'number') return { kind: 'number', value: t.value };
+      if (t.kind === 'word') {
+        const w = t.value.toUpperCase();
+        if (w === 'NULL') return { kind: 'null', value: 'null' };
+        if (w === 'TRUE' || w === 'FALSE') return { kind: 'boolean', value: w.toLowerCase() };
+        if (w === 'DEFAULT') return { kind: 'empty', value: '' };
+      }
+    }
+    if (tokens.length === 2 && t?.kind === 'punct' && (t.value === '-' || t.value === '+') && u?.kind === 'number') return { kind: 'number', value: `${t.value === '-' ? '-' : ''}${u.value}` };
+    // A typed literal ('2024-01-02'::date, DATE '2024-01-02') is its text.
+    if (t?.kind === 'string' && u?.kind === 'punct' && u.value === '::') return { kind: 'string', value: t.value };
+    if (tokens.length === 2 && t?.kind === 'word' && /^(DATE|TIME|TIMESTAMP|INTERVAL)$/i.test(t.value) && u?.kind === 'string') return { kind: 'string', value: u.value };
+    return { kind: 'expression', value: c.text(tokens) };
+  }
+
+  /** INSERT [IGNORE] INTO table [(columns)] VALUES (…), (…): each row into the table's records. */
+  function insertInto(c: Cursor, line: number): string | undefined {
+    while (c.eat('IGNORE') || c.eat('LOW_PRIORITY') || c.eat('DELAYED') || c.eat('HIGH_PRIORITY') || c.eat('OR', 'REPLACE') || c.eat('OR', 'IGNORE'));
+    if (!c.eat('INTO')) return 'INSERT';
+    const parts = c.qualifiedName();
+    if (!parts) return 'INSERT';
+    // An alias (INSERT INTO t AS x) or nothing before the column list.
+    if (c.eat('AS')) c.name();
+    const columns = c.isPunct('(') && !c.isWord('SELECT', 1) ? splitTop(c.group()!).map((item) => new Cursor(item, c.source).name() ?? '') : undefined;
+    if (!c.eat('VALUES') && !c.eat('VALUE')) return c.isWord('SELECT') || c.isWord('WITH') || c.isPunct('(') ? 'INSERT … SELECT' : 'INSERT';
+    if (resolve(parts).name.toLowerCase().startsWith('sqlite_')) return 'SQLite internal table';
+    const table = find(parts);
+    if (!table) {
+      missing(parts, line, 'rows');
+      return 'INSERT';
+    }
+    const { block, place } = recordsFor(table, columns);
+    const width = place.length;
+    while (!c.done) {
+      const group = c.group();
+      if (!group) {
+        if (c.isPunct(',')) {
+          c.next();
+          continue;
+        }
+        if (c.eat('ON') || c.eat('RETURNING')) break;
+        c.next();
+        continue;
+      }
+      const values = splitTop(group).map((item) => insertValue(c, item));
+      if (values.length !== width) {
+        ctx.warn(`Skipped a row of "${table.name}" with ${values.length} ${values.length === 1 ? 'value' : 'values'} for ${width} ${width === 1 ? 'column' : 'columns'}`, c.line);
+        continue;
+      }
+      block.rows.push(placed(block, place, values));
+      rows++;
+    }
+    return undefined;
+  }
+
+  /** COPY table [(columns)] FROM stdin: the tab-separated rows after it, \N as null, backslash escapes undone. */
+  function copyFrom(c: Cursor, st: Statement): string | undefined {
+    const parts = c.qualifiedName();
+    if (!parts || st.data === undefined) return 'COPY';
+    const columns = c.isPunct('(') ? splitTop(c.group()!).map((item) => new Cursor(item, c.source).name() ?? '') : undefined;
+    const table = find(parts);
+    if (!table) {
+      missing(parts, st.line, 'rows');
+      return 'COPY';
+    }
+    const { block, place } = recordsFor(table, columns);
+    const names = columns ?? table.columns.map((c) => c.name);
+    const types = names.map((name) => columnOf(table, name)?.type.toLowerCase() ?? '');
+    const unescape = (s: string) => s.replace(/\\(.)/g, (_, e: string) => (e === 'n' ? '\n' : e === 't' ? '\t' : e === 'r' ? '\r' : e === 'b' ? '\b' : e === 'f' ? '\f' : e === 'v' ? '\v' : e));
+    const value = (raw: string, type: string): RecordValue => {
+      if (raw === '\\N') return { kind: 'null', value: 'null' };
+      const s = unescape(raw);
+      if (/^bool/.test(type) && /^(t|f|true|false)$/i.test(s)) return { kind: 'boolean', value: /^t/i.test(s) ? 'true' : 'false' };
+      if (/^[+-]?(\d+\.?\d*|\.\d+)([eE][+-]?\d+)?$/.test(s) && !/char|text|string|uuid|json/.test(type)) return { kind: 'number', value: s };
+      return { kind: 'string', value: s };
+    };
+    for (const line of st.data.split('\n')) {
+      const l = line.replace(/\r$/, '');
+      if (!l) continue;
+      const fields = l.split('\t');
+      if (fields.length !== names.length) {
+        ctx.warn(`Skipped a row of "${table.name}" with ${fields.length} ${fields.length === 1 ? 'value' : 'values'} for ${names.length} ${names.length === 1 ? 'column' : 'columns'}`, st.line);
+        continue;
+      }
+      block.rows.push(placed(block, place, fields.map((f, i) => value(f, types[i]!))));
+      rows++;
+    }
+    return undefined;
+  }
 
   function createTable(c: Cursor, line: number): string | undefined {
     c.eat('IF', 'NOT', 'EXISTS');
@@ -287,17 +414,22 @@ export function importSql(sql: string, dialect: SqlDialect = detectDialect(sql))
       else if (c.eat('TYPE')) kind = createType(c);
       else if (c.eat('SCHEMA')) kind = undefined;
     } else if (c.eat('ALTER', 'TABLE')) kind = alterTable(c, st.line);
+    else if (c.eat('INSERT') || c.eat('REPLACE')) kind = insertInto(c, st.line);
+    else if (c.eat('COPY')) kind = copyFrom(c, st);
     else if (c.eat('COMMENT', 'ON')) kind = commentOn(c, st.line);
     else if (c.eat('EXEC') || c.eat('EXECUTE')) kind = extendedProperty(c, st.line);
     if (kind !== undefined) skipped.set(kind, (skipped.get(kind) ?? 0) + 1);
   }
 
   schema.refs = resolveRefs(refs, find, ctx);
+  // A block whose every row was skipped (or a COPY with no rows) has nothing to say.
+  schema.records = schema.records.filter((r) => r.rows.length > 0);
   return {
     schema,
     dialect,
     skipped: [...skipped].map(([kind, count]) => ({ kind, count })).sort((a, b) => b.count - a.count),
     warnings: warnings.sort((a, b) => a.line - b.line),
+    rows,
   };
 }
 

@@ -36,7 +36,7 @@ export function ImportSqlDialog({ dbml, schema, onImport, onClose }: { dbml: str
       }}
       className="w-[720px] max-w-[calc(100vw-32px)]"
     >
-      <p className="text-label text-ink-muted">Paste CREATE TABLE statements, a pg_dump --schema-only, mysqldump --no-data or a SQL Server script. Everything is read in this browser.</p>
+      <p className="text-label text-ink-muted">Paste CREATE TABLE statements, a pg_dump, a mysqldump or a SQL Server script. The rows of a dump (INSERT and COPY) become the tables’ records. Everything is read in this browser.</p>
       <textarea
         className="ui-input puddle-schema-import"
         aria-label="SQL"
@@ -80,7 +80,8 @@ export function ImportSqlDialog({ dbml, schema, onImport, onClose }: { dbml: str
         <p className="text-label text-ink-muted" role="status" data-testid="import-sql-found">
           {tables.length ? `${tables.length} ${tables.length === 1 ? 'table' : 'tables'}` : 'No tables'}
           {result.schema.refs.length ? `, ${result.schema.refs.length} ${result.schema.refs.length === 1 ? 'ref' : 'refs'}` : ''}
-          {result.schema.enums.length ? `, ${result.schema.enums.length} ${result.schema.enums.length === 1 ? 'enum' : 'enums'}` : ''} found.
+          {result.schema.enums.length ? `, ${result.schema.enums.length} ${result.schema.enums.length === 1 ? 'enum' : 'enums'}` : ''}
+          {result.rows ? `, ${result.rows.toLocaleString('en-GB')} ${result.rows === 1 ? 'row' : 'rows'}` : ''} found.
         </p>
       )}
       {(skipped || (result && result.warnings.length > 0)) && (
