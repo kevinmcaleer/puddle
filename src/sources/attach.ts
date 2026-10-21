@@ -45,7 +45,8 @@ async function offerStoredHandles(project: Project, detached: string[]) {
  */
 export async function attachProject(project: Project): Promise<void> {
   const next: Record<string, Attachment> = {};
-  for (const s of project.sources) next[s.id] = s.kind === 'clipboard' || sourceFile(s.id) || (s.kind === 'url' && urlFetched(s.id)) ? 'attached' : 'detached';
+  // A connection source is read through its connection (src/sources/connection.ts), so has nothing to attach.
+  for (const s of project.sources) next[s.id] = s.kind === 'clipboard' || s.kind === 'connection' || sourceFile(s.id) || (s.kind === 'url' && urlFetched(s.id)) ? 'attached' : 'detached';
   const clipboard = project.sources.filter((s) => s.kind === 'clipboard' && s.clipboard && !isRewritten(s.format));
   if (clipboard.length) {
     const engine = await whenEngine();

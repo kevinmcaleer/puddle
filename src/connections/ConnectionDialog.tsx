@@ -1,16 +1,49 @@
 // Add source › From database, and Project › Databases: the project's saved connections, the driver grid for a new
 // one, and the form for a connection (its settings, its secret for this tab, where it runs, and Test).
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { useSession } from '../app/session';
+import { runTest } from '../connect/context';
 import { useWorkspace } from '../persistence/workspace';
-import { addConnection, connectionSources, removeConnection, useProject, useProjectStore, type Connection, type ConnectionVia, type DriverId } from '../model';
+import { addConnection, connectionSources, removeConnection, useProject, useProjectStore, type Catalog, type CatalogTable, type Connection, type ConnectionVia, type DriverId } from '../model';
+import { addConnectionSources, connectionNeeds, readCatalog, tableName } from '../sources/connection';
 import { Banner, Button, Dialog, Field, Select, Switch, TextInput } from '../ui';
 import { closeConnectionDialog, useConnectionDialog } from './dialog';
 import { describeSettings, driver, DRIVERS, missingFields, SECRET_LABEL, VIA_LABEL, type Driver } from './drivers';
+import { rememberConnectionFile, useConnectionFiles } from './files';
 import { copyConnection, newConnection } from './form';
 import { forgetSecret, rememberSecret, secretFor, SERVICE_TOKEN_ID, useSecrets } from './secrets';
-import { refreshReach, testConnection, useReach, type TestResult } from './service';
+import { refreshReach, useReach, type TestResult } from './service';
 
-type View = { kind: 'list' } | { kind: 'grid' } | { kind: 'form'; connection: Connection; isNew: boolean };
+type View = { kind: 'list' } | { kind: 'grid' } | { kind: 'form'; connection: Connection; isNew: boolean } | { kind: 'pick'; connection: Connection };
+
+const FILE_ACCEPT = '.sqlite,.sqlite3,.db,.db3,.s3db,.duckdb,.ddb,application/vnd.sqlite3,application/x-sqlite3';
+
+/**
+ * "Choose file" for a file driver: the file stays in this tab (src/connections/files) and the project keeps its
+ * name. `id` is the connection the file is for.
+ */
+export function ConnectionFileButton({ id, label = 'Choose file', onChosen }: { id: string; label?: string; onChosen?: (file: File) => void }) {
+  const input = useRef<HTMLInputElement>(null);
+  return (
+    <>
+      <Button size="sm" variant="primary" icon="source" onClick={() => input.current?.click()}>{label}</Button>
+      <input
+        ref={input}
+        type="file"
+        accept={FILE_ACCEPT}
+        hidden
+        data-testid={`connection-file-${id}`}
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          e.target.value = '';
+          if (!file) return;
+          rememberConnectionFile(id, file);
+          onChosen?.(file);
+        }}
+      />
+    </>
+  );
+}
 
 /** The two-letter mark a driver shows in place of a logo. */
 function Monogram({ d }: { d: Driver }) {
@@ -75,7 +108,7 @@ function ViaField({ d, via, onChange }: { d: Driver; via: ConnectionVia; onChang
   );
 }
 
-function ConnectionForm({ initial, isNew, onDone, onBack }: { initial: Connection; isNew: boolean; onDone: () => void; onBack: () => void }) {
+function ConnectionForm({ initial, isNew, onDone, onBack }: { initial: Connection; isNew: boolean; onDone: (saved: Connection) => void; onBack: () => void }) {
   const d = driver(initial.driver);
   const [conn, setConn] = useState(initial);
   const [secret, setSecret] = useState(secretFor(initial.id) ?? '');
@@ -87,15 +120,15 @@ function ConnectionForm({ initial, isNew, onDone, onBack }: { initial: Connectio
     setConn((c) => ({ ...c, settings: { ...c.settings, [key]: value } }));
     setTest(null);
   };
-  const runTest = () => {
+  const test_ = () => {
     setTest({ ok: 'testing' });
-    void testConnection(conn, secret || undefined).then(setTest);
+    void runTest(conn, secret || undefined).then(setTest);
   };
   const save = () => {
     useProjectStore.getState().apply((p) => addConnection(p, conn));
     if (secret && keep) rememberSecret(conn.id, secret);
     else forgetSecret(conn.id);
-    onDone();
+    onDone(conn);
   };
   return (
     <Dialog
@@ -122,6 +155,15 @@ function ConnectionForm({ initial, isNew, onDone, onBack }: { initial: Connectio
               <div key={f.key} className="flex items-end pb-2">
                 <Switch id={id} label={f.label} checked={value === true} onChange={(on) => setting(f.key, on)} />
               </div>
+            );
+          if (f.kind === 'file')
+            return (
+              <Field key={f.key} label={f.label} hint={f.hint}>
+                <div className="flex items-center gap-2">
+                  <ConnectionFileButton id={conn.id} onChosen={(file) => setting(f.key, file.name)} />
+                  <span className="min-w-0 truncate text-label text-ink-muted" data-testid="conn-file-name">{value ? String(value) : 'No file chosen'}</span>
+                </div>
+              </Field>
             );
           return (
             <Field key={f.key} label={f.label} htmlFor={id} hint={f.hint}>
@@ -151,7 +193,7 @@ function ConnectionForm({ initial, isNew, onDone, onBack }: { initial: Connectio
       {d.auth === 'oauth' && <p className="text-label text-ink-muted">Signs in with Google when the connection is first read.</p>}
       <ViaField d={d} via={conn.via} onChange={(via) => (setConn({ ...conn, via }), setTest(null))} />
       <div className="flex items-center gap-3">
-        <Button variant="secondary" icon="refresh" disabled={missing.length > 0 || test?.ok === 'testing'} onClick={runTest}>
+        <Button variant="secondary" icon="refresh" disabled={missing.length > 0 || test?.ok === 'testing'} onClick={test_}>
           {test?.ok === 'testing' ? 'Testing…' : 'Test'}
         </Button>
         {missing.length > 0 && <span className="text-label text-ink-muted">Fill in {missing.join(', ')}.</span>}
@@ -187,7 +229,7 @@ function ConnectionRow({ c, onEdit, onRemove, action }: { c: Connection; onEdit:
   );
 }
 
-function ConnectionList({ mode, onNew, onEdit }: { mode: 'add' | 'manage'; onNew: () => void; onEdit: (c: Connection, isNew: boolean) => void }) {
+function ConnectionList({ mode, onNew, onEdit, onPick }: { mode: 'add' | 'manage'; onNew: () => void; onEdit: (c: Connection, isNew: boolean) => void; onPick: (c: Connection) => void }) {
   const project = useProject();
   const others = useWorkspace((s) => s.projects).filter((p) => p.id !== project.id && p.connections.length);
   const [notice, setNotice] = useState<string | null>(null);
@@ -207,7 +249,13 @@ function ConnectionList({ mode, onNew, onEdit }: { mode: 'add' | 'manage'; onNew
       {project.connections.length > 0 ? (
         <ul className="flex flex-col divide-y divide-line rounded-md border border-line bg-surface-panel" aria-label="Connections">
           {project.connections.map((c) => (
-            <ConnectionRow key={c.id} c={c} onEdit={() => onEdit(c, false)} onRemove={() => remove(c)} />
+            <ConnectionRow
+              key={c.id}
+              c={c}
+              onEdit={() => onEdit(c, false)}
+              onRemove={() => remove(c)}
+              action={mode === 'add' ? <Button size="sm" variant="secondary" icon="database" onClick={() => onPick(c)}>Choose tables</Button> : undefined}
+            />
           ))}
         </ul>
       ) : (
@@ -239,10 +287,126 @@ function ConnectionList({ mode, onNew, onEdit }: { mode: 'add' | 'manage'; onNew
   );
 }
 
-function ConnectionsDialogBody({ mode, editId }: { mode: 'add' | 'manage'; editId?: string }) {
+/** "n rows" from a catalogue estimate, or nothing. */
+const rowsLabel = (t: CatalogTable) => (t.rows === undefined ? '' : `${t.rows.toLocaleString('en-GB')} ${t.rows === 1 ? 'row' : 'rows'}`);
+
+/**
+ * Choosing what to read from a connection: its tables (ticked), or a query in the database's own dialect, each
+ * becoming a source. The catalogue is read when the picker opens (and kept on the connection), once the tab has
+ * what the connection needs: its file, or its secret.
+ */
+function TablePicker({ connectionId, onBack }: { connectionId: string; onBack: () => void }) {
+  const project = useProject();
+  const connection = project.connections.find((c) => c.id === connectionId);
+  const d = connection && driver(connection.driver);
+  // Subscribed so the picker follows the file being chosen and the sign-in.
+  useConnectionFiles((s) => s.ids);
+  useSecrets((s) => s.ids);
+  const need = connection && connectionNeeds(connection);
+  const needsFile = need === 'file';
+  const needsSecret = need === 'secret';
+  const [secret, setSecret] = useState('');
+  const [catalog, setCatalog] = useState<Catalog | undefined>(connection?.catalog);
+  const [state, setState] = useState<'idle' | 'ok' | 'failed'>('idle');
+  const [attempt, setAttempt] = useState(0);
+  const tried = useRef(-1);
+  const [error, setError] = useState('');
+  const [picked, setPicked] = useState<Set<string>>(new Set());
+  const [query, setQuery] = useState('');
+  const [limit, setLimit] = useState('');
+  const ready = !!connection && !needsFile && !needsSecret;
+  useEffect(() => {
+    if (!ready || tried.current === attempt) return;
+    tried.current = attempt;
+    // The connection is read from the store here, not closed over: reading the catalogue amends it, which must not restart the read.
+    const current = useProjectStore.getState().history.present.connections.find((c) => c.id === connectionId);
+    if (!current) return;
+    readCatalog(current).then(
+      (c) => (setCatalog(c), setState('ok')),
+      (e) => (setError(e instanceof Error ? e.message : String(e)), setState('failed')),
+    );
+  }, [ready, attempt, connectionId]);
+  if (!connection || !d) return null;
+  const tables = catalog?.tables ?? [];
+  const toggle = (key: string, on: boolean) =>
+    setPicked((p) => {
+      const next = new Set(p);
+      if (on) next.add(key);
+      else next.delete(key);
+      return next;
+    });
+  const count = picked.size + (query.trim() ? 1 : 0);
+  const add = () => {
+    const n = limit.trim() === '' ? undefined : Math.max(1, Math.floor(Number(limit)));
+    const added = addConnectionSources(connection, { tables: tables.filter((t) => picked.has(tableName(t))), query, limit: n && Number.isFinite(n) ? n : undefined });
+    const node = useProjectStore.getState().history.present.nodes.find((x) => x.type === 'source' && x.sourceId === added[0]?.id);
+    if (node) useSession.getState().select(node.id);
+    closeConnectionDialog();
+  };
+  return (
+    <Dialog title={`Read from ${connection.name}`} className="w-[640px] max-w-[calc(100vw-32px)]" confirm={count ? `Add ${count} ${count === 1 ? 'source' : 'sources'}` : 'Add sources'} confirmDisabled={!count} onConfirm={add} onClose={onBack}>
+      <div className="flex items-center gap-2 text-label text-ink-muted">
+        <Monogram d={d} />
+        <span>{d.label} · {describeSettings(d, connection.settings)}</span>
+      </div>
+      {needsFile && (
+        <Banner tone="info" title="Choose the database file" action={<ConnectionFileButton id={connection.id} />}>
+          Files stay on this computer: choose {String(connection.settings.file ?? 'the file')} again in this tab.
+        </Banner>
+      )}
+      {needsSecret && !needsFile && (
+        <div className="flex items-end gap-2">
+          <Field label={SECRET_LABEL[d.auth]} htmlFor="pick-secret" hint="Kept in this tab only.">
+            <TextInput id="pick-secret" type="password" autoComplete="off" value={secret} onChange={(e) => setSecret(e.target.value)} />
+          </Field>
+          <div className="pb-5">
+            <Button variant="primary" disabled={!secret} onClick={() => rememberSecret(connection.id, secret)}>Sign in</Button>
+          </div>
+        </div>
+      )}
+      {ready && state === 'idle' && <p className="text-label text-ink-muted">Reading the database’s tables…</p>}
+      {state === 'failed' && (
+        <Banner tone="fail" title="The tables couldn’t be read" action={<Button size="sm" variant="secondary" icon="refresh" onClick={() => (setState('idle'), setAttempt((n) => n + 1))}>Try again</Button>}>
+          {error}
+        </Banner>
+      )}
+      {tables.length > 0 && (
+        <div className="flex flex-col gap-1">
+          <h3 className="ui-eyebrow">Tables</h3>
+          <div className="max-h-64 overflow-y-auto rounded-md border border-line bg-surface-panel" data-testid="table-picker">
+            {tables.map((t) => {
+              const key = tableName(t);
+              return (
+                <label key={key} className="ui-check" data-testid={`pick-${key}`}>
+                  <input type="checkbox" checked={picked.has(key)} aria-label={key} onChange={(e) => toggle(key, e.target.checked)} />
+                  <span className="min-w-0 flex-1 truncate">{key}{t.kind === 'view' ? ' (view)' : ''}</span>
+                  <span className="text-label text-ink-muted">{t.columns.length} {t.columns.length === 1 ? 'column' : 'columns'}{rowsLabel(t) ? ` · ${rowsLabel(t)}` : ''}</span>
+                </label>
+              );
+            })}
+          </div>
+        </div>
+      )}
+      {state === 'ok' && tables.length === 0 && <Banner tone="info" title="No tables">This database has no tables to read. A query can still be run below.</Banner>}
+      {ready && (
+        <div className="grid grid-cols-[1fr_120px] gap-3">
+          <Field label="Or a query" htmlFor="pick-query" hint={`Runs in the database, in ${d.label}’s own SQL. Becomes a source of its own.`}>
+            <textarea id="pick-query" className="ui-input is-mono min-h-[var(--size-row)] w-full resize-y py-1" rows={3} spellCheck={false} value={query} onChange={(e) => setQuery(e.target.value)} />
+          </Field>
+          <Field label="At most" htmlFor="pick-limit" hint="rows per source; empty reads all">
+            <TextInput id="pick-limit" inputMode="numeric" value={limit} onChange={(e) => setLimit(e.target.value)} />
+          </Field>
+        </div>
+      )}
+    </Dialog>
+  );
+}
+
+function ConnectionsDialogBody({ mode, editId, pickId }: { mode: 'add' | 'manage'; editId?: string; pickId?: string }) {
   const project = useProject();
   const editing = editId ? project.connections.find((c) => c.id === editId) : undefined;
-  const [view, setView] = useState<View>(editing ? { kind: 'form', connection: editing, isNew: false } : { kind: 'list' });
+  const picking = pickId ? project.connections.find((c) => c.id === pickId) : undefined;
+  const [view, setView] = useState<View>(editing ? { kind: 'form', connection: editing, isNew: false } : picking ? { kind: 'pick', connection: picking } : { kind: 'list' });
   useEffect(() => void refreshReach(), []);
   if (view.kind === 'grid') {
     return (
@@ -252,12 +416,22 @@ function ConnectionsDialogBody({ mode, editId }: { mode: 'add' | 'manage'; editI
       </Dialog>
     );
   }
-  if (view.kind === 'form') return <ConnectionForm key={view.connection.id} initial={view.connection} isNew={view.isNew} onDone={() => (editing ? closeConnectionDialog() : setView({ kind: 'list' }))} onBack={() => (editing ? closeConnectionDialog() : setView(view.isNew ? { kind: 'grid' } : { kind: 'list' }))} />;
-  return <ConnectionList mode={mode} onNew={() => setView({ kind: 'grid' })} onEdit={(connection, isNew) => setView({ kind: 'form', connection, isNew })} />;
+  if (view.kind === 'form')
+    return (
+      <ConnectionForm
+        key={view.connection.id}
+        initial={view.connection}
+        isNew={view.isNew}
+        onDone={(saved) => (editing ? closeConnectionDialog() : mode === 'add' ? setView({ kind: 'pick', connection: saved }) : setView({ kind: 'list' }))}
+        onBack={() => (editing ? closeConnectionDialog() : setView(view.isNew ? { kind: 'grid' } : { kind: 'list' }))}
+      />
+    );
+  if (view.kind === 'pick') return <TablePicker key={view.connection.id} connectionId={view.connection.id} onBack={() => setView({ kind: 'list' })} />;
+  return <ConnectionList mode={mode} onNew={() => setView({ kind: 'grid' })} onEdit={(connection, isNew) => setView({ kind: 'form', connection, isNew })} onPick={(connection) => setView({ kind: 'pick', connection })} />;
 }
 
 /** Add source › From database and Project › Databases. */
 export function ConnectionDialog() {
-  const { mode, editId } = useConnectionDialog();
-  return mode ? <ConnectionsDialogBody key={`${mode}-${editId ?? ''}`} mode={mode} editId={editId} /> : null;
+  const { mode, editId, pickId } = useConnectionDialog();
+  return mode ? <ConnectionsDialogBody key={`${mode}-${editId ?? ''}-${pickId ?? ''}`} mode={mode} editId={editId} pickId={pickId} /> : null;
 }

@@ -25,6 +25,7 @@ import { useResultsStore } from '../results/state';
 import { ACCEPT } from '../sources/detect';
 import { useAccessSources } from '../sources/access';
 import { useArrowSources } from '../sources/arrow';
+import { useConnectionSources } from '../sources/connection';
 import { useExcelSources } from '../sources/excel';
 import { useSchemaTableSync } from '../schemaTables/state';
 import { LOAD_FAILURES, projectSchema } from '../compiler';
@@ -274,6 +275,7 @@ export function AppShell() {
   useExcelSources();
   useAccessSources();
   useArrowSources();
+  useConnectionSources();
   useXmlSources();
   useRewrittenSources();
   useSchemaTableSync();

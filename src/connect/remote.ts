@@ -1,0 +1,47 @@
+// A connection that runs in puddle-connect (on this computer or the Pi): the same Connector interface over its
+// routes. The service itself is #205; this is the browser's side of it.
+import type { Catalog } from '../model';
+import { secretFor, SERVICE_TOKEN_ID } from '../connections/secrets';
+import { serviceBase, serviceBody, type Fetch } from '../connections/service';
+import { ConnectorError, type Connector, type ConnectorContext, type ReadRequest } from './types';
+
+const notRunning = (via: string) => (via === 'local' ? 'puddle-connect isn’t running on this computer. Start it with “npx puddle-connect”, then try again.' : 'puddle-connect isn’t answering on the Pi.');
+
+export function remoteConnector(ctxVia: 'local' | 'pi', fetchImpl: Fetch = fetch): Connector {
+  const call = async (ctx: ConnectorContext, route: string, extra: Record<string, unknown> = {}): Promise<Response> => {
+    const token = ctxVia === 'pi' ? secretFor(SERVICE_TOKEN_ID) : undefined;
+    let res: Response;
+    try {
+      res = await fetchImpl(`${serviceBase(ctxVia)}/${route}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+        body: JSON.stringify({ ...serviceBody(ctx.connection, ctx.secret), ...extra }),
+      });
+    } catch {
+      throw new ConnectorError(notRunning(ctxVia));
+    }
+    if (res.status === 401) throw new ConnectorError('The Pi’s service refused the token.');
+    if (!res.ok) {
+      const text = await res.text().catch(() => '');
+      throw new ConnectorError(text || `The service answered ${res.status}.`);
+    }
+    return res;
+  };
+  return {
+    id: 'postgres',
+    runsIn: [ctxVia],
+    async test(ctx) {
+      const body = (await (await call(ctx, 'test')).json()) as { ok?: boolean; server?: string; reason?: string };
+      return body.ok ? { ok: true, server: body.server ?? 'Connected' } : { ok: false, reason: body.reason ?? 'The database refused the connection.' };
+    },
+    async catalog(ctx) {
+      return (await (await call(ctx, 'catalog')).json()) as Catalog;
+    },
+    async read(ctx, req: ReadRequest) {
+      const res = await call(ctx, 'read', { table: req.table, query: req.query, limit: req.limit });
+      const columns = JSON.parse(res.headers.get('Puddle-Columns') ?? '[]') as { name: string; sqlType: string }[];
+      const rows = Number(res.headers.get('Puddle-Rows') ?? 0);
+      return { columns, rows, ipc: new Uint8Array(await res.arrayBuffer()) };
+    },
+  };
+}

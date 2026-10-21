@@ -21,7 +21,7 @@ From OData feed
 : Read an entity set from an OData service, such as SAP, Dynamics or SharePoint lists. See [OData feeds](#odata-feeds).
 
 From database
-: Make or pick a saved connection to a database (shortcut: D). Connections are saved in the project without their password or token, which stays in this tab; **Project › Databases** lists them. Reading tables from a connection is being built (Phase 6), so for now a connection can be made, tested and kept.
+: Make or pick a saved connection to a database (shortcut: D), then tick the tables to read, or write a query, and each becomes a source. Connections are saved in the project without their password or token, which stays in this tab; **Project › Databases** lists them. See [Databases](#databases).
 
 Paste from clipboard
 : Paste rows copied from a spreadsheet or a web page, or XML text, as a new source (shortcut: Ctrl+V on the canvas). Pasted rows are the one kind of data a project keeps, because there is no file to read them from again.
@@ -215,6 +215,26 @@ A zip with several files opens to its first data file. The inspector lists every
 An Arrow IPC file (`.arrow`, `.feather`, or `.ipc`) is read with its column types: whole numbers, decimals, dates, timestamps, booleans and text keep their types, and structured values (lists, structs) are read as JSON text. Like a workbook, the file is read into memory whole.
 
 When you open the project again, choose the archive once and every file read from it connects. `puddle-run` reads all three the same way, with the same types. Bzip2 and zstd files, and tar archives, aren't opened: unpack them, or pack the file as gzip or zip.
+
+## Databases
+
+**Add › From database** reads tables from a database into sources. Pick a saved connection, or make one from the grid of databases; a connection needs the database's address and user name, and its password or token, which is kept in this tab only and never saved in the project, a recipe or a shared link. **Test** opens the connection and says what answered.
+
+Database files are read in your browser; nothing is uploaded. A database file chosen from **Add › Choose files** (or dropped on the canvas) becomes a connection named after the file, and its table picker opens at once:
+
+SQLite
+: A `.sqlite` or `.db` file (a LibSQL file is one too). Choose the file in the connection form.
+
+DuckDB
+: A `.duckdb` file, attached read-only, so its own types and views are read as they are.
+
+Once the connection is saved, **Read from** lists the database's tables and views with their columns and sizes. Tick the ones to read, or write a query in the database's own SQL, and set how many rows to read at most (empty reads them all). Each table and the query become a source on the canvas, read through the connection with the types the database declares.
+
+A connection source's inspector shows its table or query and the row limit; change either and the rows are read again, or press **Refresh** to read them again as they are now. **Edit** opens the connection. The catalogue is kept on the connection, so the inspector lists the other tables without connecting again.
+
+Databases behind a server (PostgreSQL, MySQL, SQL Server and the rest of the grid) are read through puddle-connect, a small service on your computer or on the Pi, which is being built (Phase 6). Until a driver lands, its connection can be made and kept, but not read.
+
+When you open the project again in another tab, a database file is chosen again, as any file is, from the source's results pane or inspector; a password or token is typed again, since it was never stored.
 
 ## Read options
 
