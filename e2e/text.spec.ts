@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { addFiles, addStepNode, cell, fixture, node, openApp } from './helpers/app';
+import { addFiles, addStepNode, cell, fixture, openApp, selectNode } from './helpers/app';
 
 const steps = (page: Page) => page.getByRole('listbox', { name: 'Applied steps' }).getByRole('option');
 const settings = (page: Page) => page.getByTestId('step-settings');
@@ -12,7 +12,7 @@ async function commit(page: Page, label: string, value: string) {
 test.beforeEach(async ({ page }) => {
   await openApp(page);
   await addFiles(page, [fixture('customers.csv')]);
-  await node(page, 'customers.csv').click();
+  await selectNode(page, 'customers.csv');
 });
 
 test('find and replace by pattern, with a broken pattern explained before it runs', async ({ page }) => {

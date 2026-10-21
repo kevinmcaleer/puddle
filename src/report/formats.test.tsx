@@ -21,7 +21,23 @@ function project(): Project {
   return {
     ...p,
     name: 'Shop | <b>',
-    nodes: p.nodes.map((n) => (n.id === 'in' ? { ...n, rules: [rule('name'), rule('email', { severity: 'warn' }), rule('id', { type: 'unique', label: 'id is unique', params: { columns: ['id'] } })] } : n)),
+    nodes: p.nodes.map((n) =>
+      n.id === 'in'
+        ? {
+            ...n,
+            rules: [rule('name'), rule('email', { severity: 'warn' }), rule('id', { type: 'unique', label: 'id is unique', params: { columns: ['id'] } })],
+            analysis: {
+              at: '2026-10-16T12:00:00.000Z',
+              rows: 4,
+              issues: [
+                { key: 'edgeSpaces:name', kind: 'edgeSpaces', column: 'name', label: 'Spaces at either end of name', count: 2, fixed: true },
+                { key: 'nearDuplicate:city:Lodnon', kind: 'nearDuplicate', column: 'city', value: 'Lodnon', label: 'Lodnon in city, probably London', count: 1 },
+              ],
+            },
+            ignoredIssues: ['nearDuplicate:city:Lodnon'],
+          }
+        : n,
+    ),
     exportLog: [{ id: 'x', at: '2026-10-16T12:00:00.000Z', nodeId: 'out', nodeName: 'Output 1', format: 'csv', fileName: 'Output 1.csv', rows: 4, overridden: [{ nodeName: 'in', rule: 'r', nodeId: 'in', ruleId: 'name' }] }],
   };
 }
@@ -54,6 +70,11 @@ describe('Markdown', () => {
     expect(md).toContain('| Warn | No leading or trailing spaces in email | No leading or trailing spaces | Warn | email | 4 | 3 | 1 | 25% |');
     expect(md).toContain('| Pass | id is unique | Unique | Fail | id | 4 | 4 | 0 | 0% |');
     expect(md).toContain('overridden. Exported anyway on 16 Oct 2026, 12:00 UTC, from Output 1 to Output 1.csv.');
+  });
+
+  it('lists the issues the node’s last analysis found, with what became of each', () => {
+    const md = reportMarkdown(report());
+    expect(md).toContain('### Issues\n\n2 issues found 16 Oct 2026, 12:00 UTC in 4 rows: 1 fixed, 1 ignored.\n\n| Outcome | Issue | Column | Rows |\n| --- | --- | --- | --- |\n| Fixed | Spaces at either end of name | name | 2 |\n| Ignored | Lodnon in city, probably London | city | 1 |');
   });
 
   it('with samples at 0 contains no row values, and says so', () => {

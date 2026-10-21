@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { addFiles, addStepNode, cell, fixture, node, openApp, saved } from './helpers/app';
+import { addFiles, addStepNode, cell, fixture, openApp, saved, selectNode } from './helpers/app';
 
 // The browser's own locale is fixed for every test (playwright.config.ts); these tests also pick locales themselves.
 
@@ -11,7 +11,7 @@ const chip = (page: Page, name: string) => settings(page).getByRole('button', { 
 /** `file` added and its source selected, for a step from the Add menu to go after. */
 async function sourceOf(page: Page, file: string) {
   await addFiles(page, [fixture(file)]);
-  await node(page, file).click();
+  await selectNode(page, file);
 }
 
 /** Pick exactly these columns in the step's Columns field. */

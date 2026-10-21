@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { addFiles, addStep, addStepNode, cell, fixture, node, openApp } from './helpers/app';
+import { addFiles, addStep, addStepNode, cell, fixture, openApp, selectNode } from './helpers/app';
 
 const steps = (page: Page) => page.getByRole('listbox', { name: 'Applied steps' }).getByRole('option');
 const settings = (page: Page) => page.getByTestId('step-settings');
@@ -15,7 +15,7 @@ async function write(page: Page, sql: string) {
 test.beforeEach(async ({ page }) => {
   await openApp(page);
   await addFiles(page, [fixture('orders.tsv')]);
-  await node(page, 'orders.tsv').click();
+  await selectNode(page, 'orders.tsv');
   await addStepNode(page, 'Custom SQL');
 });
 

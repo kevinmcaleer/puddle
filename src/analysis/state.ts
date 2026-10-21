@@ -6,83 +6,44 @@ import { useEffect } from 'react';
 import { create } from 'zustand';
 import { useEngineStore } from '../app/engine';
 import { useSession } from '../app/session';
-import { compileAnalysis, compileCount, compileDistinctFacts, compileProfile, compileShape, compileTypeSniff, compileValueCounts, upstreamKey } from '../compiler';
+import { upstreamKey } from '../compiler';
 import { tableRows, toEngineError, type EngineClient } from '../engine';
 import { useViewProject } from '../flow/sample';
 import { useFlowStore } from '../flow/status';
+import { useExcelReads } from '../sources/excel';
 import { nodeById, useProject, type ColumnSchema, type GraphNode, type Project } from '../model';
-import { parseProfile, parseTypeSniff, type ColumnProfile } from '../results/profile';
-import { columnKind } from '../ui/columnKind';
-import { analysisChecks, findIssues, parseAnalysis, parseDistinctFacts, parseValueCounts, type AnalysisFacts } from './columns';
-import { parseShape } from './shape';
+import { ANALYSIS_ROWS, analyseWith, type NodeAnalysis } from './analyse';
+import { findIssues } from './columns';
 import { sortIssues, type Issue } from './issues';
 
-export interface NodeAnalysis {
-  columns: ColumnSchema[];
-  profile: Record<string, ColumnProfile>;
-  facts: AnalysisFacts;
-}
+export type { NodeAnalysis } from './analyse';
+export { ANALYSIS_ROWS, sheetSourceOf, textSourceOf } from './analyse';
 
 export type AnalysisEntry = { key: string; state: 'pending' } | { key: string; state: 'ok'; analysis: NodeAnalysis } | { key: string; state: 'error'; message: string };
 
 export const useAnalysisStore = create<{ nodes: Record<string, AnalysisEntry> }>(() => ({ nodes: {} }));
 
-/** How many rows of a table are looked at: its first this many, when it has more, so a big file is analysed in seconds (three million taxi trips took minutes). */
-export const ANALYSIS_ROWS = 200_000;
-
 const background = (nodeId: string, what: string) => ({ priority: 'background' as const, label: `Analysing ${what}`, supersede: `analyse:${nodeId}` });
 
-/**
- * Count, profile and sniff a node's output (as the results table does), then one query for the exact counts, one
- * grouped per column for what the distinct values say, one for the values of columns with few of them, and for text
- * sources one for the rows that aren't data.
- */
-export async function analyseNode(engine: EngineClient, project: Project, nodeId: string, columns: ColumnSchema[], sample = ANALYSIS_ROWS): Promise<NodeAnalysis> {
-  const target = { nodeId };
-  const opts = (what: string) => background(nodeId, what);
-  const total = Number(Object.values(tableRows((await engine.query(compileCount(project, target), opts('rows'))).table)[0] ?? {})[0] ?? 0);
-  // A big table is looked at through its first rows: the whole of three million rows of trips took minutes.
-  const limit = total > sample ? sample : undefined;
-  const profile = parseProfile(tableRows((await engine.query(compileProfile(project, target, limit), opts('columns'))).table));
-  const text = columns.filter((c) => columnKind(c.type) === 'text').map((c) => c.name);
-  if (text.length) {
-    const looks = parseTypeSniff(tableRows((await engine.query(compileTypeSniff(project, target, text, limit), opts('text'))).table)[0] ?? {}, text);
-    for (const [c, l] of Object.entries(looks)) if (profile[c]) profile[c] = { ...profile[c], ...l };
-  }
-  const checks = analysisChecks(columns, profile);
-  const row = tableRows((await engine.query(compileAnalysis(project, target, checks, columns.map((c) => c.name), limit), opts('values'))).table)[0] ?? {};
-  const facts = parseAnalysis(row, checks);
-  facts.columnNames = project.settings.columnNames;
-  if (limit) facts.sample = { rows: limit, total };
-  if (checks.length) parseDistinctFacts(tableRows((await engine.query(compileDistinctFacts(project, target, checks, limit), opts('distinct values'))).table), checks, facts.columns);
-  const valued = checks.filter((c) => c.values).map((c) => c.column);
-  if (valued.length) {
-    const counts = parseValueCounts(tableRows((await engine.query(compileValueCounts(project, target, valued, limit), opts('value counts'))).table));
-    for (const c of valued) {
-      const vc = counts[c] ?? [];
-      facts.columns[c]!.valueCounts = vc;
-      facts.columns[c]!.values = vc.map((v) => v.value).sort();
-    }
-  }
-  // A source read from delimited text: one more query for the rows around and inside the table that aren't data.
-  const source = textSourceOf(project, nodeId);
-  if (source && columns.length) {
-    const shapeRow = tableRows((await engine.query(compileShape(project, target, columns.map((c) => c.name), limit), opts('rows that aren’t data'))).table)[0] ?? {};
-    facts.shape = { facts: parseShape(shapeRow), options: source.parseOptions };
-  }
-  return { columns, profile, facts };
+/** The analysis (analyse.ts) on the engine, at background priority, with the Excel worker's merges for a workbook. */
+export function analyseNode(engine: EngineClient, project: Project, nodeId: string, columns: ColumnSchema[], sample = ANALYSIS_ROWS): Promise<NodeAnalysis> {
+  return analyseWith(
+    {
+      rows: async (sql, what) => tableRows((await engine.query(sql, background(nodeId, what))).table),
+      sheetMerges: (source) => {
+        const read = useExcelReads.getState().reads[source.id];
+        return read?.state === 'ok' ? { merges: read.merges, filled: source.parseOptions.fillMerges !== false } : undefined;
+      },
+    },
+    project,
+    nodeId,
+    columns,
+    sample,
+  );
 }
 
 /** What an analysis stands for: the node's output, and the column-name style the issues are judged by. */
 const analysisKey = (project: Project, nodeId: string) => `${upstreamKey(project, { nodeId })}|${project.settings.columnNames}`;
-
-/** The source a node reads, when it is delimited text (CSV or TSV from a file, an address or the clipboard). */
-export function textSourceOf(project: Project, nodeId: string) {
-  const node = nodeById(project, nodeId);
-  if (node?.type !== 'source') return undefined;
-  const source = project.sources.find((s) => s.id === node.sourceId);
-  return source && (source.format === 'csv' || source.format === 'tsv') && !source.url?.odata && !source.url?.table ? source : undefined;
-}
 
 /** Which nodes to analyse now: every source that runs, plus the viewed and the selected node. */
 export function nodesToAnalyse(project: Project, viewedId: string | null | undefined, selectedId: string | null | undefined): string[] {

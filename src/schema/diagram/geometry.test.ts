@@ -116,6 +116,31 @@ describe('the model drawn', () => {
     expect(only.refs).toEqual([]);
   });
 
+  it('keeps groups apart when their new tables come interleaved, as the canvas lists sources and views', () => {
+    // Regression: each table went onto the shelf on its own, so the two frames were drawn over each other.
+    const { schema: mixed, errors } = parseDbml(
+      [
+        ...[1, 2, 3].flatMap((i) => [`Table source${i} {\n  id int\n}`, `Table view${i} {\n  id int [ref: > source${i}.id]\n}`]),
+        'TableGroup sources {\n  source1\n  source2\n  source3\n}',
+        'TableGroup views {\n  view1\n  view2\n  view3\n}',
+      ].join('\n'),
+    );
+    expect(errors).toEqual([]);
+    const drawn = layoutDiagram(mixed, {});
+    expect(drawn.groups.map((g) => g.group.name)).toEqual(['sources', 'views']);
+    expect(collisions(drawn)).toEqual([]);
+    const [sources, views] = drawn.groups;
+    expect([sources!.x, sources!.y]).not.toEqual([views!.x, views!.y]);
+  });
+
+  it('places a new group clear of a group that already has its places', () => {
+    const { schema: two, errors } = parseDbml('Table a {\n  id int\n}\nTable b {\n  id int\n}\nTable c {\n  id int [ref: > a.id]\n}\nTableGroup first {\n  a\n  b\n}\nTableGroup second {\n  c\n}');
+    expect(errors).toEqual([]);
+    // a and b sit far apart, leaving room inside their frame, right beside a, that c would take on its own.
+    const drawn = layoutDiagram(two, { 'table:public.a': { x: 40, y: 40 }, 'table:public.b': { x: 1200, y: 40 } });
+    expect(collisions(drawn)).toEqual([]);
+  });
+
   it('marks not null columns, and widens tables to fit them', () => {
     const merchants = schema.tables.find((t) => t.name === 'merchants')!;
     expect(tableWidth(merchants, merchants.columns)).toBeGreaterThanOrEqual(PAD * 2 + ('name *'.length + 'varchar'.length) * CHAR);

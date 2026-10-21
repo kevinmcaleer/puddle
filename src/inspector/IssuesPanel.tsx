@@ -1,9 +1,10 @@
 // The Issues section: what analysis found wrong with the selected node's data, each with the step that fixes it.
 import { issueLabel, useAnalysisEntry, issuesOf } from '../analysis';
+import { foundIssues } from '../analysis/analyse';
 import { fixLabel } from '../analysis/fixes';
 import { FixAll } from '../analysis/FixAll';
 import { useNodeStatus } from '../flow/status';
-import { ignoreIssue, unignoreIssue, useProjectStore, type GraphNode } from '../model';
+import { ignoreIssue, recordAnalysis, unignoreIssue, useProjectStore, type GraphNode } from '../model';
 import { Button, IssueRow, Section } from '../ui';
 
 const apply = (edit: Parameters<ReturnType<typeof useProjectStore.getState>['apply']>[0]) => useProjectStore.getState().apply(edit);
@@ -31,19 +32,21 @@ export function IssuesPanel({ node }: { node: GraphNode }) {
             {ignored.length ? 'Nothing else found.' : 'Nothing found. The data looks tidy.'}
           </p>
         )}
-        {issues.map((issue) => (
-          <div key={issue.key} data-testid={`issue-${issue.key}`} data-severity={issue.severity}>
-            <IssueRow
-              name={issueLabel(issue)}
-              severity={issue.severity}
-              count={issue.count}
-              total={issue.kind === 'mixedCase' ? undefined : issue.column == null ? rows : (entry?.state === 'ok' ? entry.analysis.facts.columns[issue.column]?.nonNull : undefined)}
-              examples={issue.examples}
-              fix={fixLabel(issue)}
-              onIgnore={() => apply((p) => ignoreIssue(p, node.id, issue.key))}
-            />
-          </div>
-        ))}
+        {entry?.state === 'ok' &&
+          issues.map((issue) => (
+            <div key={issue.key} data-testid={`issue-${issue.key}`} data-severity={issue.severity}>
+              <IssueRow
+                name={issueLabel(issue)}
+                severity={issue.severity}
+                count={issue.count}
+                total={issue.kind === 'mixedCase' ? undefined : issue.column == null ? rows : entry.analysis.facts.columns[issue.column]?.nonNull}
+                examples={issue.examples}
+                fix={fixLabel(issue)}
+                // Ignoring keeps the analysis with the node too, so the quality report can list the issue as ignored.
+                onIgnore={() => apply((p) => recordAnalysis(ignoreIssue(p, node.id, issue.key), node.id, foundIssues(entry.analysis), [], new Date().toISOString(), entry.analysis.facts.rows))}
+              />
+            </div>
+          ))}
         {ignored.length > 0 && (
           <div className="flex items-center justify-between pt-2 text-label text-ink-muted" data-testid="issues-ignored">
             <span>{ignored.length === 1 ? '1 issue ignored' : `${ignored.length} issues ignored`}</span>
