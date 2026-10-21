@@ -89,11 +89,64 @@ describe('the fixture workbook', () => {
 });
 
 describe('reading workbooks', () => {
-  it('refuses files that are not .xlsx workbooks', () => {
+  it('refuses plain text (SheetJS would read it as a CSV) and says when a file can’t be read', () => {
     expect(() => parseWorkbook(new TextEncoder().encode('a,b\n1,2'))).toThrow(ExcelError);
-    expect(() => parseWorkbook(new TextEncoder().encode('a,b\n1,2'))).toThrow(/isn’t an Excel workbook/);
-    expect(() => parseWorkbook(new Uint8Array([0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1]))).toThrow(/old \.xls format or is password-protected/);
+    expect(() => parseWorkbook(new TextEncoder().encode('a,b\n1,2'))).toThrow(/isn’t a spreadsheet/);
+    expect(() => parseWorkbook(new TextEncoder().encode('<?xml version="1.0"?><books><book/></books>'))).toThrow(/isn’t a spreadsheet/);
+    expect(() => parseWorkbook(new Uint8Array([0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1]))).toThrow(/can’t be read/);
     expect(() => parseWorkbook(new Uint8Array([0x50, 0x4b, 0x03, 0x04, 1, 2, 3]))).toThrow(/can’t be read/);
+  });
+
+  const formats = (name: string) => new Uint8Array(readFileSync(join(__dirname, '../../tests/fixtures/formats', name)));
+  const expected = readSheet(parseWorkbook(fixture()));
+
+  it.each(['sales.xls', 'sales.xlsb', 'sales.xlsm', 'sales.ods', 'sales.fods', 'sales.numbers'])('%s reads as sales.xlsx does: the same sheets, header row, columns, types and values', (name) => {
+    const wb = parseWorkbook(formats(name));
+    expect(listSheets(wb).map((s) => s.name).slice(0, 2)).toEqual(['Sales', 'Visits']);
+    const data = readSheet(wb);
+    expect(data).toMatchObject({ sheet: 'Sales', headerRow: 3, range: 'A3:H7', rows: 4 });
+    expect(data.columns).toEqual(expected.columns);
+    // The second sheet's date-times and mixed column too.
+    expect(readSheet(wb, { sheet: 'Visits' }).columns).toEqual(readSheet(parseWorkbook(fixture()), { sheet: 'Visits' }).columns);
+  });
+
+  it('a BIFF5 .xls (Excel 5 and 95) holds no merged cells, so the merged header names its second cell by its column', () => {
+    const data = readSheet(parseWorkbook(formats('sales-biff5.xls')));
+    expect(data.columns.map((c) => c.name)).toEqual(['Region', 'Order date', 'Amount', 'Paid', 'Notes', 'Contact', 'Column G', 'Column H']);
+    expect(data.columns.map((c) => c.type)).toEqual(expected.columns.map((c) => c.type));
+    expect(data.columns.map((c) => c.values)).toEqual(expected.columns.map((c) => c.values));
+  });
+
+  it('SYLK keeps the number formats, so its dates are dates; DIF has none, so they are the serials Parse dates reads', () => {
+    const sylk = readSheet(parseWorkbook(formats('sales.slk')));
+    expect(sylk).toMatchObject({ headerRow: 3, rows: 4 });
+    expect(sylk.columns.map((c) => c.type)).toEqual(expected.columns.map((c) => c.type));
+    expect(sylk.columns.map((c) => c.values)).toEqual(expected.columns.map((c) => c.values));
+    const dif = readSheet(parseWorkbook(formats('sales.dif')));
+    expect(dif.columns.map((c) => c.type)).toEqual(['VARCHAR', 'BIGINT', 'DOUBLE', 'BOOLEAN', 'VARCHAR', 'VARCHAR', 'VARCHAR', 'BIGINT']);
+    expect(dif.columns[1]!.values).toEqual([46027, 46063, 46096, 46112]);
+  });
+
+  it('a Lotus 1-2-3 sheet has no booleans or error cells, so those come as the text Lotus shows', () => {
+    const data = readSheet(parseWorkbook(formats('sales.wk1')));
+    expect(data).toMatchObject({ headerRow: 3, rows: 4 });
+    expect(data.columns.map((c) => c.type)).toEqual(['VARCHAR', 'DATE', 'VARCHAR', 'VARCHAR', 'VARCHAR', 'VARCHAR', 'VARCHAR', 'BIGINT']);
+    expect(data.columns[1]!.values).toEqual(expected.columns[1]!.values);
+    expect(data.columns[2]!.values).toEqual(['120.5', '80', '42.25', '#N/A']);
+    expect(data.columns[3]!.values).toEqual(['TRUE', 'FALSE', 'TRUE', 'FALSE']);
+  });
+
+  it('a dBase table reads with its field types: character, date, numeric and logical', () => {
+    const wb = parseWorkbook(formats('sales.dbf'));
+    expect(listSheets(wb)).toHaveLength(1);
+    const data = readSheet(wb);
+    expect(data).toMatchObject({ headerRow: 1, range: 'A1:E5', rows: 4 });
+    expect(data.columns.map((c) => [c.name, c.type])).toEqual([['Region', 'VARCHAR'], ['Order date', 'DATE'], ['Amount', 'DOUBLE'], ['Paid', 'BOOLEAN'], ['Notes', 'VARCHAR']]);
+    expect(data.columns[1]!.values).toEqual(expected.columns[1]!.values);
+    // A numeric field has no empty: the missing amount was written as 0.
+    expect(data.columns[2]!.values).toEqual([120.5, 80, 42.25, 0]);
+    expect(data.columns[3]!.values).toEqual([true, false, true, false]);
+    expect(data.columns[4]!.values).toEqual(['First order', null, 'Rush', 'Awaiting stock']);
   });
 
   it('names repeated headers apart, ignoring case as DuckDB does', () => {

@@ -2,13 +2,13 @@
 // rest. Content wins over the file name when it is unambiguous (plan D24); when it isn't, the result says so and the
 // Format picker asks. Pure, so it is tested on bytes.
 import type { ParseOptions, SourceFormat } from '../model';
-import { knownFormat, SourceError } from './detect';
+import { knownFormat, READS, SourceError } from './detect';
 import { detectBoundaries } from './fixedWidth';
 
 export type Confidence = 'sure' | 'likely' | 'unsure';
 
 /** A format the sniff can name but Puddle doesn't read, so the refusal can say what the file is. */
-export type OtherFormat = 'xls' | 'xlsb' | 'ods' | 'word' | 'powerpoint' | 'zip' | 'gzip' | 'bzip2' | 'zstd' | 'arrow' | 'sqlite' | 'pdf' | 'ole' | 'binary';
+export type OtherFormat = 'word' | 'powerpoint' | 'zip' | 'gzip' | 'bzip2' | 'zstd' | 'arrow' | 'sqlite' | 'pdf' | 'ole' | 'binary';
 
 export interface Sniffed {
   format: SourceFormat;
@@ -49,17 +49,59 @@ function zipEntries(bytes: Uint8Array): string[] {
   return names;
 }
 
-/** The format a binary signature names: one Puddle reads, or one it can name in the refusal. */
+/** Whether the bytes hold this text as UTF-16LE, as the stream names in an old Office file are written. */
+function hasUtf16(bytes: Uint8Array, text: string): boolean {
+  const needle = new Uint8Array(text.length * 2);
+  for (let i = 0; i < text.length; i++) needle[i * 2] = text.charCodeAt(i);
+  outer: for (let at = 0; at + needle.length <= bytes.length; at++) {
+    for (let i = 0; i < needle.length; i++) if (bytes[at + i] !== needle[i]) continue outer;
+    return true;
+  }
+  return false;
+}
+
+/**
+ * A dBase file: a version byte, a last-updated date, then the header length (32 bytes, 32 per field, a terminator,
+ * and in Visual FoxPro a 263-byte back link) and a record length.
+ */
+function isDbf(head: Uint8Array): boolean {
+  if (head.length < 32) return false;
+  if (![0x02, 0x03, 0x30, 0x31, 0x32, 0x43, 0x63, 0x83, 0x8b, 0x8e, 0xcb, 0xf5, 0xfb].includes(head[0]!)) return false;
+  const month = head[2]!;
+  const day = head[3]!;
+  if (month < 1 || month > 12 || day < 1 || day > 31) return false;
+  const headerLength = head[8]! | (head[9]! << 8);
+  const recordLength = head[10]! | (head[11]! << 8);
+  return headerLength >= 33 && ((headerLength - 1) % 32 === 0 || (headerLength - 264) % 32 === 0) && recordLength >= 1;
+}
+
+/**
+ * The format a binary signature names: one Puddle reads, or one it can name in the refusal. Every spreadsheet
+ * SheetJS reads is 'xlsx' (src/excel/formats.ts): a workbook in a zip (.xlsx, .xlsm, .xlsb), an OpenDocument
+ * spreadsheet, a Numbers document, an old Excel workbook in an OLE file, a dBase table, a Lotus 1-2-3 sheet, and
+ * the SYLK and DIF text formats.
+ */
 export function signatureOf(head: Uint8Array): SourceFormat | OtherFormat | undefined {
   if (startsWith(head, 0x50, 0x4b, 0x03, 0x04)) {
     const entries = zipEntries(head);
-    if (entries.some((e) => e.startsWith('xl/'))) return entries.some((e) => /^xl\/worksheets\/sheet\d+\.bin$/.test(e)) || entries.includes('xl/workbook.bin') ? 'xlsb' : 'xlsx';
-    if (entries.includes('mimetype') || entries.includes('content.xml')) return 'ods';
+    if (entries.some((e) => e.startsWith('xl/'))) return 'xlsx';
+    if (entries.includes('mimetype') || entries.includes('content.xml')) return 'xlsx';
+    if (entries.some((e) => e.startsWith('Index/') || e === 'Index.zip' || e.startsWith('Metadata/'))) return 'xlsx';
     if (entries.some((e) => e.startsWith('word/'))) return 'word';
     if (entries.some((e) => e.startsWith('ppt/'))) return 'powerpoint';
     return 'zip';
   }
-  if (startsWith(head, 0xd0, 0xcf, 0x11, 0xe0)) return 'ole';
+  if (startsWith(head, 0xd0, 0xcf, 0x11, 0xe0)) {
+    // The streams of an old Office file say which program wrote it; a workbook's is Workbook (BIFF8) or Book (BIFF5).
+    if (hasUtf16(head, 'WordDocument')) return 'word';
+    if (hasUtf16(head, 'PowerPoint Document')) return 'powerpoint';
+    if (hasUtf16(head, 'Workbook') || hasUtf16(head, 'Book')) return 'xlsx';
+    return 'ole';
+  }
+  if (startsWith(head, 0x00, 0x00, 0x02, 0x00, 0x06, 0x04)) return 'xlsx';
+  if (ascii(head, 0, 'ID;P')) return 'xlsx';
+  if (ascii(head, 0, 'TABLE\r\n0,1\r\n') || ascii(head, 0, 'TABLE\n0,1\n')) return 'xlsx';
+  if (isDbf(head)) return 'xlsx';
   if (ascii(head, 0, 'PAR1')) return 'parquet';
   if (ascii(head, 0, 'ARROW1')) return 'arrow';
   if (ascii(head, 0, 'SQLite format 3\0')) return 'sqlite';
@@ -72,9 +114,6 @@ export function signatureOf(head: Uint8Array): SourceFormat | OtherFormat | unde
 }
 
 const OTHER_NAMES: Record<OtherFormat, string> = {
-  xls: 'the old Excel format (.xls)',
-  xlsb: 'an Excel binary workbook (.xlsb)',
-  ods: 'an OpenDocument spreadsheet (.ods)',
   word: 'a Word document',
   powerpoint: 'a PowerPoint presentation',
   zip: 'a zip archive',
@@ -84,16 +123,12 @@ const OTHER_NAMES: Record<OtherFormat, string> = {
   arrow: 'an Arrow file',
   sqlite: 'a SQLite database',
   pdf: 'a PDF',
-  ole: 'an old Office file (.xls or .doc)',
+  ole: 'an old Office file that isn’t a workbook',
   binary: 'a binary file',
 };
 
-const READS = 'Add a CSV, TSV, JSON, NDJSON, Parquet, Excel (.xlsx), XML or Access (.accdb, .mdb) file.';
-
 /** The refusal for a format Puddle can name but not read, as the brand book words it: what it is, then what to do. */
 export function refusal(name: string, other: OtherFormat): SourceError {
-  if (other === 'xls' || other === 'ole') return new SourceError(`${name} is in the old Excel format (.xls), which Puddle doesn’t read. Open it in Excel and save it as .xlsx or CSV, then add that.`);
-  if (other === 'xlsb' || other === 'ods') return new SourceError(`${name} is ${OTHER_NAMES[other]}, which Puddle doesn’t read yet. Save it as .xlsx or CSV, then add that.`);
   if (other === 'gzip' || other === 'bzip2' || other === 'zstd' || other === 'zip') return new SourceError(`${name} is ${OTHER_NAMES[other]}, which Puddle doesn’t open yet. Unpack it and add the file inside.`);
   return new SourceError(`${name} is ${OTHER_NAMES[other]}, which Puddle doesn’t read. ${READS}`);
 }
@@ -394,9 +429,11 @@ export function sniff({ name, head, size, tail }: SniffInput): Sniffed {
   const signature = signatureOf(head);
   if (signature) {
     if (signature === 'xlsx' || signature === 'parquet' || signature === 'access') {
-      return { format: signature, confidence: 'sure', parseOptions: {}, alternatives: [], reason: `A ${signature === 'xlsx' ? 'workbook' : signature === 'parquet' ? 'Parquet file' : 'database'} by its signature.` };
+      return { format: signature, confidence: 'sure', parseOptions: {}, alternatives: [], reason: `A ${signature === 'xlsx' ? 'spreadsheet' : signature === 'parquet' ? 'Parquet file' : 'database'} by its signature.` };
     }
-    throw refusal(name, signature === 'ole' && /\.xls$/i.test(name) ? 'xls' : (signature as OtherFormat));
+    // An old Office file whose streams weren't in the first megabyte: a workbook when the name says so.
+    if (signature === 'ole' && byName === 'xlsx') return { format: 'xlsx', confidence: 'likely', parseOptions: {}, alternatives: [], reason: 'An old Office file, taken as a workbook from the file name.' };
+    throw refusal(name, signature as OtherFormat);
   }
   if (!head.length) {
     if (byName) return { format: byName, confidence: 'likely', parseOptions: {}, alternatives: [], reason: 'The file is empty.' };
@@ -407,6 +444,8 @@ export function sniff({ name, head, size, tail }: SniffInput): Sniffed {
     if (byName === 'parquet' || byName === 'xlsx' || byName === 'access') return { format: byName, confidence: 'likely', parseOptions: {}, alternatives: [], reason: 'Taken from the file name.' };
     throw refusal(name, 'binary');
   }
+  // A flat OpenDocument spreadsheet (.fods) is XML; its name says which XML.
+  if (byName === 'xlsx' && /<office:document[\s>]/.test(decoded.text)) return { format: 'xlsx', confidence: 'sure', parseOptions: {}, alternatives: [], reason: 'A flat OpenDocument spreadsheet.' };
   const encoding: ParseOptions = decoded.encoding ? { encoding: decoded.encoding } : {};
   const whole = size == null || size <= head.length;
   const tailText = whole ? undefined : tail ? decodeTail(tail, decoded.encoding) : undefined;

@@ -1,6 +1,6 @@
 import { columnsToCsv } from './csv';
 
-describe('an Access table as CSV for the runner', () => {
+describe('an Access table or a sheet as CSV for the runner', () => {
   it('writes every value as text DuckDB casts back: empty for none, quoted text, timestamps, bytes as escapes', () => {
     const csv = columnsToCsv([
       { name: 'Name, full', type: 'VARCHAR', sqlType: 'VARCHAR', values: ['Ann "A" Lee', '', null] },
@@ -16,6 +16,10 @@ describe('an Access table as CSV for the runner', () => {
       ',1899-12-30 00:00:00.000,,,""',
       '',
     ]);
+  });
+
+  it('writes a sheet’s dates (days since 1970) as DuckDB reads a date', () => {
+    expect(columnsToCsv([{ name: 'Order date', type: 'DATE', values: [20458, null, -1] }]).split('\n')).toEqual(['"Order date"', '2026-01-05', '', '1969-12-31', '']);
   });
 
   it('writes a table with no rows as its header', () => {

@@ -36,12 +36,13 @@ export function sourceTableName(source: Source): string {
 }
 
 /** The types an Access table's columns may be loaded as: a name, or a decimal with its precision and scale. */
-const ACCESS_TYPE = /^(BOOLEAN|UTINYINT|SMALLINT|INTEGER|BIGINT|FLOAT|DOUBLE|TIMESTAMP|BLOB|VARCHAR|DECIMAL\(\d{1,2},\d{1,2}\))$/;
+const ACCESS_TYPE = /^(BOOLEAN|UTINYINT|SMALLINT|INTEGER|BIGINT|FLOAT|DOUBLE|DATE|TIMESTAMP|BLOB|VARCHAR|DECIMAL\(\d{1,2},\d{1,2}\))$/;
 
 /**
- * Load an Access table into `table`, giving each column its Access type: Currency and Decimal arrive as exact text
- * and become decimals, whole numbers keep their Access size. The browser loads it from the Arrow rows it arrived as
- * (a staging table); the runner from the CSV it wrote them to (every value as text, see src/access/csv.ts).
+ * Load an Access table (or, on the runner, a sheet) into `table`, giving each column its type: Currency and Decimal
+ * arrive as exact text and become decimals, whole numbers keep their Access size. The browser loads it from the
+ * Arrow rows it arrived as (a staging table); the runner from the CSV it wrote them to (every value as text, see
+ * src/access/csv.ts).
  */
 export function compileAccessLoad(table: string, columns: { name: string; sqlType: string }[], from: { staging: string } | { csv: string }): string {
   const list = columns.map((c) => `CAST(${ident(c.name)} AS ${ACCESS_TYPE.test(c.sqlType) ? c.sqlType : 'VARCHAR'}) AS ${ident(c.name)}`);

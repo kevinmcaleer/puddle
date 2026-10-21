@@ -1,11 +1,12 @@
 // One run of a project: place its sources, check the quality gate, write every Output node's file, and leave a run
 // log and a quality report beside the outputs. The same compiler the browser uses; DuckDB's native build runs it.
-// Only pure modules are imported here (model, compiler, the gate, the XML and Access readers), so the bundle never touches the browser engine.
+// Only pure modules are imported here (model, compiler, the gate, the XML, Access and spreadsheet readers), so the bundle never touches the browser engine.
 import { existsSync, mkdtempSync, mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { columnsToCsv } from '../access/csv';
 import { openDatabase, readTable } from '../access/read';
+import { parseWorkbook, readSheet } from '../excel/read';
 import { compileAccessLoad, compileExport, compileLoadCheck, compileRules, describeFailure, exportFileName, fullData, SchemaCache, sourceFileName, sourceTableName, str } from '../compiler';
 import { buildSchema } from '../schemaTables/build';
 import { describeBlock, exportGate, type BlockingRule } from '../flow/gate';
@@ -74,9 +75,17 @@ const fetchOrThrow = (fetchText: RunOptions['fetchText'], address: string) => {
   return fetchText(address);
 };
 
+/** A file at an address as bytes (a spreadsheet, read whole). */
+async function fetchBytes(fetchImpl: RunOptions['fetchImpl'], address: string): Promise<Uint8Array> {
+  const response = await (fetchImpl ?? globalThis.fetch)(address);
+  if (!response.ok) throw new Error(`${address} answered ${response.status}`);
+  return new Uint8Array(await response.arrayBuffer());
+}
+
 /**
  * Put each source where the compiled SQL reads it: a link to the file, the pasted text, or the fetched address. An
- * Access table is written as CSV, and the statement that loads it as the typed table the SQL reads goes in `loads`.
+ * Access table or a sheet is written as CSV, and the statement that loads it as the typed table the SQL reads goes
+ * in `loads`.
  */
 async function stage(places: SourcePlace[], stageDir: string, { fetchText, fetchImpl }: Pick<RunOptions, 'fetchText' | 'fetchImpl'>, loads: Map<string, string>): Promise<Map<string, string>> {
   const problems = new Map<string, string>();
@@ -98,6 +107,14 @@ async function stage(places: SourcePlace[], stageDir: string, { fetchText, fetch
         const data = readTable(db, source.parseOptions.table);
         writeFileSync(join(stageDir, `${table}.csv`), columnsToCsv(data.columns));
         loads.set(source.id, compileAccessLoad(table, data.columns, { csv: `${table}.csv` }));
+      } else if (source.format === 'xlsx') {
+        // Read as in the browser: SheetJS with the project's sheet options, then each column given its type by DuckDB.
+        const table = sourceTableName(source);
+        const bytes = source.kind === 'url' ? await fetchBytes(fetchImpl, p.path) : new Uint8Array(readFileSync(p.path));
+        const o = source.parseOptions;
+        const data = readSheet(parseWorkbook(bytes), { sheet: o.sheet, headerRow: o.headerRow, range: o.range, headerRows: o.headerRows, fillMerges: o.fillMerges });
+        writeFileSync(join(stageDir, `${table}.csv`), columnsToCsv(data.columns));
+        loads.set(source.id, compileAccessLoad(table, data.columns.map((c) => ({ name: c.name, sqlType: c.type })), { csv: `${table}.csv` }));
       } else if (source.format === 'xml') {
         // DuckDB reads the CSV Puddle writes from the XML's records, as in the browser.
         const xml = source.kind === 'clipboard' ? source.clipboard!.text : source.kind === 'url' ? await fetchOrThrow(fetchText, p.path) : new Uint8Array(readFileSync(p.path));

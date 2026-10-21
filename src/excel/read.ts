@@ -1,26 +1,37 @@
-// Reading .xlsx workbooks with SheetJS into typed columns. Runs in the Excel worker (src/excel/worker.ts), and
-// directly in tests.
+// Reading spreadsheets (.xlsx and the other formats in ./formats) with SheetJS into typed columns. Runs in the
+// Excel worker (src/excel/worker.ts), and directly in tests.
 import * as XLSX from 'xlsx';
 import { columnLetters, formatRange, intersect, parseRange, type CellRange } from './range';
 import { ExcelError, type SheetColumn, type SheetData, type SheetInfo, type SheetReadOptions, type SheetTable } from './types';
 
-const ZIP = [0x50, 0x4b, 0x03, 0x04];
-const OLE = [0xd0, 0xcf, 0x11, 0xe0];
 const startsWith = (data: Uint8Array, magic: number[]) => magic.every((b, i) => data[i] === b);
+const ascii = (data: Uint8Array, text: string) => startsWith(data, [...text].map((ch) => ch.charCodeAt(0)));
 
 /**
- * Parse a workbook's bytes. Only .xlsx (a zip) is read: SheetJS would otherwise happily read any text as a CSV,
- * and the old binary format (an OLE file, also how password-protected workbooks are stored) is refused in plain words.
+ * Whether the bytes are plain text that isn't one of the text spreadsheet formats (SYLK, DIF, a flat OpenDocument
+ * file): SheetJS would read any such text as a CSV, which is read by DuckDB instead, with the options its sniff chose.
+ */
+function isPlainText(data: Uint8Array): boolean {
+  const probe = data.subarray(0, 512);
+  for (const b of probe) if (b === 0 || (b < 0x09 && b !== 0) || (b > 0x0d && b < 0x20)) return false;
+  if (ascii(data, 'ID;') || ascii(data, 'TABLE')) return false;
+  if (ascii(data, '<?xml') || ascii(data, '<office:')) return new TextDecoder().decode(data.subarray(0, 4096)).indexOf('office:document') < 0;
+  return true;
+}
+
+/**
+ * Parse a spreadsheet's bytes: a workbook in any format SheetJS reads (see ./formats). Plain text is refused, since
+ * SheetJS would read it as a CSV, and a password-protected workbook is named for what it is.
  */
 export function parseWorkbook(data: Uint8Array): XLSX.WorkBook {
-  if (startsWith(data, OLE))
-    throw new ExcelError('This workbook is in the old .xls format or is password-protected. Remove any password, save it as .xlsx or CSV, and add it again.');
-  if (!startsWith(data, ZIP)) throw new ExcelError('This file isn’t an Excel workbook. Save it from Excel as .xlsx, or add it as a CSV.');
+  if (isPlainText(data)) throw new ExcelError('This file isn’t a spreadsheet. Save it from your spreadsheet program as .xlsx, or add it as a CSV.');
   try {
     // Dense sheets use less memory; number formats (cellNF) tell dates from numbers.
     return XLSX.read(data, { type: 'array', dense: true, cellNF: true, cellDates: false, cellHTML: false, cellFormula: false });
   } catch (e) {
-    throw new ExcelError(`This workbook can’t be read (${e instanceof Error ? e.message : String(e)}). Open it in Excel, save it again as .xlsx, and add it again.`);
+    const message = e instanceof Error ? e.message : String(e);
+    if (/password/i.test(message)) throw new ExcelError('This workbook is password-protected. Remove the password, save it, and add it again.');
+    throw new ExcelError(`This spreadsheet can’t be read (${message}). Open it in your spreadsheet program, save it again as .xlsx, and add it again.`);
   }
 }
 
