@@ -1,22 +1,26 @@
 // The drivers as puddle-connect and the runner run them in Node: the same Connector interface, with a database
 // file read from a path on this computer (inside the folders the service may read) rather than picked in a page.
 // Drivers that need a database protocol register here as they land: the PostgreSQL and MySQL families, Firebird,
-// SQL Server and Oracle, then the warehouses, SurrealDB and DynamoDB over HTTP.
+// SQL Server and Oracle, then the warehouses, SurrealDB and DynamoDB over HTTP, MongoDB, Redis and the CQL pair.
 import { readFile } from 'node:fs/promises';
 import { resolve, sep } from 'node:path';
 import type { Connection, DriverId } from '../model';
 import { inProcessClient } from '../sqlite/client';
 import { SqliteService } from '../sqlite/service';
 import { bigqueryConnector } from './drivers/bigquery';
+import { cassandraConnector } from './drivers/cassandra';
 import { clickhouseConnector } from './drivers/clickhouse';
 import { dynamoConnector } from './drivers/dynamodb';
 import { firebirdConnector } from './drivers/firebird';
 import { hanaConnector } from './drivers/hana';
 import { libsqlConnector } from './drivers/libsql';
+import { mongoConnector } from './drivers/mongodb';
 import { mysqlConnector } from './drivers/mysql';
 import { oracleConnector } from './drivers/oracle';
 import { sqlserverConnector } from './drivers/sqlserver';
 import { postgresConnector } from './drivers/postgres';
+import { redisConnector } from './drivers/redis';
+import { redisConnect } from './drivers/redisSocket';
 import { snowflakeConnector } from './drivers/snowflake';
 import { sqliteConnector } from './drivers/sqlite';
 import { surrealConnector } from './drivers/surrealdb';
@@ -87,5 +91,9 @@ export function nodeConnectors(options: NodeOptions): Partial<Record<DriverId, C
     surrealdb: surrealConnector(),
     dynamodb: dynamoConnector(),
     hana: hanaConnector(),
+    mongodb: mongoConnector(),
+    redis: redisConnector(redisConnect),
+    cassandra: cassandraConnector('cassandra'),
+    scylla: cassandraConnector('scylla'),
   };
 }

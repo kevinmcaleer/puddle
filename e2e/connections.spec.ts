@@ -482,3 +482,87 @@ test('a DynamoDB table store is read in the browser with no service: tested, a t
   await projectMenu(page, 'Schema');
   await expect(page.getByTestId('schema-view').getByTestId('schema-table-orders')).toContainText('shipping.city');
 });
+
+// A Redis with a REST interface (PUDDLE_TEST_UPSTASH, http://host:port?token=…: an Upstash database, or
+// scripts/upstash-stand-in.mjs in front of the seeded Redis, as CI runs) read in the browser with no service: tested,
+// a key pattern added as a source, one row per hash with its fields as columns, and its inferred columns documented.
+test('a Redis is read over Upstash’s REST interface in the browser: tested, a key pattern added and its keys documented', async ({ page }) => {
+  const url = process.env.PUDDLE_TEST_UPSTASH;
+  test.skip(!url, 'PUDDLE_TEST_UPSTASH names no Redis');
+  const u = new URL(url!);
+  await openApp(page);
+  await page.getByRole('button', { name: 'Add', exact: true }).click();
+  await page.getByRole('menuitem', { name: /From database/ }).click();
+  const list = page.getByRole('dialog', { name: 'Add source from a database' });
+  await list.getByRole('button', { name: 'New connection' }).click();
+  await page.getByRole('dialog', { name: 'New connection' }).getByTestId('driver-grid').getByRole('listitem', { name: 'Redis', exact: true }).click();
+  const form = page.getByRole('dialog', { name: 'New Redis connection' });
+  await expect(form.getByLabel('Where it runs')).toHaveValue('browser');
+  await form.getByLabel('Upstash REST address').fill(u.origin);
+  await form.getByLabel('Password').fill(u.searchParams.get('token') ?? '');
+  await form.getByRole('button', { name: 'Test', exact: true }).click();
+  await expect(form.getByTestId('conn-test')).toHaveAttribute('data-ok', 'true', { timeout: 20_000 });
+  await expect(form.getByTestId('conn-test')).toContainText('13 keys');
+  await form.getByRole('button', { name: 'Save connection' }).click();
+
+  const picker = page.getByRole('dialog', { name: 'Read from Redis' });
+  await expect(picker.getByTestId('table-picker')).toContainText('user:*', { timeout: 20_000 });
+  await picker.getByTestId('pick-user:*').click();
+  await picker.getByRole('button', { name: 'Add 1 source' }).click();
+  await expect(node(page, 'user:*')).toHaveAttribute('data-status', 'ok', { timeout: 20_000 });
+  await selectNode(page, 'user:*');
+  await expect(page.getByTestId('connection-read')).toContainText('3 rows');
+
+  await page.getByRole('button', { name: 'Add', exact: true }).click();
+  await page.getByRole('menuitem', { name: /From database/ }).click();
+  await list.getByTestId('connection-Redis').getByRole('button', { name: 'Browse' }).click();
+  const browser = page.getByTestId('database-browser');
+  await expect(browser).toContainText('4 tables', { timeout: 20_000 });
+  await browser.getByRole('button', { name: 'Document the schema' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Document the schema' });
+  await expect(dialog.getByTestId('document-plan')).toContainText('4 tables, 0 refs and 0 enums', { timeout: 20_000 });
+  await dialog.getByRole('button', { name: 'Document', exact: true }).click();
+  await expect(dialog).toHaveCount(0);
+  await browser.getByRole('button', { name: 'Close the database browser' }).click();
+  await projectMenu(page, 'Schema');
+  await expect(page.getByTestId('schema-view').getByTestId('schema-table-user:*')).toContainText('email');
+});
+
+// A MongoDB (PUDDLE_TEST_MONGODB, a URL to the seeded shop; CI starts one) read through puddle-connect: tested, a
+// collection added as a source with its documents as columns, then narrowed by a filter document. The customers, as
+// the orders' array column loads as JSON, which needs DuckDB's json extension (the engine tests cover that load).
+test('a MongoDB collection is read through puddle-connect: tested, added, and narrowed by a filter', async ({ page }) => {
+  const url = process.env.PUDDLE_TEST_MONGODB;
+  test.skip(!url, 'PUDDLE_TEST_MONGODB names no server');
+  const u = new URL(url!);
+  await openApp(page);
+  await page.getByRole('button', { name: 'Add', exact: true }).click();
+  await page.getByRole('menuitem', { name: /From database/ }).click();
+  const list = page.getByRole('dialog', { name: 'Add source from a database' });
+  await list.getByRole('button', { name: 'New connection' }).click();
+  await page.getByRole('dialog', { name: 'New connection' }).getByTestId('driver-grid').getByRole('listitem', { name: 'MongoDB', exact: true }).click();
+  const form = page.getByRole('dialog', { name: 'New MongoDB connection' });
+  await form.getByLabel('Address').fill(`${u.protocol}//${u.host}`);
+  await form.getByLabel('Database', { exact: true }).fill(u.pathname.slice(1));
+  if (u.username) await form.getByLabel('User name').fill(decodeURIComponent(u.username));
+  if (u.searchParams.get('authSource')) await form.getByLabel('Authentication database').fill(u.searchParams.get('authSource')!);
+  if (u.password) await form.getByLabel('Password').fill(decodeURIComponent(u.password));
+  await expect(form.getByLabel('Where it runs')).toContainText('On this computer (found)');
+  await form.getByRole('button', { name: 'Test', exact: true }).click();
+  await expect(form.getByTestId('conn-test')).toHaveAttribute('data-ok', 'true', { timeout: 20_000 });
+  await expect(form.getByTestId('conn-test')).toContainText('collections');
+  await form.getByRole('button', { name: 'Save connection' }).click();
+
+  const picker = page.getByRole('dialog', { name: 'Read from MongoDB' });
+  await expect(picker.getByTestId('table-picker')).toContainText('customers', { timeout: 20_000 });
+  await picker.getByTestId('pick-customers').click();
+  await picker.getByRole('button', { name: 'Add 1 source' }).click();
+  await expect(node(page, 'customers')).toHaveAttribute('data-status', 'ok', { timeout: 20_000 });
+  await selectNode(page, 'customers');
+  await expect(page.getByTestId('connection-read')).toContainText('3 rows');
+
+  // The filter is a query document, saved when the field loses focus; the read narrows to the active customers.
+  await page.getByLabel('Filter', { exact: true }).fill('{ "active": true }');
+  await page.getByLabel('Filter', { exact: true }).blur();
+  await expect(page.getByTestId('connection-read')).toContainText('2 rows', { timeout: 20_000 });
+});

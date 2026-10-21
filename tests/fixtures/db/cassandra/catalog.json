@@ -1,0 +1,307 @@
+{
+  "test": {
+    "ok": true,
+    "server": "Cassandra 5.0.9, 2 tables"
+  },
+  "catalog": {
+    "tables": [
+      {
+        "schema": "shop",
+        "name": "customers",
+        "kind": "table",
+        "columns": [
+          {
+            "name": "id",
+            "type": "INTEGER",
+            "nullable": false
+          },
+          {
+            "name": "active",
+            "type": "BOOLEAN",
+            "nullable": true
+          },
+          {
+            "name": "email",
+            "type": "VARCHAR",
+            "nullable": true
+          },
+          {
+            "name": "name",
+            "type": "VARCHAR",
+            "nullable": true
+          },
+          {
+            "name": "signed_up",
+            "type": "DATE",
+            "nullable": true
+          },
+          {
+            "name": "tags",
+            "type": "JSON",
+            "nullable": true
+          }
+        ]
+      },
+      {
+        "schema": "shop",
+        "name": "orders",
+        "kind": "table",
+        "columns": [
+          {
+            "name": "customer_id",
+            "type": "INTEGER",
+            "nullable": false
+          },
+          {
+            "name": "id",
+            "type": "INTEGER",
+            "nullable": false
+          },
+          {
+            "name": "notes",
+            "type": "VARCHAR",
+            "nullable": true
+          },
+          {
+            "name": "placed_at",
+            "type": "TIMESTAMP",
+            "nullable": true
+          },
+          {
+            "name": "shipping",
+            "type": "JSON",
+            "nullable": true
+          },
+          {
+            "name": "status",
+            "type": "VARCHAR",
+            "nullable": true
+          },
+          {
+            "name": "total",
+            "type": "DECIMAL(38,9)",
+            "nullable": true
+          }
+        ]
+      },
+      {
+        "schema": "shop",
+        "name": "orders_by_status",
+        "kind": "view",
+        "columns": [
+          {
+            "name": "status",
+            "type": "VARCHAR",
+            "nullable": false
+          },
+          {
+            "name": "customer_id",
+            "type": "INTEGER",
+            "nullable": false
+          },
+          {
+            "name": "id",
+            "type": "INTEGER",
+            "nullable": false
+          },
+          {
+            "name": "total",
+            "type": "DECIMAL(38,9)",
+            "nullable": true
+          }
+        ]
+      }
+    ]
+  },
+  "detail": {
+    "tables": [
+      {
+        "schema": "shop",
+        "name": "customers",
+        "kind": "table",
+        "note": "People who have ordered",
+        "columns": [
+          {
+            "name": "id",
+            "type": "int",
+            "pk": true,
+            "unique": true,
+            "notNull": true,
+            "increment": false
+          },
+          {
+            "name": "active",
+            "type": "boolean",
+            "pk": false,
+            "unique": false,
+            "notNull": false,
+            "increment": false
+          },
+          {
+            "name": "email",
+            "type": "text",
+            "pk": false,
+            "unique": false,
+            "notNull": false,
+            "increment": false
+          },
+          {
+            "name": "name",
+            "type": "text",
+            "pk": false,
+            "unique": false,
+            "notNull": false,
+            "increment": false
+          },
+          {
+            "name": "signed_up",
+            "type": "date",
+            "pk": false,
+            "unique": false,
+            "notNull": false,
+            "increment": false
+          },
+          {
+            "name": "tags",
+            "type": "set<text>",
+            "pk": false,
+            "unique": false,
+            "notNull": false,
+            "increment": false
+          }
+        ],
+        "indexes": [
+          {
+            "name": "customers_email",
+            "columns": [
+              "email"
+            ],
+            "unique": false
+          }
+        ],
+        "foreignKeys": []
+      },
+      {
+        "schema": "shop",
+        "name": "orders",
+        "kind": "table",
+        "columns": [
+          {
+            "name": "customer_id",
+            "type": "int",
+            "pk": true,
+            "unique": false,
+            "notNull": true,
+            "increment": false,
+            "note": "partition key"
+          },
+          {
+            "name": "id",
+            "type": "int",
+            "pk": true,
+            "unique": false,
+            "notNull": true,
+            "increment": false,
+            "note": "clustering key, descending"
+          },
+          {
+            "name": "notes",
+            "type": "text",
+            "pk": false,
+            "unique": false,
+            "notNull": false,
+            "increment": false
+          },
+          {
+            "name": "placed_at",
+            "type": "timestamp",
+            "pk": false,
+            "unique": false,
+            "notNull": false,
+            "increment": false
+          },
+          {
+            "name": "shipping",
+            "type": "frozen<map<text, text>>",
+            "pk": false,
+            "unique": false,
+            "notNull": false,
+            "increment": false
+          },
+          {
+            "name": "status",
+            "type": "text",
+            "pk": false,
+            "unique": false,
+            "notNull": false,
+            "increment": false
+          },
+          {
+            "name": "total",
+            "type": "decimal",
+            "pk": false,
+            "unique": false,
+            "notNull": false,
+            "increment": false
+          }
+        ],
+        "indexes": [
+          {
+            "name": "orders_status",
+            "columns": [
+              "status"
+            ],
+            "unique": false
+          }
+        ],
+        "foreignKeys": []
+      },
+      {
+        "schema": "shop",
+        "name": "orders_by_status",
+        "kind": "view",
+        "note": "A materialized view of orders",
+        "columns": [
+          {
+            "name": "status",
+            "type": "text",
+            "pk": true,
+            "unique": false,
+            "notNull": true,
+            "increment": false,
+            "note": "partition key"
+          },
+          {
+            "name": "customer_id",
+            "type": "int",
+            "pk": true,
+            "unique": false,
+            "notNull": true,
+            "increment": false,
+            "note": "clustering key, ascending"
+          },
+          {
+            "name": "id",
+            "type": "int",
+            "pk": true,
+            "unique": false,
+            "notNull": true,
+            "increment": false,
+            "note": "clustering key, descending"
+          },
+          {
+            "name": "total",
+            "type": "decimal",
+            "pk": false,
+            "unique": false,
+            "notNull": false,
+            "increment": false
+          }
+        ],
+        "indexes": [],
+        "foreignKeys": []
+      }
+    ],
+    "enums": []
+  }
+}

@@ -52,7 +52,7 @@ export function sourceTableName(source: Source): string {
   const hash = source.file?.headHash ?? source.url?.headHash ?? null;
   const entry = source.archive ? [source.archive.entry] : [];
   const key = c
-    ? [c.connectionId, c.table?.schema ?? null, c.table?.name ?? null, c.query ?? null, c.limit ?? null]
+    ? [c.connectionId, c.table?.schema ?? null, c.table?.name ?? null, c.query ?? null, c.limit ?? null, c.filter ?? null, c.allowFiltering ?? null, c.shape?.depth ?? null, c.shape?.arrays ?? null]
     : source.format === 'access' ? [hash, ...entry, 'access', o.table ?? null] : source.format === 'arrow' ? [hash, ...entry, 'arrow'] : [hash, ...entry, o.sheet ?? null, o.headerRow ?? null, o.range ?? null, o.headerRows ?? null, o.fillMerges ?? null];
   return `src_${source.id}_${hashValue(key).slice(0, 12)}`;
 }

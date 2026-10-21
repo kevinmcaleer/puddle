@@ -1,0 +1,1159 @@
+[
+  {
+    "method": "execute",
+    "args": [
+      "SELECT release_version, cluster_name FROM system.local"
+    ],
+    "result": {
+      "rows": [
+        {
+          "release_version": "5.0.9",
+          "cluster_name": "Test Cluster"
+        }
+      ],
+      "columns": [
+        {
+          "name": "release_version",
+          "type": {
+            "code": 13
+          }
+        },
+        {
+          "name": "cluster_name",
+          "type": {
+            "code": 13
+          }
+        }
+      ]
+    }
+  },
+  {
+    "method": "execute",
+    "args": [
+      "SELECT keyspace_name, table_name, comment FROM system_schema.tables WHERE keyspace_name = 'shop'"
+    ],
+    "result": {
+      "rows": [
+        {
+          "keyspace_name": "shop",
+          "table_name": "customers",
+          "comment": "People who have ordered"
+        },
+        {
+          "keyspace_name": "shop",
+          "table_name": "orders",
+          "comment": ""
+        }
+      ],
+      "columns": [
+        {
+          "name": "keyspace_name",
+          "type": {
+            "code": 13
+          }
+        },
+        {
+          "name": "table_name",
+          "type": {
+            "code": 13
+          }
+        },
+        {
+          "name": "comment",
+          "type": {
+            "code": 13
+          }
+        }
+      ]
+    }
+  },
+  {
+    "method": "execute",
+    "args": [
+      "SELECT keyspace_name, table_name, comment FROM system_schema.tables WHERE keyspace_name = 'shop'"
+    ],
+    "result": {
+      "rows": [
+        {
+          "keyspace_name": "shop",
+          "table_name": "customers",
+          "comment": "People who have ordered"
+        },
+        {
+          "keyspace_name": "shop",
+          "table_name": "orders",
+          "comment": ""
+        }
+      ],
+      "columns": [
+        {
+          "name": "keyspace_name",
+          "type": {
+            "code": 13
+          }
+        },
+        {
+          "name": "table_name",
+          "type": {
+            "code": 13
+          }
+        },
+        {
+          "name": "comment",
+          "type": {
+            "code": 13
+          }
+        }
+      ]
+    }
+  },
+  {
+    "method": "execute",
+    "args": [
+      "SELECT keyspace_name, view_name, base_table_name, comment FROM system_schema.views WHERE keyspace_name = 'shop'"
+    ],
+    "result": {
+      "rows": [
+        {
+          "keyspace_name": "shop",
+          "view_name": "orders_by_status",
+          "base_table_name": "orders",
+          "comment": ""
+        }
+      ],
+      "columns": [
+        {
+          "name": "keyspace_name",
+          "type": {
+            "code": 13
+          }
+        },
+        {
+          "name": "view_name",
+          "type": {
+            "code": 13
+          }
+        },
+        {
+          "name": "base_table_name",
+          "type": {
+            "code": 13
+          }
+        },
+        {
+          "name": "comment",
+          "type": {
+            "code": 13
+          }
+        }
+      ]
+    }
+  },
+  {
+    "method": "execute",
+    "args": [
+      "SELECT keyspace_name, table_name, column_name, clustering_order, kind, position, type FROM system_schema.columns WHERE keyspace_name = 'shop'"
+    ],
+    "result": {
+      "rows": [
+        {
+          "keyspace_name": "shop",
+          "table_name": "customers",
+          "column_name": "active",
+          "clustering_order": "none",
+          "kind": "regular",
+          "position": -1,
+          "type": "boolean"
+        },
+        {
+          "keyspace_name": "shop",
+          "table_name": "customers",
+          "column_name": "email",
+          "clustering_order": "none",
+          "kind": "regular",
+          "position": -1,
+          "type": "text"
+        },
+        {
+          "keyspace_name": "shop",
+          "table_name": "customers",
+          "column_name": "id",
+          "clustering_order": "none",
+          "kind": "partition_key",
+          "position": 0,
+          "type": "int"
+        },
+        {
+          "keyspace_name": "shop",
+          "table_name": "customers",
+          "column_name": "name",
+          "clustering_order": "none",
+          "kind": "regular",
+          "position": -1,
+          "type": "text"
+        },
+        {
+          "keyspace_name": "shop",
+          "table_name": "customers",
+          "column_name": "signed_up",
+          "clustering_order": "none",
+          "kind": "regular",
+          "position": -1,
+          "type": "date"
+        },
+        {
+          "keyspace_name": "shop",
+          "table_name": "customers",
+          "column_name": "tags",
+          "clustering_order": "none",
+          "kind": "regular",
+          "position": -1,
+          "type": "set<text>"
+        },
+        {
+          "keyspace_name": "shop",
+          "table_name": "orders",
+          "column_name": "customer_id",
+          "clustering_order": "none",
+          "kind": "partition_key",
+          "position": 0,
+          "type": "int"
+        },
+        {
+          "keyspace_name": "shop",
+          "table_name": "orders",
+          "column_name": "id",
+          "clustering_order": "desc",
+          "kind": "clustering",
+          "position": 0,
+          "type": "int"
+        },
+        {
+          "keyspace_name": "shop",
+          "table_name": "orders",
+          "column_name": "notes",
+          "clustering_order": "none",
+          "kind": "regular",
+          "position": -1,
+          "type": "text"
+        },
+        {
+          "keyspace_name": "shop",
+          "table_name": "orders",
+          "column_name": "placed_at",
+          "clustering_order": "none",
+          "kind": "regular",
+          "position": -1,
+          "type": "timestamp"
+        },
+        {
+          "keyspace_name": "shop",
+          "table_name": "orders",
+          "column_name": "shipping",
+          "clustering_order": "none",
+          "kind": "regular",
+          "position": -1,
+          "type": "frozen<map<text, text>>"
+        },
+        {
+          "keyspace_name": "shop",
+          "table_name": "orders",
+          "column_name": "status",
+          "clustering_order": "none",
+          "kind": "regular",
+          "position": -1,
+          "type": "text"
+        },
+        {
+          "keyspace_name": "shop",
+          "table_name": "orders",
+          "column_name": "total",
+          "clustering_order": "none",
+          "kind": "regular",
+          "position": -1,
+          "type": "decimal"
+        },
+        {
+          "keyspace_name": "shop",
+          "table_name": "orders_by_status",
+          "column_name": "customer_id",
+          "clustering_order": "asc",
+          "kind": "clustering",
+          "position": 0,
+          "type": "int"
+        },
+        {
+          "keyspace_name": "shop",
+          "table_name": "orders_by_status",
+          "column_name": "id",
+          "clustering_order": "desc",
+          "kind": "clustering",
+          "position": 1,
+          "type": "int"
+        },
+        {
+          "keyspace_name": "shop",
+          "table_name": "orders_by_status",
+          "column_name": "status",
+          "clustering_order": "none",
+          "kind": "partition_key",
+          "position": 0,
+          "type": "text"
+        },
+        {
+          "keyspace_name": "shop",
+          "table_name": "orders_by_status",
+          "column_name": "total",
+          "clustering_order": "none",
+          "kind": "regular",
+          "position": -1,
+          "type": "decimal"
+        }
+      ],
+      "columns": [
+        {
+          "name": "keyspace_name",
+          "type": {
+            "code": 13
+          }
+        },
+        {
+          "name": "table_name",
+          "type": {
+            "code": 13
+          }
+        },
+        {
+          "name": "column_name",
+          "type": {
+            "code": 13
+          }
+        },
+        {
+          "name": "clustering_order",
+          "type": {
+            "code": 13
+          }
+        },
+        {
+          "name": "kind",
+          "type": {
+            "code": 13
+          }
+        },
+        {
+          "name": "position",
+          "type": {
+            "code": 9
+          }
+        },
+        {
+          "name": "type",
+          "type": {
+            "code": 13
+          }
+        }
+      ]
+    }
+  },
+  {
+    "method": "execute",
+    "args": [
+      "SELECT keyspace_name, table_name, comment FROM system_schema.tables WHERE keyspace_name = 'shop'"
+    ],
+    "result": {
+      "rows": [
+        {
+          "keyspace_name": "shop",
+          "table_name": "customers",
+          "comment": "People who have ordered"
+        },
+        {
+          "keyspace_name": "shop",
+          "table_name": "orders",
+          "comment": ""
+        }
+      ],
+      "columns": [
+        {
+          "name": "keyspace_name",
+          "type": {
+            "code": 13
+          }
+        },
+        {
+          "name": "table_name",
+          "type": {
+            "code": 13
+          }
+        },
+        {
+          "name": "comment",
+          "type": {
+            "code": 13
+          }
+        }
+      ]
+    }
+  },
+  {
+    "method": "execute",
+    "args": [
+      "SELECT keyspace_name, view_name, base_table_name, comment FROM system_schema.views WHERE keyspace_name = 'shop'"
+    ],
+    "result": {
+      "rows": [
+        {
+          "keyspace_name": "shop",
+          "view_name": "orders_by_status",
+          "base_table_name": "orders",
+          "comment": ""
+        }
+      ],
+      "columns": [
+        {
+          "name": "keyspace_name",
+          "type": {
+            "code": 13
+          }
+        },
+        {
+          "name": "view_name",
+          "type": {
+            "code": 13
+          }
+        },
+        {
+          "name": "base_table_name",
+          "type": {
+            "code": 13
+          }
+        },
+        {
+          "name": "comment",
+          "type": {
+            "code": 13
+          }
+        }
+      ]
+    }
+  },
+  {
+    "method": "execute",
+    "args": [
+      "SELECT keyspace_name, table_name, column_name, clustering_order, kind, position, type FROM system_schema.columns WHERE keyspace_name = 'shop'"
+    ],
+    "result": {
+      "rows": [
+        {
+          "keyspace_name": "shop",
+          "table_name": "customers",
+          "column_name": "active",
+          "clustering_order": "none",
+          "kind": "regular",
+          "position": -1,
+          "type": "boolean"
+        },
+        {
+          "keyspace_name": "shop",
+          "table_name": "customers",
+          "column_name": "email",
+          "clustering_order": "none",
+          "kind": "regular",
+          "position": -1,
+          "type": "text"
+        },
+        {
+          "keyspace_name": "shop",
+          "table_name": "customers",
+          "column_name": "id",
+          "clustering_order": "none",
+          "kind": "partition_key",
+          "position": 0,
+          "type": "int"
+        },
+        {
+          "keyspace_name": "shop",
+          "table_name": "customers",
+          "column_name": "name",
+          "clustering_order": "none",
+          "kind": "regular",
+          "position": -1,
+          "type": "text"
+        },
+        {
+          "keyspace_name": "shop",
+          "table_name": "customers",
+          "column_name": "signed_up",
+          "clustering_order": "none",
+          "kind": "regular",
+          "position": -1,
+          "type": "date"
+        },
+        {
+          "keyspace_name": "shop",
+          "table_name": "customers",
+          "column_name": "tags",
+          "clustering_order": "none",
+          "kind": "regular",
+          "position": -1,
+          "type": "set<text>"
+        },
+        {
+          "keyspace_name": "shop",
+          "table_name": "orders",
+          "column_name": "customer_id",
+          "clustering_order": "none",
+          "kind": "partition_key",
+          "position": 0,
+          "type": "int"
+        },
+        {
+          "keyspace_name": "shop",
+          "table_name": "orders",
+          "column_name": "id",
+          "clustering_order": "desc",
+          "kind": "clustering",
+          "position": 0,
+          "type": "int"
+        },
+        {
+          "keyspace_name": "shop",
+          "table_name": "orders",
+          "column_name": "notes",
+          "clustering_order": "none",
+          "kind": "regular",
+          "position": -1,
+          "type": "text"
+        },
+        {
+          "keyspace_name": "shop",
+          "table_name": "orders",
+          "column_name": "placed_at",
+          "clustering_order": "none",
+          "kind": "regular",
+          "position": -1,
+          "type": "timestamp"
+        },
+        {
+          "keyspace_name": "shop",
+          "table_name": "orders",
+          "column_name": "shipping",
+          "clustering_order": "none",
+          "kind": "regular",
+          "position": -1,
+          "type": "frozen<map<text, text>>"
+        },
+        {
+          "keyspace_name": "shop",
+          "table_name": "orders",
+          "column_name": "status",
+          "clustering_order": "none",
+          "kind": "regular",
+          "position": -1,
+          "type": "text"
+        },
+        {
+          "keyspace_name": "shop",
+          "table_name": "orders",
+          "column_name": "total",
+          "clustering_order": "none",
+          "kind": "regular",
+          "position": -1,
+          "type": "decimal"
+        },
+        {
+          "keyspace_name": "shop",
+          "table_name": "orders_by_status",
+          "column_name": "customer_id",
+          "clustering_order": "asc",
+          "kind": "clustering",
+          "position": 0,
+          "type": "int"
+        },
+        {
+          "keyspace_name": "shop",
+          "table_name": "orders_by_status",
+          "column_name": "id",
+          "clustering_order": "desc",
+          "kind": "clustering",
+          "position": 1,
+          "type": "int"
+        },
+        {
+          "keyspace_name": "shop",
+          "table_name": "orders_by_status",
+          "column_name": "status",
+          "clustering_order": "none",
+          "kind": "partition_key",
+          "position": 0,
+          "type": "text"
+        },
+        {
+          "keyspace_name": "shop",
+          "table_name": "orders_by_status",
+          "column_name": "total",
+          "clustering_order": "none",
+          "kind": "regular",
+          "position": -1,
+          "type": "decimal"
+        }
+      ],
+      "columns": [
+        {
+          "name": "keyspace_name",
+          "type": {
+            "code": 13
+          }
+        },
+        {
+          "name": "table_name",
+          "type": {
+            "code": 13
+          }
+        },
+        {
+          "name": "column_name",
+          "type": {
+            "code": 13
+          }
+        },
+        {
+          "name": "clustering_order",
+          "type": {
+            "code": 13
+          }
+        },
+        {
+          "name": "kind",
+          "type": {
+            "code": 13
+          }
+        },
+        {
+          "name": "position",
+          "type": {
+            "code": 9
+          }
+        },
+        {
+          "name": "type",
+          "type": {
+            "code": 13
+          }
+        }
+      ]
+    }
+  },
+  {
+    "method": "execute",
+    "args": [
+      "SELECT keyspace_name, table_name, index_name, kind, options FROM system_schema.indexes WHERE keyspace_name = 'shop'"
+    ],
+    "result": {
+      "rows": [
+        {
+          "keyspace_name": "shop",
+          "table_name": "customers",
+          "index_name": "customers_email",
+          "kind": "COMPOSITES",
+          "options": {
+            "target": "email"
+          }
+        },
+        {
+          "keyspace_name": "shop",
+          "table_name": "orders",
+          "index_name": "orders_status",
+          "kind": "COMPOSITES",
+          "options": {
+            "target": "status"
+          }
+        }
+      ],
+      "columns": [
+        {
+          "name": "keyspace_name",
+          "type": {
+            "code": 13
+          }
+        },
+        {
+          "name": "table_name",
+          "type": {
+            "code": 13
+          }
+        },
+        {
+          "name": "index_name",
+          "type": {
+            "code": 13
+          }
+        },
+        {
+          "name": "kind",
+          "type": {
+            "code": 13
+          }
+        },
+        {
+          "name": "options",
+          "type": {
+            "code": 33
+          }
+        }
+      ]
+    }
+  },
+  {
+    "method": "execute",
+    "args": [
+      "SELECT * FROM \"shop\".\"orders\" LIMIT 10",
+      10
+    ],
+    "result": {
+      "rows": [
+        {
+          "customer_id": 1,
+          "id": 102,
+          "notes": null,
+          "placed_at": {
+            "date": "2024-04-02T14:00:00.000Z"
+          },
+          "shipping": null,
+          "status": "placed",
+          "total": "5.50"
+        },
+        {
+          "customer_id": 1,
+          "id": 101,
+          "notes": "Gift wrap",
+          "placed_at": {
+            "date": "2024-04-01T09:30:00.000Z"
+          },
+          "shipping": {
+            "city": "London",
+            "postcode": "N1"
+          },
+          "status": "shipped",
+          "total": "19.99"
+        },
+        {
+          "customer_id": 2,
+          "id": 103,
+          "notes": null,
+          "placed_at": {
+            "date": "2024-04-03T11:15:00.000Z"
+          },
+          "shipping": {
+            "city": "New York"
+          },
+          "status": "returned",
+          "total": "120.00"
+        },
+        {
+          "customer_id": 3,
+          "id": 104,
+          "notes": null,
+          "placed_at": {
+            "date": "2024-04-04T16:45:00.000Z"
+          },
+          "shipping": null,
+          "status": "placed",
+          "total": "42.25"
+        }
+      ],
+      "columns": [
+        {
+          "name": "customer_id",
+          "type": {
+            "code": 9
+          }
+        },
+        {
+          "name": "id",
+          "type": {
+            "code": 9
+          }
+        },
+        {
+          "name": "notes",
+          "type": {
+            "code": 13
+          }
+        },
+        {
+          "name": "placed_at",
+          "type": {
+            "code": 11
+          }
+        },
+        {
+          "name": "shipping",
+          "type": {
+            "code": 33
+          }
+        },
+        {
+          "name": "status",
+          "type": {
+            "code": 13
+          }
+        },
+        {
+          "name": "total",
+          "type": {
+            "code": 6
+          }
+        }
+      ]
+    }
+  },
+  {
+    "method": "execute",
+    "args": [
+      "SELECT name, signed_up, active, tags FROM shop.customers LIMIT 2",
+      2
+    ],
+    "result": {
+      "rows": [
+        {
+          "name": "Ada Lovelace",
+          "signed_up": "2024-01-15",
+          "active": true,
+          "tags": [
+            "early",
+            "vip"
+          ]
+        },
+        {
+          "name": "Grace Hopper",
+          "signed_up": "2024-02-20",
+          "active": true,
+          "tags": [
+            "vip"
+          ]
+        }
+      ],
+      "columns": [
+        {
+          "name": "name",
+          "type": {
+            "code": 13
+          }
+        },
+        {
+          "name": "signed_up",
+          "type": {
+            "code": 17
+          }
+        },
+        {
+          "name": "active",
+          "type": {
+            "code": 4
+          }
+        },
+        {
+          "name": "tags",
+          "type": {
+            "code": 34
+          }
+        }
+      ]
+    }
+  },
+  {
+    "method": "execute",
+    "args": [
+      "SELECT * FROM \"shop\".\"orders\" WHERE status = 'placed' LIMIT 10",
+      10
+    ],
+    "result": {
+      "rows": [
+        {
+          "customer_id": 1,
+          "id": 102,
+          "notes": null,
+          "placed_at": {
+            "date": "2024-04-02T14:00:00.000Z"
+          },
+          "shipping": null,
+          "status": "placed",
+          "total": "5.50"
+        },
+        {
+          "customer_id": 3,
+          "id": 104,
+          "notes": null,
+          "placed_at": {
+            "date": "2024-04-04T16:45:00.000Z"
+          },
+          "shipping": null,
+          "status": "placed",
+          "total": "42.25"
+        }
+      ],
+      "columns": [
+        {
+          "name": "customer_id",
+          "type": {
+            "code": 9
+          }
+        },
+        {
+          "name": "id",
+          "type": {
+            "code": 9
+          }
+        },
+        {
+          "name": "notes",
+          "type": {
+            "code": 13
+          }
+        },
+        {
+          "name": "placed_at",
+          "type": {
+            "code": 11
+          }
+        },
+        {
+          "name": "shipping",
+          "type": {
+            "code": 33
+          }
+        },
+        {
+          "name": "status",
+          "type": {
+            "code": 13
+          }
+        },
+        {
+          "name": "total",
+          "type": {
+            "code": 6
+          }
+        }
+      ]
+    }
+  },
+  {
+    "method": "execute",
+    "args": [
+      "SELECT * FROM \"shop\".\"orders\" WHERE total > 10 LIMIT 10 ALLOW FILTERING",
+      10
+    ],
+    "result": {
+      "rows": [
+        {
+          "customer_id": 1,
+          "id": 101,
+          "notes": "Gift wrap",
+          "placed_at": {
+            "date": "2024-04-01T09:30:00.000Z"
+          },
+          "shipping": {
+            "city": "London",
+            "postcode": "N1"
+          },
+          "status": "shipped",
+          "total": "19.99"
+        },
+        {
+          "customer_id": 2,
+          "id": 103,
+          "notes": null,
+          "placed_at": {
+            "date": "2024-04-03T11:15:00.000Z"
+          },
+          "shipping": {
+            "city": "New York"
+          },
+          "status": "returned",
+          "total": "120.00"
+        },
+        {
+          "customer_id": 3,
+          "id": 104,
+          "notes": null,
+          "placed_at": {
+            "date": "2024-04-04T16:45:00.000Z"
+          },
+          "shipping": null,
+          "status": "placed",
+          "total": "42.25"
+        }
+      ],
+      "columns": [
+        {
+          "name": "customer_id",
+          "type": {
+            "code": 9
+          }
+        },
+        {
+          "name": "id",
+          "type": {
+            "code": 9
+          }
+        },
+        {
+          "name": "notes",
+          "type": {
+            "code": 13
+          }
+        },
+        {
+          "name": "placed_at",
+          "type": {
+            "code": 11
+          }
+        },
+        {
+          "name": "shipping",
+          "type": {
+            "code": 33
+          }
+        },
+        {
+          "name": "status",
+          "type": {
+            "code": 13
+          }
+        },
+        {
+          "name": "total",
+          "type": {
+            "code": 6
+          }
+        }
+      ]
+    }
+  },
+  {
+    "method": "execute",
+    "args": [
+      "SELECT id, name, email, signed_up, active FROM shop.customers LIMIT 10",
+      10
+    ],
+    "result": {
+      "rows": [
+        {
+          "id": 1,
+          "name": "Ada Lovelace",
+          "email": "ada@example.com",
+          "signed_up": "2024-01-15",
+          "active": true
+        },
+        {
+          "id": 2,
+          "name": "Grace Hopper",
+          "email": "grace@example.com",
+          "signed_up": "2024-02-20",
+          "active": true
+        },
+        {
+          "id": 3,
+          "name": "Alan Turing",
+          "email": null,
+          "signed_up": "2024-03-05",
+          "active": false
+        }
+      ],
+      "columns": [
+        {
+          "name": "id",
+          "type": {
+            "code": 9
+          }
+        },
+        {
+          "name": "name",
+          "type": {
+            "code": 13
+          }
+        },
+        {
+          "name": "email",
+          "type": {
+            "code": 13
+          }
+        },
+        {
+          "name": "signed_up",
+          "type": {
+            "code": 17
+          }
+        },
+        {
+          "name": "active",
+          "type": {
+            "code": 4
+          }
+        }
+      ]
+    }
+  },
+  {
+    "method": "execute",
+    "args": [
+      "SELECT id, total, placed_at FROM shop.orders LIMIT 10",
+      10
+    ],
+    "result": {
+      "rows": [
+        {
+          "id": 102,
+          "total": "5.50",
+          "placed_at": {
+            "date": "2024-04-02T14:00:00.000Z"
+          }
+        },
+        {
+          "id": 101,
+          "total": "19.99",
+          "placed_at": {
+            "date": "2024-04-01T09:30:00.000Z"
+          }
+        },
+        {
+          "id": 103,
+          "total": "120.00",
+          "placed_at": {
+            "date": "2024-04-03T11:15:00.000Z"
+          }
+        },
+        {
+          "id": 104,
+          "total": "42.25",
+          "placed_at": {
+            "date": "2024-04-04T16:45:00.000Z"
+          }
+        }
+      ],
+      "columns": [
+        {
+          "name": "id",
+          "type": {
+            "code": 9
+          }
+        },
+        {
+          "name": "total",
+          "type": {
+            "code": 6
+          }
+        },
+        {
+          "name": "placed_at",
+          "type": {
+            "code": 11
+          }
+        }
+      ]
+    }
+  }
+]

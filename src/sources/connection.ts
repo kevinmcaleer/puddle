@@ -5,10 +5,10 @@ import { useEngineStore } from '../app/engine';
 import { compileConnectionLoad, compileRelationPreview, compileTableCount, compileTableSelect, dropTable, sourceTableName } from '../compiler';
 import { connectorFor } from '../connect/browser';
 import { contextFor } from '../connect/context';
-import type { ReadResult } from '../connect/types';
+import type { ReadRequest, ReadResult } from '../connect/types';
 import { connectionFile, useConnectionFiles } from '../connections/files';
 import { driver, SECRET_LABEL } from '../connections/drivers';
-import { secretFor, useSecrets } from '../connections/secrets';
+import { hasSecret, useSecrets } from '../connections/secrets';
 import type { EngineClient } from '../engine';
 import { tableRows } from '../engine/client';
 import { addSource, newId, setSchemaCheck, updateConnection, useProject, useProjectStore, type Catalog, type CatalogTable, type Connection, type ConnectionSource, type Project, type Source } from '../model';
@@ -58,7 +58,7 @@ export const connectionOf = (project: Project, source: Source): Connection | und
 function needOf(connection: Connection | undefined): string {
   if (!connection) return 'none';
   const file = connectionFile(connection.id);
-  return [file ? `${file.name}:${file.size}:${file.lastModified}` : '', secretFor(connection.id) ? 'secret' : ''].join('|');
+  return [file ? `${file.name}:${file.size}:${file.lastModified}` : '', hasSecret(connection.id) ? 'secret' : ''].join('|');
 }
 
 /** What a connection still needs from this tab before it can be read: its file, or its secret; nothing when it has both. */
@@ -70,7 +70,8 @@ export function connectionNeeds(connection: Connection): 'file' | 'secret' | und
   if (viaFile && !connectionFile(connection.id)) return 'file';
   // A file needs no sign-in (a LibSQL file is read like SQLite, in the page or by its path on the service); the server behind the same driver does.
   const viaPath = connection.via !== 'browser' && !!connection.settings.path && d.fields.some((f) => f.key === 'url' && !f.required) && !connection.settings.url;
-  if (!viaFile && !viaPath && SECRET_LABEL[d.auth] && !secretFor(connection.id)) return 'secret';
+  // A sign-in can be empty: an open server (a local MongoDB, a Redis with no password) is signed in to with none.
+  if (!viaFile && !viaPath && SECRET_LABEL[d.auth] && !hasSecret(connection.id)) return 'secret';
   return undefined;
 }
 
@@ -82,6 +83,16 @@ export const connectionNeedsMessage = (connection: Connection | undefined, read:
   if (need === 'secret') return 'Sign in to the database in the inspector.';
   return read?.state === 'failed' ? read.message : undefined;
 };
+
+/** What a source asks its driver to read: the table or query, the row limit and, where the driver takes them, the filter and the shape. */
+export const readRequestOf = (c: ConnectionSource): ReadRequest => ({
+  table: c.table,
+  query: c.query,
+  limit: c.limit,
+  ...(c.filter?.trim() ? { filter: c.filter.trim() } : {}),
+  ...(c.allowFiltering ? { allowFiltering: true } : {}),
+  ...(c.shape && (c.shape.depth !== undefined || c.shape.arrays !== undefined) ? { shape: c.shape } : {}),
+});
 
 /** True when a source's data can be queried: anything but a connection source, or one whose table is loaded for what it reads now. */
 export function connectionReady(project: Project, sourceId: string): boolean {
@@ -123,7 +134,7 @@ async function read(engine: EngineClient, source: Source & { connection: Connect
   try {
     const connector = await connectorFor(connection);
     const c = source.connection;
-    const r = await connector.read(contextFor(connection), { table: c.table, query: c.query, limit: c.limit });
+    const r = await connector.read(contextFor(connection), readRequestOf(c));
     const got = await load(engine, table, r);
     if (before && before.table !== table) void drop(engine, before.table);
     loaded.set(id, { table, need });

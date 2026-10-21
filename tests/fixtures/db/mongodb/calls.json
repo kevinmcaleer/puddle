@@ -1,0 +1,614 @@
+[
+  {
+    "method": "version",
+    "args": [],
+    "result": "7.0.42"
+  },
+  {
+    "method": "collections",
+    "args": [],
+    "result": [
+      {
+        "name": "customers",
+        "type": "collection"
+      },
+      {
+        "name": "order_totals",
+        "type": "view",
+        "viewOn": "orders",
+        "pipeline": [
+          {
+            "$lookup": {
+              "from": "customers",
+              "localField": "customer_id",
+              "foreignField": "_id",
+              "as": "customer"
+            }
+          },
+          {
+            "$unwind": "$customer"
+          },
+          {
+            "$project": {
+              "_id": 1,
+              "name": "$customer.name",
+              "total": 1
+            }
+          }
+        ]
+      },
+      {
+        "name": "orders",
+        "type": "collection"
+      }
+    ]
+  },
+  {
+    "method": "collections",
+    "args": [],
+    "result": [
+      {
+        "name": "customers",
+        "type": "collection"
+      },
+      {
+        "name": "order_totals",
+        "type": "view",
+        "viewOn": "orders",
+        "pipeline": [
+          {
+            "$lookup": {
+              "from": "customers",
+              "localField": "customer_id",
+              "foreignField": "_id",
+              "as": "customer"
+            }
+          },
+          {
+            "$unwind": "$customer"
+          },
+          {
+            "$project": {
+              "_id": 1,
+              "name": "$customer.name",
+              "total": 1
+            }
+          }
+        ]
+      },
+      {
+        "name": "orders",
+        "type": "collection"
+      }
+    ]
+  },
+  {
+    "method": "count",
+    "args": [
+      "customers"
+    ],
+    "result": 3
+  },
+  {
+    "method": "find",
+    "args": [
+      "customers",
+      {},
+      100
+    ],
+    "result": [
+      {
+        "_id": 1,
+        "name": "Ada Lovelace",
+        "email": "ada@example.com",
+        "signed_up": {
+          "date": "2024-01-15T00:00:00.000Z"
+        },
+        "active": true
+      },
+      {
+        "_id": 2,
+        "name": "Grace Hopper",
+        "email": "grace@example.com",
+        "signed_up": {
+          "date": "2024-02-20T00:00:00.000Z"
+        },
+        "active": true
+      },
+      {
+        "_id": 3,
+        "name": "Alan Turing",
+        "email": null,
+        "signed_up": {
+          "date": "2024-03-05T00:00:00.000Z"
+        },
+        "active": false
+      }
+    ]
+  },
+  {
+    "method": "count",
+    "args": [
+      "orders"
+    ],
+    "result": 4
+  },
+  {
+    "method": "find",
+    "args": [
+      "orders",
+      {},
+      100
+    ],
+    "result": [
+      {
+        "_id": 101,
+        "customer_id": 1,
+        "total": 19.99,
+        "placed_at": {
+          "date": "2024-04-01T09:30:00.000Z"
+        },
+        "status": "shipped",
+        "notes": "Gift wrap",
+        "tags": [
+          "gift",
+          "express"
+        ],
+        "shipping": {
+          "city": "London",
+          "postcode": "N1"
+        }
+      },
+      {
+        "_id": 102,
+        "customer_id": 1,
+        "total": 5.5,
+        "placed_at": {
+          "date": "2024-04-02T14:00:00.000Z"
+        },
+        "status": "placed",
+        "tags": []
+      },
+      {
+        "_id": 103,
+        "customer_id": 2,
+        "total": 120,
+        "placed_at": {
+          "date": "2024-04-03T11:15:00.000Z"
+        },
+        "status": "returned",
+        "tags": [
+          "bulk"
+        ],
+        "shipping": {
+          "city": "New York"
+        }
+      },
+      {
+        "_id": 104,
+        "customer_id": 3,
+        "total": 42.25,
+        "placed_at": {
+          "date": "2024-04-04T16:45:00.000Z"
+        },
+        "status": "placed",
+        "tags": []
+      }
+    ]
+  },
+  {
+    "method": "find",
+    "args": [
+      "order_totals",
+      {},
+      100
+    ],
+    "result": [
+      {
+        "_id": 101,
+        "total": 19.99,
+        "name": "Ada Lovelace"
+      },
+      {
+        "_id": 102,
+        "total": 5.5,
+        "name": "Ada Lovelace"
+      },
+      {
+        "_id": 103,
+        "total": 120,
+        "name": "Grace Hopper"
+      },
+      {
+        "_id": 104,
+        "total": 42.25,
+        "name": "Alan Turing"
+      }
+    ]
+  },
+  {
+    "method": "collections",
+    "args": [],
+    "result": [
+      {
+        "name": "customers",
+        "type": "collection"
+      },
+      {
+        "name": "order_totals",
+        "type": "view",
+        "viewOn": "orders",
+        "pipeline": [
+          {
+            "$lookup": {
+              "from": "customers",
+              "localField": "customer_id",
+              "foreignField": "_id",
+              "as": "customer"
+            }
+          },
+          {
+            "$unwind": "$customer"
+          },
+          {
+            "$project": {
+              "_id": 1,
+              "name": "$customer.name",
+              "total": 1
+            }
+          }
+        ]
+      },
+      {
+        "name": "orders",
+        "type": "collection"
+      }
+    ]
+  },
+  {
+    "method": "count",
+    "args": [
+      "customers"
+    ],
+    "result": 3
+  },
+  {
+    "method": "find",
+    "args": [
+      "customers",
+      {},
+      1000
+    ],
+    "result": [
+      {
+        "_id": 1,
+        "name": "Ada Lovelace",
+        "email": "ada@example.com",
+        "signed_up": {
+          "date": "2024-01-15T00:00:00.000Z"
+        },
+        "active": true
+      },
+      {
+        "_id": 2,
+        "name": "Grace Hopper",
+        "email": "grace@example.com",
+        "signed_up": {
+          "date": "2024-02-20T00:00:00.000Z"
+        },
+        "active": true
+      },
+      {
+        "_id": 3,
+        "name": "Alan Turing",
+        "email": null,
+        "signed_up": {
+          "date": "2024-03-05T00:00:00.000Z"
+        },
+        "active": false
+      }
+    ]
+  },
+  {
+    "method": "count",
+    "args": [
+      "orders"
+    ],
+    "result": 4
+  },
+  {
+    "method": "find",
+    "args": [
+      "orders",
+      {},
+      1000
+    ],
+    "result": [
+      {
+        "_id": 101,
+        "customer_id": 1,
+        "total": 19.99,
+        "placed_at": {
+          "date": "2024-04-01T09:30:00.000Z"
+        },
+        "status": "shipped",
+        "notes": "Gift wrap",
+        "tags": [
+          "gift",
+          "express"
+        ],
+        "shipping": {
+          "city": "London",
+          "postcode": "N1"
+        }
+      },
+      {
+        "_id": 102,
+        "customer_id": 1,
+        "total": 5.5,
+        "placed_at": {
+          "date": "2024-04-02T14:00:00.000Z"
+        },
+        "status": "placed",
+        "tags": []
+      },
+      {
+        "_id": 103,
+        "customer_id": 2,
+        "total": 120,
+        "placed_at": {
+          "date": "2024-04-03T11:15:00.000Z"
+        },
+        "status": "returned",
+        "tags": [
+          "bulk"
+        ],
+        "shipping": {
+          "city": "New York"
+        }
+      },
+      {
+        "_id": 104,
+        "customer_id": 3,
+        "total": 42.25,
+        "placed_at": {
+          "date": "2024-04-04T16:45:00.000Z"
+        },
+        "status": "placed",
+        "tags": []
+      }
+    ]
+  },
+  {
+    "method": "find",
+    "args": [
+      "order_totals",
+      {},
+      1000
+    ],
+    "result": [
+      {
+        "_id": 101,
+        "total": 19.99,
+        "name": "Ada Lovelace"
+      },
+      {
+        "_id": 102,
+        "total": 5.5,
+        "name": "Ada Lovelace"
+      },
+      {
+        "_id": 103,
+        "total": 120,
+        "name": "Grace Hopper"
+      },
+      {
+        "_id": 104,
+        "total": 42.25,
+        "name": "Alan Turing"
+      }
+    ]
+  },
+  {
+    "method": "indexes",
+    "args": [
+      "customers"
+    ],
+    "result": [
+      {
+        "name": "_id_",
+        "key": {
+          "_id": 1
+        }
+      },
+      {
+        "name": "customers_email",
+        "key": {
+          "email": 1
+        },
+        "unique": true
+      }
+    ]
+  },
+  {
+    "method": "indexes",
+    "args": [
+      "orders"
+    ],
+    "result": [
+      {
+        "name": "_id_",
+        "key": {
+          "_id": 1
+        }
+      },
+      {
+        "name": "orders_customer",
+        "key": {
+          "customer_id": 1,
+          "placed_at": -1
+        }
+      }
+    ]
+  },
+  {
+    "method": "find",
+    "args": [
+      "orders",
+      {},
+      10
+    ],
+    "result": [
+      {
+        "_id": 101,
+        "customer_id": 1,
+        "total": 19.99,
+        "placed_at": {
+          "date": "2024-04-01T09:30:00.000Z"
+        },
+        "status": "shipped",
+        "notes": "Gift wrap",
+        "tags": [
+          "gift",
+          "express"
+        ],
+        "shipping": {
+          "city": "London",
+          "postcode": "N1"
+        }
+      },
+      {
+        "_id": 102,
+        "customer_id": 1,
+        "total": 5.5,
+        "placed_at": {
+          "date": "2024-04-02T14:00:00.000Z"
+        },
+        "status": "placed",
+        "tags": []
+      },
+      {
+        "_id": 103,
+        "customer_id": 2,
+        "total": 120,
+        "placed_at": {
+          "date": "2024-04-03T11:15:00.000Z"
+        },
+        "status": "returned",
+        "tags": [
+          "bulk"
+        ],
+        "shipping": {
+          "city": "New York"
+        }
+      },
+      {
+        "_id": 104,
+        "customer_id": 3,
+        "total": 42.25,
+        "placed_at": {
+          "date": "2024-04-04T16:45:00.000Z"
+        },
+        "status": "placed",
+        "tags": []
+      }
+    ]
+  },
+  {
+    "method": "find",
+    "args": [
+      "orders",
+      {
+        "customer_id": 1
+      },
+      2,
+      {
+        "_id": 1,
+        "total": 1,
+        "status": 1
+      }
+    ],
+    "result": [
+      {
+        "_id": 101,
+        "total": 19.99,
+        "status": "shipped"
+      },
+      {
+        "_id": 102,
+        "total": 5.5,
+        "status": "placed"
+      }
+    ]
+  },
+  {
+    "method": "find",
+    "args": [
+      "orders",
+      {
+        "status": "placed"
+      },
+      10
+    ],
+    "result": [
+      {
+        "_id": 102,
+        "customer_id": 1,
+        "total": 5.5,
+        "placed_at": {
+          "date": "2024-04-02T14:00:00.000Z"
+        },
+        "status": "placed",
+        "tags": []
+      },
+      {
+        "_id": 104,
+        "customer_id": 3,
+        "total": 42.25,
+        "placed_at": {
+          "date": "2024-04-04T16:45:00.000Z"
+        },
+        "status": "placed",
+        "tags": []
+      }
+    ]
+  },
+  {
+    "method": "aggregate",
+    "args": [
+      "orders",
+      [
+        {
+          "$group": {
+            "_id": "$status",
+            "n": {
+              "$sum": 1
+            }
+          }
+        },
+        {
+          "$sort": {
+            "_id": 1
+          }
+        },
+        {
+          "$limit": 10
+        }
+      ]
+    ],
+    "result": [
+      {
+        "_id": "placed",
+        "n": 2
+      },
+      {
+        "_id": "returned",
+        "n": 1
+      },
+      {
+        "_id": "shipped",
+        "n": 1
+      }
+    ]
+  }
+]

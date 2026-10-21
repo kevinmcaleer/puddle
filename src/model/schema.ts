@@ -95,8 +95,8 @@ export const ConnectionZ = z.object({
   documentedAt: z.string().optional(),
 });
 
-/** How a document store's records become rows: nested objects flattened to `parent.child` columns to a depth, arrays as JSON text or one row each. */
-export const ConnectionShapeZ = z.object({ flatten: z.boolean().default(true), depth: z.number().int().nonnegative().default(2), arrays: z.enum(['json', 'rows']).default('json') });
+/** How a document store's records become rows: nested objects flattened to `parent.child` columns to a depth (the connection's own when unset), arrays as JSON text or one row each. */
+export const ConnectionShapeZ = z.object({ depth: z.number().int().positive().optional(), arrays: z.enum(['json', 'rows']).optional() });
 
 export const ConnectionSourceZ = z.object({
   connectionId: z.string().min(1),
@@ -105,6 +105,10 @@ export const ConnectionSourceZ = z.object({
   query: z.string().optional(),
   /** Read at most this many rows. Absent reads them all. */
   limit: z.number().int().positive().optional(),
+  /** A condition on a table read, in the driver's own terms (a MongoDB filter document, a CQL WHERE condition). */
+  filter: z.string().optional(),
+  /** Cassandra and ScyllaDB: let a filtered read scan the table (ALLOW FILTERING). */
+  allowFiltering: z.boolean().optional(),
   /** The columns as DuckDB types, from the driver, so the read is typed before a row arrives. */
   columns: z.array(ColumnSchemaZ).default([]),
   shape: ConnectionShapeZ.optional(),

@@ -1,11 +1,21 @@
-// Documents as rows, for the stores that keep records rather than tables (SurrealDB, DynamoDB, and MongoDB after
-// them; plan section 5.1): each document's nested objects are flattened to `parent.child` columns to a depth, deeper
-// objects and arrays become JSON text, and every column's type is the one its values agree on (integers, doubles,
-// booleans, dates, text, bytes), text where they don't. The same flattening names the columns the schema is
-// documented with (src/schema/inferSchema.ts), so a documented table and a read agree.
+// Documents as rows, for the stores that keep records rather than tables (SurrealDB, DynamoDB, MongoDB and Redis;
+// plan section 5.1): each document's nested objects are flattened to `parent.child` columns to a depth, deeper
+// objects and arrays become JSON text (or, with arrays as rows, one row per element), and every column's type is the
+// one its values agree on (integers, doubles, booleans, dates, text, bytes), text where they don't. The same
+// flattening names the columns the schema is documented with (src/schema/inferSchema.ts), so a documented table and
+// a read agree.
 import type { SheetColumn, SheetColumnType } from '../excel/types';
 
 export const DEFAULT_DEPTH = 2;
+
+/** How a store's records become rows: nested objects opened to `depth`, arrays as JSON text or one row per element. */
+export interface DocumentShape {
+  depth?: number;
+  arrays?: 'json' | 'rows';
+}
+
+/** A source's shape over a connection's default depth. */
+export const shapeFor = (shape: DocumentShape | undefined, depth: number): Required<DocumentShape> => ({ depth: shape?.depth !== undefined && shape.depth > 0 ? Math.floor(shape.depth) : depth, arrays: shape?.arrays ?? 'json' });
 
 type Plain = Record<string, unknown>;
 
@@ -84,11 +94,29 @@ export function documentValue(v: unknown, kind: Kind): SheetColumn['values'][num
 const sheetType = (kind: Kind): { type: SheetColumnType; sqlType: string } => (kind === 'JSON' ? { type: 'VARCHAR', sqlType: 'JSON' } : { type: kind, sqlType: kind });
 
 /**
+ * A flat document with its arrays as rows: one row per element, the array columns unrolled side by side (row i
+ * holds element i of each, null where one is shorter, as DuckDB's unnest does), and a document with no array, or
+ * only empty ones, as one row with nulls there.
+ */
+export function unrollArrays(flat: Plain): Plain[] {
+  const arrays = Object.keys(flat).filter((k) => Array.isArray(flat[k]));
+  if (!arrays.length) return [flat];
+  const n = Math.max(1, ...arrays.map((k) => (flat[k] as unknown[]).length));
+  const rows: Plain[] = [];
+  for (let i = 0; i < n; i++) {
+    const row = { ...flat };
+    for (const k of arrays) row[k] = (flat[k] as unknown[])[i] ?? null;
+    rows.push(row);
+  }
+  return rows;
+}
+
+/**
  * Documents as sheet columns: one per field seen across them, in the order first seen, each typed from its values.
  * A document missing a field has null there.
  */
-export function documentsToSheet(documents: unknown[], depth = DEFAULT_DEPTH): { columns: SheetColumn[]; sqlTypes: string[] } {
-  const flat = documents.map((d) => flattenDocument(d, depth));
+export function documentsToSheet(documents: unknown[], depth = DEFAULT_DEPTH, arrays: 'json' | 'rows' = 'json'): { columns: SheetColumn[]; sqlTypes: string[] } {
+  const flat = documents.map((d) => flattenDocument(d, depth)).flatMap((d) => (arrays === 'rows' ? unrollArrays(d) : [d]));
   const names: string[] = [];
   const seen = new Set<string>();
   for (const f of flat) {

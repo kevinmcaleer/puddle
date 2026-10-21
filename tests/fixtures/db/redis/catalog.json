@@ -1,0 +1,444 @@
+{
+  "test": {
+    "ok": true,
+    "server": "Redis 7.4.0, 13 keys"
+  },
+  "catalog": {
+    "tables": [
+      {
+        "name": "*",
+        "kind": "table",
+        "rows": 3,
+        "columns": [
+          {
+            "name": "key",
+            "type": "VARCHAR",
+            "nullable": false
+          },
+          {
+            "name": "type",
+            "type": "VARCHAR",
+            "nullable": false
+          },
+          {
+            "name": "member",
+            "type": "VARCHAR",
+            "nullable": true
+          },
+          {
+            "name": "score",
+            "type": "DOUBLE",
+            "nullable": true
+          },
+          {
+            "name": "id",
+            "type": "VARCHAR",
+            "nullable": true
+          },
+          {
+            "name": "kind",
+            "type": "VARCHAR",
+            "nullable": true
+          },
+          {
+            "name": "user",
+            "type": "VARCHAR",
+            "nullable": true
+          },
+          {
+            "name": "order",
+            "type": "VARCHAR",
+            "nullable": true
+          },
+          {
+            "name": "value",
+            "type": "VARCHAR",
+            "nullable": true
+          }
+        ]
+      },
+      {
+        "name": "order:*",
+        "kind": "table",
+        "rows": 6,
+        "columns": [
+          {
+            "name": "key",
+            "type": "VARCHAR",
+            "nullable": false
+          },
+          {
+            "name": "type",
+            "type": "VARCHAR",
+            "nullable": false
+          },
+          {
+            "name": "customer_id",
+            "type": "VARCHAR",
+            "nullable": true
+          },
+          {
+            "name": "total",
+            "type": "VARCHAR",
+            "nullable": true
+          },
+          {
+            "name": "placed_at",
+            "type": "VARCHAR",
+            "nullable": true
+          },
+          {
+            "name": "status",
+            "type": "VARCHAR",
+            "nullable": true
+          },
+          {
+            "name": "notes",
+            "type": "VARCHAR",
+            "nullable": true
+          },
+          {
+            "name": "member",
+            "type": "VARCHAR",
+            "nullable": true
+          }
+        ]
+      },
+      {
+        "name": "orders:*",
+        "kind": "table",
+        "rows": 1,
+        "columns": [
+          {
+            "name": "key",
+            "type": "VARCHAR",
+            "nullable": false
+          },
+          {
+            "name": "type",
+            "type": "VARCHAR",
+            "nullable": false
+          },
+          {
+            "name": "index",
+            "type": "BIGINT",
+            "nullable": false
+          },
+          {
+            "name": "member",
+            "type": "VARCHAR",
+            "nullable": false
+          }
+        ]
+      },
+      {
+        "name": "user:*",
+        "kind": "table",
+        "rows": 3,
+        "columns": [
+          {
+            "name": "key",
+            "type": "VARCHAR",
+            "nullable": false
+          },
+          {
+            "name": "type",
+            "type": "VARCHAR",
+            "nullable": false
+          },
+          {
+            "name": "name",
+            "type": "VARCHAR",
+            "nullable": false
+          },
+          {
+            "name": "signed_up",
+            "type": "VARCHAR",
+            "nullable": false
+          },
+          {
+            "name": "active",
+            "type": "VARCHAR",
+            "nullable": false
+          },
+          {
+            "name": "email",
+            "type": "VARCHAR",
+            "nullable": true
+          }
+        ]
+      }
+    ]
+  },
+  "detail": {
+    "tables": [
+      {
+        "name": "*",
+        "kind": "table",
+        "columns": [
+          {
+            "name": "key",
+            "type": "string",
+            "pk": false,
+            "unique": false,
+            "notNull": true,
+            "increment": false
+          },
+          {
+            "name": "type",
+            "type": "string",
+            "pk": false,
+            "unique": false,
+            "notNull": true,
+            "increment": false
+          },
+          {
+            "name": "member",
+            "type": "string",
+            "pk": false,
+            "unique": false,
+            "notNull": false,
+            "increment": false,
+            "note": "present in 50% of documents"
+          },
+          {
+            "name": "score",
+            "type": "number or integer",
+            "pk": false,
+            "unique": false,
+            "notNull": false,
+            "increment": false,
+            "note": "present in 50% of documents"
+          },
+          {
+            "name": "id",
+            "type": "string",
+            "pk": false,
+            "unique": false,
+            "notNull": false,
+            "increment": false,
+            "note": "present in 33% of documents"
+          },
+          {
+            "name": "kind",
+            "type": "string",
+            "pk": false,
+            "unique": false,
+            "notNull": false,
+            "increment": false,
+            "note": "present in 33% of documents"
+          },
+          {
+            "name": "user",
+            "type": "string",
+            "pk": false,
+            "unique": false,
+            "notNull": false,
+            "increment": false,
+            "note": "present in 17% of documents"
+          },
+          {
+            "name": "order",
+            "type": "string",
+            "pk": false,
+            "unique": false,
+            "notNull": false,
+            "increment": false,
+            "note": "present in 17% of documents"
+          },
+          {
+            "name": "value",
+            "type": "string",
+            "pk": false,
+            "unique": false,
+            "notNull": false,
+            "increment": false,
+            "note": "present in 17% of documents"
+          }
+        ],
+        "indexes": [],
+        "foreignKeys": [],
+        "note": "Keys matching *. Inferred from 3 keys on 2026-10-21"
+      },
+      {
+        "name": "order:*",
+        "kind": "table",
+        "columns": [
+          {
+            "name": "key",
+            "type": "string",
+            "pk": false,
+            "unique": false,
+            "notNull": true,
+            "increment": false
+          },
+          {
+            "name": "type",
+            "type": "string",
+            "pk": false,
+            "unique": false,
+            "notNull": true,
+            "increment": false
+          },
+          {
+            "name": "customer_id",
+            "type": "string",
+            "pk": false,
+            "unique": false,
+            "notNull": false,
+            "increment": false,
+            "note": "present in 57% of documents"
+          },
+          {
+            "name": "total",
+            "type": "string",
+            "pk": false,
+            "unique": false,
+            "notNull": false,
+            "increment": false,
+            "note": "present in 57% of documents"
+          },
+          {
+            "name": "placed_at",
+            "type": "string",
+            "pk": false,
+            "unique": false,
+            "notNull": false,
+            "increment": false,
+            "note": "present in 57% of documents"
+          },
+          {
+            "name": "status",
+            "type": "string",
+            "pk": false,
+            "unique": false,
+            "notNull": false,
+            "increment": false,
+            "note": "present in 57% of documents"
+          },
+          {
+            "name": "notes",
+            "type": "string",
+            "pk": false,
+            "unique": false,
+            "notNull": false,
+            "increment": false,
+            "note": "present in 14% of documents"
+          },
+          {
+            "name": "member",
+            "type": "string",
+            "pk": false,
+            "unique": false,
+            "notNull": false,
+            "increment": false,
+            "note": "present in 43% of documents"
+          }
+        ],
+        "indexes": [],
+        "foreignKeys": [],
+        "note": "Keys matching order:*. Inferred from 6 keys on 2026-10-21"
+      },
+      {
+        "name": "orders:*",
+        "kind": "table",
+        "columns": [
+          {
+            "name": "key",
+            "type": "string",
+            "pk": false,
+            "unique": false,
+            "notNull": true,
+            "increment": false
+          },
+          {
+            "name": "type",
+            "type": "string",
+            "pk": false,
+            "unique": false,
+            "notNull": true,
+            "increment": false
+          },
+          {
+            "name": "index",
+            "type": "integer",
+            "pk": false,
+            "unique": false,
+            "notNull": true,
+            "increment": false
+          },
+          {
+            "name": "member",
+            "type": "string",
+            "pk": false,
+            "unique": false,
+            "notNull": true,
+            "increment": false
+          }
+        ],
+        "indexes": [],
+        "foreignKeys": [],
+        "note": "Keys matching orders:*. Inferred from 1 key on 2026-10-21"
+      },
+      {
+        "name": "user:*",
+        "kind": "table",
+        "columns": [
+          {
+            "name": "key",
+            "type": "string",
+            "pk": false,
+            "unique": false,
+            "notNull": true,
+            "increment": false
+          },
+          {
+            "name": "type",
+            "type": "string",
+            "pk": false,
+            "unique": false,
+            "notNull": true,
+            "increment": false
+          },
+          {
+            "name": "name",
+            "type": "string",
+            "pk": false,
+            "unique": false,
+            "notNull": true,
+            "increment": false
+          },
+          {
+            "name": "signed_up",
+            "type": "string",
+            "pk": false,
+            "unique": false,
+            "notNull": true,
+            "increment": false
+          },
+          {
+            "name": "active",
+            "type": "string",
+            "pk": false,
+            "unique": false,
+            "notNull": true,
+            "increment": false
+          },
+          {
+            "name": "email",
+            "type": "string",
+            "pk": false,
+            "unique": false,
+            "notNull": false,
+            "increment": false,
+            "note": "present in 67% of documents"
+          }
+        ],
+        "indexes": [],
+        "foreignKeys": [],
+        "note": "Keys matching user:*. Inferred from 3 keys on 2026-10-21"
+      }
+    ],
+    "enums": []
+  }
+}

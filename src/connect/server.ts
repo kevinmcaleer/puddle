@@ -144,9 +144,20 @@ export function parseRequest(body: unknown): Parsed {
     for (const [k, v] of Object.entries(b.settings as Record<string, unknown>)) if (typeof v === 'string' || typeof v === 'number' || typeof v === 'boolean') settings[k] = v;
   }
   const table = b.table && typeof b.table === 'object' && typeof (b.table as { name?: unknown }).name === 'string' ? { ...(typeof (b.table as { schema?: unknown }).schema === 'string' ? { schema: (b.table as { schema: string }).schema } : {}), name: (b.table as { name: string }).name } : undefined;
-  const read: ReadRequest = { ...(table ? { table } : {}), ...(typeof b.query === 'string' ? { query: b.query } : {}), ...(typeof b.limit === 'number' && b.limit > 0 ? { limit: Math.floor(b.limit) } : {}) };
+  const shape = b.shape && typeof b.shape === 'object' ? (b.shape as { depth?: unknown; arrays?: unknown }) : undefined;
+  const read: ReadRequest = {
+    ...(table ? { table } : {}),
+    ...(typeof b.query === 'string' ? { query: b.query } : {}),
+    ...(typeof b.limit === 'number' && b.limit > 0 ? { limit: Math.floor(b.limit) } : {}),
+    ...(typeof b.filter === 'string' && b.filter.trim() ? { filter: b.filter } : {}),
+    ...(b.allowFiltering === true ? { allowFiltering: true } : {}),
+    ...(shape && ((typeof shape.depth === 'number' && shape.depth > 0) || shape.arrays === 'json' || shape.arrays === 'rows') ? { shape: { ...(typeof shape.depth === 'number' && shape.depth > 0 ? { depth: Math.floor(shape.depth) } : {}), ...(shape.arrays === 'json' || shape.arrays === 'rows' ? { arrays: shape.arrays } : {}) } } : {}),
+  };
   return { connection: { id: 'request', name: '', driver, via: 'local', settings, auth: 'none' }, ...(typeof b.secret === 'string' ? { secret: b.secret } : {}), read };
 }
+
+/** The drivers whose query is not SQL, so the one-reading-statement check is theirs to make. */
+const NOT_SQL: DriverId[] = ['mongodb', 'redis'];
 
 /** The host a connection reaches: its host setting, the host of its address, or the warehouse's own host when the driver has one. */
 export function targetHost(settings: Record<string, string | number | boolean>, driver?: DriverId): string | undefined {
@@ -158,6 +169,8 @@ export function targetHost(settings: Record<string, string | number | boolean>, 
       return url;
     }
   };
+  // A Redis with a REST address is read over it, whatever host is also given.
+  if (driver === 'redis' && text('rest')) return hostOf(text('rest'));
   if (text('host')) return text('host');
   if (text('url')) return hostOf(text('url'));
   if (driver === 'bigquery') return text('endpoint') ? hostOf(text('endpoint')) : 'bigquery.googleapis.com';
@@ -267,8 +280,9 @@ export function createServer(options: ServerOptions, connectors: Partial<Record<
       json(res, 200, await connector.document(ctx));
       return;
     }
-    // A read: one statement that reads, at most the row cap, within the timeout, no more than a few at once.
-    if (read.query) {
+    // A read: one statement that reads, at most the row cap, within the timeout, no more than a few at once. A
+    // driver whose query isn't SQL (a MongoDB shell call, a Redis key pattern) checks its own.
+    if (read.query && !NOT_SQL.includes(connection.driver)) {
       const problem = statementProblem(read.query);
       if (problem) {
         text(res, 400, problem);

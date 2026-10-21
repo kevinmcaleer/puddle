@@ -1,5 +1,6 @@
 // Writes dist-connect/package.json: what puddle-connect needs beside its bundle (sql.js, whose WASM is found next to
-// its own module, so it isn't bundled; pg, mysql2, node-firebird, tedious and oracledb, which load parts by name), pinned to the versions this repository's lockfile resolved, and the bin that
+// its own module, so it isn't bundled; pg, mysql2, node-firebird, tedious, oracledb, mongodb, redis and cassandra-driver,
+// which load parts by name), pinned to the versions this repository's lockfile resolved, and the bin that
 // makes `npx puddle-connect` work. Dockerfile.connect installs from it.
 import { readFileSync, writeFileSync } from 'node:fs';
 
@@ -16,6 +17,6 @@ const out = {
   version: root.version,
   type: 'module',
   bin: { 'puddle-connect': './puddle-connect.mjs' },
-  dependencies: { 'sql.js': pinned('sql.js'), pg: pinned('pg'), mysql2: pinned('mysql2'), 'node-firebird': pinned('node-firebird'), tedious: pinned('tedious'), oracledb: pinned('oracledb') },
+  dependencies: { 'sql.js': pinned('sql.js'), pg: pinned('pg'), mysql2: pinned('mysql2'), 'node-firebird': pinned('node-firebird'), tedious: pinned('tedious'), oracledb: pinned('oracledb'), mongodb: pinned('mongodb'), redis: pinned('redis'), 'cassandra-driver': pinned('cassandra-driver') },
 };
 writeFileSync(new URL('../dist-connect/package.json', import.meta.url), JSON.stringify(out, null, 2) + '\n');

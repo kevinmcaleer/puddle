@@ -14,6 +14,7 @@ const BROWSER: Partial<Record<DriverId, () => Promise<{ default: Connector }>>> 
   bigquery: () => import('./drivers/bigquery'),
   surrealdb: () => import('./drivers/surrealdb'),
   dynamodb: () => import('./drivers/dynamodb'),
+  redis: () => import('./drivers/redis'),
 };
 
 const loaded = new Map<DriverId, Promise<Connector>>();
