@@ -1,18 +1,19 @@
-// Reading fixed-width text, pipe tables, structured text (YAML, TOML, INI, GeoJSON) and the tables of a Word document
+// Reading fixed-width text, pipe tables, log files, structured text (YAML, TOML, INI, GeoJSON) and the tables of a Word document
 // into the CSV DuckDB reads, shared by the browser (./rewrite) and the runner (src/runner/run.ts). Pure: bytes and
 // options in, CSV out.
 import type { ParseOptions, Source } from '../model';
 import { isStructuredFormat, parseStructured, structuredToTable, type RecordCandidate, type StructuredFormat } from '../structured';
 import { likeliestTable, readWordTables, wordTableInfo, wordTableToRows, type WordTableInfo } from '../word';
 import { tableToCsv } from '../xml';
+import { readLog, type LogPresetId } from '../logs';
 import { readFixedWidth } from './fixedWidth';
 import { readPipes } from './pipes';
 
-export type RewrittenFormat = 'fixed' | 'pipes' | 'word' | StructuredFormat;
+export type RewrittenFormat = 'fixed' | 'pipes' | 'word' | 'log' | StructuredFormat;
 /** The rewritten formats read from text; a Word document is read from its bytes (readWord). */
 export type RewrittenTextFormat = Exclude<RewrittenFormat, 'word'>;
 
-export const isRewrittenText = (s: Pick<Source, 'format'>): s is Source & { format: RewrittenFormat } => s.format === 'fixed' || s.format === 'pipes' || s.format === 'word' || isStructuredFormat(s.format);
+export const isRewrittenText = (s: Pick<Source, 'format'>): s is Source & { format: RewrittenFormat } => s.format === 'fixed' || s.format === 'pipes' || s.format === 'word' || s.format === 'log' || isStructuredFormat(s.format);
 
 /** A rewritten source read from text, which `readText` takes: every rewritten format but a Word document. */
 export const isRewrittenTextSource = (s: Pick<Source, 'format'>): s is Source & { format: RewrittenTextFormat } => isRewrittenText(s) && s.format !== 'word';
@@ -40,6 +41,9 @@ export interface RewrittenTable {
   /** Word: the table read, by its number from 1, and every table in the document. */
   table?: number;
   tables?: WordTableInfo[];
+  /** Log: the preset read as, and the lines that fit no pattern. */
+  preset?: LogPresetId;
+  unmatched?: number;
 }
 
 /** Read the text as the format says, with its read options. */
@@ -47,6 +51,10 @@ export function readText(format: RewrittenTextFormat, text: string, o: ParseOpti
   if (isStructuredFormat(format)) {
     const t = structuredToTable(parseStructured(format, text), format, { record: o.record });
     return { columns: t.columns, rows: t.rows, record: t.record, candidates: t.candidates };
+  }
+  if (format === 'log') {
+    const t = readLog(text, { preset: o.preset, pattern: o.pattern });
+    return { columns: t.columns, rows: t.rows, preset: t.preset, unmatched: t.unmatched };
   }
   if (format === 'fixed') {
     const t = readFixedWidth(text, { boundaries: o.boundaries, header: o.header, skip: o.skip, skipBottom: o.skipBottom });

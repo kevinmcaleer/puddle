@@ -1,0 +1,5 @@
+203.0.113.7 - - [10/Oct/2026:13:55:36 +0100] "GET /index.html HTTP/1.1" 200 2326 "https://example.org/start" "Mozilla/5.0 (X11; Linux x86_64) Firefox/131.0"
+203.0.113.7 - kev [10/Oct/2026:13:55:38 +0100] "POST /api/orders HTTP/1.1" 201 512 "-" "curl/8.5.0"
+198.51.100.23 - - [10/Oct/2026:13:56:01 +0100] "GET /missing HTTP/1.1" 404 - "-" "Mozilla/5.0 (Windows NT 10.0) Chrome/130.0"
+this line is not an access log entry
+198.51.100.23 - - [10/Oct/2026:13:56:02 +0100] "GET /favicon.ico HTTP/1.1" 304 0

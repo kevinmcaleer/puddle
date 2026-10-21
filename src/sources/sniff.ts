@@ -2,6 +2,7 @@
 // rest. Content wins over the file name when it is unambiguous (plan D24); when it isn't, the result says so and the
 // Format picker asks. Pure, so it is tested on bytes.
 import type { ArchiveKind } from '../archive';
+import { detectLogPreset, logPresetLabel } from '../logs';
 import type { ParseOptions, SourceFormat } from '../model';
 import { knownFormat, READS, SourceError } from './detect';
 import { detectBoundaries } from './fixedWidth';
@@ -375,6 +376,11 @@ export function sniffText(text: string, tail?: string): Sniffed {
     if (lines.length >= 2 && objects.length === lines.length) return { format: 'ndjson', confidence: 'sure', ...none, reason: 'One JSON object per line.' };
     return { format: 'json', confidence: 'sure', ...none, reason: 'Starts with a JSON object.' };
   }
+
+  // A log: lines in one of the shapes src/logs knows (an access log, syslog, IIS, a timestamped app log). Looked for
+  // before the delimiter: an access log's spaces and quotes would otherwise read as a ragged CSV.
+  const preset = detectLogPreset(lines);
+  if (preset) return { format: 'log', confidence: 'likely', parseOptions: { preset }, alternatives: [], reason: `Lines in the shape of ${preset === 'combined' ? 'a web server access log' : preset === 'iis' ? 'an IIS log' : preset === 'syslog' ? 'syslog' : 'an application log, each starting with a timestamp'} (${logPresetLabel(preset)}).` };
 
   // A pipe table (an SAP list, a Markdown table): rows between pipes, with rules of dashes. Read by src/sources/pipes.ts,
   // which drops the lines around the table, the empty edge columns and the padding.

@@ -250,6 +250,35 @@ describe('puddle-run', () => {
     expect(readFileSync(join(outDir, 'out3.csv'), 'utf8').trim().split('\n')[1]).toBe('1,Lighthouse,landmark,34.5,"{""type"":""Point"",""coordinates"":[-3.1,53.4]}"');
   });
 
+  it('reads a log file as the preset the browser chose, and as a custom pattern', async () => {
+    writeFileSync(join(folder, 'access.log'), readFileSync(join(__dirname, '../fixtures/logs/access.log')));
+    writeFileSync(join(folder, 'app.log'), readFileSync(join(__dirname, '../fixtures/logs/app.log')));
+    const log = (id: string, name: string, parseOptions: Source['parseOptions']) => ({ ...src({ id, format: 'log' as const }), name, parseOptions, file: { originalName: name, size: 1, lastModified: 0, headHash: 'h' } });
+    const p = flow({
+      sources: [log('a', 'access.log', { preset: 'combined' }), log('c', 'app.log', { preset: 'custom', pattern: '^(?<time>\\S+ \\S+) (?<rest>.*)$' })],
+      nodes: [
+        { id: 'a', type: 'source', sourceId: 'a' },
+        { id: 'c', type: 'source', sourceId: 'c' },
+        { id: 'out', type: 'output', outputSpec: { format: 'csv', options: {} } },
+        { id: 'out2', type: 'output', outputSpec: { format: 'csv', options: {} } },
+      ],
+      wires: [
+        ['a', 'out', 0],
+        ['c', 'out2', 0],
+      ],
+    });
+    p.name = 'Logs';
+    const outDir = join(folder, 'out-logs');
+    const { log: runLog } = await runProject(p, { folder, outDir, db, now: () => new Date('2026-10-17T03:00:00Z') });
+    expect(runLog.sources.map((s) => s.problem)).toEqual([undefined, undefined]);
+    expect(runLog.outputs.map((o) => [o.nodeName, o.status, o.rows])).toEqual([
+      ['out', 'written', 4],
+      ['out2', 'written', 7],
+    ]);
+    expect(readFileSync(join(outDir, 'out.csv'), 'utf8').trim().split('\n').slice(0, 2)).toEqual(['host,ident,user,time,method,path,protocol,status,bytes,referrer,agent', '203.0.113.7,,,2026-10-10 12:55:36+00,GET,/index.html,HTTP/1.1,200,2326,https://example.org/start,Mozilla/5.0 (X11; Linux x86_64) Firefox/131.0']);
+    expect(readFileSync(join(outDir, 'out2.csv'), 'utf8').trim().split('\n')[1]).toBe('"2026-10-11 09:00:01,250",INFO Puddle runner started');
+  });
+
   it('reads the table of a Word document the browser chose, and the biggest when none was', async () => {
     writeFileSync(join(folder, 'report.docx'), readFileSync(join(__dirname, '../fixtures/word/report.docx')));
     const doc = (id: string, parseOptions: Source['parseOptions'] = {}) => ({ ...src({ id, format: 'word' as const }), name: 'report.docx', parseOptions, file: { originalName: 'report.docx', size: 1, lastModified: 0, headHash: 'h' } });
