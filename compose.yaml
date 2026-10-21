@@ -46,8 +46,10 @@ services:
     command: ['watch', '/projects', '--poll', '${PUDDLE_RUNNER_POLL:-30}']
 
   # puddle-connect speaks the database protocols a browser cannot. It sits on the internal network only; nginx in the
-  # puddle service proxies /connect/ to it. It refuses to start without PUDDLE_CONNECT_TOKEN, and reaches only the
-  # hosts in PUDDLE_CONNECT_ALLOW (empty reaches nothing). Put Cloudflare Access on /connect/ as well: deploy/README.md.
+  # puddle service proxies /connect/ to it. The service itself refuses to start without PUDDLE_CONNECT_TOKEN (the
+  # variable is not required here, since Compose checks every service's settings even for profiles that are off, and
+  # plain `docker compose up` must work without it), and reaches only the hosts in PUDDLE_CONNECT_ALLOW (empty reaches
+  # nothing). Put Cloudflare Access on /connect/ as well: deploy/README.md.
   connect:
     profiles: [connect]
     image: ${PUDDLE_CONNECT_IMAGE:-puddle-connect:latest}
@@ -57,7 +59,7 @@ services:
     restart: unless-stopped
     read_only: true
     environment:
-      PUDDLE_CONNECT_TOKEN: ${PUDDLE_CONNECT_TOKEN:?PUDDLE_CONNECT_TOKEN is required for puddle-connect}
+      PUDDLE_CONNECT_TOKEN: ${PUDDLE_CONNECT_TOKEN:-}
       PUDDLE_CONNECT_ALLOW: ${PUDDLE_CONNECT_ALLOW:-}
       PUDDLE_CONNECT_TIMEOUT: ${PUDDLE_CONNECT_TIMEOUT:-60}
       PUDDLE_CONNECT_ORIGIN: ${PUDDLE_CONNECT_ORIGIN:-}
