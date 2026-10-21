@@ -216,6 +216,7 @@ An Arrow IPC file (`.arrow`, `.feather`, or `.ipc`) is read with its column type
 
 When you open the project again, choose the archive once and every file read from it connects. `puddle-run` reads all three the same way, with the same types. Bzip2 and zstd files, and tar archives, aren't opened: unpack them, or pack the file as gzip or zip.
 
+(sources-databases)=
 ## Databases
 
 **Add › From database** reads tables from a database into sources. Pick a saved connection, or make one from the grid of databases; a connection needs the database's address and user name, and its password or token, which is kept in this tab only and never saved in the project, a recipe or a shared link. **Test** opens the connection and says what answered.
@@ -230,7 +231,7 @@ DuckDB
 
 Once the connection is saved, **Read from** lists the database's tables and views with their columns and sizes. Tick the ones to read, or write a query in the database's own SQL, and set how many rows to read at most (empty reads them all). Each table and the query become a source on the canvas, read through the connection with the types the database declares.
 
-**Browse**, on a connection in the list or in a connection source's inspector, opens the database browser in the inspector's place: the database's schemas, tables and views with their columns and types, a search over table and column names, a preview of a table's first 100 rows when its name is clicked, and checkboxes with **Add N tables** to add the ticked ones as sources (or drag a table onto the canvas). A query typed in its box becomes a source with **Add query**. **Refresh** reads the tables again.
+**Browse**, on a connection in the list or in a connection source's inspector, opens the database browser in the inspector's place: the database's schemas, tables and views with their columns and types, a search over table and column names, a preview of a table's first 100 rows when its name is clicked, and checkboxes with **Add N tables** to add the ticked ones as sources (or drag a table onto the canvas). A query typed in its box becomes a source with **Add query**. **Refresh** reads the tables again. **Document the schema** (or **Document N tables**, with some ticked) writes the database's tables, keys, indexes, foreign keys and views into the project's {doc}`schema` as a group named after the connection; the same button is on each connection under **Project › Databases**, which also says when it was last documented.
 
 A connection source's inspector shows its table or query and the row limit; change either and the rows are read again, or press **Refresh** to read them again as they are now. **Edit** opens the connection. The catalogue is kept on the connection, so the inspector lists the other tables without connecting again.
 

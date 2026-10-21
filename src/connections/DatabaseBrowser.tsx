@@ -7,7 +7,7 @@ import { useProject, useProjectStore, type CatalogTable, type Connection } from 
 import { addConnectionSources, connectionNeeds, previewTable, readCatalog, tableName } from '../sources/connection';
 import { Banner, Button, columnKind, formatValue, Icon, TextInput, TypeTag } from '../ui';
 import { buildTree, countLabel, filterTree, TABLE_DRAG_TYPE, type TableDrag } from './browserTree';
-import { openConnectionDialog } from './dialog';
+import { openConnectionDialog, openDocumentSchema } from './dialog';
 import { driver } from './drivers';
 import { useConnectionFiles } from './files';
 import { useSecrets } from './secrets';
@@ -227,7 +227,9 @@ function BrowserBody({ connection }: { connection: Connection }) {
           <Button variant="primary" icon="plus" disabled={!count} onClick={addPicked}>
             {count ? `Add ${count} ${count === 1 ? 'table' : 'tables'}` : 'Add tables'}
           </Button>
-          <Button variant="secondary" icon="schema" disabled title="Document the schema into the project’s DBML: coming with the next change">Document the schema</Button>
+          <Button variant="secondary" icon="schema" title={count ? 'Document the ticked tables into the project’s DBML' : 'Document every table into the project’s DBML'} disabled={!all.length} onClick={() => openDocumentSchema(connection.id, count ? [...picked] : undefined)}>
+            {count ? `Document ${count === 1 ? 'the table' : `${count} tables`}` : 'Document the schema'}
+          </Button>
         </div>
         <textarea aria-label="Query" className="ui-input is-mono min-h-[var(--size-row)] w-full resize-y py-1" rows={2} spellCheck={false} placeholder={`A query in ${d.label}’s own SQL`} value={query} onChange={(e) => setQuery(e.target.value)} />
         <div>

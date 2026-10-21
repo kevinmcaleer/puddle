@@ -2,7 +2,7 @@
 // (src/sqlite/worker.ts), and directly in tests and the runner.
 import initSqlJs, { type Database, type SqlJsStatic, type SqlValue } from 'sql.js';
 import type { SheetColumn } from '../excel/types';
-import { SqliteError, type SqliteColumn, type SqliteData, type SqliteTableInfo } from './types';
+import { SqliteError, type SqliteColumn, type SqliteData, type SqliteTableDetail, type SqliteTableInfo } from './types';
 
 /** Every SQLite database file starts with this. */
 const MAGIC = 'SQLite format 3\0';
@@ -45,6 +45,59 @@ export function listTables(db: Database): SqliteTableInfo[] {
     }
   } finally {
     stmt.free();
+  }
+  return out;
+}
+
+/**
+ * The database's tables and views in detail, from the PRAGMAs: primary keys (in key order), not null, defaults as
+ * written, AUTOINCREMENT, unique and other indexes (SQLite's own autoindexes become unique marks on the column),
+ * foreign keys, and a view's SQL.
+ */
+export function describeTables(db: Database): SqliteTableDetail[] {
+  const out: SqliteTableDetail[] = [];
+  const rows = (q: string) => db.exec(q)[0]?.values ?? [];
+  for (const [name, type, sql] of rows("SELECT name, type, sql FROM sqlite_master WHERE type IN ('table', 'view') AND name NOT LIKE 'sqlite_%' ORDER BY type, name") as [string, string, string | null][]) {
+    const info = rows(`PRAGMA table_info(${quote(name)})`);
+    const increment = type === 'table' && /\bAUTOINCREMENT\b/i.test(sql ?? '');
+    const indexes = (rows(`PRAGMA index_list(${quote(name)})`) as [number, string, number, string][]).map(([, indexName, unique, origin]) => ({
+      name: indexName,
+      unique: unique === 1,
+      origin,
+      columns: (rows(`PRAGMA index_info(${quote(indexName)})`) as [number, number, string | null][]).map((r) => r[2]).filter((c): c is string => c !== null),
+    }));
+    // A unique constraint on one column is an autoindex ('u') over it: marked on the column, not listed as an index.
+    const uniqueColumns = new Set(indexes.filter((i) => i.unique && i.origin === 'u' && i.columns.length === 1).map((i) => i.columns[0]!));
+    const pkCount = info.filter((r) => Number(r[5]) > 0).length;
+    const columns = info.map((r) => {
+      const pk = Number(r[5]) > 0;
+      return {
+        name: String(r[1]),
+        type: String(r[2] ?? ''),
+        pk,
+        unique: uniqueColumns.has(String(r[1])),
+        notNull: r[3] === 1 || pk,
+        increment: increment && pk && pkCount === 1,
+        default: r[4] === null || r[4] === undefined ? undefined : String(r[4]),
+      };
+    });
+    const fks = new Map<number, { columns: string[]; refTable: string; refColumns: string[] }>();
+    for (const r of rows(`PRAGMA foreign_key_list(${quote(name)})`) as [number, number, string, string, string | null][]) {
+      const [id, , refTable, from, to] = r;
+      const fk = fks.get(id) ?? { columns: [], refTable, refColumns: [] };
+      fk.columns.push(from);
+      // A reference without a column names the parent's primary key.
+      fk.refColumns.push(to ?? '');
+      fks.set(id, fk);
+    }
+    out.push({
+      name,
+      kind: type === 'view' ? 'view' : 'table',
+      columns,
+      indexes: indexes.filter((i) => i.origin === 'c').map(({ name: indexName, columns: cols, unique }) => ({ name: indexName, columns: cols, unique })),
+      foreignKeys: [...fks.values()],
+      sql: type === 'view' ? (sql ?? undefined) : undefined,
+    });
   }
   return out;
 }

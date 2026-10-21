@@ -1,8 +1,8 @@
 // What the SQLite worker does, as plain methods: the worker (worker.ts) calls them, and tests and the runner call them directly.
 import type { Database } from 'sql.js';
 import { sheetToIPC } from '../excel/arrow';
-import { listTables, openDatabase, readRows } from './read';
-import { SqliteError, type SqliteTableInfo } from './types';
+import { describeTables, listTables, openDatabase, readRows } from './read';
+import { SqliteError, type SqliteTableDetail, type SqliteTableInfo } from './types';
 
 export interface SqliteReadResult {
   rows: number;
@@ -16,6 +16,8 @@ export interface SqliteReadResult {
 export interface SqliteOps {
   /** The tables of a database. `db` names it so it is opened once across calls. */
   tables: { args: { db: string; file: Blob }; result: SqliteTableInfo[] };
+  /** The tables in detail, for documenting the schema. */
+  describe: { args: { db: string; file: Blob }; result: SqliteTableDetail[] };
   /** Read a table or run a query, at most `limit` rows. */
   read: { args: { db: string; file: Blob; table?: string; query?: string; limit?: number }; result: SqliteReadResult };
   /** Let an opened database go. */
@@ -47,6 +49,10 @@ export class SqliteService implements Record<SqliteOp, (args: never) => Promise<
 
   async tables({ db, file }: SqliteOps['tables']['args']): Promise<SqliteTableInfo[]> {
     return listTables(await this.database(db, file));
+  }
+
+  async describe({ db, file }: SqliteOps['describe']['args']): Promise<SqliteTableDetail[]> {
+    return describeTables(await this.database(db, file));
   }
 
   async read({ db, file, table, query, limit }: SqliteOps['read']['args']): Promise<SqliteReadResult> {

@@ -16,13 +16,13 @@ type Format = 'html' | 'markdown';
 /** The diagrams the docs show: All tables, then each view. */
 const pictured = (doc: SchemaDoc) => [{ name: 'All tables', view: undefined }, ...doc.views.map((v) => ({ name: v.name, view: v }))];
 
-export function ExportDocsDialog({ schema, doc, title, onClose }: { schema: DbmlSchema; doc: SchemaDoc; title: string; onClose: () => void }) {
+export function ExportDocsDialog({ schema, doc, title, subtitle, onClose }: { schema: DbmlSchema; doc: SchemaDoc; title: string; subtitle?: string; onClose: () => void }) {
   const [format, setFormat] = useState<Format>('html');
   const stage = useRef<HTMLDivElement>(null);
   const name = (title || 'schema').replace(/[\\/:*?"<>|]+/g, ' ').trim() || 'schema';
   const download = () => {
     if (format === 'markdown') {
-      saveBlob(new Blob([writeDocsMarkdown(schema, { title })], { type: 'text/markdown' }), `${name}.md`);
+      saveBlob(new Blob([writeDocsMarkdown(schema, { title, subtitle })], { type: 'text/markdown' }), `${name}.md`);
       return onClose();
     }
     const svgs = [...(stage.current?.querySelectorAll<SVGSVGElement>('[data-testid="schema-diagram"]') ?? [])];
@@ -31,7 +31,7 @@ export function ExportDocsDialog({ schema, doc, title, onClose }: { schema: Dbml
       const diagram = layoutDiagram(schema, viewPositions(doc, view), { detail: view?.detail ?? doc.detail, only: viewTables(view) });
       return svg && diagram.tables.length ? [{ name: viewName, svg: pictureOf(svg, exportBounds(diagram), { theme: 'light', transparent: false }).svg }] : [];
     });
-    saveBlob(new Blob([writeDocsHtml(schema, { title, views, tokens: defaultDocsTokens() })], { type: 'text/html' }), `${name}.html`);
+    saveBlob(new Blob([writeDocsHtml(schema, { title, subtitle, views, tokens: defaultDocsTokens() })], { type: 'text/html' }), `${name}.html`);
     onClose();
   };
   return (

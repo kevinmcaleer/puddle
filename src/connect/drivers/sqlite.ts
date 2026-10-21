@@ -3,7 +3,7 @@ import type { Catalog, CatalogTable } from '../../model';
 import { sqliteClient, type SqliteClient } from '../../sqlite/client';
 import { duckType } from '../../sqlite/read';
 import type { SqliteTableInfo } from '../../sqlite/types';
-import { ConnectorError, type Connector, type ConnectorContext } from '../types';
+import { ConnectorError, type CatalogDetail, type Connector, type ConnectorContext } from '../types';
 
 const need = (ctx: ConnectorContext) => {
   if (!ctx.file) throw new ConnectorError('Choose the database file first.');
@@ -27,6 +27,10 @@ export function sqliteConnector(id: 'sqlite' | 'libsql', client: () => SqliteCli
     async read(ctx, req) {
       const r = await client().call('read', { ...need(ctx), table: req.table?.name, query: req.query, limit: req.limit });
       return { columns: r.columns, rows: r.rows, ipc: r.ipc };
+    },
+    async document(ctx): Promise<CatalogDetail> {
+      const tables = await client().call('describe', need(ctx));
+      return { tables: tables.map((t) => ({ name: t.name, kind: t.kind, columns: t.columns, indexes: t.indexes, foreignKeys: t.foreignKeys, ...(t.sql ? { sql: t.sql } : {}) })), enums: [] };
     },
   };
 }
