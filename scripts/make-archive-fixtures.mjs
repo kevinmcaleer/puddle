@@ -1,12 +1,12 @@
 // Writes tests/fixtures/archives/: the compressed, zipped and Arrow fixtures for #192. orders.csv.gz holds
 // shop-orders.csv gzipped; shop.zip holds shop-orders.csv (deflated) and shop-customers.csv (stored) with the folder
 // and resource-fork junk a Mac zip carries; sales.xlsx.gz holds the Excel fixture, for a format that must be
-// unpacked whole; customers.arrow is an Arrow IPC file (ARROW1) with typed columns. The zip is written here by hand
-// (Node has no zip writer), so the test fixtures depend on nothing. Run with `node scripts/make-archive-fixtures.mjs`
+// unpacked whole; customers.arrow is an Arrow IPC file (ARROW1) with typed columns. The zip is written by ./zip.mjs. Run with `node scripts/make-archive-fixtures.mjs`
 // after changing it, and commit the files.
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { crc32, deflateRawSync, gzipSync } from 'node:zlib';
+import { gzipSync } from 'node:zlib';
+import { zip } from './zip.mjs';
 import { Bool, DateDay, Float64, Int32, tableToIPC, Table, Utf8, vectorFromArray } from 'apache-arrow';
 
 const fixtures = fileURLToPath(new URL('../tests/fixtures/', import.meta.url));
@@ -22,28 +22,6 @@ const customers = readFileSync(`${fixtures}shop-customers.csv`);
 
 write('orders.csv.gz', gzipSync(orders));
 write('sales.xlsx.gz', gzipSync(readFileSync(`${fixtures}sales.xlsx`)));
-
-/** A zip from entries [name, bytes, method] (method 8 deflates, 0 stores); a name ending in / is a folder. */
-function zip(entries) {
-  const le16 = (n) => [n & 0xff, (n >> 8) & 0xff];
-  const le32 = (n) => [n & 0xff, (n >> 8) & 0xff, (n >> 16) & 0xff, (n >>> 24) & 0xff];
-  const parts = [];
-  const central = [];
-  let offset = 0;
-  for (const [name, data, method] of entries) {
-    const nameBytes = Buffer.from(name);
-    const packed = method === 8 ? deflateRawSync(data) : data;
-    const crc = data.length ? crc32(data) : 0;
-    const fixed = [...le16(20), ...le16(0), ...le16(method), ...le16(0), ...le16(0x5021), ...le32(crc), ...le32(packed.length), ...le32(data.length), ...le16(nameBytes.length), ...le16(0)];
-    const local = Buffer.concat([Buffer.from([0x50, 0x4b, 3, 4]), Buffer.from(fixed), nameBytes, packed]);
-    central.push(Buffer.concat([Buffer.from([0x50, 0x4b, 1, 2]), Buffer.from(le16(20)), Buffer.from(fixed), Buffer.from([...le16(0), ...le16(0), ...le16(0), ...le32(0), ...le32(offset)]), nameBytes]));
-    parts.push(local);
-    offset += local.length;
-  }
-  const dir = Buffer.concat(central);
-  const end = Buffer.concat([Buffer.from([0x50, 0x4b, 5, 6]), Buffer.from([...le16(0), ...le16(0), ...le16(entries.length), ...le16(entries.length), ...le32(dir.length), ...le32(offset), ...le16(0)])]);
-  return Buffer.concat([...parts, dir, end]);
-}
 
 write(
   'shop.zip',

@@ -27,6 +27,7 @@ const BY_EXTENSION: Record<string, SourceFormat> = {
   ini: 'ini',
   cfg: 'ini',
   geojson: 'geojson',
+  docx: 'word',
   arrow: 'arrow',
   feather: 'arrow',
   ipc: 'arrow',
@@ -36,10 +37,10 @@ const BY_EXTENSION: Record<string, SourceFormat> = {
   ...Object.fromEntries(SPREADSHEET_EXTENSIONS.map((ext) => [ext, 'xlsx' as const])),
 };
 
-export const ACCEPT = `.csv,.txt,.tsv,.tab,.json,.ndjson,.jsonl,.parquet,.pq,.arrow,.feather,.ipc,${SPREADSHEET_EXTENSIONS.map((e) => `.${e}`).join(',')},.xml,.kml,.gpx,.yaml,.yml,.toml,.ini,.cfg,.geojson,.mdb,.accdb,.gz,.zip,.dat,.log,.text,.prn`;
+export const ACCEPT = `.csv,.txt,.tsv,.tab,.json,.ndjson,.jsonl,.parquet,.pq,.arrow,.feather,.ipc,${SPREADSHEET_EXTENSIONS.map((e) => `.${e}`).join(',')},.xml,.kml,.gpx,.yaml,.yml,.toml,.ini,.cfg,.geojson,.docx,.mdb,.accdb,.gz,.zip,.dat,.log,.text,.prn`;
 
 /** What Puddle reads, for the refusals. */
-export const READS = 'Add a CSV, TSV, JSON, NDJSON, Parquet, Arrow, spreadsheet (.xlsx, .xls, .ods, .numbers, .dbf), XML, YAML, TOML, INI, GeoJSON or Access (.accdb, .mdb) file, or a .gz or .zip holding one.';
+export const READS = 'Add a CSV, TSV, JSON, NDJSON, Parquet, Arrow, spreadsheet (.xlsx, .xls, .ods, .numbers, .dbf), XML, YAML, TOML, INI, GeoJSON, Word (.docx) or Access (.accdb, .mdb) file, or a .gz or .zip holding one.';
 
 /** Plain-text extensions that say nothing about the shape inside; `sniff` reads it from the bytes. */
 export const TEXT_EXTENSIONS = new Set(['txt', 'dat', 'log', 'text', 'prn']);

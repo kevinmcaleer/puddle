@@ -154,3 +154,17 @@ describe('reading a file from an archive', () => {
     expect(sourceTableName({ ...arrow, file: { ...arrow.file!, headHash: 'h2' } })).not.toBe(sourceTableName(arrow));
   });
 });
+
+describe('reading a table of a Word document', () => {
+  const word: Source = { id: 'w', name: 'report.docx', kind: 'file', format: 'word', file: { originalName: 'report.docx', size: 1, lastModified: 0, headHash: 'h1' }, parseOptions: {}, detectedSchema: [] };
+
+  it('reads the CSV Puddle wrote from the table, named for the file, the table and the header option', () => {
+    expect(sourceFileName(word)).toMatch(/^src_w_[0-9a-f]{12}\.csv$/);
+    expect(sourceRelation(word)).toBe(`read_csv('${sourceFileName(word)}', header = true, delim = ',', quote = '"', escape = '"', null_padding = true)`);
+    const other = { ...word, parseOptions: { table: '2' } };
+    expect(sourceFileName(other)).not.toBe(sourceFileName(word));
+    expect(sourceFileName({ ...word, parseOptions: { header: false } })).not.toBe(sourceFileName(word));
+    expect(sourceFileName({ ...word, file: { ...word.file!, headHash: 'h2' } })).not.toBe(sourceFileName(word));
+    expect(sourceRelation({ ...word, parseOptions: { nullStrings: ['n/a'] } })).toContain(`nullstr = ['', 'n/a']`);
+  });
+});

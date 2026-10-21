@@ -5,7 +5,7 @@ export const FORMAT_VERSION = 2;
 
 export const ColumnSchemaZ = z.object({ name: z.string(), type: z.string() });
 
-export const SourceFormatZ = z.enum(['csv', 'tsv', 'json', 'ndjson', 'parquet', 'xlsx', 'xml', 'access', 'fixed', 'pipes', 'arrow', 'yaml', 'toml', 'ini', 'geojson']);
+export const SourceFormatZ = z.enum(['csv', 'tsv', 'json', 'ndjson', 'parquet', 'xlsx', 'xml', 'access', 'fixed', 'pipes', 'arrow', 'yaml', 'toml', 'ini', 'geojson', 'word']);
 
 export const ParseOptionsZ = z
   .object({
@@ -35,7 +35,7 @@ export const ParseOptionsZ = z
     record: z.string(),
     /** XML: a repeating element inside each record, as a path from it ("author"), given a row each. */
     expand: z.string(),
-    /** Access: the table of the database read. */
+    /** Access: the table of the database read. Word: the table of the document read, by its number from 1 ("2"); unset, the biggest. */
     table: z.string(),
     /** Fixed width: the character offsets at which each column after the first starts; found from the text when unset. */
     boundaries: z.array(z.number().int().positive()),

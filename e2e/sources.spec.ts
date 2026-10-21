@@ -91,5 +91,5 @@ test('a file in a format Puddle doesn’t read is refused with a reason', async 
   // Excel workbooks used to be refused here; they are read now, and their flows are covered in excel.spec.ts.
   await openApp(page);
   await addFiles(page, [{ name: 'photo.png', mimeType: 'image/png', buffer: Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 0x0d]) }]);
-  await expect(page.getByTestId('canvas-notice')).toContainText('photo.png is a binary file, which Puddle doesn’t read. Add a CSV, TSV, JSON, NDJSON, Parquet, Arrow, spreadsheet (.xlsx, .xls, .ods, .numbers, .dbf), XML, YAML, TOML, INI, GeoJSON or Access (.accdb, .mdb) file, or a .gz or .zip holding one.');
+  await expect(page.getByTestId('canvas-notice')).toContainText('photo.png is a binary file, which Puddle doesn’t read. Add a CSV, TSV, JSON, NDJSON, Parquet, Arrow, spreadsheet (.xlsx, .xls, .ods, .numbers, .dbf), XML, YAML, TOML, INI, GeoJSON, Word (.docx) or Access (.accdb, .mdb) file, or a .gz or .zip holding one.');
 });

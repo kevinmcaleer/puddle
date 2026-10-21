@@ -36,6 +36,7 @@ Puddle reads these formats:
 | GeoJSON | `.geojson` | Each feature is a row: its properties as columns, its geometry as JSON. See [YAML, TOML, INI and GeoJSON](#yaml-toml-ini-and-geojson). |
 | Fixed width | `.txt`, `.prn`, `.dat` | Columns lined up with spaces, as mainframe and ERP reports print them. The boundaries are found from the columns of spaces and adjusted on a ruler. See [Fixed width and pipe tables](#fixed-width-and-pipe-tables). |
 | Pipe table | `.txt` | Rows between `|` characters, as SAP lists and Markdown tables have them. The lines around the table are left out. See [Fixed width and pipe tables](#fixed-width-and-pipe-tables). |
+| Word | `.docx` | The tables in a Word document. Choose the table; add the document's other tables as sources of their own. See [Word documents](#word-documents). |
 | Access | `.accdb`, `.mdb` | Choose the table; add the database's other tables as sources of their own. See [Access databases](#access-databases). |
 | Arrow | `.arrow`, `.feather`, `.ipc` | An Arrow IPC file, read with its column types. See [Compressed files, archives and Arrow files](#compressed-files-archives-and-arrow-files). |
 | Compressed files and archives | `.gz`, `.zip` | Any of the above inside a gzip file or a zip archive. A zip with several files opens to the first and offers the rest. See [Compressed files, archives and Arrow files](#compressed-files-archives-and-arrow-files). |
@@ -141,6 +142,12 @@ Configuration and small data sets often come as YAML, TOML or INI rather than CS
 A GeoJSON file reads each feature as a row: its `id` where it has one, its properties as columns and its geometry as JSON text, which a step can pull coordinates out of. KML and GPX files are XML, read with the placemarks or track points as the record element; a KMZ is a zipped KML and opens as one.
 
 The rows are typed by DuckDB as on any CSV, so numbers, dates and booleans written as text are a Parse step away. `puddle-run` reads all of them the same way.
+
+## Word documents
+
+A report or a specification often holds its data as a table in a Word document. Add the `.docx` file and Puddle reads its tables: the biggest opens first, and the inspector lists every table under **Table**, named by its caption or the heading above it, with its size. A cell merged across columns is repeated across them and one merged down rows takes the value above, so every row has every column, as Word shows it. The first row is the header unless **First row is the header** is turned off, and tracked deletions are left out.
+
+**Add the other tables** adds a source for each table not yet on the canvas, reading the same document. Old `.doc` files aren't read: open them in Word and save as `.docx`. The rows are typed by DuckDB as on any CSV, and `puddle-run` reads the same table.
 
 ## Access databases
 

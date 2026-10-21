@@ -1,14 +1,18 @@
-// Reading fixed-width text, pipe tables and structured text (YAML, TOML, INI, GeoJSON) into the CSV DuckDB reads,
-// shared by the browser (./rewrite) and the runner (src/runner/run.ts). Pure: bytes and options in, CSV out.
+// Reading fixed-width text, pipe tables, structured text (YAML, TOML, INI, GeoJSON) and the tables of a Word document
+// into the CSV DuckDB reads, shared by the browser (./rewrite) and the runner (src/runner/run.ts). Pure: bytes and
+// options in, CSV out.
 import type { ParseOptions, Source } from '../model';
 import { isStructuredFormat, parseStructured, structuredToTable, type RecordCandidate, type StructuredFormat } from '../structured';
+import { likeliestTable, readWordTables, wordTableInfo, wordTableToRows, type WordTableInfo } from '../word';
 import { tableToCsv } from '../xml';
 import { readFixedWidth } from './fixedWidth';
 import { readPipes } from './pipes';
 
-export type RewrittenFormat = 'fixed' | 'pipes' | StructuredFormat;
+export type RewrittenFormat = 'fixed' | 'pipes' | 'word' | StructuredFormat;
+/** The rewritten formats read from text; a Word document is read from its bytes (readWord). */
+export type RewrittenTextFormat = Exclude<RewrittenFormat, 'word'>;
 
-export const isRewrittenText = (s: Pick<Source, 'format'>): s is Source & { format: RewrittenFormat } => s.format === 'fixed' || s.format === 'pipes' || isStructuredFormat(s.format);
+export const isRewrittenText = (s: Pick<Source, 'format'>): s is Source & { format: RewrittenFormat } => s.format === 'fixed' || s.format === 'pipes' || s.format === 'word' || isStructuredFormat(s.format);
 
 /** Decode a file's bytes in the encoding its read options name (as the sniff set it): UTF-16 by its BOM, Latin-1 as Windows-1252, else UTF-8. */
 export function decodeText(bytes: Uint8Array, encoding?: string): string {
@@ -30,10 +34,13 @@ export interface RewrittenTable {
   /** Structured text: the records read, as a path of keys, and every place records were found. */
   record?: string;
   candidates?: RecordCandidate[];
+  /** Word: the table read, by its number from 1, and every table in the document. */
+  table?: number;
+  tables?: WordTableInfo[];
 }
 
 /** Read the text as the format says, with its read options. */
-export function readText(format: RewrittenFormat, text: string, o: ParseOptions): RewrittenTable {
+export function readText(format: RewrittenTextFormat, text: string, o: ParseOptions): RewrittenTable {
   if (isStructuredFormat(format)) {
     const t = structuredToTable(parseStructured(format, text), format, { record: o.record });
     return { columns: t.columns, rows: t.rows, record: t.record, candidates: t.candidates };
@@ -44,6 +51,17 @@ export function readText(format: RewrittenFormat, text: string, o: ParseOptions)
   }
   const t = readPipes(text, { header: o.header });
   return { columns: t.columns, rows: t.rows, dropped: t.dropped };
+}
+
+/** Read the table of a Word document the options name (the biggest when they name none), with its first row as the column names unless told otherwise. */
+export async function readWord(bytes: Uint8Array, o: ParseOptions): Promise<RewrittenTable> {
+  const tables = await readWordTables(bytes);
+  if (!tables.length) throw new Error('There are no tables in this document.');
+  const wanted = o.table ? Number.parseInt(o.table, 10) : undefined;
+  const table = (wanted ? tables.find((t) => t.index === wanted) : undefined) ?? likeliestTable(tables)!;
+  if (wanted && table.index !== wanted) throw new Error(`There is no table ${wanted} in this document: it has ${tables.length === 1 ? 'one table' : `${tables.length} tables`}.`);
+  const t = wordTableToRows(table, { header: o.header });
+  return { columns: t.columns, rows: t.rows, table: table.index, tables: tables.map(wordTableInfo) };
 }
 
 /** The CSV DuckDB reads for the table: a header row, commas and double quotes. */

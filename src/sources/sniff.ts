@@ -9,7 +9,7 @@ import { detectBoundaries } from './fixedWidth';
 export type Confidence = 'sure' | 'likely' | 'unsure';
 
 /** A format the sniff can name but Puddle doesn't read, so the refusal can say what the file is. */
-export type OtherFormat = 'word' | 'powerpoint' | 'zip' | 'gzip' | 'bzip2' | 'zstd' | 'sqlite' | 'pdf' | 'ole' | 'binary';
+export type OtherFormat = 'doc' | 'powerpoint' | 'zip' | 'gzip' | 'bzip2' | 'zstd' | 'sqlite' | 'pdf' | 'ole' | 'binary';
 
 export interface Sniffed {
   format: SourceFormat;
@@ -94,7 +94,7 @@ export function signatureOf(head: Uint8Array): SourceFormat | OtherFormat | unde
   }
   if (startsWith(head, 0xd0, 0xcf, 0x11, 0xe0)) {
     // The streams of an old Office file say which program wrote it; a workbook's is Workbook (BIFF8) or Book (BIFF5).
-    if (hasUtf16(head, 'WordDocument')) return 'word';
+    if (hasUtf16(head, 'WordDocument')) return 'doc';
     if (hasUtf16(head, 'PowerPoint Document')) return 'powerpoint';
     if (hasUtf16(head, 'Workbook') || hasUtf16(head, 'Book')) return 'xlsx';
     return 'ole';
@@ -115,7 +115,7 @@ export function signatureOf(head: Uint8Array): SourceFormat | OtherFormat | unde
 }
 
 const OTHER_NAMES: Record<OtherFormat, string> = {
-  word: 'a Word document',
+  doc: 'an old Word document (.doc)',
   powerpoint: 'a PowerPoint presentation',
   zip: 'a zip archive',
   gzip: 'a gzip-compressed file',
@@ -137,6 +137,7 @@ export const archiveKindOf = (head: Uint8Array): ArchiveKind | undefined => {
 export function refusal(name: string, other: OtherFormat): SourceError {
   if (other === 'bzip2' || other === 'zstd') return new SourceError(`${name} is ${OTHER_NAMES[other]}, which Puddle doesn’t open. Unpack it and add the file inside, or pack it as gzip or zip.`);
   if (other === 'gzip' || other === 'zip') return new SourceError(`${name} is ${OTHER_NAMES[other]}, which Puddle opens from a chosen file: unpack it and add the file inside, or choose the archive itself.`);
+  if (other === 'doc') return new SourceError(`${name} is ${OTHER_NAMES[other]}, which Puddle doesn’t read. Open it in Word and save it as a .docx file, then add that.`);
   return new SourceError(`${name} is ${OTHER_NAMES[other]}, which Puddle doesn’t read. ${READS}`);
 }
 
@@ -447,8 +448,8 @@ export function sniff({ name, head, size, tail }: SniffInput): Sniffed {
   const byName = knownFormat(name);
   const signature = signatureOf(head);
   if (signature) {
-    if (signature === 'xlsx' || signature === 'parquet' || signature === 'access' || signature === 'arrow') {
-      return { format: signature, confidence: 'sure', parseOptions: {}, alternatives: [], reason: `${signature === 'xlsx' ? 'A spreadsheet' : signature === 'parquet' ? 'A Parquet file' : signature === 'arrow' ? 'An Arrow file' : 'A database'} by its signature.` };
+    if (signature === 'xlsx' || signature === 'parquet' || signature === 'access' || signature === 'arrow' || signature === 'word') {
+      return { format: signature, confidence: 'sure', parseOptions: {}, alternatives: [], reason: `${signature === 'xlsx' ? 'A spreadsheet' : signature === 'parquet' ? 'A Parquet file' : signature === 'arrow' ? 'An Arrow file' : signature === 'word' ? 'A Word document' : 'A database'} by its signature.` };
     }
     // An old Office file whose streams weren't in the first megabyte: a workbook when the name says so.
     if (signature === 'ole' && byName === 'xlsx') return { format: 'xlsx', confidence: 'likely', parseOptions: {}, alternatives: [], reason: 'An old Office file, taken as a workbook from the file name.' };
@@ -460,7 +461,7 @@ export function sniff({ name, head, size, tail }: SniffInput): Sniffed {
   }
   const decoded = decodeHead(head, size == null || size <= head.length);
   if ('binary' in decoded) {
-    if (byName === 'parquet' || byName === 'xlsx' || byName === 'access' || byName === 'arrow') return { format: byName, confidence: 'likely', parseOptions: {}, alternatives: [], reason: 'Taken from the file name.' };
+    if (byName === 'parquet' || byName === 'xlsx' || byName === 'access' || byName === 'arrow' || byName === 'word') return { format: byName, confidence: 'likely', parseOptions: {}, alternatives: [], reason: 'Taken from the file name.' };
     throw refusal(name, 'binary');
   }
   // A flat OpenDocument spreadsheet (.fods) is XML; its name says which XML.
