@@ -68,8 +68,9 @@ export function connectionNeeds(connection: Connection): 'file' | 'secret' | und
   const fileDriver = connection.via === 'browser' && d.fields.some((f) => f.kind === 'file');
   const viaFile = fileDriver && (d.fields.some((f) => f.kind === 'file' && f.required) || !!connection.settings.file);
   if (viaFile && !connectionFile(connection.id)) return 'file';
-  // A file needs no sign-in (a LibSQL file is read like SQLite); the service behind the same driver does.
-  if (!viaFile && SECRET_LABEL[d.auth] && !secretFor(connection.id)) return 'secret';
+  // A file needs no sign-in (a LibSQL file is read like SQLite, in the page or by its path on the service); the server behind the same driver does.
+  const viaPath = connection.via !== 'browser' && !!connection.settings.path && d.fields.some((f) => f.key === 'url' && !f.required) && !connection.settings.url;
+  if (!viaFile && !viaPath && SECRET_LABEL[d.auth] && !secretFor(connection.id)) return 'secret';
   return undefined;
 }
 

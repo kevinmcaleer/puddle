@@ -1,0 +1,244 @@
+{
+  "test": {
+    "ok": true,
+    "server": "SurrealDB 2.3.7, 2 tables"
+  },
+  "catalog": {
+    "tables": [
+      {
+        "name": "customers",
+        "kind": "table",
+        "rows": 3,
+        "columns": [
+          {
+            "name": "active",
+            "type": "BOOLEAN",
+            "nullable": false
+          },
+          {
+            "name": "email",
+            "type": "VARCHAR",
+            "nullable": true
+          },
+          {
+            "name": "id",
+            "type": "VARCHAR",
+            "nullable": false
+          },
+          {
+            "name": "name",
+            "type": "VARCHAR",
+            "nullable": false
+          },
+          {
+            "name": "signed_up",
+            "type": "TIMESTAMP",
+            "nullable": false
+          }
+        ]
+      },
+      {
+        "name": "orders",
+        "kind": "table",
+        "rows": 4,
+        "columns": [
+          {
+            "name": "customer",
+            "type": "VARCHAR",
+            "nullable": false
+          },
+          {
+            "name": "id",
+            "type": "VARCHAR",
+            "nullable": false
+          },
+          {
+            "name": "notes",
+            "type": "VARCHAR",
+            "nullable": true
+          },
+          {
+            "name": "placed_at",
+            "type": "TIMESTAMP",
+            "nullable": false
+          },
+          {
+            "name": "shipping.city",
+            "type": "VARCHAR",
+            "nullable": true
+          },
+          {
+            "name": "shipping.postcode",
+            "type": "VARCHAR",
+            "nullable": true
+          },
+          {
+            "name": "status",
+            "type": "VARCHAR",
+            "nullable": false
+          },
+          {
+            "name": "tags",
+            "type": "JSON",
+            "nullable": false
+          },
+          {
+            "name": "total",
+            "type": "DECIMAL(38,9)",
+            "nullable": false
+          }
+        ]
+      }
+    ]
+  },
+  "detail": {
+    "tables": [
+      {
+        "name": "customers",
+        "kind": "table",
+        "columns": [
+          {
+            "name": "active",
+            "type": "bool",
+            "pk": false,
+            "unique": false,
+            "notNull": true,
+            "increment": false,
+            "default": "true"
+          },
+          {
+            "name": "email",
+            "type": "option<string>",
+            "pk": false,
+            "unique": true,
+            "notNull": false,
+            "increment": false,
+            "note": "Lower case"
+          },
+          {
+            "name": "id",
+            "type": "string",
+            "pk": true,
+            "unique": true,
+            "notNull": true,
+            "increment": false
+          },
+          {
+            "name": "name",
+            "type": "string",
+            "pk": false,
+            "unique": false,
+            "notNull": true,
+            "increment": false
+          },
+          {
+            "name": "signed_up",
+            "type": "datetime",
+            "pk": false,
+            "unique": false,
+            "notNull": true,
+            "increment": false
+          }
+        ],
+        "indexes": [],
+        "foreignKeys": [],
+        "note": "People who have ordered. Inferred from 3 documents on 2026-10-21"
+      },
+      {
+        "name": "orders",
+        "kind": "table",
+        "columns": [
+          {
+            "name": "customer",
+            "type": "record<customers>",
+            "pk": false,
+            "unique": false,
+            "notNull": true,
+            "increment": false
+          },
+          {
+            "name": "id",
+            "type": "string",
+            "pk": true,
+            "unique": true,
+            "notNull": true,
+            "increment": false
+          },
+          {
+            "name": "notes",
+            "type": "string",
+            "pk": false,
+            "unique": false,
+            "notNull": false,
+            "increment": false,
+            "note": "present in 25% of documents"
+          },
+          {
+            "name": "placed_at",
+            "type": "datetime",
+            "pk": false,
+            "unique": false,
+            "notNull": true,
+            "increment": false
+          },
+          {
+            "name": "shipping.city",
+            "type": "string",
+            "pk": false,
+            "unique": false,
+            "notNull": false,
+            "increment": false,
+            "note": "present in 50% of documents"
+          },
+          {
+            "name": "shipping.postcode",
+            "type": "string",
+            "pk": false,
+            "unique": false,
+            "notNull": false,
+            "increment": false,
+            "note": "present in 25% of documents"
+          },
+          {
+            "name": "status",
+            "type": "string",
+            "pk": false,
+            "unique": false,
+            "notNull": true,
+            "increment": false
+          },
+          {
+            "name": "tags",
+            "type": "array",
+            "pk": false,
+            "unique": false,
+            "notNull": true,
+            "increment": false
+          },
+          {
+            "name": "total",
+            "type": "decimal",
+            "pk": false,
+            "unique": false,
+            "notNull": true,
+            "increment": false
+          }
+        ],
+        "indexes": [],
+        "foreignKeys": [
+          {
+            "columns": [
+              "customer"
+            ],
+            "refTable": "customers",
+            "refColumns": [
+              "id"
+            ]
+          }
+        ],
+        "note": "Inferred from 4 documents on 2026-10-21"
+      }
+    ],
+    "enums": []
+  }
+}

@@ -46,6 +46,10 @@ jobs:
       PUDDLE_TEST_FIREBIRD: firebird://SYSDBA:puddle@localhost:3050//var/lib/firebird/data/shop.fdb
       # The ClickHouse flow reads the shop in the browser, straight from the container's HTTP interface.
       PUDDLE_TEST_CLICKHOUSE: http://default:puddle@localhost:8123/shop
+      # The DynamoDB flow reads the shop in the browser from scripts/dynamodb-stand-in.mjs: DynamoDB Local's -cors
+      # answers the browser's preflight without the headers it asks for, so the browser never reaches it. The
+      # databases job below reads DynamoDB Local itself.
+      PUDDLE_TEST_DYNAMODB: dynamodb://AKIDEXAMPLE:secretexample@eu-west-2?endpoint=http://localhost:18092
     services:
       postgres:
         image: postgres:16
@@ -88,6 +92,8 @@ jobs:
       - run: node scripts/seed-mysql.mjs "$PUDDLE_TEST_MYSQL"
       - run: node scripts/seed-firebird.mjs "$PUDDLE_TEST_FIREBIRD"
       - run: node scripts/seed-clickhouse.mjs "$PUDDLE_TEST_CLICKHOUSE"
+      - run: (node scripts/dynamodb-stand-in.mjs 18092 AKIDEXAMPLE secretexample > /tmp/dynamodb-stand-in.log 2>&1 &) && sleep 1
+      - run: node scripts/seed-dynamodb.mjs "$PUDDLE_TEST_DYNAMODB"
       - run: npx playwright install --with-deps ${{ matrix.browser }}
       - run: npm run e2e -- --shard=${{ matrix.shard }}/${{ matrix.shards }}
       - if: failure()
@@ -266,9 +272,11 @@ jobs:
   databases:
     # The server drivers against real databases: each family's tests (tests/connect/*.test.ts) run against a container
     # seeded with tests/fixtures/db/seed*.sql. PostgreSQL, MySQL, MariaDB, Firebird and ClickHouse are services; CockroachDB,
-    # SQL Server, Oracle and Trino are started by hand (no official healthcheck, or a start too slow for one). BigQuery and
-    # Snowflake have no container: their rows run the stand-ins (scripts/*-stand-in.mjs), which answer in the APIs' shapes
-    # and check the signed sign-in with a key made for the job; a real project or account is the proof, when one is given.
+    # SQL Server, Oracle, Trino, LibSQL (sqld), SurrealDB and DynamoDB Local are started by hand (no official healthcheck,
+    # or a start too slow for one). BigQuery and Snowflake have no container: their rows run the stand-ins
+    # (scripts/*-stand-in.mjs), which answer in the APIs' shapes and check the signed sign-in with a key made for the job;
+    # a real project or account is the proof, when one is given. SAP HANA has no container either and no stand-in: its
+    # driver is tested on hand-made fixtures only (src/connect/drivers/hana.test.ts).
     # Each row also re-records the family's fixtures and prints them, so tests/fixtures/db/<family>/ can be refreshed from
     # the log.
     name: ${{ matrix.name }} driver
@@ -289,6 +297,9 @@ jobs:
           - { name: Trino, driver: trino, url: 'http://puddle@localhost:8080/memory/shop', test: tests/connect/trino.test.ts }
           - { name: BigQuery (stand-in), driver: bigquery, url: 'bigquery://puddle-test/shop?key=/tmp/puddle-keys/bigquery-key.json&endpoint=http://127.0.0.1:18090', test: tests/connect/bigquery.test.ts }
           - { name: Snowflake (stand-in), driver: snowflake, url: 'snowflake://puddle@xy12345.eu-west-2.aws/shop/public?key=/tmp/puddle-keys/test.p8&warehouse=compute_wh&url=http://127.0.0.1:18091', test: tests/connect/snowflake.test.ts }
+          - { name: LibSQL (sqld), driver: libsql, url: 'http://localhost:8081', test: tests/connect/libsql.test.ts }
+          - { name: SurrealDB, driver: surrealdb, url: 'http://root:root@localhost:8000/shop/shop', test: tests/connect/surrealdb.test.ts }
+          - { name: DynamoDB Local, driver: dynamodb, url: 'dynamodb://AKIDEXAMPLE:secretexample@eu-west-2?endpoint=http://localhost:8002&signatures=unchecked', test: tests/connect/dynamodb.test.ts }
     services:
       postgres:
         image: postgres:16
@@ -341,6 +352,9 @@ jobs:
       PUDDLE_TEST_TRINO: ${{ matrix.driver == 'trino' && matrix.url || '' }}
       PUDDLE_TEST_BIGQUERY: ${{ matrix.driver == 'bigquery' && matrix.url || '' }}
       PUDDLE_TEST_SNOWFLAKE: ${{ matrix.driver == 'snowflake' && matrix.url || '' }}
+      PUDDLE_TEST_LIBSQL: ${{ matrix.driver == 'libsql' && matrix.url || '' }}
+      PUDDLE_TEST_SURREALDB: ${{ matrix.driver == 'surrealdb' && matrix.url || '' }}
+      PUDDLE_TEST_DYNAMODB: ${{ matrix.driver == 'dynamodb' && matrix.url || '' }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -356,6 +370,12 @@ jobs:
         run: docker run -d --name oracle -p 1521:1521 -e ORACLE_PASSWORD=puddle -e APP_USER=shop -e APP_USER_PASSWORD=puddle gvenzl/oracle-free:23-slim-faststart
       - if: matrix.driver == 'trino'
         run: docker run -d --name trino -p 8080:8080 trinodb/trino:446
+      - if: matrix.driver == 'libsql'
+        run: docker run -d --name sqld -p 8081:8080 ghcr.io/tursodatabase/libsql-server:latest
+      - if: matrix.driver == 'surrealdb'
+        run: docker run -d --name surrealdb -p 8000:8000 surrealdb/surrealdb:v2 start --user root --pass root memory
+      - if: matrix.driver == 'dynamodb'
+        run: docker run -d --name dynamodb -p 8002:8000 amazon/dynamodb-local:latest -jar DynamoDBLocal.jar -inMemory -sharedDb -cors '*'
       - if: matrix.driver == 'bigquery' || matrix.driver == 'snowflake'
         run: |
           node scripts/make-test-key.mjs /tmp/puddle-keys http://127.0.0.1:18090/token
@@ -376,9 +396,15 @@ jobs:
         run: node scripts/seed-clickhouse.mjs "$PUDDLE_TEST_CLICKHOUSE"
       - if: matrix.driver == 'trino'
         run: node scripts/seed-trino.mjs "$PUDDLE_TEST_TRINO"
+      - if: matrix.driver == 'libsql'
+        run: node scripts/seed-libsql.mjs "$PUDDLE_TEST_LIBSQL"
+      - if: matrix.driver == 'surrealdb'
+        run: node scripts/seed-surrealdb.mjs "$PUDDLE_TEST_SURREALDB"
+      - if: matrix.driver == 'dynamodb'
+        run: node scripts/seed-dynamodb.mjs "$PUDDLE_TEST_DYNAMODB"
       - run: npx vitest run ${{ matrix.test }} --project shared
       - name: Record the fixtures the unit tests replay, for refreshing tests/fixtures/db/${{ matrix.driver }}/
-        if: matrix.driver == 'firebird' || matrix.driver == 'sqlserver' || matrix.driver == 'oracle' || matrix.driver == 'clickhouse' || matrix.driver == 'trino'
+        if: matrix.driver == 'firebird' || matrix.driver == 'sqlserver' || matrix.driver == 'oracle' || matrix.driver == 'clickhouse' || matrix.driver == 'trino' || matrix.driver == 'libsql' || matrix.driver == 'surrealdb' || matrix.driver == 'dynamodb'
         run: |
           node scripts/record-database.mjs ${{ matrix.driver }} "${{ matrix.url }}"
           echo '::group::queries.json'; cat tests/fixtures/db/${{ matrix.driver }}/queries.json 2>/dev/null || cat tests/fixtures/db/${{ matrix.driver }}/exchanges.json; echo '::endgroup::'

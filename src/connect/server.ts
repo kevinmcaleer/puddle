@@ -162,6 +162,7 @@ export function targetHost(settings: Record<string, string | number | boolean>, 
   if (text('url')) return hostOf(text('url'));
   if (driver === 'bigquery') return text('endpoint') ? hostOf(text('endpoint')) : 'bigquery.googleapis.com';
   if (driver === 'snowflake' && text('account')) return `${text('account').replace(/\.snowflakecomputing\.com$/i, '')}.snowflakecomputing.com`;
+  if (driver === 'dynamodb') return text('endpoint') ? hostOf(text('endpoint')) : text('region') ? `dynamodb.${text('region')}.amazonaws.com` : undefined;
   return undefined;
 }
 
