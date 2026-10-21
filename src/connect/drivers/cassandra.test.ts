@@ -8,7 +8,7 @@ import { describe, expect, it } from 'vitest';
 import { replayClient } from '../../../tests/helpers/replayCalls';
 import type { Connection } from '../../model';
 import { ConnectorError, type CatalogDetail } from '../types';
-import { cassandraConfigFor, cassandraConnector, cassandraProblem, indexColumn, inKeyspace, orderedColumns, readCql, TABLES_CQL, type CqlClientLike } from './cassandra';
+import { cassandraConfigFor, cassandraConnector, cassandraProblem, indexColumn, inKeyspace, orderedColumns, readCql, TABLES_CQL, userViews, type CqlClientLike } from './cassandra';
 
 const recorded = JSON.parse(readFileSync(join(__dirname, '../../../tests/fixtures/db/cassandra/catalog.json'), 'utf8')) as { test: unknown; catalog: unknown; detail: CatalogDetail };
 
@@ -129,6 +129,20 @@ describe('the Cassandra driver', () => {
     expect(indexColumn({ target: 'values(tags)' })).toBe('tags');
     expect(indexColumn({ target: 'status' })).toBe('status');
     expect(indexColumn(null)).toBe('');
+  });
+
+  it('leaves out the views ScyllaDB keeps behind its secondary indexes, keeping the ones a user made', () => {
+    const views = [
+      { keyspace_name: 'shop', view_name: 'orders_by_status' },
+      { keyspace_name: 'shop', view_name: 'orders_status_index' },
+      { keyspace_name: 'other', view_name: 'customers_email_index' },
+    ];
+    const indexes = [
+      { keyspace_name: 'shop', table_name: 'orders', index_name: 'orders_status' },
+      { keyspace_name: 'shop', table_name: 'customers', index_name: 'customers_email' },
+    ];
+    expect(userViews(views, indexes).map((v) => `${v.keyspace_name}.${v.view_name}`)).toEqual(['shop.orders_by_status', 'other.customers_email_index']);
+    expect(userViews(views, []).length).toBe(3);
   });
 
   it('reads the settings and says what is missing', () => {

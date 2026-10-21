@@ -87,7 +87,8 @@ jobs:
           - 8123:8123
         options: --health-cmd "wget -qO- http://localhost:8123/ping" --health-interval 5s --health-timeout 5s --health-retries 20
       mongo:
-        image: mongo:8
+        # MongoDB 8 refuses to start on Linux 6.19 and newer (SERVER-121912), which the hosted runners now have.
+        image: mongo:7
         ports:
           - 27017:27017
         options: --health-cmd "mongosh --quiet --eval 'db.runCommand({ping:1}).ok'" --health-interval 5s --health-timeout 5s --health-retries 20
@@ -406,7 +407,7 @@ jobs:
       - if: matrix.driver == 'dynamodb'
         run: docker run -d --name dynamodb -p 8002:8000 amazon/dynamodb-local:latest -jar DynamoDBLocal.jar -inMemory -sharedDb -cors '*'
       - if: matrix.driver == 'mongodb'
-        run: docker run -d --name mongo -p 27017:27017 mongo:8
+        run: docker run -d --name mongo -p 27017:27017 mongo:7  # not 8: it refuses Linux 6.19+ (SERVER-121912)
       - if: matrix.driver == 'redis'
         run: docker run -d --name redis -p 6379:6379 redis:7 redis-server --requirepass puddle
       - if: matrix.driver == 'cassandra'

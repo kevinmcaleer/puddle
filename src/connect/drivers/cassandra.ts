@@ -127,6 +127,15 @@ export const indexColumn = (options: unknown): string => {
   return /^\w+\((.*)\)$/.exec(target)?.[1] ?? target;
 };
 
+/**
+ * The views a user made. ScyllaDB backs every secondary index with a materialized view named `<index>_index` and
+ * lists it in system_schema.views beside the real ones; those are the index's own business, not tables to read.
+ */
+export function userViews(views: Row[], indexes: Row[]): Row[] {
+  const backing = new Set(indexes.map((i) => `${i.keyspace_name}.${i.index_name}_index`));
+  return views.filter((v) => !backing.has(`${v.keyspace_name}.${v.view_name}`));
+}
+
 /** The catalogue: tables and materialized views with their declared columns, each in its keyspace. */
 export function catalogFromRows(tables: Row[], views: Row[], columns: Row[], keyspace?: string): Catalog {
   const keep = (r: Row) => (keyspace ? r.keyspace_name === keyspace : !system(r.keyspace_name));
@@ -255,19 +264,28 @@ export function cassandraConnector(id: 'cassandra' | 'scylla' = 'cassandra', con
         const n = tables.length;
         return { ok: true, server: `${label}${version ? ` ${version}` : ''}, ${n} ${n === 1 ? 'table' : 'tables'}` };
       }),
-    catalog: (ctx) => withClient(ctx, async (client, config) => catalogFromRows((await client.execute(inKeyspace(TABLES_CQL, config.keyspace))).rows, await maybe(client, inKeyspace(VIEWS_CQL, config.keyspace)), (await client.execute(inKeyspace(COLUMNS_CQL, config.keyspace))).rows, config.keyspace)),
-    document: (ctx) =>
+    catalog: (ctx) =>
       withClient(ctx, async (client, config) =>
-        detailFromRows(
-          {
-            tables: (await client.execute(inKeyspace(TABLES_CQL, config.keyspace))).rows,
-            views: await maybe(client, inKeyspace(VIEWS_CQL, config.keyspace)),
-            columns: (await client.execute(inKeyspace(COLUMNS_CQL, config.keyspace))).rows,
-            indexes: await maybe(client, inKeyspace(INDEXES_CQL, config.keyspace)),
-          },
+        catalogFromRows(
+          (await client.execute(inKeyspace(TABLES_CQL, config.keyspace))).rows,
+          userViews(await maybe(client, inKeyspace(VIEWS_CQL, config.keyspace)), await maybe(client, inKeyspace(INDEXES_CQL, config.keyspace))),
+          (await client.execute(inKeyspace(COLUMNS_CQL, config.keyspace))).rows,
           config.keyspace,
         ),
       ),
+    document: (ctx) =>
+      withClient(ctx, async (client, config) => {
+        const indexes = await maybe(client, inKeyspace(INDEXES_CQL, config.keyspace));
+        return detailFromRows(
+          {
+            tables: (await client.execute(inKeyspace(TABLES_CQL, config.keyspace))).rows,
+            views: userViews(await maybe(client, inKeyspace(VIEWS_CQL, config.keyspace)), indexes),
+            columns: (await client.execute(inKeyspace(COLUMNS_CQL, config.keyspace))).rows,
+            indexes,
+          },
+          config.keyspace,
+        );
+      }),
     read: (ctx, req): Promise<ReadResult> =>
       withClient(ctx, async (client, config) => {
         if (!req.table && !req.query) throw new ConnectorError('Choose a table or write a query.');
