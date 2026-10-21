@@ -18,7 +18,7 @@ const FAMILIES = {
   postgres: { module: 'postgres', connect: 'pgConnect', make: (mod, connect) => mod.postgresConnector('postgres', connect), port: 5432, settings: (u) => ({ database: u.pathname.slice(1) }) },
   mysql: { module: 'mysql', connect: 'mysqlConnect', make: (mod, connect) => mod.mysqlConnector('mysql', connect), port: 3306, settings: (u) => ({ database: u.pathname.slice(1) }) },
   firebird: { module: 'firebird', connect: 'firebirdConnect', make: (mod, connect) => mod.firebirdConnector(connect), port: 3050, upper: true, settings: (u) => ({ database: u.pathname.slice(1) }) },
-  sqlserver: { module: 'sqlserver', connect: 'sqlserverConnect', make: (mod, connect) => mod.sqlserverConnector(connect), port: 1433, settings: (u) => ({ database: u.pathname.slice(1), encrypt: true, trustCertificate: true }) },
+  sqlserver: { module: 'sqlserver', connect: 'sqlserverConnect', make: (mod, connect) => mod.sqlserverConnector(connect), port: 1433, settings: (u) => ({ database: u.pathname.slice(1), encrypt: true, sslVerify: false }) },
   oracle: { module: 'oracle', connect: 'oracleConnect', make: (mod, connect) => mod.oracleConnector(connect), port: 1521, upper: true, settings: (u) => ({ service: u.pathname.slice(1) }) },
 };
 const f = FAMILIES[family];
