@@ -1,7 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 import * as XLSX from 'xlsx';
 import { parseWorkbook, readSheet } from '../src/excel/read';
-import { addFiles, expectRows, fixture, node, openApp } from './helpers/app';
+import { addFiles, expectRows, fixture, node, openApp, selectNode } from './helpers/app';
 
 const settings = (page: Page) => page.getByTestId('output-settings');
 
@@ -9,11 +9,11 @@ const settings = (page: Page) => page.getByTestId('output-settings');
 async function toOutput(page: Page, file: Parameters<typeof addFiles>[1][number], source: string) {
   await addFiles(page, [file] as Parameters<typeof addFiles>[1]);
   await expect(node(page, source)).toHaveAttribute('data-status', 'ok', { timeout: 30_000 });
-  await node(page, source).click();
+  await selectNode(page, source);
   await page.getByRole('button', { name: 'Add', exact: true }).click();
   await page.getByRole('menuitem', { name: 'Output' }).click();
   await expect(node(page, 'Output 1')).toHaveAttribute('data-status', 'ok', { timeout: 30_000 });
-  await node(page, 'Output 1').click();
+  await selectNode(page, 'Output 1');
 }
 
 test('an Output node exports an Excel workbook that reads back with the same rows, columns and types', async ({ page }) => {

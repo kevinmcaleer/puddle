@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { fixtureText, node, openApp } from './helpers/app';
+import { fixtureText, node, openApp, selectNode } from './helpers/app';
 
 // Keeping file handles between visits needs showOpenFilePicker, which only Chromium browsers have. Elsewhere Puddle
 // says so and asks for the file again: e2e/browsers.spec.ts tests that in every browser.
@@ -121,7 +121,7 @@ test('a reopened project reconnects all its files with one click and no file dia
   await expect(node(page, 'dates.csv')).toHaveAttribute('data-status', 'ok');
   await expect(banner).toHaveCount(0);
   expect(await page.evaluate(() => (window as unknown as { __requests: number }).__requests)).toBe(2);
-  await node(page, 'customers.csv').click();
+  await selectNode(page, 'customers.csv');
   await expect(page.getByTestId('results-table')).toHaveAttribute('data-rows', '4', { timeout: 20_000 });
   await expect(page.getByTestId('attachment-banner')).toHaveCount(0);
   expect(dialogs).toBe(0);
@@ -146,9 +146,9 @@ test('a refused permission or a moved file falls back to choosing the file, with
   await expect(node(page, 'customers.csv')).toHaveAttribute('data-status', 'detached');
   await expect(node(page, 'dates.csv')).toHaveAttribute('data-status', 'detached');
 
-  await node(page, 'dates.csv').click();
+  await selectNode(page, 'dates.csv');
   await expect(page.getByTestId('attachment-banner')).toContainText('dates.csv isn’t where it was. It may have been moved, renamed or deleted; choose it again.');
-  await node(page, 'customers.csv').click();
+  await selectNode(page, 'customers.csv');
   await expect(page.getByTestId('attachment-banner')).toContainText('Permission to read customers.csv was refused. Choose it again.');
   await expect(page.getByTestId('results-detached')).toContainText('Permission to read customers.csv was refused.');
 

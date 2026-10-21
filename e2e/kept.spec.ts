@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { addFiles, addStepNode, fixture, node, openApp } from './helpers/app';
+import { addFiles, addStepNode, fixture, node, openApp, selectNode } from './helpers/app';
 
 type Engine = { query(sql: string): Promise<{ table: { toArray(): Array<{ toJSON(): Record<string, unknown> }> } }> };
 type Puddle = { engine: Engine; kept: { setState(s: { limit: number }): void } };
@@ -19,7 +19,7 @@ const memory = (page: Page) => page.getByTestId('keep-memory');
 test.beforeEach(async ({ page }) => {
   await openApp(page);
   await addFiles(page, [fixture('orders.tsv')]);
-  await node(page, 'orders.tsv').click();
+  await selectNode(page, 'orders.tsv');
   await addStepNode(page, 'Remove blank rows');
   await expect(node(page, 'Transform 1')).toHaveAttribute('data-status', 'ok', { timeout: 20_000 });
 });
@@ -61,7 +61,7 @@ test('warns before keeping another when kept results use much of the engine’s 
 
   // Pretend the engine has very little memory, so the kept result above is already over the line.
   await page.evaluate(() => (globalThis as unknown as { __puddle: Puddle }).__puddle.kept.setState({ limit: 1000 }));
-  await node(page, 'orders.tsv').click();
+  await selectNode(page, 'orders.tsv');
   await keepSwitch(page).click();
   const warning = page.getByRole('status').filter({ hasText: 'Memory is filling up' });
   await expect(warning).toContainText('Keeping another may leave too little for previews and exports.');

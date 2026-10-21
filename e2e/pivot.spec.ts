@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { addFiles, addStep, addStepNode, cell, fixture, node, openApp } from './helpers/app';
+import { addFiles, addStep, addStepNode, cell, fixture, openApp, selectNode } from './helpers/app';
 
 const steps = (page: Page) => page.getByRole('listbox', { name: 'Applied steps' }).getByRole('option');
 const settings = (page: Page) => page.getByTestId('step-settings');
@@ -30,7 +30,7 @@ test.use({ viewport: { width: 1280, height: 1400 } });
 test.beforeEach(async ({ page }) => {
   await openApp(page);
   await addFiles(page, [fixture('sales.csv')]);
-  await node(page, 'sales.csv').click();
+  await selectNode(page, 'sales.csv');
 });
 
 test('pivot by dragging fields into zones; a new value waits for Refresh columns, which reports it', async ({ page }) => {
