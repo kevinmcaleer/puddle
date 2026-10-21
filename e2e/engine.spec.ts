@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test';
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { addFiles, expectRows, node, openApp } from './helpers/app';
+import { addFiles, expectRows, node, openApp, selectNode } from './helpers/app';
 
 interface Engine {
   info: { bundle: string; crossOriginIsolated: boolean };
@@ -55,7 +55,7 @@ test('a file big enough to be scanned in parallel is read in full', async ({ pag
     await openApp(page);
     await addFiles(page, [path]);
     await expect(node(page, 'large.csv')).toHaveAttribute('data-status', 'ok', { timeout: 60_000 });
-    await node(page, 'large.csv').click();
+    await selectNode(page, 'large.csv');
     await expectRows(page, rows);
   } finally {
     rmSync(dir, { recursive: true, force: true });

@@ -1,0 +1,8 @@
+2026-10-11 09:00:01,250 INFO Puddle runner started
+2026-10-11 09:00:02.004 [main] DEBUG Reading orders.csv
+2026-10-11T09:00:03Z WARN  Column "qty" has 2 values that aren't numbers
+2026-10-11 09:00:04,000 - ERROR - Output failed
+Traceback (most recent call last):
+  File "run.py", line 12, in <module>
+ValueError: no rows
+2026-10-11 09:00:05 Finished with 1 error

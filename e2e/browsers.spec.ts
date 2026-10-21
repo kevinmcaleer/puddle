@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { addFiles, expectRows, fixture, node, openApp, saved } from './helpers/app';
+import { addFiles, expectRows, fixture, node, openApp, saved, selectNode } from './helpers/app';
 
 // Firefox and Safari can't keep access to files between visits (no showOpenFilePicker). openApp removes the
 // picker, so in every browser these tests run as Firefox and Safari always do.
@@ -27,7 +27,7 @@ test('without file handles, a reopened project says plainly to choose its files 
   await (await chooser).setFiles(fixture('customers.csv'));
   await expect(node(page, 'customers.csv')).toHaveAttribute('data-status', 'ok', { timeout: 20_000 });
   await expect(banner).toHaveCount(0);
-  await node(page, 'customers.csv').click();
+  await selectNode(page, 'customers.csv');
   await expectRows(page, 4);
 });
 
@@ -92,7 +92,7 @@ test('DuckDB that fails to start is started once more', async ({ page }) => {
   expect(warnings.some((w) => w.startsWith("DuckDB didn't start (instantiate: access to a null reference)"))).toBe(true);
   await addFiles(page, [fixture('customers.csv')]);
   await expect(node(page, 'customers.csv')).toHaveAttribute('data-status', 'ok', { timeout: 20_000 });
-  await node(page, 'customers.csv').click();
+  await selectNode(page, 'customers.csv');
   await expectRows(page, 4);
 });
 
@@ -121,7 +121,7 @@ test('a query DuckDB stops inside runs once more, and the source still loads', a
   await openApp(page);
   await addFiles(page, [fixture('customers.csv')]);
   await expect(node(page, 'customers.csv')).toHaveAttribute('data-status', 'ok', { timeout: 20_000 });
-  await node(page, 'customers.csv').click();
+  await selectNode(page, 'customers.csv');
   await expectRows(page, 4);
   expect(warnings.some((w) => w.startsWith('DuckDB stopped inside a query (access to a null reference'))).toBe(true);
 });

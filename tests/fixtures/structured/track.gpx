@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gpx version="1.1" creator="Puddle" xmlns="http://www.topografix.com/GPX/1/1">
+  <metadata><name>Morning run</name></metadata>
+  <trk>
+    <name>Run</name>
+    <trkseg>
+      <trkpt lat="53.4000" lon="-3.1000"><ele>12</ele><time>2026-01-05T07:00:00Z</time></trkpt>
+      <trkpt lat="53.4010" lon="-3.1010"><ele>13</ele><time>2026-01-05T07:00:10Z</time></trkpt>
+      <trkpt lat="53.4020" lon="-3.1020"><ele>15</ele><time>2026-01-05T07:00:20Z</time></trkpt>
+      <trkpt lat="53.4030" lon="-3.1030"><ele>14</ele><time>2026-01-05T07:00:30Z</time></trkpt>
+    </trkseg>
+  </trk>
+</gpx>
