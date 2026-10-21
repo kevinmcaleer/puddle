@@ -1,7 +1,8 @@
 // The DynamoDB driver against a live DynamoDB, when PUDDLE_TEST_DYNAMODB names one: a URL such as
 // dynamodb://AKIDEXAMPLE:secretexample@eu-west-2?endpoint=http://localhost:8002 (the user and password are the access
 // key id and secret access key; the endpoint is left out for the real service), seeded with scripts/seed-dynamodb.mjs.
-// CI runs it against DynamoDB Local; locally scripts/dynamodb-stand-in.mjs serves. Without the variable it is skipped.
+// CI runs it against DynamoDB Local, which accepts any key, so its URL adds &signatures=unchecked and the wrong-secret
+// check is left out; locally scripts/dynamodb-stand-in.mjs serves, and checks them. Without the variable it is skipped.
 import { tableFromIPC } from 'apache-arrow';
 import type { AddressInfo } from 'node:net';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -14,6 +15,7 @@ const url = process.env.PUDDLE_TEST_DYNAMODB;
 describe.skipIf(!url)(`the dynamodb driver against ${url ? new URL(url).searchParams.get('endpoint') ?? new URL(url).hostname : 'no table store'}`, () => {
   const u = new URL(url ?? 'dynamodb://k:s@r');
   const endpoint = u.searchParams.get('endpoint');
+  const checksSignatures = u.searchParams.get('signatures') !== 'unchecked';
   const settings = { region: u.hostname, accessKeyId: decodeURIComponent(u.username), ...(endpoint ? { endpoint } : {}) };
   const secret = decodeURIComponent(u.password);
   const connection: Connection = { id: 'c', name: 'shop', driver: 'dynamodb', via: 'local', settings, auth: 'aws' };
@@ -22,7 +24,7 @@ describe.skipIf(!url)(`the dynamodb driver against ${url ? new URL(url).searchPa
 
   it('signs in and counts the tables', async () => {
     expect(await connector.test(ctx)).toEqual({ ok: true, server: `DynamoDB in ${settings.region}, 2 tables` });
-    expect(await connector.test({ ...ctx, secret: 'wrong' })).toMatchObject({ ok: false });
+    if (checksSignatures) expect(await connector.test({ ...ctx, secret: 'wrong' })).toMatchObject({ ok: false });
   });
 
   it('lists the tables with their keys first and the columns the items show', async () => {
