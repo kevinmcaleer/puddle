@@ -46,8 +46,10 @@ jobs:
       PUDDLE_TEST_FIREBIRD: firebird://SYSDBA:puddle@localhost:3050//var/lib/firebird/data/shop.fdb
       # The ClickHouse flow reads the shop in the browser, straight from the container's HTTP interface.
       PUDDLE_TEST_CLICKHOUSE: http://default:puddle@localhost:8123/shop
-      # The DynamoDB flow reads the shop in the browser from DynamoDB Local, started with CORS on.
-      PUDDLE_TEST_DYNAMODB: dynamodb://AKIDEXAMPLE:secretexample@eu-west-2?endpoint=http://localhost:8002
+      # The DynamoDB flow reads the shop in the browser from scripts/dynamodb-stand-in.mjs: DynamoDB Local's -cors
+      # answers the browser's preflight without the headers it asks for, so the browser never reaches it. The
+      # databases job below reads DynamoDB Local itself.
+      PUDDLE_TEST_DYNAMODB: dynamodb://AKIDEXAMPLE:secretexample@eu-west-2?endpoint=http://localhost:18092
       # The MongoDB flow reads a collection through puddle-connect; the Redis flow reads keys in the browser over the
       # Upstash stand-in (scripts/upstash-stand-in.mjs) in front of the Redis service.
       PUDDLE_TEST_MONGODB: mongodb://localhost:27017/shop
@@ -105,7 +107,7 @@ jobs:
       - run: node scripts/seed-mysql.mjs "$PUDDLE_TEST_MYSQL"
       - run: node scripts/seed-firebird.mjs "$PUDDLE_TEST_FIREBIRD"
       - run: node scripts/seed-clickhouse.mjs "$PUDDLE_TEST_CLICKHOUSE"
-      - run: docker run -d --name dynamodb -p 8002:8000 amazon/dynamodb-local:latest -jar DynamoDBLocal.jar -inMemory -sharedDb -cors '*'
+      - run: (node scripts/dynamodb-stand-in.mjs 18092 AKIDEXAMPLE secretexample > /tmp/dynamodb-stand-in.log 2>&1 &) && sleep 1
       - run: node scripts/seed-dynamodb.mjs "$PUDDLE_TEST_DYNAMODB"
       - run: node scripts/seed-mongodb.mjs "$PUDDLE_TEST_MONGODB"
       - run: node scripts/seed-redis.mjs "$PUDDLE_TEST_REDIS"
@@ -317,7 +319,7 @@ jobs:
           - { name: Snowflake (stand-in), driver: snowflake, url: 'snowflake://puddle@xy12345.eu-west-2.aws/shop/public?key=/tmp/puddle-keys/test.p8&warehouse=compute_wh&url=http://127.0.0.1:18091', test: tests/connect/snowflake.test.ts }
           - { name: LibSQL (sqld), driver: libsql, url: 'http://localhost:8081', test: tests/connect/libsql.test.ts }
           - { name: SurrealDB, driver: surrealdb, url: 'http://root:root@localhost:8000/shop/shop', test: tests/connect/surrealdb.test.ts }
-          - { name: DynamoDB Local, driver: dynamodb, url: 'dynamodb://AKIDEXAMPLE:secretexample@eu-west-2?endpoint=http://localhost:8002', test: tests/connect/dynamodb.test.ts }
+          - { name: DynamoDB Local, driver: dynamodb, url: 'dynamodb://AKIDEXAMPLE:secretexample@eu-west-2?endpoint=http://localhost:8002&signatures=unchecked', test: tests/connect/dynamodb.test.ts }
           - { name: MongoDB, driver: mongodb, url: 'mongodb://localhost:27017/shop', test: tests/connect/mongodb.test.ts }
           - { name: Redis, driver: redis, url: 'redis://:puddle@localhost:6379/0', test: tests/connect/redis.test.ts }
           - { name: Cassandra, driver: cassandra, url: 'cassandra://localhost:9042/shop?datacenter=datacenter1', test: tests/connect/cassandra.test.ts }
