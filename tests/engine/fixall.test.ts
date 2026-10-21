@@ -3,6 +3,7 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { analyseNode, findIssues, isStepFix, planFixes, sortIssues, type Issue } from '../../src/analysis';
+import { foundIssues } from '../../src/analysis/analyse';
 import { compile, sourceFileName } from '../../src/compiler';
 import { detectDateFormats } from '../../src/dates';
 import { EngineClient } from '../../src/engine/client';
@@ -52,6 +53,12 @@ describe('Fix all on messy.csv', () => {
     expect(placed.project.groups).toEqual([expect.objectContaining({ name: 'Fixes', nodeIds: placed.nodeIds })]);
     expect(after.issues.filter((i) => i.severity === 'fix')).toEqual([]);
     expect(after.analysis.facts.rows).toBe(4);
+    // What the project keeps of the analysis for the quality report: each issue in words with its count, no values from the data.
+    expect(foundIssues(before.analysis).slice(0, 3)).toEqual([
+      { key: 'duplicateRows', kind: 'duplicateRows', label: 'Duplicate rows', count: 1 },
+      { key: 'nonPrinting:name', kind: 'nonPrinting', column: 'name', label: 'Non-printing characters in name', count: 2 },
+      { key: 'edgeSpaces:name', kind: 'edgeSpaces', column: 'name', label: 'Spaces at either end of name', count: 2 },
+    ]);
     expect(after.columns.find((c) => c.name === 'price')?.type).toBe('DOUBLE');
   });
 

@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { addFiles, fixture, node, openApp } from './helpers/app';
+import { addFiles, fixture, node, openApp, selectNode } from './helpers/app';
 
 type Engine = { query(sql: string): Promise<{ table: { toArray(): Array<{ toJSON(): Record<string, unknown> }> } }> };
 
@@ -21,7 +21,7 @@ test('in sample mode a kept result holds the sample, shows as up to date, and Ru
   await expect(node(page, 'customers.csv')).toHaveAttribute('data-status', 'ok', { timeout: 20_000 });
   await expect(page.getByTestId('sample-banner')).toContainText('Sample of 2 rows');
 
-  await node(page, 'customers.csv').click();
+  await selectNode(page, 'customers.csv');
   await page.getByRole('switch', { name: 'Keep result in memory' }).click();
   // Built from the sampled copy the flow evaluates, so it counts as up to date rather than waiting forever.
   await expect(page.getByTestId('keep-memory')).toHaveAttribute('data-state', 'ready', { timeout: 20_000 });

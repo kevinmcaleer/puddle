@@ -92,6 +92,7 @@ const SAMPLES = {
   sales: { name: 'Sample: sales', files: ['sales.csv'], rows: undefined },
   orders: { name: 'Sample: orders and customers', files: ['orders.csv', 'customers.csv'], rows: undefined },
   monthly: { name: 'Sample: monthly sales', files: ['monthly-sales.csv'], rows: undefined },
+  crm: { name: 'Sample: CRM export', files: ['messy.txt'], rows: 45 },
 } as const;
 
 /** Open one of the built-in samples as a new project and wait until its sources have read. */

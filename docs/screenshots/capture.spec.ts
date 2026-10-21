@@ -119,6 +119,24 @@ test('databases', async ({ page }) => {
   await shot(page, 'databases-manage', manage);
 });
 
+test('analysing a file', async ({ page }) => {
+  await start(page);
+  await openSample(page, 'crm');
+  await selectNode(page, 'messy.txt');
+  const issues = page.getByRole('region', { name: 'Issues' });
+  await expect(issues.getByTestId('issues')).toHaveAttribute('data-state', 'ok', { timeout: 30_000 });
+  await expect(issues.getByTestId('fix-all')).toBeVisible();
+  await shotPanel(page, 'analysing-issues', issues);
+  await issues.getByRole('button', { name: 'Choose fixes' }).click();
+  await shot(page, 'analysing-choose-fixes', page.getByRole('dialog', { name: 'Choose fixes' }));
+  await page.keyboard.press('Escape');
+  await issues.getByTestId('fix-all').getByRole('button', { name: /^Fix \d+ issues$/ }).click();
+  await expect(page.getByTestId('group-Fixes')).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByTestId('results-table')).toHaveAttribute('aria-label', /^Results of Transform \d+/, { timeout: 30_000 });
+  await page.getByRole('button', { name: 'Auto layout' }).click();
+  await shot(page, 'analysing-fixed');
+});
+
 /** Each fix opens a new node, whose table may still be loading: click name and city until they are the selection. */
 async function reselect(page: Page) {
   await expect(async () => {
@@ -165,9 +183,12 @@ test('quick fixes and steps', async ({ page }) => {
 
 /** Right-click in the results grid (a canvas) at a point in pixels from its left edge, on the header or on a row. */
 async function rightClickAt(page: Page, x: number, row?: number) {
-  const box = (await page.getByTestId('results-table').boundingBox())!;
-  await page.mouse.click(box.x + x, row == null ? box.y + 20 : box.y + 52 + 28 * row + 14, { button: 'right' });
-  await expect(page.getByTestId('context-menu')).toBeVisible();
+  // The grid draws once its rows arrive: a right-click before then opens nothing, so one that didn't is tried again.
+  await expect(async () => {
+    const box = (await page.getByTestId('results-table').boundingBox())!;
+    await page.mouse.click(box.x + x, row == null ? box.y + 20 : box.y + 52 + 28 * row + 14, { button: 'right' });
+    await expect(page.getByTestId('context-menu')).toBeVisible({ timeout: 2_000 });
+  }).toPass({ timeout: 20_000 });
 }
 
 test('the column menu', async ({ page }) => {
@@ -543,7 +564,7 @@ test('schema import and export', async ({ page }) => {
       "INSERT INTO suppliers (name) VALUES ('Acme');",
     ].join('\n'),
   );
-  await expect(dialog.getByTestId('import-sql-found')).toHaveText('2 tables, 1 ref found.');
+  await expect(dialog.getByTestId('import-sql-found')).toHaveText('2 tables, 1 ref, 1 row found.');
   await shot(page, 'schema-import-sql', dialog);
 });
 

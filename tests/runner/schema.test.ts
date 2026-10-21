@@ -3,8 +3,9 @@ import { execFileSync, spawnSync } from 'node:child_process';
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { build } from 'esbuild';
+import { build, type BuildOptions } from 'esbuild';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { runnerBuildOptions } from '../../scripts/build-runner.mjs';
 import { exportSql } from '../../src/compiler/ddl/export';
 import { createProject, setSchemaDbml } from '../../src/model';
 import { EXAMPLE_DBML } from '../../src/schema/example';
@@ -18,7 +19,7 @@ beforeAll(async () => {
   folder = mkdtempSync(join(tmpdir(), 'puddle-schema-'));
   // Beside the repository's node_modules, so the native DuckDB binding the bundle leaves out is found.
   cli = join(root, 'node_modules', '.cache', `puddle-run-schema-${process.pid}.mjs`);
-  await build({ entryPoints: [join(root, 'src/runner/cli.ts')], bundle: true, platform: 'node', target: 'node20', format: 'esm', external: ['@duckdb/node-api', 'sql.js', 'pg', 'mysql2', 'node-firebird', 'tedious', 'oracledb', 'mongodb', 'redis', 'cassandra-driver'], outfile: cli, logLevel: 'warning' });
+  await build({ ...(runnerBuildOptions as BuildOptions), entryPoints: [join(root, 'src/runner/cli.ts')], outfile: cli });
   writeFileSync(join(folder, 'docs.puddle.json'), JSON.stringify(setSchemaDbml(createProject('Docs example'), EXAMPLE_DBML)));
   writeFileSync(join(folder, 'broken.dbml'), 'Table a {\n  id int [pk\n}\n');
 }, 60_000);
@@ -43,6 +44,19 @@ describe('puddle-run schema, built', () => {
     const schema = parseDbml(EXAMPLE_DBML).schema;
     expect(readFileSync(join(folder, 'schema.sql'), 'utf8')).toBe(exportSql(schema, 'postgres').sql);
     expect(readFileSync(join(folder, 'schema.html'), 'utf8')).toBe(writeDocsHtml(schema, { title: 'Docs example', views: [], tokens: defaultDocsTokens() }));
+  });
+
+  it('run writes the quality report in its three formats, the HTML rendered from the report document', () => {
+    // A regression test: the bundle once compiled the report's JSX to React.createElement with no React in scope.
+    writeFileSync(join(folder, 'v1.puddle.json'), readFileSync(join(root, 'tests/fixtures/projects/v1.puddle.json')));
+    writeFileSync(join(folder, 'customers.csv'), readFileSync(join(root, 'tests/fixtures/customers.csv')));
+    const r = spawnSync(process.execPath, [cli, 'run', 'v1.puddle.json'], { cwd: folder, encoding: 'utf8' });
+    expect(r.status, r.stderr).toBe(0);
+    const html = readFileSync(join(folder, 'out', 'customers-clean-up-format-1.quality.html'), 'utf8');
+    expect(html).toContain('<title>');
+    expect(html).toContain('Customers clean-up');
+    expect(readFileSync(join(folder, 'out', 'customers-clean-up-format-1.quality.md'), 'utf8')).toContain('# ');
+    expect(JSON.parse(readFileSync(join(folder, 'out', 'customers-clean-up-format-1.quality.json'), 'utf8'))).toMatchObject({ project: { name: 'Customers clean-up (format 1)' } });
   });
 
   it('prints its usage, and exits 2 on arguments it doesn’t know', () => {

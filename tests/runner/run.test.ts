@@ -5,11 +5,12 @@ import { join } from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { openDb, type RunnerDb } from '../../src/runner/db';
 import { runProject, runSucceeded, type RunLog } from '../../src/runner/run';
-import { check, checkLines, parseArgs, projectFiles, watch } from '../../src/runner/cli';
+import { analyseFile } from '../../src/runner/analyse';
+import { check, checkLines, formatChanged, parseArgs, projectFiles, watch } from '../../src/runner/cli';
 import { secretsFrom, type PlaceOptions } from '../../src/runner/connections';
-import type { Connection, DriverId, Source } from '../../src/model';
+import type { Connection, DriverId } from '../../src/model';
 import { sourceTableName } from '../../src/compiler';
-import { parseProject, type Project } from '../../src/model';
+import { parseProject, type Project, type Source } from '../../src/model';
 import { flow, src, step } from '../helpers/projects';
 
 let folder: string;
@@ -74,8 +75,67 @@ describe('puddle-run', () => {
     const saved = JSON.parse(readFileSync(join(outDir, 'shop-orders.run.json'), 'utf8')) as RunLog;
     expect(saved.schema).toBe('puddle-run/1');
     expect(saved.startedAt).toBe('2026-10-17T03:00:00.000Z');
-    expect(readFileSync(join(outDir, 'shop-orders.quality.md'), 'utf8')).toContain('Shop orders');
-    expect(report).toContain('No rules are set on this project.');
+    expect(readFileSync(join(outDir, 'shop-orders.quality.md'), 'utf8')).toBe(report);
+    expect(report).toContain('# Quality report: Shop orders');
+    expect(report).toContain('**0 rules.**');
+    expect(report).toMatch(/\| shop-customers\.csv \| csv \| 5 \| `h` \|/);
+  });
+
+  it('writes the quality report as the browser does, in Markdown, JSON and HTML, with each node’s rules and the issues it kept from Fix all', async () => {
+    const p = project({ rule: { id: 'r1', type: 'noEdgeSpaces', label: 'No leading or trailing spaces in name', params: { column: 'name' }, severity: 'warn', enabled: true } });
+    p.nodes = p.nodes.map((n) =>
+      n.id === 'c'
+        ? {
+            ...n,
+            analysis: { at: '2026-10-21T09:00:00.000Z', rows: 4, issues: [{ key: 'edgeSpaces:name', kind: 'edgeSpaces', column: 'name', label: 'Spaces at either end of name', count: 2, fixed: true }, { key: 'duplicateRows', kind: 'duplicateRows', label: 'Duplicate rows', count: 1 }] },
+            ignoredIssues: ['duplicateRows'],
+          }
+        : n,
+    );
+    const outDir = join(folder, 'out-report');
+    const { quality } = await runProject(p, { folder, outDir, db, now: () => new Date('2026-10-21T10:00:00Z') });
+    expect(quality.schema).toBe('puddle-quality-report/1');
+    expect(quality.generatedAt).toBe('2026-10-21T10:00:00.000Z');
+    expect(quality.nodes.map((n) => n.name)).toEqual(['c', 't']);
+    expect(quality.nodes[0]!.analysis).toMatchObject({ found: 2, fixed: 1, ignored: 1, open: 0 });
+    expect(quality.nodes[1]!.rules[0]).toMatchObject({ label: 'No leading or trailing spaces in name', status: 'pass', total: 5, failed: 0 });
+    expect(quality.sources.map((s) => [s.name, s.rows, s.headHash])).toEqual([
+      ['shop-customers.csv', 5, 'h'],
+      ['orders.csv', 5, 'h'],
+    ]);
+    expect(JSON.parse(readFileSync(join(outDir, 'shop-orders.quality.json'), 'utf8'))).toEqual(quality);
+    const md = readFileSync(join(outDir, 'shop-orders.quality.md'), 'utf8');
+    expect(md).toContain('## c\n\nNo rules.\n\n### Issues\n\n2 issues found 21 Oct 2026, 09:00 UTC in 4 rows: 1 fixed, 1 ignored.');
+    expect(md).toContain('| Fixed | Spaces at either end of name | name | 2 |');
+    const html = readFileSync(join(outDir, 'shop-orders.quality.html'), 'utf8');
+    expect(html.startsWith('<!doctype html>')).toBe(true);
+    expect(html).toContain('data-outcome="ignored"');
+  });
+
+  it('check says when a source file no longer looks like the format the project reads it as', () => {
+    const changed = mkdtempSync(join(tmpdir(), 'puddle-check-'));
+    try {
+      writeFileSync(join(changed, 'customers.csv'), readFileSync(join(__dirname, '../fixtures/customers.csv')));
+      writeFileSync(join(changed, 'orders.csv'), readFileSync(join(__dirname, '../fixtures/items.json')));
+      const p = { ...project(), sources: project().sources.map((s) => (s.id === 'c' ? { ...s, file: { ...s.file!, originalName: 'customers.csv' } } : s)) };
+      writeFileSync(join(changed, 'shop.puddle.json'), JSON.stringify(p));
+      expect(formatChanged(p.sources[0]!, join(changed, 'customers.csv'))).toBeUndefined();
+      expect(formatChanged(p.sources[1]!, join(changed, 'orders.csv'))).toMatch(/^now looks like JSON, not CSV as the project reads it \(/);
+      const lines: string[] = [];
+      expect(check(join(changed, 'shop.puddle.json'), (l) => lines.push(l))).toBe(false);
+      expect(lines[1]).toBe(`  source shop-customers.csv: ${join(changed, 'customers.csv')}`);
+      expect(lines[2]).toMatch(/^ {2}source orders\.csv: .*orders\.csv; now looks like JSON, not CSV/);
+    } finally {
+      rmSync(changed, { recursive: true, force: true });
+    }
+  });
+
+  it('analyses a file with no project, sniffing it as the editor does, and lists the editor’s issues', async () => {
+    const a = await analyseFile(join(__dirname, '../fixtures/messy.csv'), db);
+    expect(a).toMatchObject({ name: 'messy.csv', format: 'csv' });
+    expect(a.analysis.facts.rows).toBe(5);
+    expect(a.issues.map((i) => i.key)).toEqual(['duplicateRows', 'nonPrinting:name', 'edgeSpaces:name', 'doubleSpaces:name', 'emptyText:name', 'edgeSpaces:city', 'numbersAsText:price']);
+    await expect(analyseFile(join(__dirname, '../fixtures/locked.accdb'), db)).rejects.toThrow();
   });
 
   it('holds back an Output while a fail rule fails upstream, and skips one whose source is missing', async () => {
@@ -172,6 +232,217 @@ describe('puddle-run', () => {
     expect(await db.describe(`SELECT * FROM "${sourceTableName(p.sources[0]!)}"`)).toContainEqual({ name: 'Amount', type: 'DECIMAL(19,4)' });
   });
 
+  it('reads a gzipped CSV as it is, a file inside a zip, and an Arrow file with its types', async () => {
+    writeFileSync(join(folder, 'orders.csv.gz'), readFileSync(join(__dirname, '../fixtures/archives/orders.csv.gz')));
+    writeFileSync(join(folder, 'shop.zip'), readFileSync(join(__dirname, '../fixtures/archives/shop.zip')));
+    writeFileSync(join(folder, 'customers.arrow'), readFileSync(join(__dirname, '../fixtures/archives/customers.arrow')));
+    const file = (id: string, name: string, format: Source['format'], archive?: Source['archive']) => ({ ...src({ id, format }), name, archive, file: { originalName: name, size: 1, lastModified: 0, headHash: 'h' } });
+    const p = flow({
+      sources: [file('g', 'orders.csv.gz', 'csv', { kind: 'gzip', entry: 'orders.csv' }), file('z', 'shop.zip', 'csv', { kind: 'zip', entry: 'shop/customers.csv' }), file('a', 'customers.arrow', 'arrow')],
+      nodes: [
+        { id: 'g', type: 'source', sourceId: 'g' },
+        { id: 'z', type: 'source', sourceId: 'z' },
+        { id: 'a', type: 'source', sourceId: 'a' },
+        { id: 'out', type: 'output', outputSpec: { format: 'csv', options: {} } },
+        { id: 'out2', type: 'output', outputSpec: { format: 'csv', options: {} } },
+        { id: 'out3', type: 'output', outputSpec: { format: 'csv', options: {} } },
+      ],
+      wires: [
+        ['g', 'out', 0],
+        ['z', 'out2', 0],
+        ['a', 'out3', 0],
+      ],
+    });
+    p.name = 'Archives';
+    const outDir = join(folder, 'out-archives');
+    const { log } = await runProject(p, { folder, outDir, db, now: () => new Date('2026-10-17T03:00:00Z') });
+    expect(log.sources.map((s) => s.problem)).toEqual([undefined, undefined, undefined]);
+    expect(log.outputs.map((o) => [o.nodeName, o.status, o.rows])).toEqual([
+      ['out', 'written', 5],
+      ['out2', 'written', 5],
+      ['out3', 'written', 4],
+    ]);
+    expect(readFileSync(join(outDir, 'out.csv'), 'utf8').trim().split('\n').slice(0, 2)).toEqual(['order_id,customer_id,total,status', '100,1,12.5,shipped']);
+    expect(readFileSync(join(outDir, 'out2.csv'), 'utf8').trim().split('\n').slice(0, 2)).toEqual(['customer_id,name,status', '1,Ada,active']);
+    const arrow = readFileSync(join(outDir, 'out3.csv'), 'utf8').trim().split('\n');
+    expect(arrow[0]).toBe('id,name,joined,balance,active');
+    expect(arrow[1]).toBe('1,Ada,2026-01-05,12.5,true');
+    expect(arrow[3]).toBe('3,Linus,,,false');
+    expect(await db.describe(`SELECT * FROM "${sourceTableName(p.sources[2]!)}"`)).toEqual([
+      { name: 'id', type: 'BIGINT' },
+      { name: 'name', type: 'VARCHAR' },
+      { name: 'joined', type: 'DATE' },
+      { name: 'balance', type: 'DOUBLE' },
+      { name: 'active', type: 'BOOLEAN' },
+    ]);
+  });
+
+  it('reads YAML, TOML and GeoJSON into rows with the records the browser chose', async () => {
+    writeFileSync(join(folder, 'servers.yaml'), readFileSync(join(__dirname, '../fixtures/structured/servers.yaml')));
+    writeFileSync(join(folder, 'pyproject.toml'), readFileSync(join(__dirname, '../fixtures/structured/pyproject.toml')));
+    writeFileSync(join(folder, 'places.geojson'), readFileSync(join(__dirname, '../fixtures/structured/places.geojson')));
+    const file = (id: string, name: string, format: Source['format'], parseOptions: Source['parseOptions'] = {}) => ({ ...src({ id, format }), name, parseOptions, file: { originalName: name, size: 1, lastModified: 0, headHash: 'h' } });
+    const p = flow({
+      sources: [file('y', 'servers.yaml', 'yaml'), file('t', 'pyproject.toml', 'toml', { record: 'servers' }), file('g', 'places.geojson', 'geojson')],
+      nodes: [
+        { id: 'y', type: 'source', sourceId: 'y' },
+        { id: 't', type: 'source', sourceId: 't' },
+        { id: 'g', type: 'source', sourceId: 'g' },
+        { id: 'out', type: 'output', outputSpec: { format: 'csv', options: {} } },
+        { id: 'out2', type: 'output', outputSpec: { format: 'csv', options: {} } },
+        { id: 'out3', type: 'output', outputSpec: { format: 'csv', options: {} } },
+      ],
+      wires: [
+        ['y', 'out', 0],
+        ['t', 'out2', 0],
+        ['g', 'out3', 0],
+      ],
+    });
+    p.name = 'Structured';
+    const outDir = join(folder, 'out-structured');
+    const { log } = await runProject(p, { folder, outDir, db, now: () => new Date('2026-10-17T03:00:00Z') });
+    expect(log.sources.map((s) => s.problem)).toEqual([undefined, undefined, undefined]);
+    expect(log.outputs.map((o) => [o.nodeName, o.status, o.rows])).toEqual([
+      ['out', 'written', 3],
+      ['out2', 'written', 2],
+      ['out3', 'written', 3],
+    ]);
+    expect(readFileSync(join(outDir, 'out.csv'), 'utf8').trim().split('\n')[0]).toBe('name,ip,cores,tags,added,owner.team,owner.email');
+    expect(readFileSync(join(outDir, 'out2.csv'), 'utf8').trim().split('\n')).toEqual(['key,ip,role', 'alpha,10.0.0.1,web', 'beta,10.0.0.2,db']);
+    expect(readFileSync(join(outDir, 'out3.csv'), 'utf8').trim().split('\n')[1]).toBe('1,Lighthouse,landmark,34.5,"{""type"":""Point"",""coordinates"":[-3.1,53.4]}"');
+  });
+
+  it('reads a log file as the preset the browser chose, and as a custom pattern', async () => {
+    writeFileSync(join(folder, 'access.log'), readFileSync(join(__dirname, '../fixtures/logs/access.log')));
+    writeFileSync(join(folder, 'app.log'), readFileSync(join(__dirname, '../fixtures/logs/app.log')));
+    const log = (id: string, name: string, parseOptions: Source['parseOptions']) => ({ ...src({ id, format: 'log' as const }), name, parseOptions, file: { originalName: name, size: 1, lastModified: 0, headHash: 'h' } });
+    const p = flow({
+      sources: [log('a', 'access.log', { preset: 'combined' }), log('c', 'app.log', { preset: 'custom', pattern: '^(?<time>\\S+ \\S+) (?<rest>.*)$' })],
+      nodes: [
+        { id: 'a', type: 'source', sourceId: 'a' },
+        { id: 'c', type: 'source', sourceId: 'c' },
+        { id: 'out', type: 'output', outputSpec: { format: 'csv', options: {} } },
+        { id: 'out2', type: 'output', outputSpec: { format: 'csv', options: {} } },
+      ],
+      wires: [
+        ['a', 'out', 0],
+        ['c', 'out2', 0],
+      ],
+    });
+    p.name = 'Logs';
+    const outDir = join(folder, 'out-logs');
+    const { log: runLog } = await runProject(p, { folder, outDir, db, now: () => new Date('2026-10-17T03:00:00Z') });
+    expect(runLog.sources.map((s) => s.problem)).toEqual([undefined, undefined]);
+    expect(runLog.outputs.map((o) => [o.nodeName, o.status, o.rows])).toEqual([
+      ['out', 'written', 4],
+      ['out2', 'written', 7],
+    ]);
+    expect(readFileSync(join(outDir, 'out.csv'), 'utf8').trim().split('\n').slice(0, 2)).toEqual(['host,ident,user,time,method,path,protocol,status,bytes,referrer,agent', '203.0.113.7,,,2026-10-10 12:55:36+00,GET,/index.html,HTTP/1.1,200,2326,https://example.org/start,Mozilla/5.0 (X11; Linux x86_64) Firefox/131.0']);
+    expect(readFileSync(join(outDir, 'out2.csv'), 'utf8').trim().split('\n')[1]).toBe('"2026-10-11 09:00:01,250",INFO Puddle runner started');
+  });
+
+  it('reads the table of a PDF the browser chose, through pdf.js', async () => {
+    writeFileSync(join(folder, 'statement.pdf'), readFileSync(join(__dirname, '../fixtures/pdf/statement.pdf')));
+    const pdf = (id: string, parseOptions: Source['parseOptions'] = {}) => ({ ...src({ id, format: 'pdf' as const }), name: 'statement.pdf', parseOptions, file: { originalName: 'statement.pdf', size: 1, lastModified: 0, headHash: 'h' } });
+    const p = flow({
+      sources: [pdf('a'), pdf('b', { table: '2' })],
+      nodes: [
+        { id: 'a', type: 'source', sourceId: 'a' },
+        { id: 'b', type: 'source', sourceId: 'b' },
+        { id: 'out', type: 'output', outputSpec: { format: 'csv', options: {} } },
+        { id: 'out2', type: 'output', outputSpec: { format: 'csv', options: {} } },
+      ],
+      wires: [
+        ['a', 'out', 0],
+        ['b', 'out2', 0],
+      ],
+    });
+    p.name = 'PDF';
+    const outDir = join(folder, 'out-pdf');
+    const { log } = await runProject(p, { folder, outDir, db, now: () => new Date('2026-10-17T03:00:00Z') });
+    expect(log.sources.map((s) => s.problem)).toEqual([undefined, undefined]);
+    expect(log.outputs.map((o) => [o.nodeName, o.status, o.rows])).toEqual([
+      ['out', 'written', 4],
+      ['out2', 'written', 2],
+    ]);
+    expect(readFileSync(join(outDir, 'out.csv'), 'utf8').trim().split('\n').slice(0, 2)).toEqual(['Date,Description,Paid in,Paid out', '2026-10-01,Salary October,"2,450.00",']);
+    expect(readFileSync(join(outDir, 'out2.csv'), 'utf8').trim().split('\n')).toEqual(['Item,Amount', 'Opening balance,312.40', 'Closing balance,"1,634.19"']);
+  });
+
+  it('reads the table of a Word document the browser chose, and the biggest when none was', async () => {
+    writeFileSync(join(folder, 'report.docx'), readFileSync(join(__dirname, '../fixtures/word/report.docx')));
+    const doc = (id: string, parseOptions: Source['parseOptions'] = {}) => ({ ...src({ id, format: 'word' as const }), name: 'report.docx', parseOptions, file: { originalName: 'report.docx', size: 1, lastModified: 0, headHash: 'h' } });
+    const p = flow({
+      sources: [doc('a'), doc('b', { table: '1' })],
+      nodes: [
+        { id: 'a', type: 'source', sourceId: 'a' },
+        { id: 'b', type: 'source', sourceId: 'b' },
+        { id: 'out', type: 'output', outputSpec: { format: 'csv', options: {} } },
+        { id: 'out2', type: 'output', outputSpec: { format: 'csv', options: {} } },
+      ],
+      wires: [
+        ['a', 'out', 0],
+        ['b', 'out2', 0],
+      ],
+    });
+    p.name = 'Word';
+    const outDir = join(folder, 'out-word');
+    const { log } = await runProject(p, { folder, outDir, db, now: () => new Date('2026-10-17T03:00:00Z') });
+    expect(log.sources.map((s) => s.problem)).toEqual([undefined, undefined]);
+    expect(log.outputs.map((o) => [o.nodeName, o.status, o.rows])).toEqual([
+      ['out', 'written', 3],
+      ['out2', 'written', 4],
+    ]);
+    expect(readFileSync(join(outDir, 'out.csv'), 'utf8').trim().split('\n')[0]).toBe('Name,Role & team,Role & team 2,Started');
+    expect(readFileSync(join(outDir, 'out2.csv'), 'utf8').trim().split('\n')).toEqual(['Region,Quarter,Amount', 'North,Q1,120.0', 'North,Q2,130.5', 'South,Q1,80.0', 'South,Q2,']);
+  });
+
+  it('reads spreadsheets in every format with the sheet options the browser saved: an old .xls and a dBase table', async () => {
+    writeFileSync(join(folder, 'sales.xls'), readFileSync(join(__dirname, '../fixtures/formats/sales.xls')));
+    writeFileSync(join(folder, 'sales.dbf'), readFileSync(join(__dirname, '../fixtures/formats/sales.dbf')));
+    const sheet = (id: string, name: string, parseOptions: Source['parseOptions'] = {}) => ({ ...src({ id, format: 'xlsx' }), name, parseOptions, file: { originalName: name, size: 1, lastModified: 0, headHash: 'h' } });
+    const p = flow({
+      sources: [sheet('x', 'sales.xls', { sheet: 'Visits' }), sheet('d', 'sales.dbf')],
+      nodes: [
+        { id: 'x', type: 'source', sourceId: 'x' },
+        { id: 'd', type: 'source', sourceId: 'd' },
+        { id: 'out', type: 'output', outputSpec: { format: 'csv', options: {} } },
+        { id: 'out2', type: 'output', outputSpec: { format: 'csv', options: {} } },
+      ],
+      wires: [
+        ['x', 'out', 0],
+        ['d', 'out2', 0],
+      ],
+    });
+    p.name = 'Sheets';
+    const outDir = join(folder, 'out-sheets');
+    const { log } = await runProject(p, { folder, outDir, db, now: () => new Date('2026-10-17T03:00:00Z') });
+    expect(log.sources.map((s) => s.problem)).toEqual([undefined, undefined]);
+    expect(log.outputs.map((o) => [o.nodeName, o.status, o.rows])).toEqual([
+      ['out', 'written', 2],
+      ['out2', 'written', 4],
+    ]);
+    // The Visits sheet, with its date-times, through the same reader as the browser's, typed by DuckDB.
+    expect(readFileSync(join(outDir, 'out.csv'), 'utf8').trim().split('\n')).toEqual(['Visitor,Arrived,Count,Mixed', 'Ann,2026-01-05 09:30:00,3,1', 'Bob,2026-01-06 14:00:00,5,two']);
+    expect(await db.describe(`SELECT * FROM "${sourceTableName(p.sources[0]!)}"`)).toEqual([
+      { name: 'Visitor', type: 'VARCHAR' },
+      { name: 'Arrived', type: 'TIMESTAMP' },
+      { name: 'Count', type: 'BIGINT' },
+      { name: 'Mixed', type: 'VARCHAR' },
+    ]);
+    const dbf = readFileSync(join(outDir, 'out2.csv'), 'utf8').trim().split('\n');
+    expect(dbf[0]).toBe('Region,Order date,Amount,Paid,Notes');
+    expect(dbf[1]).toBe('North,2026-01-05,120.5,true,First order');
+    expect(dbf[2]).toBe('South,2026-02-10,80.0,false,');
+    expect(await db.describe(`SELECT * FROM "${sourceTableName(p.sources[1]!)}"`)).toEqual([
+      { name: 'Region', type: 'VARCHAR' },
+      { name: 'Order date', type: 'DATE' },
+      { name: 'Amount', type: 'DOUBLE' },
+      { name: 'Paid', type: 'BOOLEAN' },
+      { name: 'Notes', type: 'VARCHAR' },
+    ]);
+  });
+
   it('reads a text file with the skip options and column names the browser’s sniff set, the same rows as the browser', async () => {
     writeFileSync(join(folder, 'messy.txt'), readFileSync(join(__dirname, '../fixtures/messy/messy.txt')));
     const parseOptions = { delimiter: ';', skip: 2, skipBottom: 1, columns: ['Customer ID', 'Customer Name', 'City', 'Status', 'Signed up', 'Balance', 'Phone', 'Notes'] };
@@ -186,6 +457,39 @@ describe('puddle-run', () => {
     expect(csv[0]).toBe('Customer ID,Customer Name,City,Status,Signed up,Balance,Phone,Notes');
     expect(csv[1]).toContain('CU1000,kofi jones,Cardiff');
     expect(csv[csv.length - 1]).toContain('CU1039,dev smith');
+  });
+
+  it('reads fixed-width text at the boundaries the browser found, and a pipe table with the lines around it left out', async () => {
+    writeFileSync(join(folder, 'fixed-width.txt'), readFileSync(join(__dirname, '../fixtures/messy/fixed-width.txt')));
+    writeFileSync(join(folder, 'sap-extract.txt'), readFileSync(join(__dirname, '../fixtures/messy/sap-extract.txt')));
+    const text = (id: string, name: string, format: 'fixed' | 'pipes', parseOptions: Source['parseOptions']) => ({ ...src({ id, format }), name, parseOptions, file: { originalName: name, size: 1, lastModified: 0, headHash: 'h' } });
+    const p = flow({
+      sources: [text('f', 'fixed-width.txt', 'fixed', { boundaries: [8, 30, 43, 54, 64] }), text('s', 'sap-extract.txt', 'pipes', { encoding: 'latin-1' })],
+      nodes: [
+        { id: 'f', type: 'source', sourceId: 'f' },
+        { id: 's', type: 'source', sourceId: 's' },
+        { id: 'out', type: 'output', outputSpec: { format: 'csv', options: {} } },
+        { id: 'out2', type: 'output', outputSpec: { format: 'csv', options: {} } },
+      ],
+      wires: [
+        ['f', 'out', 0],
+        ['s', 'out2', 0],
+      ],
+    });
+    p.name = 'Reports';
+    const outDir = join(folder, 'out-text');
+    const { log } = await runProject(p, { folder, outDir, db, now: () => new Date('2026-10-17T03:00:00Z') });
+    expect(log.outputs.map((o) => [o.nodeName, o.status, o.rows])).toEqual([
+      ['out', 'written', 30],
+      ['out2', 'written', 61],
+    ]);
+    const fixed = readFileSync(join(outDir, 'out.csv'), 'utf8').trim().split('\n');
+    expect(fixed[0]).toBe('CUSTNO,NAME,CITY,BALANCE,SINCE,ST');
+    expect(fixed[1]).toBe('100200,Kofi Patel,Leeds,"15,369.45",20240914,A');
+    const sap = readFileSync(join(outDir, 'out2.csv'), 'utf8').trim().split('\n');
+    expect(sap[0]).toBe('Doc. no.,Vendor,Doc. date,Pstng date,Crcy,Amount in LC,Cost ctr,Text');
+    expect(sap.some((l) => l.includes('Müller GmbH'))).toBe(true);
+    expect(sap[sap.length - 1]).toMatch(/^\*,/);
   });
 
   it('reads the command line and lists a folder’s project files', () => {

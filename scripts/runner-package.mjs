@@ -1,7 +1,8 @@
-// Writes dist-runner/package.json: what puddle-run needs at run time that its bundle can't carry: the native DuckDB
-// binding, and the database clients the connection sources' drivers load (the same set puddle-connect carries:
-// sql.js, pg, mysql2, node-firebird, tedious, oracledb, mongodb, redis, cassandra-driver), pinned to the exact
-// versions this repository's lockfile uses. Dockerfile.runner installs from it.
+// Writes dist-runner/package.json: the packages puddle-run needs at run time that its bundle can't carry: the native
+// DuckDB binding, pdf.js (which loads its own worker module by path), and the database clients the connection
+// sources' drivers load (the same set puddle-connect carries: sql.js, pg, mysql2, node-firebird, tedious, oracledb,
+// mongodb, redis, cassandra-driver), pinned to the exact versions this repository's lockfile uses. Dockerfile.runner
+// installs from it.
 import { readFileSync, writeFileSync } from 'node:fs';
 
 const root = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
@@ -19,6 +20,6 @@ const out = {
   version: root.version,
   type: 'module',
   bin: { 'puddle-run': './puddle-run.mjs' },
-  dependencies: Object.fromEntries(['@duckdb/node-api', 'sql.js', 'pg', 'mysql2', 'node-firebird', 'tedious', 'oracledb', 'mongodb', 'redis', 'cassandra-driver'].map((name) => [name, pinned(name)])),
+  dependencies: Object.fromEntries(['@duckdb/node-api', 'pdfjs-dist', 'sql.js', 'pg', 'mysql2', 'node-firebird', 'tedious', 'oracledb', 'mongodb', 'redis', 'cassandra-driver'].map((name) => [name, pinned(name)])),
 };
 writeFileSync(new URL('../dist-runner/package.json', import.meta.url), JSON.stringify(out, null, 2) + '\n');

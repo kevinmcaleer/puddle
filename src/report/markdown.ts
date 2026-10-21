@@ -1,6 +1,6 @@
 // The report as Markdown: reads as plain text, and pastes into tickets and wikis as tables.
 import type { QualityReport, ReportRule } from './build';
-import { count, HEAD_HASH_NOTE, NO_DATA_NOTE, overrideLine, reportTime, ruleFigures, SAMPLE_NOTE, sampleModeNote, STATUS_WORD, summaryLine } from './words';
+import { analysisLine, count, HEAD_HASH_NOTE, NO_DATA_NOTE, OUTCOME_WORD, overrideLine, reportTime, ruleFigures, SAMPLE_NOTE, sampleModeNote, STATUS_WORD, summaryLine } from './words';
 
 /** One table cell: pipes escaped, line breaks flattened, so a value can't break the table. */
 const cell = (v: string | number | null | undefined) =>
@@ -29,6 +29,32 @@ function ruleDetail(rule: ReportRule): string[] {
   return out;
 }
 
+/** A node's rules as a table, then the detail lines of the rules that have more to say. */
+function rulesSection(rules: ReportRule[]): string[] {
+  const out = [
+    table(
+      ['Status', 'Rule', 'Kind', 'Severity', 'Columns', 'Rows', 'Pass', 'Fail', 'Fail %'],
+      rules.map((rule) => [
+        STATUS_WORD[rule.status],
+        rule.label,
+        rule.kindLabel,
+        rule.severity === 'fail' ? 'Fail' : 'Warn',
+        rule.columns.join(', '),
+        num(rule.total),
+        num(rule.passed),
+        num(rule.failed),
+        rule.failedPercent == null ? '' : `${rule.failedPercent}%`,
+      ]),
+    ),
+  ];
+  const details = rules.flatMap((rule) => {
+    const d = ruleDetail(rule);
+    // Rules with nothing but counts are fully in the table; ones not checked say why.
+    return d.length ? d : rule.total == null && rule.status !== 'off' ? [`- **${text(rule.label)}**: ${ruleFigures(rule)}`] : [];
+  });
+  return details.length ? [...out, '', ...details] : out;
+}
+
 export function reportMarkdown(r: QualityReport): string {
   const out: string[] = [`# Quality report: ${text(r.project.name)}`, '', `Generated ${reportTime(r.generatedAt)} by Puddle.`, '', `**${summaryLine(r)}**`, ''];
   out.push(`> ${r.sampleLimit > 0 ? SAMPLE_NOTE : NO_DATA_NOTE}`);
@@ -41,32 +67,12 @@ export function reportMarkdown(r: QualityReport): string {
   for (const node of r.nodes) {
     out.push('', `## ${text(node.name)}`, '');
     if (node.onSample) out.push('Checked on the sample, so counts are of sampled rows.', '');
-    if (!node.rules.length) {
-      out.push('No rules.');
-      continue;
+    if (!node.rules.length) out.push('No rules.');
+    else out.push(...rulesSection(node.rules));
+    if (node.analysis) {
+      out.push('', '### Issues', '', analysisLine(node.analysis));
+      if (node.analysis.issues.length) out.push('', table(['Outcome', 'Issue', 'Column', 'Rows'], node.analysis.issues.map((i) => [OUTCOME_WORD[i.outcome], i.label, i.column ?? '', num(i.count)])));
     }
-    out.push(
-      table(
-        ['Status', 'Rule', 'Kind', 'Severity', 'Columns', 'Rows', 'Pass', 'Fail', 'Fail %'],
-        node.rules.map((rule) => [
-          STATUS_WORD[rule.status],
-          rule.label,
-          rule.kindLabel,
-          rule.severity === 'fail' ? 'Fail' : 'Warn',
-          rule.columns.join(', '),
-          num(rule.total),
-          num(rule.passed),
-          num(rule.failed),
-          rule.failedPercent == null ? '' : `${rule.failedPercent}%`,
-        ]),
-      ),
-    );
-    const details = node.rules.flatMap((rule) => {
-      const d = ruleDetail(rule);
-      // Rules with nothing but counts are fully in the table; ones not checked say why.
-      return d.length ? d : rule.total == null && rule.status !== 'off' ? [`- **${text(rule.label)}**: ${ruleFigures(rule)}`] : [];
-    });
-    if (details.length) out.push('', ...details);
   }
   return `${out.join('\n')}\n`;
 }

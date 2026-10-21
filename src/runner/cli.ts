@@ -2,6 +2,7 @@
 //   puddle-run run <project.puddle.json> [--out <folder>]
 //   puddle-run watch <folder> [--out <folder>] [--poll <seconds>]
 //   puddle-run check <project.puddle.json>
+//   puddle-run analyse <file>
 //   puddle-run schema <project.puddle.json | schema.dbml> [--check] [--ddl <dialect> <out.sql>] …
 // Connection sources are read with the drivers in-process; their secrets come from PUDDLE_SECRET_<NAME> variables
 // or the JSON file PUDDLE_SECRETS names, never from the project file (one holding a secret is refused).
@@ -11,7 +12,8 @@ import process from 'node:process';
 import { Cron } from 'croner';
 import { nodeConnectors } from '../connect/node';
 import { readProjectFile } from '../persistence/migrate';
-import type { DriverId, Project } from '../model';
+import { analyseFile, describeAnalysis, sniffFile } from './analyse';
+import type { DriverId, Project, Source } from '../model';
 import { describeConnectionSource, leakedSecrets, leakMessage, secretsFrom, type PlaceOptions } from './connections';
 import { openDb } from './db';
 import { runProject, runSucceeded } from './run';
@@ -19,6 +21,7 @@ import { nextRun, scheduleProblem } from './schedule';
 import { SCHEMA_USAGE, schemaCommand } from './schema';
 import { placeSources } from './sources';
 import { existsSync } from 'node:fs';
+import { formatLabel } from '../canvas/formatLabel';
 
 const say = (line: string) => console.log(`${new Date().toISOString()} ${line}`);
 
@@ -60,14 +63,38 @@ export async function runOnce(path: string, out?: string): Promise<boolean> {
   }
 }
 
-/** The lines `check` prints for a project: each source and where it reads from (or why it can't), each output, the schedule. */
+/**
+ * A file found for a source whose content no longer looks like the format the project reads it as: the file was
+ * replaced by something else, or saved in another format. Only a sure or likely sniff of a plain file is trusted;
+ * an archive is read by its entry, and a sniff that can't tell says nothing.
+ */
+export function formatChanged(source: Source, path: string): string | undefined {
+  if (source.kind !== 'file' || source.archive) return undefined;
+  let sniffed;
+  try {
+    sniffed = sniffFile(path);
+  } catch (e) {
+    return `looks like ${e instanceof Error ? e.message : String(e)}`;
+  }
+  if (sniffed.confidence === 'unsure' || sniffed.format === source.format) return undefined;
+  // CSV and TSV are read by the same reader, with the delimiter the project saved.
+  if ((sniffed.format === 'csv' || sniffed.format === 'tsv') && (source.format === 'csv' || source.format === 'tsv')) return undefined;
+  return `now looks like ${formatLabel(sniffed.format)}, not ${formatLabel(source.format)} as the project reads it (${sniffed.reason.replace(/\.$/, '')})`;
+}
+
+/**
+ * The lines `check` prints for a project: each source and where it reads from (or why it can't, or that its file
+ * no longer looks like its format), each output, the schedule.
+ */
 export function checkLines(project: Project, folder: string, exists: (path: string) => boolean, connections: PlaceOptions, now = () => new Date()): { lines: string[]; ok: boolean } {
   const lines: string[] = [project.name];
   let ok = true;
   for (const p of placeSources(project, folder, exists, connections)) {
     if (p.path === undefined) ok = false;
+    const changed = p.path && !p.connection ? formatChanged(p.source, p.path) : undefined;
+    if (changed) ok = false;
     const where = p.path === undefined ? p.reason : p.connection ? `reads ${describeConnectionSource(p.source, p.connection)}` : p.path || 'pasted text';
-    lines.push(`  source ${p.source.name}: ${where}`);
+    lines.push(`  source ${p.source.name}: ${where}${changed ? `; ${changed}` : ''}`);
   }
   for (const n of project.nodes) if (n.type === 'output') lines.push(`  output ${n.name}: ${n.outputSpec.format}`);
   const schedule = project.settings.schedule;
@@ -83,13 +110,24 @@ export function checkLines(project: Project, folder: string, exists: (path: stri
 }
 
 /** Say what a run of this project would do: its sources (and which connections still need a secret), its outputs and its schedule. */
-export function check(path: string): boolean {
+export function check(path: string, out = (line: string) => console.log(line)): boolean {
   const file = resolve(path);
   const project = readProject(file);
-  const folder = dirname(file);
-  const { lines, ok } = checkLines(project, folder, existsSync, connectionOptions());
-  for (const line of lines) console.log(line);
+  const { lines, ok } = checkLines(project, dirname(file), existsSync, connectionOptions());
+  for (const line of lines) out(line);
   return ok;
+}
+
+/** Sniff, read and analyse one file, and print what the Issues panel would list. True when nothing is wrong with it. */
+export async function analyse(path: string, out = (line: string) => console.log(line)): Promise<boolean> {
+  const db = await openDb();
+  try {
+    const result = await analyseFile(path, db, { fetchText, fetchImpl: fetch });
+    for (const line of describeAnalysis(result)) out(line);
+    return result.issues.every((i) => i.severity === 'info');
+  } finally {
+    await db.close();
+  }
 }
 
 interface Watched {
@@ -195,6 +233,7 @@ const USAGE = `puddle-run: run Puddle projects outside the browser, on DuckDB's 
   puddle-run run <project.puddle.json> [--out <folder>]    run every Output node once
   puddle-run watch <folder> [--out <folder>] [--poll <s>]   run each project on its schedule
   puddle-run check <project.puddle.json>                    say where its sources are and when it runs
+  puddle-run analyse <file>                                 list the issues the editor would find in a file
   puddle-run schema <project.puddle.json | schema.dbml> …   check the schema, write its SQL, docs or a migration
 
 Outputs, the run log (<project>.run.json) and the quality report (<project>.quality.md) go to --out,
@@ -226,6 +265,7 @@ async function run(argv: string[]) {
   }
   if (command === 'run' && target) process.exitCode = (await runOnce(target, out)) ? 0 : 1;
   else if (command === 'check' && target) process.exitCode = check(target) ? 0 : 1;
+  else if (command === 'analyse' && target) process.exitCode = (await analyse(target)) ? 0 : 1;
   else if (command === 'watch' && target) {
     const stop = watch(target, { out, pollMs: poll ? poll * 1000 : undefined });
     const quit = () => {

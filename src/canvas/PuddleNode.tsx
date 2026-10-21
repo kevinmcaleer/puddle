@@ -12,6 +12,8 @@ import { useAttachments } from '../sources/attachments';
 import { isAccessSource, useAccessReads } from '../sources/access';
 import { connectionNeedsMessage, connectionOf, isConnectionSource, useConnectionReads } from '../sources/connection';
 import { isExcelSource, useExcelReads } from '../sources/excel';
+import { useRewrites } from '../sources/rewrite';
+import { isRewrittenText } from '../sources/text';
 import { isXmlSource, useXmlReads } from '../sources/xml';
 import { urlProblem, useUrlFetches } from '../sources/url';
 import { NodeCard } from '../ui';
@@ -54,10 +56,11 @@ export function PuddleNode({ data, selected }: NodeProps<PuddleFlowNode>) {
   const xml = useXmlReads((s) => (source && isXmlSource(source) ? s.reads[source.id] : undefined));
   const access = useAccessReads((s) => (source && isAccessSource(source) ? s.reads[source.id] : undefined));
   const connection = useConnectionReads((s) => (source && isConnectionSource(source) ? s.reads[source.id] : undefined));
+  const rewrite = useRewrites((s) => (source && isRewrittenText(source) ? s.reads[source.id] : undefined));
   const fileChosen = useAttachments((s) => (source ? (s.sources[source.id] ?? 'detached') !== 'detached' : false));
   // An Excel sheet, Access table or XML whose file is here but not read yet (or that can't be read): reading, or why not.
-  const sheetPending = !!source && (isExcelSource(source) || isAccessSource(source) || isXmlSource(source) || isConnectionSource(source)) && fileChosen;
-  const read = excel ?? access ?? xml ?? connection;
+  const sheetPending = !!source && (isExcelSource(source) || isAccessSource(source) || isXmlSource(source) || isRewrittenText(source) || isConnectionSource(source)) && fileChosen;
+  const read = excel ?? access ?? xml ?? rewrite ?? connection;
   // A connection source that waits for its file or sign-in, or whose read failed, says so on the card.
   const connectionProblem = source && isConnectionSource(source) ? connectionNeedsMessage(connectionOf(project, source), connection) : undefined;
   const readFailed = sheetPending && (read?.state === 'failed' || !!connectionProblem);
@@ -73,7 +76,7 @@ export function PuddleNode({ data, selected }: NodeProps<PuddleFlowNode>) {
         ? undefined
         : 'File not connected. Choose it again in the inspector.';
   return (
-    <div data-testid={`node-${node.name}`} data-status={status.state} data-rules={rule?.status} data-export={node.type === 'output' && ok ? (blocked ? 'blocked' : 'ready') : undefined} data-fetch={fetch?.state} data-sheet={excel?.state} data-access={access?.state} data-xml={xml?.state} data-connection={connection?.state}>
+    <div data-testid={`node-${node.name}`} data-status={status.state} data-rules={rule?.status} data-export={node.type === 'output' && ok ? (blocked ? 'blocked' : 'ready') : undefined} data-fetch={fetch?.state} data-sheet={excel?.state} data-access={access?.state} data-xml={xml?.state} data-rewrite={rewrite?.state} data-connection={connection?.state}>
       <NodeCard
         kind={cardKind(node.type)}
         name={heading.name}

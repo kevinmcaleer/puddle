@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { addFiles, cell, expectRows, fixture, node, openApp } from './helpers/app';
+import { addFiles, cell, expectRows, fixture, node, openApp, selectNode } from './helpers/app';
 
 /**
  * Orders and customers on the canvas, with customer names looked up onto orders: select orders, then
@@ -10,8 +10,8 @@ async function lookUpShop(page: Page, via: 'menu' | 'selection bar' = 'menu') {
   await addFiles(page, [fixture('shop-orders.csv'), fixture('shop-customers.csv')]);
   await expect(node(page, 'shop-customers.csv')).toHaveAttribute('data-status', 'ok');
   await expect(node(page, 'shop-orders.csv')).toHaveAttribute('data-status', 'ok');
-  await node(page, 'shop-orders.csv').click();
-  await node(page, 'shop-customers.csv').click({ modifiers: ['Shift'] });
+  await selectNode(page, 'shop-orders.csv');
+  await selectNode(page, 'shop-customers.csv', ['Shift']);
   if (via === 'menu') {
     await page.getByRole('button', { name: 'Add', exact: true }).click();
     await page.getByRole('menuitem', { name: /Lookup/ }).click();

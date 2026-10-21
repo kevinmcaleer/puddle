@@ -29,7 +29,6 @@ export function placeSources(project: Project, folder: string, exists: (path: st
     if (source.url?.table) return { source, reason: 'is a table on a web page, which the runner can’t read yet' };
     if (source.url?.odata?.auth) return { source, reason: 'is an OData feed that needs a sign-in, which the runner can’t give yet' };
     if (source.kind === 'url') return source.url ? { source, path: source.url.href } : { source, reason: 'has no address' };
-    if (source.format === 'xlsx') return { source, reason: 'is an Excel workbook, which the runner can’t read yet' };
     const candidates = sourceCandidates(source, folder);
     const found = candidates.find(exists);
     if (found) return { source, path: found };

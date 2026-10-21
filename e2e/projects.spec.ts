@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { addFiles, addStepNode, cell, expectRows, fixture, node, openApp, pasteText, saved } from './helpers/app';
+import { addFiles, addStepNode, cell, expectRows, fixture, node, openApp, pasteText, saved, selectNode } from './helpers/app';
 
 const projectMenu = async (page: Page, item: string) => {
   await page.getByTestId('project-menu').click();
@@ -28,7 +28,7 @@ test('closing and reopening the tab restores the project, the canvas viewport an
   await (await chooser).setFiles(fixture('customers.csv'));
   await expect(node(page, 'customers.csv')).toHaveAttribute('data-status', 'ok');
   await expectRows(page, 4);
-  await node(page, 'customers.csv').click();
+  await selectNode(page, 'customers.csv');
   await expect(page.getByTestId('attachment-banner')).toHaveCount(0);
 });
 
@@ -38,7 +38,7 @@ test('choosing a different file than the project was built on warns', async ({ p
   await expect.poll(async () => (await saved(page))?.nodes.length).toBe(1);
   await page.reload();
   await expect(page.getByTestId('engine-ready')).toBeVisible({ timeout: 45_000 });
-  await node(page, 'customers.csv').click();
+  await selectNode(page, 'customers.csv');
   await expect(page.getByTestId('attachment-banner')).toHaveAttribute('data-state', 'detached');
 
   const chooser = page.waitForEvent('filechooser');
@@ -164,7 +164,7 @@ test('project settings are saved with the project', async ({ page }) => {
 test('a Source to Transform to Output flow is saved and reloaded with its layout', async ({ page }) => {
   await openApp(page);
   await addFiles(page, [fixture('customers.csv')]);
-  await node(page, 'customers.csv').click();
+  await selectNode(page, 'customers.csv');
   await addStepNode(page, 'Trim whitespace');
   await page.getByRole('button', { name: 'Add', exact: true }).click();
   await page.getByRole('menuitem', { name: 'Output' }).click();

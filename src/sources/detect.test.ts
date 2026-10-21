@@ -1,4 +1,4 @@
-import { ACCEPT, formatFromName, formatFromText, SourceError, sourceName } from './detect';
+import { ACCEPT, formatFromName, formatFromText, isArchiveName, knownFormat, SourceError, sourceName } from './detect';
 import { headHash } from './hash';
 
 describe('format from a file name', () => {
@@ -15,6 +15,31 @@ describe('format from a file name', () => {
     ['data.pq', 'parquet'],
     ['book.xlsx', 'xlsx'],
     ['BOOK.XLSX', 'xlsx'],
+    ['book.xls', 'xlsx'],
+    ['book.xlsb', 'xlsx'],
+    ['book.xlsm', 'xlsx'],
+    ['customers.arrow', 'arrow'],
+    ['servers.yaml', 'yaml'],
+    ['servers.yml', 'yaml'],
+    ['report.docx', 'word'],
+    ['statement.pdf', 'pdf'],
+    ['pyproject.toml', 'toml'],
+    ['settings.ini', 'ini'],
+    ['app.cfg', 'ini'],
+    ['places.geojson', 'geojson'],
+    ['places.kml', 'xml'],
+    ['track.gpx', 'xml'],
+    ['customers.feather', 'arrow'],
+    ['orders.csv.gz', 'csv'],
+    ['book.xlsx.gz', 'xlsx'],
+    ['book.ods', 'xlsx'],
+    ['book.fods', 'xlsx'],
+    ['book.numbers', 'xlsx'],
+    ['table.dbf', 'xlsx'],
+    ['table.dif', 'xlsx'],
+    ['table.slk', 'xlsx'],
+    ['table.sylk', 'xlsx'],
+    ['table.wk1', 'xlsx'],
     ['books.xml', 'xml'],
     ['shop.accdb', 'access'],
     ['SHOP.MDB', 'access'],
@@ -22,18 +47,18 @@ describe('format from a file name', () => {
     expect(formatFromName(name)).toBe(format);
   });
 
-  it('asks for old .xls workbooks to be saved as .xlsx or CSV', () => {
-    expect(() => formatFromName('book.xls')).toThrow(SourceError);
-    expect(() => formatFromName('book.xls')).toThrow('book.xls is in the old Excel format (.xls), which Puddle doesn’t read. Open it in Excel and save it as .xlsx or CSV, then add that.');
-  });
-
   it('refuses unknown formats with what it can read', () => {
-    expect(() => formatFromName('photo.png')).toThrow(/CSV, TSV, JSON, NDJSON, Parquet, Excel \(\.xlsx\), XML or Access \(\.accdb, \.mdb\) file/);
+    expect(() => formatFromName('photo.png')).toThrow(/CSV, TSV, JSON, NDJSON, Parquet, Arrow, spreadsheet \(\.xlsx, \.xls, \.ods, \.numbers, \.dbf\), XML, YAML, TOML, INI, GeoJSON, Word \(\.docx\), PDF or Access \(\.accdb, \.mdb\) file, or a \.gz or \.zip holding one/);
     expect(() => formatFromName('README')).toThrow(SourceError);
   });
 
   it('accepts exactly the extensions it can read in the file chooser', () => {
-    for (const ext of ACCEPT.split(',')) expect(() => formatFromName(`f${ext}`)).not.toThrow();
+    // A .gz or .zip is opened for the file inside (src/sources/archive.ts), so its own name says no format.
+    for (const ext of ACCEPT.split(',')) if (!isArchiveName(`f${ext}`)) expect(() => formatFromName(`f${ext}`)).not.toThrow();
+    expect(ACCEPT.split(',').filter((ext) => isArchiveName(`f${ext}`))).toEqual(['.gz', '.zip']);
+    expect(knownFormat('data.gz')).toBeUndefined();
+    expect(isArchiveName('ORDERS.ZIP')).toBe(true);
+    expect(isArchiveName('orders.tgz')).toBe(false);
   });
 });
 

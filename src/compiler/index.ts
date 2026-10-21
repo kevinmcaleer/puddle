@@ -1,4 +1,4 @@
-export { compileAnalysis, compileDistinctFacts, compileShape, compileValueCounts, NON_PRINTING_PATTERN, VALUES_LIMIT, type AnalysisCheck } from './analysis';
+export { compileAnalysis, compileDistinctFacts, compileShape, compileSkew, compileValueCounts, NON_PRINTING_PATTERN, VALUES_LIMIT, type AnalysisCheck } from './analysis';
 export { DATE_PATTERN, MOJIBAKE_FIXES, MOJIBAKE_PATTERN, NUMBER_PATTERN, PLACEHOLDERS } from './patterns';
 export {
   compile,
@@ -45,7 +45,7 @@ export { SchemaCache } from './schemaCache';
 export { dropDuckdbSchema, duckdbSchema, duckdbType, foreignKey, primaryKey, recordsOf, schemaDdl, schemaTableRef, uniqueKeys, type DdlWarning, type SchemaDdl, type TableDdl } from './ddl/duckdb';
 export { migrationSql, narrows, type Migration } from './ddl/migration';
 export { describeFailure, FAILURE_COLUMN, LOAD_FAILURES, loadColumns, projectSchema, tableFor, textSample, type LoadCheck, type LoadColumn } from './schemaTable';
-export { compileAccessLoad, dropTable, sourceFileName, sourceRelation, sourceTableName } from './sources';
+export { compileAccessLoad, dropTable, isLoadedTable, isRewritten, isStructured, readsCompressed, sourceFileName, sourceRelation, sourceTableName } from './sources';
 export { compileConnectionLoad, compileRelationPreview, compileStagingTable, compileTableCount, compileTableSelect, loadType } from './connectionLoad';
 export { dateText, dateType, isNumberDateFormat, NUMBER_DATE_FORMATS, readDateFormat, readDates } from './dateRead';
 export { englishDateNames, isParseLocale, PARSE_LOCALE_IDS, PARSE_LOCALES, parseLocale, type ParseLocale, type ParseLocaleId } from './locales';

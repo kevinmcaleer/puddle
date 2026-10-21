@@ -22,6 +22,8 @@ export interface Statement {
   line: number;
   /** The script the offsets of the tokens point into. */
   source: string;
+  /** The rows after a `COPY … FROM stdin;`, up to the `\.` line, as pg_dump writes them. */
+  data?: string;
 }
 
 const isWordStart = (c: string) => /[\p{L}_]/u.test(c);
@@ -39,11 +41,13 @@ export function splitStatements(sql: string, dialect: SqlDialect): Statement[] {
   let blocks = 0;
   const trigger = () => dialect === 'sqlite' && /^CREATE$/i.test(tokens[0]?.value ?? '') && tokens.slice(1, 4).some((t) => t.kind === 'word' && /^TRIGGER$/i.test(t.value));
 
-  const flush = () => {
+  const flush = (data?: string) => {
     blocks = 0;
-    if (tokens.length) statements.push({ tokens, line: tokens[0]!.line, source: sql });
+    if (tokens.length) statements.push({ tokens, line: tokens[0]!.line, source: sql, ...(data !== undefined ? { data } : {}) });
     tokens = [];
   };
+  /** A `COPY … FROM stdin` has its rows after the `;`, up to a line holding `\.`; they are the statement's data, not tokens. */
+  const copyFromStdin = () => tokens[0]?.kind === 'word' && /^COPY$/i.test(tokens[0].value) && tokens.some((t, k) => t.kind === 'word' && /^FROM$/i.test(t.value) && /^stdin$/i.test(tokens[k + 1]?.value ?? ''));
   const advance = (to: number) => {
     for (let k = i; k < to && k < sql.length; k++) if (sql[k] === '\n') line++;
     i = to;
@@ -101,6 +105,16 @@ export function splitStatements(sql: string, dialect: SqlDialect): Statement[] {
     }
     if (c === ';' && delimiter === ';' && blocks === 0) {
       i++;
+      if (copyFromStdin()) {
+        const from = sql.indexOf('\n', i) + 1;
+        const end = from > 0 ? /^\\\.[ \t]*\r?$/m.exec(sql.slice(from)) : null;
+        const to = from > 0 ? (end ? from + end.index : sql.length) : sql.length;
+        const data = from > 0 ? sql.slice(from, to) : '';
+        advance(end ? to + end[0].length : sql.length);
+        flush(data);
+        lineStart = true;
+        continue;
+      }
       flush();
       continue;
     }

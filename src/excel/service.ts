@@ -3,14 +3,17 @@ import type { WorkBook } from 'xlsx';
 import { sheetToIPC } from './arrow';
 import { listSheets, parseWorkbook, readSheet } from './read';
 import { writeWorkbook, type SheetWriteOptions } from './write';
-import { ExcelError, type SheetColumnType, type SheetInfo, type SheetReadOptions } from './types';
+import { ExcelError, type SheetColumnType, type SheetInfo, type SheetReadOptions, type SheetTable } from './types';
 
 export interface ReadResult {
   sheets: SheetInfo[];
   sheet: string;
   headerRow: number;
+  headerRows: number;
   range: string;
   rows: number;
+  merges: number;
+  tables: SheetTable[];
   columns: { name: string; type: SheetColumnType }[];
   /** The sheet as an Arrow IPC stream, for DuckDB. */
   ipc: Uint8Array;
@@ -51,8 +54,11 @@ export class ExcelService implements Record<ExcelOp, (args: never) => Promise<un
       sheets,
       sheet: data.sheet,
       headerRow: data.headerRow,
+      headerRows: data.headerRows,
       range: data.range,
       rows: data.rows,
+      merges: data.merges,
+      tables: data.tables,
       columns: data.columns.map((c) => ({ name: c.name, type: c.type })),
       ipc: sheetToIPC(data.columns),
     };
