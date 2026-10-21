@@ -9,7 +9,7 @@ import { detectDateFormats } from '../../src/dates';
 import { EngineClient, tableRows } from '../../src/engine/client';
 import { placeFixes, setParseOptions, type Project } from '../../src/model';
 import { sniff } from '../../src/sources/sniff';
-import { decodeText, isRewrittenText, readText, rewrittenCsv } from '../../src/sources/text';
+import { decodeText, isRewrittenTextSource, readText, rewrittenCsv } from '../../src/sources/text';
 import { createNodeBackend } from '../helpers/nodeBackend';
 import { flow, src } from '../helpers/projects';
 
@@ -25,7 +25,7 @@ async function open(name: string) {
   const sniffed = sniff({ name, head: data, size: data.length });
   const source = src({ id: name.replace(/\W/g, '_'), format: sniffed.format, parseOptions: sniffed.parseOptions });
   // A pipe table or fixed-width text is read into rows first and handed to DuckDB as CSV (src/sources/rewrite.ts).
-  if (isRewrittenText(source)) await engine.registerText(sourceFileName(source), rewrittenCsv(readText(source.format, decodeText(data, source.parseOptions.encoding), source.parseOptions)));
+  if (isRewrittenTextSource(source)) await engine.registerText(sourceFileName(source), rewrittenCsv(readText(source.format, decodeText(data, source.parseOptions.encoding), source.parseOptions)));
   else await engine.registerBuffer(sourceFileName(source), data);
   return { sniffed, project: flow({ sources: [source], nodes: [{ id: 'in', type: 'source', sourceId: source.id }] }), sourceId: source.id };
 }
@@ -44,7 +44,7 @@ async function fixAll(project: Project, sourceId: string, chosen: (issues: Issue
   if (Object.keys(readOptions).length) {
     fixed = setParseOptions(fixed, sourceId, { ...fixed.sources[0]!.parseOptions, ...readOptions });
     const source = fixed.sources[0]!;
-    if (isRewrittenText(source)) {
+    if (isRewrittenTextSource(source)) {
       const data = new Uint8Array(readFileSync(join(__dirname, '../fixtures/messy', source.name)));
       await engine.registerText(sourceFileName(source), rewrittenCsv(readText(source.format, decodeText(data, source.parseOptions.encoding), source.parseOptions)));
     }
