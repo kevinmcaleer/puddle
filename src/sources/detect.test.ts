@@ -22,6 +22,7 @@ describe('format from a file name', () => {
     ['servers.yaml', 'yaml'],
     ['servers.yml', 'yaml'],
     ['report.docx', 'word'],
+    ['statement.pdf', 'pdf'],
     ['pyproject.toml', 'toml'],
     ['settings.ini', 'ini'],
     ['app.cfg', 'ini'],
@@ -47,7 +48,7 @@ describe('format from a file name', () => {
   });
 
   it('refuses unknown formats with what it can read', () => {
-    expect(() => formatFromName('photo.png')).toThrow(/CSV, TSV, JSON, NDJSON, Parquet, Arrow, spreadsheet \(\.xlsx, \.xls, \.ods, \.numbers, \.dbf\), XML, YAML, TOML, INI, GeoJSON, Word \(\.docx\) or Access \(\.accdb, \.mdb\) file, or a \.gz or \.zip holding one/);
+    expect(() => formatFromName('photo.png')).toThrow(/CSV, TSV, JSON, NDJSON, Parquet, Arrow, spreadsheet \(\.xlsx, \.xls, \.ods, \.numbers, \.dbf\), XML, YAML, TOML, INI, GeoJSON, Word \(\.docx\), PDF or Access \(\.accdb, \.mdb\) file, or a \.gz or \.zip holding one/);
     expect(() => formatFromName('README')).toThrow(SourceError);
   });
 

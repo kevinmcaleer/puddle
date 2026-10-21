@@ -279,6 +279,34 @@ describe('puddle-run', () => {
     expect(readFileSync(join(outDir, 'out2.csv'), 'utf8').trim().split('\n')[1]).toBe('"2026-10-11 09:00:01,250",INFO Puddle runner started');
   });
 
+  it('reads the table of a PDF the browser chose, through pdf.js', async () => {
+    writeFileSync(join(folder, 'statement.pdf'), readFileSync(join(__dirname, '../fixtures/pdf/statement.pdf')));
+    const pdf = (id: string, parseOptions: Source['parseOptions'] = {}) => ({ ...src({ id, format: 'pdf' as const }), name: 'statement.pdf', parseOptions, file: { originalName: 'statement.pdf', size: 1, lastModified: 0, headHash: 'h' } });
+    const p = flow({
+      sources: [pdf('a'), pdf('b', { table: '2' })],
+      nodes: [
+        { id: 'a', type: 'source', sourceId: 'a' },
+        { id: 'b', type: 'source', sourceId: 'b' },
+        { id: 'out', type: 'output', outputSpec: { format: 'csv', options: {} } },
+        { id: 'out2', type: 'output', outputSpec: { format: 'csv', options: {} } },
+      ],
+      wires: [
+        ['a', 'out', 0],
+        ['b', 'out2', 0],
+      ],
+    });
+    p.name = 'PDF';
+    const outDir = join(folder, 'out-pdf');
+    const { log } = await runProject(p, { folder, outDir, db, now: () => new Date('2026-10-17T03:00:00Z') });
+    expect(log.sources.map((s) => s.problem)).toEqual([undefined, undefined]);
+    expect(log.outputs.map((o) => [o.nodeName, o.status, o.rows])).toEqual([
+      ['out', 'written', 4],
+      ['out2', 'written', 2],
+    ]);
+    expect(readFileSync(join(outDir, 'out.csv'), 'utf8').trim().split('\n').slice(0, 2)).toEqual(['Date,Description,Paid in,Paid out', '2026-10-01,Salary October,"2,450.00",']);
+    expect(readFileSync(join(outDir, 'out2.csv'), 'utf8').trim().split('\n')).toEqual(['Item,Amount', 'Opening balance,312.40', 'Closing balance,"1,634.19"']);
+  });
+
   it('reads the table of a Word document the browser chose, and the biggest when none was', async () => {
     writeFileSync(join(folder, 'report.docx'), readFileSync(join(__dirname, '../fixtures/word/report.docx')));
     const doc = (id: string, parseOptions: Source['parseOptions'] = {}) => ({ ...src({ id, format: 'word' as const }), name: 'report.docx', parseOptions, file: { originalName: 'report.docx', size: 1, lastModified: 0, headHash: 'h' } });

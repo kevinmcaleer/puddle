@@ -6,10 +6,11 @@ import type { EngineClient } from '../engine';
 import { useProject, useProjectStore, type Project, type Source } from '../model';
 import { sourceFile } from './add';
 import { useAttachments } from './attachments';
-import { decodeText, isRewrittenText, readText, readWord, rewrittenCsv, rulerLines, type RewrittenFormat, type RewrittenTable } from './text';
+import { loadPdfPages } from '../pdf/browser';
+import { decodeText, isRewrittenText, readPdf, readText, readWord, rewrittenCsv, rulerLines, type RewrittenFormat, type RewrittenTable } from './text';
 
 /**
- * Fixed-width text, pipe tables, structured text (YAML, TOML, INI, GeoJSON) and Word tables. DuckDB reads none of them, so Puddle reads them (./fixedWidth, ./pipes, src/structured, src/word) and hands
+ * Fixed-width text, pipe tables, structured text (YAML, TOML, INI, GeoJSON), log files and the tables of Word documents and PDFs. DuckDB reads none of them, so Puddle reads them (./fixedWidth, ./pipes, src/structured, src/logs, src/word, src/pdf) and hands
  * DuckDB the rows as CSV, registered under a name that follows the file and the read options (sourceFileName), as
  * XML is (./xml). The text comes from a chosen file, from a web address (kept here as the fetched bytes) or from
  * pasted text stored in the project.
@@ -95,9 +96,9 @@ async function read(engine: EngineClient, source: Source & { format: RewrittenFo
   setRead(id, { state: 'reading', file, ...(prev?.state === 'ok' || prev?.state === 'reading' ? { lines: prev.lines } : {}) });
   try {
     const o = source.parseOptions;
-    // A Word document is read from its bytes; the ruler has no lines to show for it.
-    const text = source.format === 'word' ? '' : await textOf(input, o.encoding);
-    const table = source.format === 'word' ? await readWord(await bytesOf(input), o) : readText(source.format, text, o);
+    // A Word document or a PDF is read from its bytes; the ruler has no lines to show for it.
+    const text = source.format === 'word' || source.format === 'pdf' ? '' : await textOf(input, o.encoding);
+    const table = source.format === 'word' ? await readWord(await bytesOf(input), o) : source.format === 'pdf' ? readPdf(await loadPdfPages(await bytesOf(input)), o) : readText(source.format, text, o);
     await engine.dropFile(file).catch(() => undefined);
     await engine.registerText(file, rewrittenCsv(table));
     const info: RewriteRead = { rows: table.rows.length, columns: table.columns.length, lines: rulerLines(text, source.format === 'fixed' ? o.skip : 0), ...(table.boundaries ? { boundaries: table.boundaries } : {}), ...(table.dropped != null ? { dropped: table.dropped } : {}), ...(table.record != null ? { record: table.record, candidates: table.candidates } : {}), ...(table.table != null ? { table: table.table, tables: table.tables } : {}), ...(table.preset != null ? { preset: table.preset, unmatched: table.unmatched } : {}) };

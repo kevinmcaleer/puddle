@@ -7,12 +7,13 @@ import { markAttached } from './attachments';
 import { useRewrites } from './rewrite';
 
 /**
- * Word documents (#193). A .docx is read for its tables (src/word) through the rewrite path (./rewrite): the source
- * reads one table, the biggest unless the read options name another, and the document's other tables can be added
- * as sources of their own, which share the file, as the tables of an Access database do.
+ * Word documents and PDFs (#193). A .docx is read for its tables (src/word), a PDF for the tables in its text
+ * (src/pdf), through the rewrite path (./rewrite): the source reads one table, the biggest unless the read options
+ * name another, and the document's other tables can be added as sources of their own, which share the file, as the
+ * tables of an Access database do.
  */
 
-export const isWordSource = (s: Source) => s.format === 'word' && s.kind === 'file';
+export const isWordSource = (s: Source) => (s.format === 'word' || s.format === 'pdf') && s.kind === 'file';
 
 /** The table a source reads, as its last read found it. */
 export const wordTableOf = (source: Source): number | undefined => {
@@ -42,7 +43,7 @@ export async function addWordTables(source: Source, tables: WordTableInfo[]): Pr
       id: newId('s'),
       name: t.label,
       kind: 'file',
-      format: 'word',
+      format: source.format,
       file: { ...source.file! },
       ...(source.archive ? { archive: { ...source.archive } } : {}),
       parseOptions: { ...(source.parseOptions.header != null ? { header: source.parseOptions.header } : {}), table: String(t.index) },

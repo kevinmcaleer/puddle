@@ -90,9 +90,10 @@ describe('binary signatures', () => {
   });
 
   it('refuses what it can name but not read, saying what it is and what to do', () => {
-    expect(() => file('letter.doc', bytes([0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1]))).toThrow('letter.doc is an old Office file that isn’t a workbook, which Puddle doesn’t read. Add a CSV, TSV, JSON, NDJSON, Parquet, Arrow, spreadsheet (.xlsx, .xls, .ods, .numbers, .dbf), XML, YAML, TOML, INI, GeoJSON, Word (.docx) or Access (.accdb, .mdb) file, or a .gz or .zip holding one.');
+    expect(() => file('letter.doc', bytes([0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1]))).toThrow('letter.doc is an old Office file that isn’t a workbook, which Puddle doesn’t read. Add a CSV, TSV, JSON, NDJSON, Parquet, Arrow, spreadsheet (.xlsx, .xls, .ods, .numbers, .dbf), XML, YAML, TOML, INI, GeoJSON, Word (.docx), PDF or Access (.accdb, .mdb) file, or a .gz or .zip holding one.');
     expect(() => file('letter.doc', ole('WordDocument'))).toThrow('letter.doc is an old Word document (.doc), which Puddle doesn’t read. Open it in Word and save it as a .docx file, then add that.');
     expect(file('report.docx', zip('word/document.xml'))).toMatchObject({ format: 'word', confidence: 'sure', reason: 'A Word document by its signature.' });
+    expect(file('statement.pdf', bytes('%PDF-1.4\n%\xe2\xe3'))).toMatchObject({ format: 'pdf', confidence: 'sure', reason: 'A PDF by its signature.' });
     // A compressed file or an archive is opened by addFileSource for the file inside (src/sources/archive.ts); the sniff alone names it.
     expect(() => file('orders.csv.gz', bytes([0x1f, 0x8b, 0x08]))).toThrow('orders.csv.gz is a gzip-compressed file, which Puddle opens from a chosen file: unpack it and add the file inside, or choose the archive itself.');
     expect(() => file('orders.csv.bz2', bytes('BZh91AY'))).toThrow('orders.csv.bz2 is a bzip2-compressed file, which Puddle doesn’t open. Unpack it and add the file inside, or pack it as gzip or zip.');
@@ -100,8 +101,7 @@ describe('binary signatures', () => {
     expect(archiveKindOf(fixture('archives/shop.zip'))).toBe('zip');
     expect(archiveKindOf(fixture('sales.xlsx'))).toBeUndefined();
     expect(archiveKindOf(bytes('a,b\n1,2'))).toBeUndefined();
-    expect(() => file('report.pdf', bytes('%PDF-1.4'))).toThrow(/report\.pdf is a PDF, which Puddle doesn’t read\. Add a CSV/);
-    expect(() => file('photo.png', bytes([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0]))).toThrow('photo.png is a binary file, which Puddle doesn’t read. Add a CSV, TSV, JSON, NDJSON, Parquet, Arrow, spreadsheet (.xlsx, .xls, .ods, .numbers, .dbf), XML, YAML, TOML, INI, GeoJSON, Word (.docx) or Access (.accdb, .mdb) file, or a .gz or .zip holding one.');
+    expect(() => file('photo.png', bytes([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0]))).toThrow('photo.png is a binary file, which Puddle doesn’t read. Add a CSV, TSV, JSON, NDJSON, Parquet, Arrow, spreadsheet (.xlsx, .xls, .ods, .numbers, .dbf), XML, YAML, TOML, INI, GeoJSON, Word (.docx), PDF or Access (.accdb, .mdb) file, or a .gz or .zip holding one.');
     expect(() => file('empty.dat', bytes(''))).toThrow(SourceError);
   });
 });

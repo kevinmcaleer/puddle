@@ -5,7 +5,7 @@ export const FORMAT_VERSION = 2;
 
 export const ColumnSchemaZ = z.object({ name: z.string(), type: z.string() });
 
-export const SourceFormatZ = z.enum(['csv', 'tsv', 'json', 'ndjson', 'parquet', 'xlsx', 'xml', 'access', 'fixed', 'pipes', 'arrow', 'yaml', 'toml', 'ini', 'geojson', 'word', 'log']);
+export const SourceFormatZ = z.enum(['csv', 'tsv', 'json', 'ndjson', 'parquet', 'xlsx', 'xml', 'access', 'fixed', 'pipes', 'arrow', 'yaml', 'toml', 'ini', 'geojson', 'word', 'log', 'pdf']);
 
 export const ParseOptionsZ = z
   .object({
@@ -35,7 +35,7 @@ export const ParseOptionsZ = z
     record: z.string(),
     /** XML: a repeating element inside each record, as a path from it ("author"), given a row each. */
     expand: z.string(),
-    /** Access: the table of the database read. Word: the table of the document read, by its number from 1 ("2"); unset, the biggest. */
+    /** Access: the table of the database read. Word and PDF: the table of the document read, by its number from 1 ("2"); unset, the biggest. */
     table: z.string(),
     /** Log files: the preset the lines are read as (src/logs LOG_PRESETS: combined, syslog, iis, timestamped, custom). */
     preset: z.string(),

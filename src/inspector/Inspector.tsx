@@ -51,7 +51,7 @@ function SourceOptions({ source }: { source: Source }) {
         {source.format === 'pipes' && <PipesOptions source={source} onChange={(o) => apply((p) => setParseOptions(p, source.id, o))} />}
         {isStructured(source.format) && <StructuredOptions source={source} onChange={(o) => apply((p) => setParseOptions(p, source.id, o))} />}
         {source.format === 'log' && <LogOptions source={source} onChange={(o) => apply((p) => setParseOptions(p, source.id, o))} />}
-        {source.format === 'word' && <WordOptions source={source} onChange={(o) => apply((p) => setParseOptions(p, source.id, o))} />}
+        {(source.format === 'word' || source.format === 'pdf') && <WordOptions source={source} onChange={(o) => apply((p) => setParseOptions(p, source.id, o))} />}
       </div>
     </Section>
   );

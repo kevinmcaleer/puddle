@@ -73,6 +73,7 @@ const BY_CONTENT_TYPE: Record<string, SourceFormat> = {
   'text/x-ini': 'ini',
   'application/geo+json': 'geojson',
   'application/vnd.openxmlformats-officedocument.wordprocessingml.document': 'word',
+  'application/pdf': 'pdf',
   'application/vnd.google-earth.kml+xml': 'xml',
   'application/gpx+xml': 'xml',
   'text/xml': 'xml',
