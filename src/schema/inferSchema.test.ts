@@ -19,6 +19,8 @@ describe('inferring a schema from documents', () => {
     // Depth 2: address.geo is an object, its lat is not opened.
     expect(by['address.geo']).toEqual({ name: 'address.geo', present: 1, types: { object: 1 } });
     expect(by['address.geo.lat']).toBeUndefined();
+    // The opened parent is its children, not a field of its own.
+    expect(by.address).toBeUndefined();
     expect(by.tags!.types).toEqual({ array: 1 });
     expect(by.when!.types).toEqual({ date: 1 });
   });

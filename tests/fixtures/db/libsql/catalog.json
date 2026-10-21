@@ -1,0 +1,276 @@
+{
+  "test": {
+    "ok": true,
+    "server": "LibSQL, 3 tables"
+  },
+  "catalog": {
+    "tables": [
+      {
+        "name": "customers",
+        "kind": "table",
+        "rows": 3,
+        "columns": [
+          {
+            "name": "id",
+            "type": "BIGINT",
+            "nullable": false
+          },
+          {
+            "name": "name",
+            "type": "VARCHAR",
+            "nullable": false
+          },
+          {
+            "name": "email",
+            "type": "VARCHAR",
+            "nullable": true
+          },
+          {
+            "name": "signed_up",
+            "type": "VARCHAR",
+            "nullable": true
+          },
+          {
+            "name": "active",
+            "type": "BOOLEAN",
+            "nullable": true
+          }
+        ]
+      },
+      {
+        "name": "orders",
+        "kind": "table",
+        "rows": 4,
+        "columns": [
+          {
+            "name": "id",
+            "type": "BIGINT",
+            "nullable": false
+          },
+          {
+            "name": "customer_id",
+            "type": "BIGINT",
+            "nullable": false
+          },
+          {
+            "name": "total",
+            "type": "DECIMAL(10,2)",
+            "nullable": true
+          },
+          {
+            "name": "placed_at",
+            "type": "VARCHAR",
+            "nullable": true
+          },
+          {
+            "name": "status",
+            "type": "VARCHAR",
+            "nullable": true
+          },
+          {
+            "name": "notes",
+            "type": "VARCHAR",
+            "nullable": true
+          },
+          {
+            "name": "tags",
+            "type": "VARCHAR",
+            "nullable": true
+          }
+        ]
+      },
+      {
+        "name": "order_totals",
+        "kind": "view",
+        "rows": 3,
+        "columns": [
+          {
+            "name": "name",
+            "type": "VARCHAR",
+            "nullable": true
+          },
+          {
+            "name": "orders",
+            "type": "VARCHAR",
+            "nullable": true
+          },
+          {
+            "name": "total",
+            "type": "VARCHAR",
+            "nullable": true
+          }
+        ]
+      }
+    ]
+  },
+  "detail": {
+    "tables": [
+      {
+        "name": "customers",
+        "kind": "table",
+        "columns": [
+          {
+            "name": "id",
+            "type": "INTEGER",
+            "pk": true,
+            "unique": false,
+            "notNull": true,
+            "increment": true
+          },
+          {
+            "name": "name",
+            "type": "TEXT",
+            "pk": false,
+            "unique": false,
+            "notNull": true,
+            "increment": false
+          },
+          {
+            "name": "email",
+            "type": "TEXT",
+            "pk": false,
+            "unique": true,
+            "notNull": false,
+            "increment": false
+          },
+          {
+            "name": "signed_up",
+            "type": "DATE",
+            "pk": false,
+            "unique": false,
+            "notNull": false,
+            "increment": false
+          },
+          {
+            "name": "active",
+            "type": "BOOLEAN",
+            "pk": false,
+            "unique": false,
+            "notNull": false,
+            "increment": false,
+            "default": "1"
+          }
+        ],
+        "indexes": [],
+        "foreignKeys": []
+      },
+      {
+        "name": "orders",
+        "kind": "table",
+        "columns": [
+          {
+            "name": "id",
+            "type": "INTEGER",
+            "pk": true,
+            "unique": false,
+            "notNull": true,
+            "increment": false
+          },
+          {
+            "name": "customer_id",
+            "type": "INTEGER",
+            "pk": false,
+            "unique": false,
+            "notNull": true,
+            "increment": false
+          },
+          {
+            "name": "total",
+            "type": "DECIMAL(10,2)",
+            "pk": false,
+            "unique": false,
+            "notNull": false,
+            "increment": false
+          },
+          {
+            "name": "placed_at",
+            "type": "DATETIME",
+            "pk": false,
+            "unique": false,
+            "notNull": false,
+            "increment": false
+          },
+          {
+            "name": "status",
+            "type": "TEXT",
+            "pk": false,
+            "unique": false,
+            "notNull": false,
+            "increment": false,
+            "default": "'placed'"
+          },
+          {
+            "name": "notes",
+            "type": "TEXT",
+            "pk": false,
+            "unique": false,
+            "notNull": false,
+            "increment": false
+          },
+          {
+            "name": "tags",
+            "type": "TEXT",
+            "pk": false,
+            "unique": false,
+            "notNull": false,
+            "increment": false
+          }
+        ],
+        "indexes": [
+          {
+            "name": "orders_customer",
+            "columns": [
+              "customer_id"
+            ],
+            "unique": false
+          }
+        ],
+        "foreignKeys": [
+          {
+            "columns": [
+              "customer_id"
+            ],
+            "refTable": "customers",
+            "refColumns": [
+              "id"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "order_totals",
+        "kind": "view",
+        "columns": [
+          {
+            "name": "name",
+            "type": "TEXT",
+            "pk": false,
+            "unique": false,
+            "notNull": false,
+            "increment": false
+          },
+          {
+            "name": "orders",
+            "type": "",
+            "pk": false,
+            "unique": false,
+            "notNull": false,
+            "increment": false
+          },
+          {
+            "name": "total",
+            "type": "",
+            "pk": false,
+            "unique": false,
+            "notNull": false,
+            "increment": false
+          }
+        ],
+        "indexes": [],
+        "foreignKeys": [],
+        "sql": "CREATE VIEW order_totals AS SELECT c.name, count(o.id) AS orders, sum(o.total) AS total FROM customers c LEFT JOIN orders o ON o.customer_id = c.id GROUP BY c.name"
+      }
+    ],
+    "enums": []
+  }
+}

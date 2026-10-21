@@ -1,0 +1,707 @@
+[
+  {
+    "text": "SELECT VERSION FROM SYS.M_DATABASE",
+    "rows": [
+      [
+        "2.00.076.00.1705400033"
+      ]
+    ],
+    "fields": [
+      {
+        "name": "VERSION",
+        "dataType": 11,
+        "length": 32,
+        "fraction": 0
+      }
+    ]
+  },
+  {
+    "text": "SELECT (SELECT COUNT(*) FROM SYS.TABLES WHERE SCHEMA_NAME = CURRENT_SCHEMA) + (SELECT COUNT(*) FROM SYS.VIEWS WHERE SCHEMA_NAME = CURRENT_SCHEMA) AS N FROM DUMMY",
+    "rows": [
+      [
+        3
+      ]
+    ],
+    "fields": [
+      {
+        "name": "N",
+        "dataType": 4,
+        "length": 19,
+        "fraction": 0
+      }
+    ]
+  },
+  {
+    "text": "SELECT t.TABLE_NAME, m.RECORD_COUNT, t.COMMENTS FROM SYS.TABLES t LEFT JOIN SYS.M_TABLES m ON m.SCHEMA_NAME = t.SCHEMA_NAME AND m.TABLE_NAME = t.TABLE_NAME WHERE t.SCHEMA_NAME = CURRENT_SCHEMA ORDER BY t.TABLE_NAME",
+    "rows": [
+      [
+        "CUSTOMERS",
+        3,
+        "People who have ordered"
+      ],
+      [
+        "ORDERS",
+        4,
+        null
+      ]
+    ],
+    "fields": [
+      {
+        "name": "TABLE_NAME",
+        "dataType": 11,
+        "length": 256,
+        "fraction": 0
+      },
+      {
+        "name": "RECORD_COUNT",
+        "dataType": 4,
+        "length": 19,
+        "fraction": 0
+      },
+      {
+        "name": "COMMENTS",
+        "dataType": 11,
+        "length": 5000,
+        "fraction": 0
+      }
+    ]
+  },
+  {
+    "text": "SELECT VIEW_NAME, DEFINITION, COMMENTS FROM SYS.VIEWS WHERE SCHEMA_NAME = CURRENT_SCHEMA ORDER BY VIEW_NAME",
+    "rows": [
+      [
+        "ORDER_TOTALS",
+        "SELECT c.NAME, COUNT(o.ID) AS ORDERS, SUM(o.TOTAL) AS TOTAL FROM CUSTOMERS c LEFT JOIN ORDERS o ON o.CUSTOMER_ID = c.ID GROUP BY c.NAME",
+        null
+      ]
+    ],
+    "fields": [
+      {
+        "name": "VIEW_NAME",
+        "dataType": 11,
+        "length": 256,
+        "fraction": 0
+      },
+      {
+        "name": "DEFINITION",
+        "dataType": 26,
+        "length": 2147483647,
+        "fraction": 0
+      },
+      {
+        "name": "COMMENTS",
+        "dataType": 11,
+        "length": 5000,
+        "fraction": 0
+      }
+    ]
+  },
+  {
+    "text": "SELECT TABLE_NAME, COLUMN_NAME, POSITION, DATA_TYPE_NAME, LENGTH, SCALE, IS_NULLABLE, DEFAULT_VALUE, COMMENTS, GENERATION_TYPE FROM SYS.TABLE_COLUMNS WHERE SCHEMA_NAME = CURRENT_SCHEMA ORDER BY TABLE_NAME, POSITION",
+    "rows": [
+      [
+        "CUSTOMERS",
+        "ID",
+        1,
+        "INTEGER",
+        10,
+        0,
+        "FALSE",
+        null,
+        null,
+        "BY DEFAULT AS IDENTITY"
+      ],
+      [
+        "CUSTOMERS",
+        "NAME",
+        2,
+        "NVARCHAR",
+        100,
+        null,
+        "FALSE",
+        null,
+        null,
+        null
+      ],
+      [
+        "CUSTOMERS",
+        "EMAIL",
+        3,
+        "NVARCHAR",
+        255,
+        null,
+        "TRUE",
+        null,
+        "Lower case",
+        null
+      ],
+      [
+        "CUSTOMERS",
+        "SIGNED_UP",
+        4,
+        "DATE",
+        10,
+        null,
+        "TRUE",
+        null,
+        null,
+        null
+      ],
+      [
+        "CUSTOMERS",
+        "ACTIVE",
+        5,
+        "BOOLEAN",
+        1,
+        null,
+        "TRUE",
+        "TRUE",
+        null,
+        null
+      ],
+      [
+        "ORDERS",
+        "ID",
+        1,
+        "INTEGER",
+        10,
+        0,
+        "FALSE",
+        null,
+        null,
+        null
+      ],
+      [
+        "ORDERS",
+        "CUSTOMER_ID",
+        2,
+        "INTEGER",
+        10,
+        0,
+        "FALSE",
+        null,
+        null,
+        null
+      ],
+      [
+        "ORDERS",
+        "TOTAL",
+        3,
+        "DECIMAL",
+        10,
+        2,
+        "TRUE",
+        null,
+        null,
+        null
+      ],
+      [
+        "ORDERS",
+        "PLACED_AT",
+        4,
+        "TIMESTAMP",
+        27,
+        7,
+        "TRUE",
+        null,
+        null,
+        null
+      ],
+      [
+        "ORDERS",
+        "STATUS",
+        5,
+        "NVARCHAR",
+        20,
+        null,
+        "TRUE",
+        "'placed'",
+        null,
+        null
+      ],
+      [
+        "ORDERS",
+        "NOTES",
+        6,
+        "NVARCHAR",
+        500,
+        null,
+        "TRUE",
+        null,
+        null,
+        null
+      ]
+    ],
+    "fields": [
+      {
+        "name": "TABLE_NAME",
+        "dataType": 11,
+        "length": 256,
+        "fraction": 0
+      },
+      {
+        "name": "COLUMN_NAME",
+        "dataType": 11,
+        "length": 256,
+        "fraction": 0
+      },
+      {
+        "name": "POSITION",
+        "dataType": 3,
+        "length": 10,
+        "fraction": 0
+      },
+      {
+        "name": "DATA_TYPE_NAME",
+        "dataType": 11,
+        "length": 16,
+        "fraction": 0
+      },
+      {
+        "name": "LENGTH",
+        "dataType": 3,
+        "length": 10,
+        "fraction": 0
+      },
+      {
+        "name": "SCALE",
+        "dataType": 3,
+        "length": 10,
+        "fraction": 0
+      },
+      {
+        "name": "IS_NULLABLE",
+        "dataType": 11,
+        "length": 5,
+        "fraction": 0
+      },
+      {
+        "name": "DEFAULT_VALUE",
+        "dataType": 11,
+        "length": 5000,
+        "fraction": 0
+      },
+      {
+        "name": "COMMENTS",
+        "dataType": 11,
+        "length": 5000,
+        "fraction": 0
+      },
+      {
+        "name": "GENERATION_TYPE",
+        "dataType": 11,
+        "length": 32,
+        "fraction": 0
+      }
+    ]
+  },
+  {
+    "text": "SELECT VIEW_NAME AS TABLE_NAME, COLUMN_NAME, POSITION, DATA_TYPE_NAME, LENGTH, SCALE, IS_NULLABLE, COMMENTS FROM SYS.VIEW_COLUMNS WHERE SCHEMA_NAME = CURRENT_SCHEMA ORDER BY VIEW_NAME, POSITION",
+    "rows": [
+      [
+        "ORDER_TOTALS",
+        "NAME",
+        1,
+        "NVARCHAR",
+        100,
+        null,
+        "FALSE",
+        null
+      ],
+      [
+        "ORDER_TOTALS",
+        "ORDERS",
+        2,
+        "BIGINT",
+        19,
+        0,
+        "TRUE",
+        null
+      ],
+      [
+        "ORDER_TOTALS",
+        "TOTAL",
+        3,
+        "DECIMAL",
+        38,
+        2,
+        "TRUE",
+        null
+      ]
+    ],
+    "fields": [
+      {
+        "name": "TABLE_NAME",
+        "dataType": 11,
+        "length": 256,
+        "fraction": 0
+      },
+      {
+        "name": "COLUMN_NAME",
+        "dataType": 11,
+        "length": 256,
+        "fraction": 0
+      },
+      {
+        "name": "POSITION",
+        "dataType": 3,
+        "length": 10,
+        "fraction": 0
+      },
+      {
+        "name": "DATA_TYPE_NAME",
+        "dataType": 11,
+        "length": 16,
+        "fraction": 0
+      },
+      {
+        "name": "LENGTH",
+        "dataType": 3,
+        "length": 10,
+        "fraction": 0
+      },
+      {
+        "name": "SCALE",
+        "dataType": 3,
+        "length": 10,
+        "fraction": 0
+      },
+      {
+        "name": "IS_NULLABLE",
+        "dataType": 11,
+        "length": 5,
+        "fraction": 0
+      },
+      {
+        "name": "COMMENTS",
+        "dataType": 11,
+        "length": 5000,
+        "fraction": 0
+      }
+    ]
+  },
+  {
+    "text": "SELECT TABLE_NAME, CONSTRAINT_NAME, COLUMN_NAME, POSITION, IS_PRIMARY_KEY, IS_UNIQUE_KEY FROM SYS.CONSTRAINTS WHERE SCHEMA_NAME = CURRENT_SCHEMA ORDER BY TABLE_NAME, CONSTRAINT_NAME, POSITION",
+    "rows": [
+      [
+        "CUSTOMERS",
+        "_SYS_TREE_CS_#152367_#0_#P0",
+        "ID",
+        1,
+        "TRUE",
+        "TRUE"
+      ],
+      [
+        "CUSTOMERS",
+        "_SYS_TREE_CS_#152367_#1_#U0",
+        "EMAIL",
+        1,
+        "FALSE",
+        "TRUE"
+      ],
+      [
+        "ORDERS",
+        "_SYS_TREE_CS_#152371_#0_#P0",
+        "ID",
+        1,
+        "TRUE",
+        "TRUE"
+      ]
+    ],
+    "fields": [
+      {
+        "name": "TABLE_NAME",
+        "dataType": 11,
+        "length": 256,
+        "fraction": 0
+      },
+      {
+        "name": "CONSTRAINT_NAME",
+        "dataType": 11,
+        "length": 256,
+        "fraction": 0
+      },
+      {
+        "name": "COLUMN_NAME",
+        "dataType": 11,
+        "length": 256,
+        "fraction": 0
+      },
+      {
+        "name": "POSITION",
+        "dataType": 3,
+        "length": 10,
+        "fraction": 0
+      },
+      {
+        "name": "IS_PRIMARY_KEY",
+        "dataType": 11,
+        "length": 5,
+        "fraction": 0
+      },
+      {
+        "name": "IS_UNIQUE_KEY",
+        "dataType": 11,
+        "length": 5,
+        "fraction": 0
+      }
+    ]
+  },
+  {
+    "text": "SELECT TABLE_NAME, CONSTRAINT_NAME, COLUMN_NAME, POSITION, REFERENCED_SCHEMA_NAME, REFERENCED_TABLE_NAME, REFERENCED_COLUMN_NAME FROM SYS.REFERENTIAL_CONSTRAINTS WHERE SCHEMA_NAME = CURRENT_SCHEMA ORDER BY TABLE_NAME, CONSTRAINT_NAME, POSITION",
+    "rows": [
+      [
+        "ORDERS",
+        "_SYS_CONSTRAINT_152371_#0_#F0",
+        "CUSTOMER_ID",
+        1,
+        "SHOP",
+        "CUSTOMERS",
+        "ID"
+      ]
+    ],
+    "fields": [
+      {
+        "name": "TABLE_NAME",
+        "dataType": 11,
+        "length": 256,
+        "fraction": 0
+      },
+      {
+        "name": "CONSTRAINT_NAME",
+        "dataType": 11,
+        "length": 256,
+        "fraction": 0
+      },
+      {
+        "name": "COLUMN_NAME",
+        "dataType": 11,
+        "length": 256,
+        "fraction": 0
+      },
+      {
+        "name": "POSITION",
+        "dataType": 3,
+        "length": 10,
+        "fraction": 0
+      },
+      {
+        "name": "REFERENCED_SCHEMA_NAME",
+        "dataType": 11,
+        "length": 256,
+        "fraction": 0
+      },
+      {
+        "name": "REFERENCED_TABLE_NAME",
+        "dataType": 11,
+        "length": 256,
+        "fraction": 0
+      },
+      {
+        "name": "REFERENCED_COLUMN_NAME",
+        "dataType": 11,
+        "length": 256,
+        "fraction": 0
+      }
+    ]
+  },
+  {
+    "text": "SELECT i.TABLE_NAME, i.INDEX_NAME, i.CONSTRAINT, c.COLUMN_NAME, c.POSITION FROM SYS.INDEXES i JOIN SYS.INDEX_COLUMNS c ON c.SCHEMA_NAME = i.SCHEMA_NAME AND c.TABLE_NAME = i.TABLE_NAME AND c.INDEX_NAME = i.INDEX_NAME WHERE i.SCHEMA_NAME = CURRENT_SCHEMA ORDER BY i.TABLE_NAME, i.INDEX_NAME, c.POSITION",
+    "rows": [
+      [
+        "CUSTOMERS",
+        "_SYS_TREE_CS_#152367_#0_#P0",
+        "PRIMARY KEY",
+        "ID",
+        1
+      ],
+      [
+        "CUSTOMERS",
+        "_SYS_TREE_CS_#152367_#1_#U0",
+        "UNIQUE",
+        "EMAIL",
+        1
+      ],
+      [
+        "ORDERS",
+        "ORDERS_STATUS",
+        null,
+        "STATUS",
+        1
+      ],
+      [
+        "ORDERS",
+        "_SYS_TREE_CS_#152371_#0_#P0",
+        "PRIMARY KEY",
+        "ID",
+        1
+      ]
+    ],
+    "fields": [
+      {
+        "name": "TABLE_NAME",
+        "dataType": 11,
+        "length": 256,
+        "fraction": 0
+      },
+      {
+        "name": "INDEX_NAME",
+        "dataType": 11,
+        "length": 256,
+        "fraction": 0
+      },
+      {
+        "name": "CONSTRAINT",
+        "dataType": 11,
+        "length": 32,
+        "fraction": 0
+      },
+      {
+        "name": "COLUMN_NAME",
+        "dataType": 11,
+        "length": 256,
+        "fraction": 0
+      },
+      {
+        "name": "POSITION",
+        "dataType": 3,
+        "length": 10,
+        "fraction": 0
+      }
+    ]
+  },
+  {
+    "text": "SELECT * FROM \"ORDERS\" LIMIT 10",
+    "rows": [
+      [
+        101,
+        1,
+        "19.99",
+        "2024-04-01T09:30:00.0000000",
+        "shipped",
+        "Gift wrap"
+      ],
+      [
+        102,
+        1,
+        "5.50",
+        "2024-04-02T14:00:00.0000000",
+        "placed",
+        null
+      ],
+      [
+        103,
+        2,
+        "120.00",
+        "2024-04-03T11:15:00.0000000",
+        "returned",
+        null
+      ],
+      [
+        104,
+        3,
+        "42.25",
+        "2024-04-04T16:45:00.0000000",
+        "placed",
+        null
+      ]
+    ],
+    "fields": [
+      {
+        "name": "ID",
+        "dataType": 3,
+        "length": 10,
+        "fraction": 0
+      },
+      {
+        "name": "CUSTOMER_ID",
+        "dataType": 3,
+        "length": 10,
+        "fraction": 0
+      },
+      {
+        "name": "TOTAL",
+        "dataType": 5,
+        "length": 10,
+        "fraction": 2
+      },
+      {
+        "name": "PLACED_AT",
+        "dataType": 61,
+        "length": 27,
+        "fraction": 7
+      },
+      {
+        "name": "STATUS",
+        "dataType": 11,
+        "length": 20,
+        "fraction": 0
+      },
+      {
+        "name": "NOTES",
+        "dataType": 11,
+        "length": 500,
+        "fraction": 0
+      }
+    ]
+  },
+  {
+    "text": "SELECT * FROM (SELECT c.NAME, o.TOTAL, o.PLACED_AT, o.STATUS, c.SIGNED_UP, c.ACTIVE FROM ORDERS o JOIN CUSTOMERS c ON c.ID = o.CUSTOMER_ID ORDER BY o.ID) AS q LIMIT 2",
+    "rows": [
+      [
+        "Ada Lovelace",
+        "19.99",
+        "2024-04-01T09:30:00.0000000",
+        "shipped",
+        "2024-01-15",
+        true
+      ],
+      [
+        "Ada Lovelace",
+        "5.50",
+        "2024-04-02T14:00:00.0000000",
+        "placed",
+        "2024-01-15",
+        true
+      ]
+    ],
+    "fields": [
+      {
+        "name": "NAME",
+        "dataType": 11,
+        "length": 100,
+        "fraction": 0
+      },
+      {
+        "name": "TOTAL",
+        "dataType": 5,
+        "length": 10,
+        "fraction": 2
+      },
+      {
+        "name": "PLACED_AT",
+        "dataType": 61,
+        "length": 27,
+        "fraction": 7
+      },
+      {
+        "name": "STATUS",
+        "dataType": 11,
+        "length": 20,
+        "fraction": 0
+      },
+      {
+        "name": "SIGNED_UP",
+        "dataType": 63,
+        "length": 10,
+        "fraction": 0
+      },
+      {
+        "name": "ACTIVE",
+        "dataType": 28,
+        "length": 1,
+        "fraction": 0
+      }
+    ]
+  }
+]

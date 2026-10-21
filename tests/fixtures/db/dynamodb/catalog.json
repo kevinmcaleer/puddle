@@ -1,0 +1,241 @@
+{
+  "test": {
+    "ok": true,
+    "server": "DynamoDB in eu-west-2, 2 tables"
+  },
+  "catalog": {
+    "tables": [
+      {
+        "name": "customers",
+        "kind": "table",
+        "rows": 3,
+        "columns": [
+          {
+            "name": "id",
+            "type": "BIGINT",
+            "nullable": false
+          },
+          {
+            "name": "name",
+            "type": "VARCHAR",
+            "nullable": false
+          },
+          {
+            "name": "email",
+            "type": "VARCHAR",
+            "nullable": true
+          },
+          {
+            "name": "signed_up",
+            "type": "VARCHAR",
+            "nullable": false
+          },
+          {
+            "name": "active",
+            "type": "BOOLEAN",
+            "nullable": false
+          }
+        ]
+      },
+      {
+        "name": "orders",
+        "kind": "table",
+        "rows": 4,
+        "columns": [
+          {
+            "name": "customer_id",
+            "type": "BIGINT",
+            "nullable": false
+          },
+          {
+            "name": "id",
+            "type": "BIGINT",
+            "nullable": false
+          },
+          {
+            "name": "total",
+            "type": "DOUBLE",
+            "nullable": false
+          },
+          {
+            "name": "placed_at",
+            "type": "VARCHAR",
+            "nullable": false
+          },
+          {
+            "name": "status",
+            "type": "VARCHAR",
+            "nullable": false
+          },
+          {
+            "name": "notes",
+            "type": "VARCHAR",
+            "nullable": true
+          },
+          {
+            "name": "tags",
+            "type": "JSON",
+            "nullable": false
+          },
+          {
+            "name": "shipping.city",
+            "type": "VARCHAR",
+            "nullable": true
+          },
+          {
+            "name": "shipping.postcode",
+            "type": "VARCHAR",
+            "nullable": true
+          }
+        ]
+      }
+    ]
+  },
+  "detail": {
+    "tables": [
+      {
+        "name": "customers",
+        "kind": "table",
+        "columns": [
+          {
+            "name": "id",
+            "type": "integer",
+            "pk": true,
+            "unique": true,
+            "notNull": true,
+            "increment": false
+          },
+          {
+            "name": "name",
+            "type": "string",
+            "pk": false,
+            "unique": false,
+            "notNull": true,
+            "increment": false
+          },
+          {
+            "name": "email",
+            "type": "string",
+            "pk": false,
+            "unique": false,
+            "notNull": false,
+            "increment": false,
+            "note": "null in 33%"
+          },
+          {
+            "name": "signed_up",
+            "type": "string",
+            "pk": false,
+            "unique": false,
+            "notNull": true,
+            "increment": false
+          },
+          {
+            "name": "active",
+            "type": "boolean",
+            "pk": false,
+            "unique": false,
+            "notNull": true,
+            "increment": false
+          }
+        ],
+        "indexes": [],
+        "foreignKeys": [],
+        "note": "Partition key id. Inferred from 3 documents on 2026-10-21"
+      },
+      {
+        "name": "orders",
+        "kind": "table",
+        "columns": [
+          {
+            "name": "customer_id",
+            "type": "integer",
+            "pk": true,
+            "unique": false,
+            "notNull": true,
+            "increment": false
+          },
+          {
+            "name": "id",
+            "type": "integer",
+            "pk": true,
+            "unique": false,
+            "notNull": true,
+            "increment": false
+          },
+          {
+            "name": "total",
+            "type": "number or integer",
+            "pk": false,
+            "unique": false,
+            "notNull": true,
+            "increment": false
+          },
+          {
+            "name": "placed_at",
+            "type": "string",
+            "pk": false,
+            "unique": false,
+            "notNull": true,
+            "increment": false
+          },
+          {
+            "name": "status",
+            "type": "string",
+            "pk": false,
+            "unique": false,
+            "notNull": true,
+            "increment": false
+          },
+          {
+            "name": "notes",
+            "type": "string",
+            "pk": false,
+            "unique": false,
+            "notNull": false,
+            "increment": false,
+            "note": "present in 25% of documents"
+          },
+          {
+            "name": "tags",
+            "type": "array",
+            "pk": false,
+            "unique": false,
+            "notNull": true,
+            "increment": false
+          },
+          {
+            "name": "shipping.city",
+            "type": "string",
+            "pk": false,
+            "unique": false,
+            "notNull": false,
+            "increment": false,
+            "note": "present in 50% of documents"
+          },
+          {
+            "name": "shipping.postcode",
+            "type": "string",
+            "pk": false,
+            "unique": false,
+            "notNull": false,
+            "increment": false,
+            "note": "present in 25% of documents"
+          }
+        ],
+        "indexes": [
+          {
+            "name": "orders_status",
+            "columns": [
+              "status"
+            ],
+            "unique": false
+          }
+        ],
+        "foreignKeys": [],
+        "note": "Partition key customer_id, sort key id. Inferred from 4 documents on 2026-10-21"
+      }
+    ],
+    "enums": []
+  }
+}

@@ -8,6 +8,10 @@
 //   node scripts/record-database.mjs trino http://puddle@localhost:8080/memory/shop
 //   node scripts/record-database.mjs bigquery 'bigquery://puddle-test/shop?key=/path/key.json&endpoint=http://127.0.0.1:18090'
 //   node scripts/record-database.mjs snowflake 'snowflake://PUDDLE@xy12345/SHOP/PUBLIC?key=/path/key.p8&warehouse=COMPUTE_WH&url=http://127.0.0.1:18091'
+//   node scripts/record-database.mjs libsql http://:token@localhost:18081
+//   node scripts/record-database.mjs surrealdb http://root:root@localhost:8000/shop/shop
+//   node scripts/record-database.mjs hana hana://SHOP:password@localhost:39015/HXE
+//   node scripts/record-database.mjs dynamodb 'dynamodb://AKIDEXAMPLE:secretexample@eu-west-2?endpoint=http://127.0.0.1:18092'
 // The two that sign in with a key read it from the file `key` names (a throwaway from scripts/make-test-key.mjs for the
 // stand-ins); `endpoint` and `url` point at a stand-in or a private endpoint and are left out for the real service.
 // after seeding it with the matching scripts/seed-<family>.mjs. Writes
@@ -26,22 +30,29 @@ const FAMILIES = {
   mysql: { module: 'mysql', connect: 'mysqlConnect', make: (mod, connect) => mod.mysqlConnector('mysql', connect), port: 3306, settings: (u) => ({ database: u.pathname.slice(1) }) },
   firebird: { module: 'firebird', connect: 'firebirdConnect', make: (mod, connect) => mod.firebirdConnector(connect), port: 3050, upper: true, settings: (u) => ({ database: u.pathname.slice(1) }) },
   sqlserver: { module: 'sqlserver', connect: 'sqlserverConnect', make: (mod, connect) => mod.sqlserverConnector(connect), port: 1433, settings: (u) => ({ database: u.pathname.slice(1), encrypt: true, trustCertificate: true }) },
+  hana: { module: 'hana', connect: 'hanaConnect', make: (mod, connect) => mod.hanaConnector(connect), port: 39015, upper: true, settings: (u) => ({ database: u.pathname.slice(1), ssl: u.searchParams.get('ssl') === 'true' }) },
   oracle: { module: 'oracle', connect: 'oracleConnect', make: (mod, connect) => mod.oracleConnector(connect), port: 1521, upper: true, settings: (u) => ({ service: u.pathname.slice(1) }) },
   // The HTTP families: the connector takes a fetch, and the URL's path names the database (Trino: catalog/schema).
   clickhouse: { module: 'clickhouse', http: true, make: (mod, fetchImpl) => mod.clickhouseConnector(fetchImpl), settings: (u) => ({ url: u.origin, database: u.pathname.slice(1) || 'default' }) },
   trino: { module: 'trino', http: true, make: (mod, fetchImpl) => mod.trinoConnector(fetchImpl), settings: (u) => ({ url: u.origin, catalog: u.pathname.split('/')[1] ?? '', schema: u.pathname.split('/')[2] ?? '' }) },
-  bigquery: { module: 'bigquery', http: true, auth: 'key', make: (mod, fetchImpl) => mod.bigqueryConnector(fetchImpl), settings: (u) => ({ project: u.hostname, dataset: u.pathname.slice(1), ...(u.searchParams.get('endpoint') ? { endpoint: u.searchParams.get('endpoint') } : {}) }) },
-  snowflake: { module: 'snowflake', http: true, auth: 'keypair', upper: true, make: (mod, fetchImpl) => mod.snowflakeConnector(fetchImpl), settings: (u) => ({ account: u.hostname, database: u.pathname.split('/')[1] ?? '', schema: u.pathname.split('/')[2] ?? '', ...Object.fromEntries(['warehouse', 'role', 'url'].filter((k) => u.searchParams.get(k)).map((k) => [k, u.searchParams.get(k)])) }) },
+  bigquery: { module: 'bigquery', http: true, auth: 'key', key: true, make: (mod, fetchImpl) => mod.bigqueryConnector(fetchImpl), settings: (u) => ({ project: u.hostname, dataset: u.pathname.slice(1), ...(u.searchParams.get('endpoint') ? { endpoint: u.searchParams.get('endpoint') } : {}) }) },
+  snowflake: { module: 'snowflake', http: true, auth: 'keypair', key: true, upper: true, make: (mod, fetchImpl) => mod.snowflakeConnector(fetchImpl), settings: (u) => ({ account: u.hostname, database: u.pathname.split('/')[1] ?? '', schema: u.pathname.split('/')[2] ?? '', ...Object.fromEntries(['warehouse', 'role', 'url'].filter((k) => u.searchParams.get(k)).map((k) => [k, u.searchParams.get(k)])) }) },
+  // LibSQL over Hrana: the URL's password is the token (none for a sqld with no auth).
+  // SurrealDB speaks SurrealQL, so its query joins through the record link rather than with JOIN.
+  surrealdb: { module: 'surrealdb', http: true, query: 'SELECT customer.name AS name, total, placed_at, status, customer.signed_up AS signed_up, customer.active AS active, id FROM orders ORDER BY id', make: (mod, fetchImpl) => mod.surrealConnector(fetchImpl), settings: (u) => ({ url: u.origin, namespace: u.pathname.split('/')[1] ?? '', database: u.pathname.split('/')[2] ?? '', level: u.searchParams.get('level') ?? 'root' }) },
+  // DynamoDB: the URL's user and password are the access key id and secret access key; PartiQL reads one table.
+  dynamodb: { module: 'dynamodb', http: true, auth: 'aws', query: 'SELECT * FROM "orders" WHERE customer_id = 1 ORDER BY id', make: (mod, fetchImpl) => mod.dynamoConnector(fetchImpl), settings: (u) => ({ region: u.hostname, accessKeyId: decodeURIComponent(u.username), ...(u.searchParams.get('endpoint') ? { endpoint: u.searchParams.get('endpoint') } : {}) }) },
+  libsql: { module: 'hrana', http: true, auth: 'token', make: (mod, fetchImpl) => mod.hranaConnector('libsql', fetchImpl), settings: (u) => ({ url: u.origin }) },
 };
 const f = FAMILIES[family];
 if (!f || !url) {
-  console.error('Usage: node scripts/record-database.mjs <postgres|mysql|firebird|sqlserver|oracle|clickhouse|trino> <url>');
+  console.error(`Usage: node scripts/record-database.mjs <${Object.keys(FAMILIES).join('|')}> <url>`);
   process.exit(2);
 }
 // Bundled under node_modules so the bundle finds the client next to it.
 const out = fileURLToPath(new URL('../node_modules/.puddle-record', import.meta.url));
 mkdirSync(out, { recursive: true });
-await build({ entryPoints: [fileURLToPath(new URL(`../src/connect/drivers/${f.module}.ts`, import.meta.url))], bundle: true, platform: 'node', format: 'esm', external: ['pg', 'mysql2', 'node-firebird', 'tedious', 'oracledb'], outfile: join(out, `${f.module}.mjs`), logLevel: 'warning' });
+await build({ entryPoints: [fileURLToPath(new URL(`../src/connect/drivers/${f.module}.ts`, import.meta.url))], bundle: true, platform: 'node', format: 'esm', external: ['pg', 'mysql2', 'node-firebird', 'tedious', 'oracledb', 'hdb'], outfile: join(out, `${f.module}.mjs`), logLevel: 'warning' });
 const mod = await import(pathToFileURL(join(out, `${f.module}.mjs`)).href);
 await build({ entryPoints: [fileURLToPath(new URL('../src/connect/drivers/http.ts', import.meta.url))], bundle: true, platform: 'node', format: 'esm', outfile: join(out, 'http.mjs'), logLevel: 'warning' });
 const { redact } = await import(pathToFileURL(join(out, 'http.mjs')).href);
@@ -66,7 +77,7 @@ const recording = async (config) => {
         text,
         ...(mode !== undefined ? { rowMode: mode } : {}),
         rows: r.rows.map((row) => (Array.isArray(row) ? row.map(plain) : Object.fromEntries(Object.entries(row).map(([k, v]) => [k, plain(v)])))),
-        fields: r.fields.map((x) => Object.fromEntries(Object.entries(x).filter(([k]) => ['name', 'dataTypeID', 'dataTypeModifier', 'columnType', 'columnLength', 'flags', 'decimals', 'characterSet', 'alias', 'type', 'subType', 'scale', 'length', 'field', 'relation', 'typeName', 'dataLength', 'precision', 'dbTypeName'].includes(k)))),
+        fields: r.fields.map((x) => Object.fromEntries(Object.entries(x).filter(([k]) => ['name', 'dataTypeID', 'dataTypeModifier', 'columnType', 'columnLength', 'flags', 'decimals', 'characterSet', 'alias', 'type', 'subType', 'scale', 'length', 'field', 'relation', 'typeName', 'dataLength', 'precision', 'dbTypeName', 'dataType', 'fraction'].includes(k)))),
       });
       return r;
     },
@@ -76,14 +87,14 @@ const recording = async (config) => {
 const u = new URL(url);
 const connector = f.make(mod, f.http ? recordingFetch : recording);
 const user = decodeURIComponent(u.username);
-const settings = f.http ? { ...(user ? { user } : {}), ...f.settings(u) } : { host: u.hostname, port: Number(u.port) || f.port, user, ...f.settings(u) };
-const secret = f.auth ? readFileSync(u.searchParams.get('key'), 'utf8') : decodeURIComponent(u.password);
+const settings = f.http ? { ...(user && !['token', 'aws'].includes(f.auth) ? { user } : {}), ...f.settings(u) } : { host: u.hostname, port: Number(u.port) || f.port, user, ...f.settings(u) };
+const secret = f.key ? readFileSync(u.searchParams.get('key'), 'utf8') : decodeURIComponent(u.password);
 const ctx = { connection: { id: 'c', name: 'shop', driver: family, via: 'local', settings, auth: f.auth ?? 'password' }, secret };
 const test = await connector.test(ctx);
 const catalog = await connector.catalog(ctx);
 const detail = await connector.document(ctx);
 await connector.read(ctx, { table: { name: f.upper ? 'ORDERS' : 'orders' }, limit: 10 });
-await connector.read(ctx, { query: 'SELECT c.name, o.total, o.placed_at, o.status, c.signed_up, c.active FROM orders o JOIN customers c ON c.id = o.customer_id ORDER BY o.id', limit: 2 });
+await connector.read(ctx, { query: f.query ?? 'SELECT c.name, o.total, o.placed_at, o.status, c.signed_up, c.active FROM orders o JOIN customers c ON c.id = o.customer_id ORDER BY o.id', limit: 2 });
 const dir = new URL(`../tests/fixtures/db/${family}/`, import.meta.url);
 mkdirSync(dir, { recursive: true });
 if (f.http) writeFileSync(new URL('exchanges.json', dir), JSON.stringify(exchanges, null, 2) + '\n');

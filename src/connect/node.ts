@@ -1,7 +1,7 @@
 // The drivers as puddle-connect and the runner run them in Node: the same Connector interface, with a database
 // file read from a path on this computer (inside the folders the service may read) rather than picked in a page.
 // Drivers that need a database protocol register here as they land: the PostgreSQL and MySQL families, Firebird,
-// SQL Server and Oracle so far.
+// SQL Server and Oracle, then the warehouses, SurrealDB and DynamoDB over HTTP.
 import { readFile } from 'node:fs/promises';
 import { resolve, sep } from 'node:path';
 import type { Connection, DriverId } from '../model';
@@ -9,13 +9,17 @@ import { inProcessClient } from '../sqlite/client';
 import { SqliteService } from '../sqlite/service';
 import { bigqueryConnector } from './drivers/bigquery';
 import { clickhouseConnector } from './drivers/clickhouse';
+import { dynamoConnector } from './drivers/dynamodb';
 import { firebirdConnector } from './drivers/firebird';
+import { hanaConnector } from './drivers/hana';
+import { libsqlConnector } from './drivers/libsql';
 import { mysqlConnector } from './drivers/mysql';
 import { oracleConnector } from './drivers/oracle';
 import { sqlserverConnector } from './drivers/sqlserver';
 import { postgresConnector } from './drivers/postgres';
 import { snowflakeConnector } from './drivers/snowflake';
 import { sqliteConnector } from './drivers/sqlite';
+import { surrealConnector } from './drivers/surrealdb';
 import { trinoConnector } from './drivers/trino';
 import { ConnectorError, type Connector, type ConnectorContext } from './types';
 
@@ -65,7 +69,7 @@ export function nodeConnectors(options: NodeOptions): Partial<Record<DriverId, C
   const client = () => inProcessClient((sqlite ??= new SqliteService()));
   return {
     sqlite: fileConnector(sqliteConnector('sqlite', client), options),
-    libsql: fileConnector(sqliteConnector('libsql', client), options),
+    libsql: libsqlConnector(fileConnector(sqliteConnector('libsql', client), options)),
     postgres: postgresConnector('postgres'),
     redshift: postgresConnector('redshift'),
     cockroach: postgresConnector('cockroach'),
@@ -80,5 +84,8 @@ export function nodeConnectors(options: NodeOptions): Partial<Record<DriverId, C
     bigquery: bigqueryConnector(),
     snowflake: snowflakeConnector(),
     trino: trinoConnector(),
+    surrealdb: surrealConnector(),
+    dynamodb: dynamoConnector(),
+    hana: hanaConnector(),
   };
 }

@@ -12,6 +12,8 @@ const BROWSER: Partial<Record<DriverId, () => Promise<{ default: Connector }>>> 
   clickhouse: () => import('./drivers/clickhouse'),
   trino: () => import('./drivers/trino'),
   bigquery: () => import('./drivers/bigquery'),
+  surrealdb: () => import('./drivers/surrealdb'),
+  dynamodb: () => import('./drivers/dynamodb'),
 };
 
 const loaded = new Map<DriverId, Promise<Connector>>();

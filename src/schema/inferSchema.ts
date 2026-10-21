@@ -40,18 +40,20 @@ const seenType = (v: unknown): SeenType => {
   }
 };
 
-/** The fields of a sample of documents (at most SAMPLE_SIZE), nested objects flattened to `parent.child` to `depth`. */
+/** The fields of a sample of documents (at most SAMPLE_SIZE), nested objects flattened to `parent.child` to `depth`; a parent that was opened is not a field itself. */
 export function inferFields(documents: unknown[], depth = 2): InferredSchema {
   const sample = documents.slice(0, SAMPLE_SIZE);
   const fields = new Map<string, InferredField>();
   const see = (name: string, v: unknown, level: number) => {
+    const t = seenType(v);
+    // A nested object within the depth is opened into its children and is no field itself (an empty one is kept, so it is seen at all).
+    if (t === 'object' && level < depth && Object.keys(v as object).length) {
+      for (const [k, x] of Object.entries(v as Record<string, unknown>)) see(`${name}.${k}`, x, level + 1);
+      return;
+    }
     const f = fields.get(name) ?? { name, present: 0, types: {} };
     fields.set(name, f);
     f.present++;
-    const t = seenType(v);
-    if (t === 'object' && level < depth) {
-      for (const [k, x] of Object.entries(v as Record<string, unknown>)) see(`${name}.${k}`, x, level + 1);
-    }
     f.types[t] = (f.types[t] ?? 0) + 1;
   };
   for (const d of sample) {

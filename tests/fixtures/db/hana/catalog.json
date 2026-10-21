@@ -1,0 +1,265 @@
+{
+  "test": {
+    "ok": true,
+    "server": "SAP HANA 2.00.076, 3 tables"
+  },
+  "catalog": {
+    "tables": [
+      {
+        "name": "CUSTOMERS",
+        "kind": "table",
+        "rows": 3,
+        "columns": [
+          {
+            "name": "ID",
+            "type": "BIGINT",
+            "nullable": false
+          },
+          {
+            "name": "NAME",
+            "type": "VARCHAR",
+            "nullable": false
+          },
+          {
+            "name": "EMAIL",
+            "type": "VARCHAR",
+            "nullable": true
+          },
+          {
+            "name": "SIGNED_UP",
+            "type": "DATE",
+            "nullable": true
+          },
+          {
+            "name": "ACTIVE",
+            "type": "BOOLEAN",
+            "nullable": true
+          }
+        ]
+      },
+      {
+        "name": "ORDERS",
+        "kind": "table",
+        "rows": 4,
+        "columns": [
+          {
+            "name": "ID",
+            "type": "BIGINT",
+            "nullable": false
+          },
+          {
+            "name": "CUSTOMER_ID",
+            "type": "BIGINT",
+            "nullable": false
+          },
+          {
+            "name": "TOTAL",
+            "type": "DECIMAL(10,2)",
+            "nullable": true
+          },
+          {
+            "name": "PLACED_AT",
+            "type": "TIMESTAMP",
+            "nullable": true
+          },
+          {
+            "name": "STATUS",
+            "type": "VARCHAR",
+            "nullable": true
+          },
+          {
+            "name": "NOTES",
+            "type": "VARCHAR",
+            "nullable": true
+          }
+        ]
+      },
+      {
+        "name": "ORDER_TOTALS",
+        "kind": "view",
+        "columns": [
+          {
+            "name": "NAME",
+            "type": "VARCHAR",
+            "nullable": false
+          },
+          {
+            "name": "ORDERS",
+            "type": "BIGINT",
+            "nullable": true
+          },
+          {
+            "name": "TOTAL",
+            "type": "DECIMAL(38,2)",
+            "nullable": true
+          }
+        ]
+      }
+    ]
+  },
+  "detail": {
+    "tables": [
+      {
+        "name": "CUSTOMERS",
+        "kind": "table",
+        "note": "People who have ordered",
+        "columns": [
+          {
+            "name": "ID",
+            "type": "INTEGER",
+            "pk": true,
+            "unique": true,
+            "notNull": true,
+            "increment": true
+          },
+          {
+            "name": "NAME",
+            "type": "NVARCHAR(100)",
+            "pk": false,
+            "unique": false,
+            "notNull": true,
+            "increment": false
+          },
+          {
+            "name": "EMAIL",
+            "type": "NVARCHAR(255)",
+            "pk": false,
+            "unique": true,
+            "notNull": false,
+            "increment": false,
+            "note": "Lower case"
+          },
+          {
+            "name": "SIGNED_UP",
+            "type": "DATE",
+            "pk": false,
+            "unique": false,
+            "notNull": false,
+            "increment": false
+          },
+          {
+            "name": "ACTIVE",
+            "type": "BOOLEAN",
+            "pk": false,
+            "unique": false,
+            "notNull": false,
+            "increment": false,
+            "default": "TRUE"
+          }
+        ],
+        "indexes": [],
+        "foreignKeys": []
+      },
+      {
+        "name": "ORDERS",
+        "kind": "table",
+        "columns": [
+          {
+            "name": "ID",
+            "type": "INTEGER",
+            "pk": true,
+            "unique": true,
+            "notNull": true,
+            "increment": false
+          },
+          {
+            "name": "CUSTOMER_ID",
+            "type": "INTEGER",
+            "pk": false,
+            "unique": false,
+            "notNull": true,
+            "increment": false
+          },
+          {
+            "name": "TOTAL",
+            "type": "DECIMAL(10,2)",
+            "pk": false,
+            "unique": false,
+            "notNull": false,
+            "increment": false
+          },
+          {
+            "name": "PLACED_AT",
+            "type": "TIMESTAMP",
+            "pk": false,
+            "unique": false,
+            "notNull": false,
+            "increment": false
+          },
+          {
+            "name": "STATUS",
+            "type": "NVARCHAR(20)",
+            "pk": false,
+            "unique": false,
+            "notNull": false,
+            "increment": false,
+            "default": "'placed'"
+          },
+          {
+            "name": "NOTES",
+            "type": "NVARCHAR(500)",
+            "pk": false,
+            "unique": false,
+            "notNull": false,
+            "increment": false
+          }
+        ],
+        "indexes": [
+          {
+            "name": "ORDERS_STATUS",
+            "columns": [
+              "STATUS"
+            ],
+            "unique": false
+          }
+        ],
+        "foreignKeys": [
+          {
+            "name": "_SYS_CONSTRAINT_152371_#0_#F0",
+            "columns": [
+              "CUSTOMER_ID"
+            ],
+            "refTable": "CUSTOMERS",
+            "refColumns": [
+              "ID"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "ORDER_TOTALS",
+        "kind": "view",
+        "columns": [
+          {
+            "name": "NAME",
+            "type": "NVARCHAR(100)",
+            "pk": false,
+            "unique": false,
+            "notNull": true,
+            "increment": false
+          },
+          {
+            "name": "ORDERS",
+            "type": "BIGINT",
+            "pk": false,
+            "unique": false,
+            "notNull": false,
+            "increment": false
+          },
+          {
+            "name": "TOTAL",
+            "type": "DECIMAL(38,2)",
+            "pk": false,
+            "unique": false,
+            "notNull": false,
+            "increment": false
+          }
+        ],
+        "indexes": [],
+        "foreignKeys": [],
+        "sql": "SELECT c.NAME, COUNT(o.ID) AS ORDERS, SUM(o.TOTAL) AS TOTAL FROM CUSTOMERS c LEFT JOIN ORDERS o ON o.CUSTOMER_ID = c.ID GROUP BY c.NAME"
+      }
+    ],
+    "enums": []
+  }
+}

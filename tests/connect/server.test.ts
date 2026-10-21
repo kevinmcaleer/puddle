@@ -34,7 +34,7 @@ describe('puddle-connect', () => {
 
   it('says what it is and answers CORS for its origins only', async () => {
     const r = await fetch(`${base}/health`, { headers: { Origin: 'http://localhost:4173' } });
-    expect(await r.json()).toEqual({ version: expect.any(String), drivers: ['sqlite', 'libsql', 'postgres', 'redshift', 'cockroach', 'greengage', 'mysql', 'mariadb', 'tidb', 'firebird', 'sqlserver', 'oracle', 'clickhouse', 'bigquery', 'snowflake', 'trino'], allowlist: false });
+    expect(await r.json()).toEqual({ version: expect.any(String), drivers: ['sqlite', 'libsql', 'postgres', 'redshift', 'cockroach', 'greengage', 'mysql', 'mariadb', 'tidb', 'firebird', 'sqlserver', 'oracle', 'clickhouse', 'bigquery', 'snowflake', 'trino', 'surrealdb', 'dynamodb', 'hana'], allowlist: false });
     expect(r.headers.get('access-control-allow-origin')).toBe('http://localhost:4173');
     const other = await fetch(`${base}/health`, { headers: { Origin: 'https://evil.example' } });
     expect(other.headers.get('access-control-allow-origin')).toBeNull();
@@ -203,5 +203,8 @@ describe('the command line', () => {
     expect(targetHost({ project: 'p', endpoint: 'http://127.0.0.1:18090' }, 'bigquery')).toBe('127.0.0.1');
     expect(targetHost({ account: 'xy12345.eu-west-2' }, 'snowflake')).toBe('xy12345.eu-west-2.snowflakecomputing.com');
     expect(targetHost({ account: 'xy12345', url: 'https://xy12345.privatelink.snowflakecomputing.com' }, 'snowflake')).toBe('xy12345.privatelink.snowflakecomputing.com');
+    expect(targetHost({ region: 'eu-west-2', accessKeyId: 'k' }, 'dynamodb')).toBe('dynamodb.eu-west-2.amazonaws.com');
+    expect(targetHost({ region: 'eu-west-2', endpoint: 'http://127.0.0.1:18092' }, 'dynamodb')).toBe('127.0.0.1');
+    expect(targetHost({ accessKeyId: 'k' }, 'dynamodb')).toBeUndefined();
   });
 });

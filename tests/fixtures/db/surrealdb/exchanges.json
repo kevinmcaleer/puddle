@@ -1,0 +1,57 @@
+[
+  {
+    "method": "GET",
+    "url": "http://127.0.0.1:18000/version",
+    "status": 200,
+    "response": "surrealdb-2.3.7"
+  },
+  {
+    "method": "POST",
+    "url": "http://127.0.0.1:18000/sql",
+    "body": "INFO FOR DB",
+    "status": 200,
+    "response": "[{\"result\":{\"accesses\":{},\"analyzers\":{},\"apis\":{},\"configs\":{},\"functions\":{},\"models\":{},\"params\":{},\"tables\":{\"customers\":\"DEFINE TABLE customers TYPE NORMAL SCHEMAFULL COMMENT 'People who have ordered' PERMISSIONS NONE\",\"orders\":\"DEFINE TABLE orders TYPE ANY SCHEMALESS PERMISSIONS NONE\"},\"users\":{\"reader\":\"DEFINE USER reader ON DATABASE PASSHASH '$argon2id$v=19$m=19456,t=2,p=1$gHekwBFgUuKCw9Qiy1F/kw$4riAbvyu3fgRvSn5yjY9MMockTKhfF900rUmHqxuCTE' ROLES VIEWER DURATION FOR TOKEN 1h, FOR SESSION NONE\"}},\"status\":\"OK\",\"time\":\"623.3µs\"}]"
+  },
+  {
+    "method": "POST",
+    "url": "http://127.0.0.1:18000/sql",
+    "body": "INFO FOR DB",
+    "status": 200,
+    "response": "[{\"result\":{\"accesses\":{},\"analyzers\":{},\"apis\":{},\"configs\":{},\"functions\":{},\"models\":{},\"params\":{},\"tables\":{\"customers\":\"DEFINE TABLE customers TYPE NORMAL SCHEMAFULL COMMENT 'People who have ordered' PERMISSIONS NONE\",\"orders\":\"DEFINE TABLE orders TYPE ANY SCHEMALESS PERMISSIONS NONE\"},\"users\":{\"reader\":\"DEFINE USER reader ON DATABASE PASSHASH '$argon2id$v=19$m=19456,t=2,p=1$gHekwBFgUuKCw9Qiy1F/kw$4riAbvyu3fgRvSn5yjY9MMockTKhfF900rUmHqxuCTE' ROLES VIEWER DURATION FOR TOKEN 1h, FOR SESSION NONE\"}},\"status\":\"OK\",\"time\":\"548.616µs\"}]"
+  },
+  {
+    "method": "POST",
+    "url": "http://127.0.0.1:18000/sql",
+    "body": "INFO FOR TABLE `customers`;\nSELECT count() FROM `customers` GROUP ALL;\nSELECT * FROM `customers` LIMIT 100;\nINFO FOR TABLE `orders`;\nSELECT count() FROM `orders` GROUP ALL;\nSELECT * FROM `orders` LIMIT 100",
+    "status": 200,
+    "response": "[{\"result\":{\"events\":{},\"fields\":{\"active\":\"DEFINE FIELD active ON customers TYPE bool DEFAULT true PERMISSIONS FULL\",\"email\":\"DEFINE FIELD email ON customers TYPE option<string> COMMENT 'Lower case' PERMISSIONS FULL\",\"name\":\"DEFINE FIELD name ON customers TYPE string PERMISSIONS FULL\",\"signed_up\":\"DEFINE FIELD signed_up ON customers TYPE datetime PERMISSIONS FULL\"},\"indexes\":{\"customers_email\":\"DEFINE INDEX customers_email ON customers FIELDS email UNIQUE\"},\"lives\":{},\"tables\":{}},\"status\":\"OK\",\"time\":\"561.938µs\"},{\"result\":[{\"count\":3}],\"status\":\"OK\",\"time\":\"125.878µs\"},{\"result\":[{\"active\":true,\"email\":\"ada@example.com\",\"id\":\"customers:1\",\"name\":\"Ada Lovelace\",\"signed_up\":\"2024-01-15T00:00:00Z\"},{\"active\":true,\"email\":\"grace@example.com\",\"id\":\"customers:2\",\"name\":\"Grace Hopper\",\"signed_up\":\"2024-02-20T00:00:00Z\"},{\"active\":false,\"id\":\"customers:3\",\"name\":\"Alan Turing\",\"signed_up\":\"2024-03-05T00:00:00Z\"}],\"status\":\"OK\",\"time\":\"99.535µs\"},{\"result\":{\"events\":{},\"fields\":{\"customer\":\"DEFINE FIELD customer ON orders TYPE record<customers> PERMISSIONS FULL\",\"placed_at\":\"DEFINE FIELD placed_at ON orders TYPE datetime PERMISSIONS FULL\",\"total\":\"DEFINE FIELD total ON orders TYPE decimal PERMISSIONS FULL\"},\"indexes\":{},\"lives\":{},\"tables\":{}},\"status\":\"OK\",\"time\":\"214.42µs\"},{\"result\":[{\"count\":4}],\"status\":\"OK\",\"time\":\"27.523µs\"},{\"result\":[{\"customer\":\"customers:1\",\"id\":\"orders:101\",\"notes\":\"Gift wrap\",\"placed_at\":\"2024-04-01T09:30:00Z\",\"shipping\":{\"city\":\"London\",\"postcode\":\"N1\"},\"status\":\"shipped\",\"tags\":[\"gift\",\"express\"],\"total\":\"19.99\"},{\"customer\":\"customers:1\",\"id\":\"orders:102\",\"placed_at\":\"2024-04-02T14:00:00Z\",\"status\":\"placed\",\"tags\":[],\"total\":\"5.5\"},{\"customer\":\"customers:2\",\"id\":\"orders:103\",\"placed_at\":\"2024-04-03T11:15:00Z\",\"shipping\":{\"city\":\"New York\"},\"status\":\"returned\",\"tags\":[\"bulk\"],\"total\":\"120\"},{\"customer\":\"customers:3\",\"id\":\"orders:104\",\"placed_at\":\"2024-04-04T16:45:00Z\",\"status\":\"placed\",\"tags\":[],\"total\":\"42.25\"}],\"status\":\"OK\",\"time\":\"48.944µs\"}]"
+  },
+  {
+    "method": "POST",
+    "url": "http://127.0.0.1:18000/sql",
+    "body": "INFO FOR DB",
+    "status": 200,
+    "response": "[{\"result\":{\"accesses\":{},\"analyzers\":{},\"apis\":{},\"configs\":{},\"functions\":{},\"models\":{},\"params\":{},\"tables\":{\"customers\":\"DEFINE TABLE customers TYPE NORMAL SCHEMAFULL COMMENT 'People who have ordered' PERMISSIONS NONE\",\"orders\":\"DEFINE TABLE orders TYPE ANY SCHEMALESS PERMISSIONS NONE\"},\"users\":{\"reader\":\"DEFINE USER reader ON DATABASE PASSHASH '$argon2id$v=19$m=19456,t=2,p=1$gHekwBFgUuKCw9Qiy1F/kw$4riAbvyu3fgRvSn5yjY9MMockTKhfF900rUmHqxuCTE' ROLES VIEWER DURATION FOR TOKEN 1h, FOR SESSION NONE\"}},\"status\":\"OK\",\"time\":\"495.428µs\"}]"
+  },
+  {
+    "method": "POST",
+    "url": "http://127.0.0.1:18000/sql",
+    "body": "INFO FOR TABLE `customers`;\nSELECT count() FROM `customers` GROUP ALL;\nSELECT * FROM `customers` LIMIT 1000;\nINFO FOR TABLE `orders`;\nSELECT count() FROM `orders` GROUP ALL;\nSELECT * FROM `orders` LIMIT 1000",
+    "status": 200,
+    "response": "[{\"result\":{\"events\":{},\"fields\":{\"active\":\"DEFINE FIELD active ON customers TYPE bool DEFAULT true PERMISSIONS FULL\",\"email\":\"DEFINE FIELD email ON customers TYPE option<string> COMMENT 'Lower case' PERMISSIONS FULL\",\"name\":\"DEFINE FIELD name ON customers TYPE string PERMISSIONS FULL\",\"signed_up\":\"DEFINE FIELD signed_up ON customers TYPE datetime PERMISSIONS FULL\"},\"indexes\":{\"customers_email\":\"DEFINE INDEX customers_email ON customers FIELDS email UNIQUE\"},\"lives\":{},\"tables\":{}},\"status\":\"OK\",\"time\":\"399.977µs\"},{\"result\":[{\"count\":3}],\"status\":\"OK\",\"time\":\"104.683µs\"},{\"result\":[{\"active\":true,\"email\":\"ada@example.com\",\"id\":\"customers:1\",\"name\":\"Ada Lovelace\",\"signed_up\":\"2024-01-15T00:00:00Z\"},{\"active\":true,\"email\":\"grace@example.com\",\"id\":\"customers:2\",\"name\":\"Grace Hopper\",\"signed_up\":\"2024-02-20T00:00:00Z\"},{\"active\":false,\"id\":\"customers:3\",\"name\":\"Alan Turing\",\"signed_up\":\"2024-03-05T00:00:00Z\"}],\"status\":\"OK\",\"time\":\"99.475µs\"},{\"result\":{\"events\":{},\"fields\":{\"customer\":\"DEFINE FIELD customer ON orders TYPE record<customers> PERMISSIONS FULL\",\"placed_at\":\"DEFINE FIELD placed_at ON orders TYPE datetime PERMISSIONS FULL\",\"total\":\"DEFINE FIELD total ON orders TYPE decimal PERMISSIONS FULL\"},\"indexes\":{},\"lives\":{},\"tables\":{}},\"status\":\"OK\",\"time\":\"254.807µs\"},{\"result\":[{\"count\":4}],\"status\":\"OK\",\"time\":\"35.284µs\"},{\"result\":[{\"customer\":\"customers:1\",\"id\":\"orders:101\",\"notes\":\"Gift wrap\",\"placed_at\":\"2024-04-01T09:30:00Z\",\"shipping\":{\"city\":\"London\",\"postcode\":\"N1\"},\"status\":\"shipped\",\"tags\":[\"gift\",\"express\"],\"total\":\"19.99\"},{\"customer\":\"customers:1\",\"id\":\"orders:102\",\"placed_at\":\"2024-04-02T14:00:00Z\",\"status\":\"placed\",\"tags\":[],\"total\":\"5.5\"},{\"customer\":\"customers:2\",\"id\":\"orders:103\",\"placed_at\":\"2024-04-03T11:15:00Z\",\"shipping\":{\"city\":\"New York\"},\"status\":\"returned\",\"tags\":[\"bulk\"],\"total\":\"120\"},{\"customer\":\"customers:3\",\"id\":\"orders:104\",\"placed_at\":\"2024-04-04T16:45:00Z\",\"status\":\"placed\",\"tags\":[],\"total\":\"42.25\"}],\"status\":\"OK\",\"time\":\"48.346µs\"}]"
+  },
+  {
+    "method": "POST",
+    "url": "http://127.0.0.1:18000/sql",
+    "body": "SELECT * FROM `orders` LIMIT 10;\nINFO FOR TABLE `orders`",
+    "status": 200,
+    "response": "[{\"result\":[{\"customer\":\"customers:1\",\"id\":\"orders:101\",\"notes\":\"Gift wrap\",\"placed_at\":\"2024-04-01T09:30:00Z\",\"shipping\":{\"city\":\"London\",\"postcode\":\"N1\"},\"status\":\"shipped\",\"tags\":[\"gift\",\"express\"],\"total\":\"19.99\"},{\"customer\":\"customers:1\",\"id\":\"orders:102\",\"placed_at\":\"2024-04-02T14:00:00Z\",\"status\":\"placed\",\"tags\":[],\"total\":\"5.5\"},{\"customer\":\"customers:2\",\"id\":\"orders:103\",\"placed_at\":\"2024-04-03T11:15:00Z\",\"shipping\":{\"city\":\"New York\"},\"status\":\"returned\",\"tags\":[\"bulk\"],\"total\":\"120\"},{\"customer\":\"customers:3\",\"id\":\"orders:104\",\"placed_at\":\"2024-04-04T16:45:00Z\",\"status\":\"placed\",\"tags\":[],\"total\":\"42.25\"}],\"status\":\"OK\",\"time\":\"175.502µs\"},{\"result\":{\"events\":{},\"fields\":{\"customer\":\"DEFINE FIELD customer ON orders TYPE record<customers> PERMISSIONS FULL\",\"placed_at\":\"DEFINE FIELD placed_at ON orders TYPE datetime PERMISSIONS FULL\",\"total\":\"DEFINE FIELD total ON orders TYPE decimal PERMISSIONS FULL\"},\"indexes\":{},\"lives\":{},\"tables\":{}},\"status\":\"OK\",\"time\":\"330.154µs\"}]"
+  },
+  {
+    "method": "POST",
+    "url": "http://127.0.0.1:18000/sql",
+    "body": "SELECT * FROM (SELECT customer.name AS name, total, placed_at, status, customer.signed_up AS signed_up, customer.active AS active, id FROM orders ORDER BY id) LIMIT 2",
+    "status": 200,
+    "response": "[{\"result\":[{\"active\":true,\"id\":\"orders:101\",\"name\":\"Ada Lovelace\",\"placed_at\":\"2024-04-01T09:30:00Z\",\"signed_up\":\"2024-01-15T00:00:00Z\",\"status\":\"shipped\",\"total\":\"19.99\"},{\"active\":true,\"id\":\"orders:102\",\"name\":\"Ada Lovelace\",\"placed_at\":\"2024-04-02T14:00:00Z\",\"signed_up\":\"2024-01-15T00:00:00Z\",\"status\":\"placed\",\"total\":\"5.5\"}],\"status\":\"OK\",\"time\":\"1.465329ms\"}]"
+  }
+]

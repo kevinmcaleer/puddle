@@ -1,0 +1,93 @@
+[
+  {
+    "method": "POST",
+    "url": "http://127.0.0.1:18092/",
+    "body": "{\"Limit\":100}",
+    "status": 200,
+    "response": "{\"TableNames\":[\"customers\",\"orders\"]}"
+  },
+  {
+    "method": "POST",
+    "url": "http://127.0.0.1:18092/",
+    "body": "{\"Limit\":100}",
+    "status": 200,
+    "response": "{\"TableNames\":[\"customers\",\"orders\"]}"
+  },
+  {
+    "method": "POST",
+    "url": "http://127.0.0.1:18092/",
+    "body": "{\"TableName\":\"customers\"}",
+    "status": 200,
+    "response": "{\"Table\":{\"TableName\":\"customers\",\"KeySchema\":[{\"AttributeName\":\"id\",\"KeyType\":\"HASH\"}],\"AttributeDefinitions\":[{\"AttributeName\":\"id\",\"AttributeType\":\"N\"}],\"TableStatus\":\"ACTIVE\",\"ItemCount\":3}}"
+  },
+  {
+    "method": "POST",
+    "url": "http://127.0.0.1:18092/",
+    "body": "{\"TableName\":\"customers\",\"Limit\":100}",
+    "status": 200,
+    "response": "{\"Items\":[{\"id\":{\"N\":\"1\"},\"name\":{\"S\":\"Ada Lovelace\"},\"email\":{\"S\":\"ada@example.com\"},\"signed_up\":{\"S\":\"2024-01-15\"},\"active\":{\"BOOL\":true}},{\"id\":{\"N\":\"2\"},\"name\":{\"S\":\"Grace Hopper\"},\"email\":{\"S\":\"grace@example.com\"},\"signed_up\":{\"S\":\"2024-02-20\"},\"active\":{\"BOOL\":true}},{\"id\":{\"N\":\"3\"},\"name\":{\"S\":\"Alan Turing\"},\"email\":{\"NULL\":true},\"signed_up\":{\"S\":\"2024-03-05\"},\"active\":{\"BOOL\":false}}],\"Count\":3,\"ScannedCount\":3}"
+  },
+  {
+    "method": "POST",
+    "url": "http://127.0.0.1:18092/",
+    "body": "{\"TableName\":\"orders\"}",
+    "status": 200,
+    "response": "{\"Table\":{\"TableName\":\"orders\",\"KeySchema\":[{\"AttributeName\":\"customer_id\",\"KeyType\":\"HASH\"},{\"AttributeName\":\"id\",\"KeyType\":\"RANGE\"}],\"AttributeDefinitions\":[{\"AttributeName\":\"customer_id\",\"AttributeType\":\"N\"},{\"AttributeName\":\"id\",\"AttributeType\":\"N\"},{\"AttributeName\":\"status\",\"AttributeType\":\"S\"}],\"GlobalSecondaryIndexes\":[{\"IndexName\":\"orders_status\",\"KeySchema\":[{\"AttributeName\":\"status\",\"KeyType\":\"HASH\"}],\"Projection\":{\"ProjectionType\":\"ALL\"}}],\"TableStatus\":\"ACTIVE\",\"ItemCount\":4}}"
+  },
+  {
+    "method": "POST",
+    "url": "http://127.0.0.1:18092/",
+    "body": "{\"TableName\":\"orders\",\"Limit\":100}",
+    "status": 200,
+    "response": "{\"Items\":[{\"id\":{\"N\":\"101\"},\"customer_id\":{\"N\":\"1\"},\"total\":{\"N\":\"19.99\"},\"placed_at\":{\"S\":\"2024-04-01T09:30:00Z\"},\"status\":{\"S\":\"shipped\"},\"notes\":{\"S\":\"Gift wrap\"},\"tags\":{\"L\":[{\"S\":\"gift\"},{\"S\":\"express\"}]},\"shipping\":{\"M\":{\"city\":{\"S\":\"London\"},\"postcode\":{\"S\":\"N1\"}}}},{\"id\":{\"N\":\"102\"},\"customer_id\":{\"N\":\"1\"},\"total\":{\"N\":\"5.5\"},\"placed_at\":{\"S\":\"2024-04-02T14:00:00Z\"},\"status\":{\"S\":\"placed\"},\"tags\":{\"L\":[]}},{\"id\":{\"N\":\"103\"},\"customer_id\":{\"N\":\"2\"},\"total\":{\"N\":\"120\"},\"placed_at\":{\"S\":\"2024-04-03T11:15:00Z\"},\"status\":{\"S\":\"returned\"},\"tags\":{\"L\":[{\"S\":\"bulk\"}]},\"shipping\":{\"M\":{\"city\":{\"S\":\"New York\"}}}},{\"id\":{\"N\":\"104\"},\"customer_id\":{\"N\":\"3\"},\"total\":{\"N\":\"42.25\"},\"placed_at\":{\"S\":\"2024-04-04T16:45:00Z\"},\"status\":{\"S\":\"placed\"},\"tags\":{\"L\":[]}}],\"Count\":4,\"ScannedCount\":4}"
+  },
+  {
+    "method": "POST",
+    "url": "http://127.0.0.1:18092/",
+    "body": "{\"Limit\":100}",
+    "status": 200,
+    "response": "{\"TableNames\":[\"customers\",\"orders\"]}"
+  },
+  {
+    "method": "POST",
+    "url": "http://127.0.0.1:18092/",
+    "body": "{\"TableName\":\"customers\"}",
+    "status": 200,
+    "response": "{\"Table\":{\"TableName\":\"customers\",\"KeySchema\":[{\"AttributeName\":\"id\",\"KeyType\":\"HASH\"}],\"AttributeDefinitions\":[{\"AttributeName\":\"id\",\"AttributeType\":\"N\"}],\"TableStatus\":\"ACTIVE\",\"ItemCount\":3}}"
+  },
+  {
+    "method": "POST",
+    "url": "http://127.0.0.1:18092/",
+    "body": "{\"TableName\":\"customers\",\"Limit\":1000}",
+    "status": 200,
+    "response": "{\"Items\":[{\"id\":{\"N\":\"1\"},\"name\":{\"S\":\"Ada Lovelace\"},\"email\":{\"S\":\"ada@example.com\"},\"signed_up\":{\"S\":\"2024-01-15\"},\"active\":{\"BOOL\":true}},{\"id\":{\"N\":\"2\"},\"name\":{\"S\":\"Grace Hopper\"},\"email\":{\"S\":\"grace@example.com\"},\"signed_up\":{\"S\":\"2024-02-20\"},\"active\":{\"BOOL\":true}},{\"id\":{\"N\":\"3\"},\"name\":{\"S\":\"Alan Turing\"},\"email\":{\"NULL\":true},\"signed_up\":{\"S\":\"2024-03-05\"},\"active\":{\"BOOL\":false}}],\"Count\":3,\"ScannedCount\":3}"
+  },
+  {
+    "method": "POST",
+    "url": "http://127.0.0.1:18092/",
+    "body": "{\"TableName\":\"orders\"}",
+    "status": 200,
+    "response": "{\"Table\":{\"TableName\":\"orders\",\"KeySchema\":[{\"AttributeName\":\"customer_id\",\"KeyType\":\"HASH\"},{\"AttributeName\":\"id\",\"KeyType\":\"RANGE\"}],\"AttributeDefinitions\":[{\"AttributeName\":\"customer_id\",\"AttributeType\":\"N\"},{\"AttributeName\":\"id\",\"AttributeType\":\"N\"},{\"AttributeName\":\"status\",\"AttributeType\":\"S\"}],\"GlobalSecondaryIndexes\":[{\"IndexName\":\"orders_status\",\"KeySchema\":[{\"AttributeName\":\"status\",\"KeyType\":\"HASH\"}],\"Projection\":{\"ProjectionType\":\"ALL\"}}],\"TableStatus\":\"ACTIVE\",\"ItemCount\":4}}"
+  },
+  {
+    "method": "POST",
+    "url": "http://127.0.0.1:18092/",
+    "body": "{\"TableName\":\"orders\",\"Limit\":1000}",
+    "status": 200,
+    "response": "{\"Items\":[{\"id\":{\"N\":\"101\"},\"customer_id\":{\"N\":\"1\"},\"total\":{\"N\":\"19.99\"},\"placed_at\":{\"S\":\"2024-04-01T09:30:00Z\"},\"status\":{\"S\":\"shipped\"},\"notes\":{\"S\":\"Gift wrap\"},\"tags\":{\"L\":[{\"S\":\"gift\"},{\"S\":\"express\"}]},\"shipping\":{\"M\":{\"city\":{\"S\":\"London\"},\"postcode\":{\"S\":\"N1\"}}}},{\"id\":{\"N\":\"102\"},\"customer_id\":{\"N\":\"1\"},\"total\":{\"N\":\"5.5\"},\"placed_at\":{\"S\":\"2024-04-02T14:00:00Z\"},\"status\":{\"S\":\"placed\"},\"tags\":{\"L\":[]}},{\"id\":{\"N\":\"103\"},\"customer_id\":{\"N\":\"2\"},\"total\":{\"N\":\"120\"},\"placed_at\":{\"S\":\"2024-04-03T11:15:00Z\"},\"status\":{\"S\":\"returned\"},\"tags\":{\"L\":[{\"S\":\"bulk\"}]},\"shipping\":{\"M\":{\"city\":{\"S\":\"New York\"}}}},{\"id\":{\"N\":\"104\"},\"customer_id\":{\"N\":\"3\"},\"total\":{\"N\":\"42.25\"},\"placed_at\":{\"S\":\"2024-04-04T16:45:00Z\"},\"status\":{\"S\":\"placed\"},\"tags\":{\"L\":[]}}],\"Count\":4,\"ScannedCount\":4}"
+  },
+  {
+    "method": "POST",
+    "url": "http://127.0.0.1:18092/",
+    "body": "{\"TableName\":\"orders\",\"Limit\":10}",
+    "status": 200,
+    "response": "{\"Items\":[{\"id\":{\"N\":\"101\"},\"customer_id\":{\"N\":\"1\"},\"total\":{\"N\":\"19.99\"},\"placed_at\":{\"S\":\"2024-04-01T09:30:00Z\"},\"status\":{\"S\":\"shipped\"},\"notes\":{\"S\":\"Gift wrap\"},\"tags\":{\"L\":[{\"S\":\"gift\"},{\"S\":\"express\"}]},\"shipping\":{\"M\":{\"city\":{\"S\":\"London\"},\"postcode\":{\"S\":\"N1\"}}}},{\"id\":{\"N\":\"102\"},\"customer_id\":{\"N\":\"1\"},\"total\":{\"N\":\"5.5\"},\"placed_at\":{\"S\":\"2024-04-02T14:00:00Z\"},\"status\":{\"S\":\"placed\"},\"tags\":{\"L\":[]}},{\"id\":{\"N\":\"103\"},\"customer_id\":{\"N\":\"2\"},\"total\":{\"N\":\"120\"},\"placed_at\":{\"S\":\"2024-04-03T11:15:00Z\"},\"status\":{\"S\":\"returned\"},\"tags\":{\"L\":[{\"S\":\"bulk\"}]},\"shipping\":{\"M\":{\"city\":{\"S\":\"New York\"}}}},{\"id\":{\"N\":\"104\"},\"customer_id\":{\"N\":\"3\"},\"total\":{\"N\":\"42.25\"},\"placed_at\":{\"S\":\"2024-04-04T16:45:00Z\"},\"status\":{\"S\":\"placed\"},\"tags\":{\"L\":[]}}],\"Count\":4,\"ScannedCount\":4}"
+  },
+  {
+    "method": "POST",
+    "url": "http://127.0.0.1:18092/",
+    "body": "{\"Statement\":\"SELECT * FROM \\\"orders\\\" WHERE customer_id = 1 ORDER BY id\",\"Limit\":2}",
+    "status": 200,
+    "response": "{\"Items\":[{\"id\":{\"N\":\"101\"},\"customer_id\":{\"N\":\"1\"},\"total\":{\"N\":\"19.99\"},\"placed_at\":{\"S\":\"2024-04-01T09:30:00Z\"},\"status\":{\"S\":\"shipped\"},\"notes\":{\"S\":\"Gift wrap\"},\"tags\":{\"L\":[{\"S\":\"gift\"},{\"S\":\"express\"}]},\"shipping\":{\"M\":{\"city\":{\"S\":\"London\"},\"postcode\":{\"S\":\"N1\"}}}},{\"id\":{\"N\":\"102\"},\"customer_id\":{\"N\":\"1\"},\"total\":{\"N\":\"5.5\"},\"placed_at\":{\"S\":\"2024-04-02T14:00:00Z\"},\"status\":{\"S\":\"placed\"},\"tags\":{\"L\":[]}}]}"
+  }
+]
