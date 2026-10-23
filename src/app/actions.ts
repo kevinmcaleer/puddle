@@ -16,6 +16,7 @@ import type { FeedSpec, ReadOptions } from '../sources/odata';
 import { addODataSource, addUrlSource, addWebTableSource } from '../sources/url';
 import { viewHere, viewNode } from '../results/pin';
 import { useSession } from './session';
+import type { NextActions } from './addMenu';
 
 /** Why the Add menu's nodes and steps wait for a selection (principle 2: a new node always reads from one before it). */
 export const SELECT_FIRST = 'Select the node it should follow first, so the new node is wired after it.';
@@ -238,6 +239,9 @@ export async function addStepFromMenu(form: StepForm) {
   const step = await buildStep(form, useEngineStore.getState().engine, project, node.id, after, [], selected);
   addStepAt({ nodeId: node.id, stepIndex: after }, step);
 }
+
+/** The Add menu's nodes and steps, and the connector menu's: each goes after the selected node. */
+export const ADD_AFTER_SELECTION: NextActions = { addNode: (type) => addNodeAfterSelection(type), addStep: (form) => void addStepFromMenu(form) };
 
 /**
  * Wire one node's output into another's input: `port` when the wire was dropped on one, else the first free input.

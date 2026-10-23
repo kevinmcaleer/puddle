@@ -51,7 +51,7 @@ import { cardKind } from '../canvas/kind';
 import { AppSwitcher } from '../powertools/AppSwitcher';
 import { Button, Menu, ResultsBar, StatusBadge, StatusStrip, Toolbar, useDisplayFormat, type NodeKind } from '../ui';
 import { ActivityControl } from './ActivityControl';
-import { addFiles, addNodeAfterSelection, addSchemaTable, addStepFromMenu, cancelWiring, chooseFiles as pickSourceFiles, addPastedText, groupSelection, layoutFlow, openSelected, pasteFromClipboard, searchAddStep, selectNeighbour, startWiring, viewSelected } from './actions';
+import { ADD_AFTER_SELECTION, addFiles, addNodeAfterSelection, addSchemaTable, cancelWiring, chooseFiles as pickSourceFiles, addPastedText, groupSelection, layoutFlow, openSelected, pasteFromClipboard, searchAddStep, selectNeighbour, startWiring, viewSelected } from './actions';
 import { useEngineStore, type EngineStatus } from './engine';
 import { ResultsPanel } from './ResultsPanel';
 import { Console } from '../console/Console';
@@ -61,13 +61,12 @@ import { TemplateDialogs } from '../templates/TemplateDialogs';
 import { openExportRecipe, openRecipeFile } from '../recipes/actions';
 import { RecipeAttachBanner, RecipeDialogs } from '../recipes/RecipeDialogs';
 import { shortcutText, withShortcut, type GlobalShortcutId } from './shortcuts';
-import { STEP_GROUPS, stepForms } from '../steps';
 import { useShortcuts } from './useShortcuts';
 import { PROVIDER_IDS, PROVIDERS, useSync } from '../sync';
 import { openSyncDialog } from '../sync/dialogs';
 import { SyncConflictBanner } from '../sync/SyncDialogs';
 import { useSession } from './session';
-import { afterSelection } from './addMenu';
+import { afterSelection, nodeItems, stepItems } from './addMenu';
 import { showView } from './views';
 import { ViewSwitcher } from './ViewSwitcher';
 
@@ -372,14 +371,9 @@ export function AppShell() {
               ...schemaTables.map((t) => ({ label: t.name, icon: 'schema' as const, hint: t.schema === 'public' ? 'Schema table' : `Schema table in ${t.schema}`, group: 'Schema tables', onSelect: () => addSchemaTable(t.schema, t.name) })),
               // Nodes and steps go after the selected node, so with nothing selected they wait (principle 2).
               ...afterSelection([
-                { label: 'Join', icon: 'join', hint: 'Two inputs', group: 'Nodes', onSelect: () => addNodeAfterSelection('join') },
-                { label: 'Append', icon: 'append', hint: 'Stack rows', group: 'Nodes', onSelect: () => addNodeAfterSelection('append') },
-                { label: 'Lookup', icon: 'join', hint: 'Bring columns across', group: 'Nodes', onSelect: () => addNodeAfterSelection('lookup') },
-                { label: 'Query', icon: 'query', hint: 'Design with tables', group: 'Nodes', onSelect: () => addNodeAfterSelection('query') },
-                { label: 'SQL', icon: 'code', hint: 'Write a query', group: 'Nodes', onSelect: () => addNodeAfterSelection('sql') },
-                { label: 'Output', icon: 'output', shortcut: shortcutText('add-output'), group: 'Nodes', onSelect: () => addNodeAfterSelection('output') },
+                ...nodeItems(ADD_AFTER_SELECTION),
                 // Every step, each making a node of its own after the selected node (T opens the menu with its search focused).
-                ...STEP_GROUPS.flatMap((g) => stepForms().filter((f) => f.group === g).map((f) => ({ label: f.title, group: `${g} steps`, hint: f.newColumn ? 'New column' : undefined, onSelect: () => void addStepFromMenu(f) }))),
+                ...stepItems(ADD_AFTER_SELECTION),
               ], hasSelection),
             ]}
           />

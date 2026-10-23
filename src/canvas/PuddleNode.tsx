@@ -1,5 +1,5 @@
 import { Handle, Position, useUpdateNodeInternals, type Node, type NodeProps } from '@xyflow/react';
-import { useEffect, useMemo, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, type ReactNode } from 'react';
 import { useSession } from '../app/session';
 import { upstreamKey } from '../compiler';
 import { useViewProject } from '../flow/sample';
@@ -118,7 +118,7 @@ export function PuddleNode({ data, selected }: NodeProps<PuddleFlowNode>) {
                 {numbered && <span className="ui-metric puddle-port-label">{Number(port.id) + 1}</span>}
               </Handle>
             ))}
-            {output && <Handle type="source" position={Position.Right} className="ui-port" />}
+            {output && <OutputHandle nodeId={node.id} name={node.name} />}
             {/* Ends for a rule's dashed reference to another node (see RefEdge), only where one is drawn. */}
             {data.refIn && <Handle type="target" id="ref-in" position={Position.Top} className="puddle-ref-handle" isConnectable={false} isConnectableStart={false} isConnectableEnd={false} />}
             {data.refOut && <Handle type="source" id="ref-out" position={Position.Bottom} className="puddle-ref-handle" isConnectable={false} isConnectableStart={false} isConnectableEnd={false} />}
@@ -126,5 +126,32 @@ export function PuddleNode({ data, selected }: NodeProps<PuddleFlowNode>) {
         )}
       />
     </div>
+  );
+}
+
+/** Pointer travel, in pixels, under which a press on the output connector is a click rather than a wire being dragged. */
+const CLICK_SLOP = 4;
+
+/**
+ * A node's output connector. Dragged, it draws a wire; clicked, it opens the menu of what can follow the node (the
+ * Add menu's nodes and steps, see connectorItems), beside the connector.
+ */
+function OutputHandle({ nodeId, name }: { nodeId: string; name: string }) {
+  const down = useRef<{ x: number; y: number } | null>(null);
+  return (
+    <Handle
+      type="source"
+      position={Position.Right}
+      className="ui-port"
+      title={`Add after ${name}, or drag to wire`}
+      onPointerDown={(e) => (down.current = { x: e.clientX, y: e.clientY })}
+      onClick={(e) => {
+        const from = down.current;
+        down.current = null;
+        if (from && Math.hypot(e.clientX - from.x, e.clientY - from.y) > CLICK_SLOP) return;
+        const box = e.currentTarget.getBoundingClientRect();
+        useSession.getState().openConnectorMenu({ nodeId, x: box.right + 4, y: box.top });
+      }}
+    />
   );
 }
