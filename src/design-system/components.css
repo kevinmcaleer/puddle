@@ -50,6 +50,8 @@ body { font-family: var(--font-ui); font-size: 13px; line-height: 20px; -webkit-
 .ui-badge--warn { background: var(--warn-tint); color: var(--warn); }
 .ui-badge--fail { background: var(--fail-tint); color: var(--fail); }
 .ui-badge--pending, .ui-badge--neutral { background: var(--surface-sunken); color: var(--ink-muted); }
+.ui-badge-button { display: inline-flex; background: none; border: 0; padding: 0; border-radius: var(--radius-xs); cursor: pointer; }
+.ui-badge-button:hover .ui-badge { text-decoration: underline; }
 .ui-badge--pending .ui-dot { width: 6px; height: 6px; margin: 0 3px; border-radius: var(--radius-full); background: currentColor; animation: ui-pulse 1.2s ease-in-out infinite; }
 @keyframes ui-pulse { 50% { opacity: 0.3; } }
 @media (prefers-reduced-motion: reduce) { .ui-badge--pending .ui-dot { animation: none; } }

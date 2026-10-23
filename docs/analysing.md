@@ -4,7 +4,7 @@ Every source, and any node you look at, is analysed in the background once it ha
 
 ![The CRM export sample selected, with its issues listed in the inspector and Fix all above them](_static/screenshots/analysing-issues.png)
 
-The source's node on the canvas shows how many issues it has, so a file that needs work stands out before you open it. Analysis reads the first two hundred thousand rows of a node, which is enough to find what is wrong without slowing a large file down; the panel says so when it looked at a sample.
+The source's node on the canvas shows how many issues it has, so a file that needs work stands out before you open it. The count takes in every issue, suggestions and notes too; click it, on the node or in the status bar, to jump to the Issues panel and see each one. Analysis reads the first two hundred thousand rows of a node, which is enough to find what is wrong without slowing a large file down; the panel says so when it looked at a sample.
 
 ## What an issue says
 
@@ -47,7 +47,7 @@ Hover an issue for a line on what it means and what the fix does. The kinds of i
 
 ## Fix all
 
-**Fix all** sits on the Issues panel and above the results table. One click applies every issue marked **Fix**; the button says how many (**Fix 6 issues**). The arrow beside it opens **Choose fixes**, which lists every fix with a checkbox, grouped the way the Add menu groups steps, with the suggestions unticked: tick the ones you want and choose **Apply**.
+**Fix all** sits on the Issues panel and above the results table. One click applies every issue marked **Fix**; the button says how many (**Fix 6 issues**), and out of how many when some of the issues are suggestions or notes it leaves alone (**Fix 1 of 3 issues**). The arrow beside it opens **Choose fixes**, which lists every fix with a checkbox, grouped the way the Add menu groups steps, with the suggestions unticked: tick the ones you want and choose **Apply**.
 
 ![The Choose fixes list open under Fix all, each fix with a checkbox and the suggestions unticked](_static/screenshots/analysing-choose-fixes.png)
 

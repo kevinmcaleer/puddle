@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
-import { cleanup, render, screen } from '@testing-library/react';
-import { afterEach, describe, expect, it } from 'vitest';
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { NodeCard } from './Node';
 
 describe('NodeCard note marker', () => {
@@ -49,5 +49,18 @@ describe('NodeCard kept result', () => {
     const kept = screen.getByTestId('node-kept');
     expect(kept.textContent).toBe('Kept · out of date');
     expect(kept.dataset.stale).toBe('true');
+  });
+});
+
+describe('NodeCard issues badge', () => {
+  afterEach(cleanup);
+
+  it('shows the issues from a click on the badge, and the click still selects the card', () => {
+    const onIssues = vi.fn();
+    const onClick = vi.fn();
+    render(<NodeCard kind="source" name="a" rows={5} issues={3} onIssues={onIssues} onClick={onClick} />);
+    fireEvent.click(screen.getByRole('button', { name: '3 issues' }));
+    expect(onIssues).toHaveBeenCalledTimes(1);
+    expect(onClick).toHaveBeenCalledTimes(1);
   });
 });

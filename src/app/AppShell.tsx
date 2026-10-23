@@ -241,7 +241,7 @@ function Strip() {
       {one && p && <span data-testid="column-profile">{one} · {describeProfile(p, display)}</span>}
     </>
   );
-  return <StatusStrip rows={rows} cols={cols} ms={ms} rules={rules} issues={issues} kept={kept} sample={sampled && sample ? sample.rows : undefined} detail={(rules && sampled) || (one && p) ? detail : undefined} end={end} {...syncBadge} />;
+  return <StatusStrip rows={rows} cols={cols} ms={ms} rules={rules} issues={issues} onIssues={() => useSession.getState().showIssues(node.id)} kept={kept} sample={sampled && sample ? sample.rows : undefined} detail={(rules && sampled) || (one && p) ? detail : undefined} end={end} {...syncBadge} />;
 }
 
 /**

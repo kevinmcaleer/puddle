@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
-import { cleanup, render, screen } from '@testing-library/react';
-import { afterEach, describe, expect, it } from 'vitest';
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { StatusStrip } from './ResultsBar';
 
 afterEach(cleanup);
@@ -35,5 +35,20 @@ describe('StatusStrip for screen readers', () => {
     expect(live).toHaveTextContent('1 fail');
     expect(live).not.toContainElement(screen.getByTestId('end'));
     expect(live.closest('footer')).not.toBeNull();
+  });
+});
+
+describe('StatusStrip issues', () => {
+  it('opens the issues from a click on the badge', () => {
+    const onIssues = vi.fn();
+    render(<StatusStrip rows={3} issues={3} onIssues={onIssues} />);
+    fireEvent.click(screen.getByRole('button', { name: '3 issues' }));
+    expect(onIssues).toHaveBeenCalledTimes(1);
+  });
+
+  it('has nothing to click when there are no issues', () => {
+    render(<StatusStrip rows={3} issues={0} onIssues={() => {}} />);
+    expect(screen.getByTestId('strip-issues')).toHaveTextContent('No issues');
+    expect(screen.queryByRole('button')).toBeNull();
   });
 });

@@ -36,6 +36,8 @@ interface SessionState {
   addStepPending: boolean;
   /** The toolbar's Add menu should open with its search focused (a shortcut asked for a step after the selected node). */
   addMenuPending: boolean;
+  /** The node whose Issues list should scroll into view (a click on an issues badge), until the list has shown it. */
+  revealIssues: string | null;
   /** Wiring from the keyboard (C): the node a wire starts from, until another node is chosen or Escape cancels. */
   connectFrom: string | null;
   /** The menu a click on a node's output connector opened: the node, and where on screen the menu sits. */
@@ -61,6 +63,9 @@ interface SessionState {
   setConsoleOpen: (open: boolean) => void;
   setShortcutsOpen: (open: boolean) => void;
   requestAddStep: () => void;
+  /** Select a node and bring its Issues list into view in the inspector's Node tab. */
+  showIssues: (id: string) => void;
+  clearRevealIssues: () => void;
   clearAddStep: () => void;
   requestAddMenu: () => void;
   clearAddMenu: () => void;
@@ -87,6 +92,7 @@ export const useSession = create<SessionState>((set) => ({
   addStepPending: false,
   addMenuPending: false,
   connectFrom: null,
+  revealIssues: null,
   connectorMenu: null,
   // Picking a node shows it in the inspector's Node tab.
   select: (id) => set((s) => ({ selectedNodeId: id, selectedNodeIds: id ? [id] : [], selectedStepId: null, inspectorTab: id ? 'node' : s.inspectorTab })),
@@ -110,6 +116,9 @@ export const useSession = create<SessionState>((set) => ({
   setConsoleOpen: (consoleOpen) => set(consoleOpen ? { consoleOpen, resultsOpen: true } : { consoleOpen }),
   setShortcutsOpen: (shortcutsOpen) => set({ shortcutsOpen }),
   requestAddStep: () => set({ addStepPending: true, inspectorOpen: true, inspectorTab: 'node', browsingConnectionId: null }),
+  showIssues: (id) =>
+    set((s) => ({ selectedNodeId: id, selectedNodeIds: [id], selectedStepId: s.selectedNodeId === id ? s.selectedStepId : null, inspectorTab: 'node', inspectorOpen: true, browsingConnectionId: null, revealIssues: id })),
+  clearRevealIssues: () => set({ revealIssues: null }),
   clearAddStep: () => set({ addStepPending: false }),
   requestAddMenu: () => set({ addMenuPending: true }),
   clearAddMenu: () => set({ addMenuPending: false }),

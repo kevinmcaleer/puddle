@@ -88,6 +88,7 @@ export function PuddleNode({ data, selected }: NodeProps<PuddleFlowNode>) {
         cols={ok?.columns.length}
         rule={rule}
         issues={issues}
+        onIssues={() => useSession.getState().showIssues(node.id)}
         selected={selected}
         viewed={viewed}
         pinned={viewed && project.view.pinned}

@@ -22,7 +22,7 @@ test('a sheet whose rows shift a column part way down lists the skew as one issu
   await page.keyboard.press('Escape');
 
   // Fix all: the moved cells go back, the dates and amounts get their types, and the issue is gone.
-  await page.getByTestId('inspector-source').getByTestId('fix-all').getByRole('button', { name: /^Fix \d+ issues?$/ }).click();
+  await page.getByTestId('inspector-source').getByTestId('fix-all').getByRole('button', { name: /^Fix \d+ (of \d+ )?issues?$/ }).click();
   await expectRows(page, 36);
   await expect(page.getByTestId('results-table')).toHaveAttribute('data-columns', 'Invoice,Customer,Issued,Due,Net,VAT,Gross', { timeout: 20_000 });
   // The first moved row is the 18th, below the rows the grid draws at first: scroll down to it.

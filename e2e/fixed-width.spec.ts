@@ -31,7 +31,7 @@ test('a fixed-width file opens with its boundaries found; moving one changes the
   // Fix all parses the balances, trailing minus and thousands separators included.
   const issues = page.getByTestId('issues');
   await expect(issues.getByTestId('issue-numbersAsText:BALANCE')).toHaveAttribute('data-severity', 'fix', { timeout: 20_000 });
-  await page.getByTestId('inspector-source').getByTestId('fix-all').getByRole('button', { name: /^Fix \d+ issues?$/ }).click();
+  await page.getByTestId('inspector-source').getByTestId('fix-all').getByRole('button', { name: /^Fix \d+ (of \d+ )?issues?$/ }).click();
   await expectRows(page, 30);
   await expect(page.getByTestId('issues').getByTestId('issue-numbersAsText:BALANCE')).toHaveCount(0, { timeout: 20_000 });
 });
