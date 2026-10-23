@@ -10,6 +10,10 @@ The canvas is where your flow lives. Tabs above it switch to the {doc}`relations
 
 ![The Add menu: sources, then the nodes From template, Join, Append, Lookup, Query and Output, then every step](_static/screenshots/canvas-add-node-menu.png)
 
+You can also add the next node from where you are looking: click a node's right-hand connector. A menu opens beside it with the same nodes and steps as the Add menu, the steps in a submenu for each group (**Clean**, **Change type**, **Columns** and so on), and **Search steps** at the end for the Add menu's search. What you pick goes after that node, wired from it. Dragging from the connector still draws a wire.
+
+![Clicking the connector of contacts.csv: Join, Append, Lookup, Query, SQL and Output, then the steps by group with Clean open](_static/screenshots/canvas-connector-menu.png)
+
 | Node | What it does | More |
 | --- | --- | --- |
 | Source | Reads a file, a web address or pasted rows. | {doc}`sources` |
@@ -28,7 +32,7 @@ The canvas is where your flow lives. Tabs above it switch to the {doc}`relations
 - Click a node to select it. Its settings show in the inspector and its data in the results; a **Viewing** tag marks the node whose data is shown.
 - Shift+click adds nodes to the selection. With two or more selected, a bar offers to join, look up, append or query them, to group them (G), or, when they sit in a longer line of Transforms, to **Group the chain**.
 - Drag a node to move it. **Auto layout** (L), in the canvas controls at the bottom left, arranges the whole flow neatly.
-- Drag from a node's right-hand handle to another node's input to wire them. Select a wire and press Delete to remove it.
+- Drag from a node's right-hand handle to another node's input to wire them. Click the handle instead to add a node or step after it. Select a wire and press Delete to remove it.
 - The zoom buttons sit at the bottom left. An overview map appears at the bottom right when part of the flow is off screen.
 - The canvas keeps what you are working on in view. A node you add or select off screen is panned into view, and a project you open, such as a sample, starts with all its nodes showing. A project you have already panned or zoomed opens where you left it.
 

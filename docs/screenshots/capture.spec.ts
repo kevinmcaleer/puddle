@@ -287,6 +287,16 @@ test('rules, outputs and export', async ({ page }) => {
   await shot(page, 'export-report-dialog', page.getByRole('dialog'));
 });
 
+test('the connector menu', async ({ page }) => {
+  await start(page);
+  await openSample(page, 'contacts');
+  await node(page, 'contacts.csv').locator('.react-flow__handle.source').click();
+  const menu = page.getByRole('menu', { name: 'Add after contacts.csv' });
+  await menu.getByRole('menuitem', { name: 'Clean', exact: true }).hover();
+  await expect(menu.getByRole('menu', { name: 'Clean' })).toBeVisible();
+  await shot(page, 'canvas-connector-menu');
+});
+
 test('the export as menu', async ({ page }) => {
   await start(page);
   await openSample(page, 'contacts');
