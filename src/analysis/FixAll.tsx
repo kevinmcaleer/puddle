@@ -4,14 +4,15 @@ import { useState } from 'react';
 import { useProject, type GraphNode } from '../model';
 import { SplitButton, type CheckItem } from '../ui';
 import { applyFixes } from './apply';
-import { defaultTicked, fixGroup, fixLabel } from './fixes';
+import { defaultTicked, fixAllLabel, fixGroup, fixLabel } from './fixes';
 import { issueLabel, type Issue } from './issues';
 import { useAnalysisEntry, issuesOf } from './state';
 
 export function FixAll({ node, align = 'end' }: { node: GraphNode; align?: 'start' | 'end' }) {
   const entry = useAnalysisEntry(node.id);
   const suggestions = useProject().settings.fixAllSuggestions;
-  const fixable = issuesOf(node, entry).filter((i) => i.fix);
+  const found = issuesOf(node, entry);
+  const fixable = found.filter((i) => i.fix);
   // The user's ticks, kept while the same issues are listed; a new set of issues starts from the defaults again.
   const [ticks, setTicks] = useState<{ of: string; keys: string[] } | null>(null);
   const [busy, setBusy] = useState(false);
@@ -29,7 +30,7 @@ export function FixAll({ node, align = 'end' }: { node: GraphNode; align?: 'star
   return (
     <SplitButton
       testId="fix-all"
-      label={busy ? 'Fixing…' : n ? `Fix ${n} ${n === 1 ? 'issue' : 'issues'}` : 'Fix all'}
+      label={busy ? 'Fixing…' : fixAllLabel(n, found.length)}
       onClick={() => run(chosen)}
       disabled={busy || !n}
       items={items}

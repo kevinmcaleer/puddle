@@ -21,6 +21,8 @@ export interface NodeCardProps {
   rule?: { status: Status; label: string };
   /** Issues analysis found in the node's data, shown as a small badge. */
   issues?: number;
+  /** Shows the issues listed, from a click on the issues badge; the click still reaches the card. */
+  onIssues?: () => void;
   selected?: boolean;
   viewed?: boolean;
   pinned?: boolean;
@@ -43,7 +45,7 @@ export interface NodeCardProps {
 
 /** The node card. The canvas wraps this in a React Flow custom node and swaps the ports for handles. */
 export function NodeCard({
-  kind = 'transform', name, detail, rows, cols, steps, rule, issues, selected, viewed, pinned, comparing, error, dimmed, expanded, brokenInput, note, kept,
+  kind = 'transform', name, detail, rows, cols, steps, rule, issues, onIssues, selected, viewed, pinned, comparing, error, dimmed, expanded, brokenInput, note, kept,
   style, className, onClick, renderPorts,
 }: NodeCardProps) {
   const display = useDisplayFormat();
@@ -100,7 +102,17 @@ export function NodeCard({
             )}
           </span>
           <span className="ui-row" style={{ gap: 4 }}>
-            {issues ? <span data-testid="node-issues"><StatusBadge status="warn">{issues} {issues === 1 ? 'issue' : 'issues'}</StatusBadge></span> : null}
+            {issues ? (
+              <span data-testid="node-issues">
+                {onIssues ? (
+                  <button type="button" className="ui-badge-button nodrag" title="Show the issues" onClick={onIssues}>
+                    <StatusBadge status="warn">{issues} {issues === 1 ? 'issue' : 'issues'}</StatusBadge>
+                  </button>
+                ) : (
+                  <StatusBadge status="warn">{issues} {issues === 1 ? 'issue' : 'issues'}</StatusBadge>
+                )}
+              </span>
+            ) : null}
             {rule && <StatusBadge status={rule.status}>{rule.label}</StatusBadge>}
           </span>
         </div>

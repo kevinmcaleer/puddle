@@ -70,6 +70,16 @@ export async function planFixes(issues: Issue[], ctx: FixContext): Promise<Plann
 /** Which issues Fix all applies without being asked: every `fix`, and the suggestions too when the project says so. */
 export const defaultTicked = (issues: Issue[], suggestions: boolean) => issues.filter((i) => i.fix && (i.severity === 'fix' || (suggestions && i.severity === 'suggest'))).map((i) => i.key);
 
+/**
+ * The Fix all button's words. It counts out of every issue found, as the node's and the status strip's badges do, so
+ * "3 issues" on the node and "Fix 1 of 3 issues" on the button agree: the rest are suggestions and notes to look at.
+ */
+export function fixAllLabel(chosen: number, total: number): string {
+  if (!chosen) return 'Fix all';
+  if (chosen >= total) return `Fix ${chosen} ${chosen === 1 ? 'issue' : 'issues'}`;
+  return `Fix ${chosen} of ${total} ${total === 1 ? 'issue' : 'issues'}`;
+}
+
 /** The group the fix's step files under, as the Add menu groups steps; "Rows" for duplicates; "Read options" for a skip. */
 export const fixGroup = (issue: Issue): string | undefined => (isReadOptionsFix(issue.fix) ? 'Read options' : isStepFix(issue.fix) ? stepForm(issue.fix.type)?.group : isStepsFix(issue.fix) ? stepForm(issue.fix.steps[0]?.type ?? '')?.group : undefined);
 

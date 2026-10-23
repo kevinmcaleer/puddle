@@ -1,5 +1,6 @@
 import { Handle, Position, useUpdateNodeInternals, type Node, type NodeProps } from '@xyflow/react';
 import { useEffect, useMemo, type ReactNode } from 'react';
+import { useSession } from '../app/session';
 import { upstreamKey } from '../compiler';
 import { useViewProject } from '../flow/sample';
 import { exportGate } from '../flow/gate';
@@ -87,6 +88,7 @@ export function PuddleNode({ data, selected }: NodeProps<PuddleFlowNode>) {
         cols={ok?.columns.length}
         rule={rule}
         issues={issues}
+        onIssues={() => useSession.getState().showIssues(node.id)}
         selected={selected}
         viewed={viewed}
         pinned={viewed && project.view.pinned}

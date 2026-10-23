@@ -18,7 +18,7 @@ test('the CRM export sample opens with its comment lines and footer skipped, and
 
   // Fix all drops the repeated header and the duplicates and tidies the text in one go.
   await expect(page.getByTestId('issues').getByTestId('issue-repeatedHeader')).toBeVisible({ timeout: 20_000 });
-  await page.getByTestId('results-panel').getByRole('button', { name: /^Fix \d+ issues$/ }).click();
+  await page.getByTestId('results-panel').getByRole('button', { name: /^Fix \d+ (of \d+ )?issues$/ }).click();
   await expectRows(page, 40);
   await expect(page.getByText('Fixes', { exact: true })).toBeVisible();
 });

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { ColumnSchema } from '../model';
-import { defaultTicked, fixGroup, fixLabel, planFixes } from './fixes';
+import { defaultTicked, fixAllLabel, fixGroup, fixLabel, planFixes } from './fixes';
 import { issueKey, type Issue } from './issues';
 
 const col = (name: string, type = 'VARCHAR'): ColumnSchema => ({ name, type });
@@ -109,5 +109,22 @@ describe('planning fixes', () => {
     expect(fixGroup(issues[0]!)).toBe('Rows');
     expect(fixGroup(issues[1]!)).toBe('Clean');
     expect(fixGroup(issue('mixedCase', 'name', undefined, 'info'))).toBeUndefined();
+  });
+});
+
+describe('fixAllLabel', () => {
+  // Regression: a node showed "3 issues" while the button said "Fix 1 issue", the other two being a suggestion and a note.
+  it('counts out of every issue found, so it agrees with the node’s badge', () => {
+    expect(fixAllLabel(1, 3)).toBe('Fix 1 of 3 issues');
+    expect(fixAllLabel(2, 5)).toBe('Fix 2 of 5 issues');
+  });
+
+  it('says the plain count when every issue found is chosen', () => {
+    expect(fixAllLabel(1, 1)).toBe('Fix 1 issue');
+    expect(fixAllLabel(4, 4)).toBe('Fix 4 issues');
+  });
+
+  it('falls back to Fix all when nothing is ticked', () => {
+    expect(fixAllLabel(0, 3)).toBe('Fix all');
   });
 });
