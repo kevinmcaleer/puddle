@@ -24,6 +24,28 @@ test('nodes are added after the selection, wired, and laid out', async ({ page }
   await expect.poll(async () => (await node(page, 'Output 1').boundingBox())?.x).toBe(before?.x);
 });
 
+test('clicking a node’s output connector offers what can follow it, and adds the pick wired from it', async ({ page }) => {
+  await openApp(page);
+  await addFiles(page, [fixture('customers.csv')]);
+  await expect(node(page, 'customers.csv')).toHaveAttribute('data-status', 'ok');
+  const menu = page.getByRole('menu', { name: 'Add after customers.csv' });
+  // A click (not a drag) on the connector opens the menu beside it: the Add menu's nodes, and its steps by group.
+  await expect(async () => {
+    await node(page, 'customers.csv').locator('.react-flow__handle.source').click();
+    await expect(menu).toBeVisible({ timeout: 2_000 });
+  }).toPass({ timeout: 20_000 });
+  await menu.getByRole('menuitem', { name: 'Clean', exact: true }).hover();
+  await menu.getByRole('menu', { name: 'Clean' }).getByRole('menuitem', { name: 'Trim whitespace' }).click();
+  await expect(menu).toHaveCount(0);
+  await expect(page.getByTestId('wire-customers.csv->Transform 1')).toBeAttached();
+  await expect(node(page, 'Transform 1')).toHaveAttribute('data-status', 'ok');
+
+  // From the new node's connector, an Output goes after it.
+  await node(page, 'Transform 1').locator('.react-flow__handle.source').click();
+  await page.getByRole('menu', { name: 'Add after Transform 1' }).getByRole('menuitem', { name: /^Output/ }).click();
+  await expect(page.getByTestId('wire-Transform 1->Output 1')).toBeAttached();
+});
+
 test('the minimap appears only once a node runs off the visible canvas, and the inspector keeps its Project tab beside a node', async ({ page }) => {
   await openApp(page);
   const minimap = page.locator('.react-flow__minimap');

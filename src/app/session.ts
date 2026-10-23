@@ -38,6 +38,8 @@ interface SessionState {
   addMenuPending: boolean;
   /** Wiring from the keyboard (C): the node a wire starts from, until another node is chosen or Escape cancels. */
   connectFrom: string | null;
+  /** The menu a click on a node's output connector opened: the node, and where on screen the menu sits. */
+  connectorMenu: { nodeId: string; x: number; y: number } | null;
   select: (id: string | null) => void;
   toggleSelected: (id: string) => void;
   selectStep: (id: string | null) => void;
@@ -63,6 +65,8 @@ interface SessionState {
   requestAddMenu: () => void;
   clearAddMenu: () => void;
   setConnectFrom: (id: string | null) => void;
+  /** Open the connector menu for a node (selecting it, since what it adds goes after the selection), or close it with null. */
+  openConnectorMenu: (menu: SessionState['connectorMenu']) => void;
 }
 
 export const useSession = create<SessionState>((set) => ({
@@ -83,6 +87,7 @@ export const useSession = create<SessionState>((set) => ({
   addStepPending: false,
   addMenuPending: false,
   connectFrom: null,
+  connectorMenu: null,
   // Picking a node shows it in the inspector's Node tab.
   select: (id) => set((s) => ({ selectedNodeId: id, selectedNodeIds: id ? [id] : [], selectedStepId: null, inspectorTab: id ? 'node' : s.inspectorTab })),
   toggleSelected: (id) =>
@@ -109,4 +114,5 @@ export const useSession = create<SessionState>((set) => ({
   requestAddMenu: () => set({ addMenuPending: true }),
   clearAddMenu: () => set({ addMenuPending: false }),
   setConnectFrom: (connectFrom) => set({ connectFrom }),
+  openConnectorMenu: (connectorMenu) => set(connectorMenu ? { connectorMenu, selectedNodeId: connectorMenu.nodeId, selectedNodeIds: [connectorMenu.nodeId], selectedStepId: null, inspectorTab: 'node' } : { connectorMenu }),
 }));

@@ -15,7 +15,8 @@ import {
 } from '@xyflow/react';
 import '@xyflow/react/dist/base.css';
 import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent, type FocusEvent } from 'react';
-import { addFiles, addNodeAfterSelection, loadIntoSchemaTable, wireNodes } from '../app/actions';
+import { ADD_AFTER_SELECTION, addFiles, addNodeAfterSelection, loadIntoSchemaTable, wireNodes } from '../app/actions';
+import { connectorItems } from '../app/addMenu';
 import { openTemplateDialog } from '../templates/actions';
 import { droppedFiles } from '../sources/handles';
 import { FilesNotKeptBanner, ReconnectBanner } from '../sources/ReconnectBanner';
@@ -201,6 +202,16 @@ function GroupBar({ ids, onGrouped }: { ids: string[]; onGrouped: (groupId: stri
  * of Transforms through the node; open, close, rename or ungroup the group; and, for a group that is a line of
  * Transforms, merge its nodes into one, split them back, or save their steps as a template.
  */
+/** The menu a click on a node's output connector opens: what can follow the node, added wired from it. */
+function ConnectorMenu() {
+  const menu = useSession((s) => s.connectorMenu);
+  const name = useProjectStore((s) => (menu ? nodeById(s.history.present, menu.nodeId)?.name : undefined));
+  if (!menu || !name) return null;
+  const close = () => useSession.getState().openConnectorMenu(null);
+  const items = connectorItems({ ...ADD_AFTER_SELECTION, searchSteps: () => useSession.getState().requestAddMenu() });
+  return <ContextMenu x={menu.x} y={menu.y} label={`Add after ${name}`} items={items} onClose={close} />;
+}
+
 function NodeMenu({ at, onClose, onRename, onGrouped }: { at: { x: number; y: number; flowId: string }; onClose: () => void; onRename: (groupId: string) => void; onGrouped: (groupId: string) => void }) {
   const project = useProject();
   const apply = useProjectStore((s) => s.apply);
@@ -593,6 +604,7 @@ export function Canvas({ onAddSource, onLayout }: { onAddSource: () => void; onL
       )}
 
       {selectedNodeIds.length > 1 && <GroupBar ids={selectedNodeIds} onGrouped={setSelectedGroup} />}
+      <ConnectorMenu />
       {menu && <NodeMenu at={menu} onClose={() => setMenu(null)} onRename={setRenaming} onGrouped={setSelectedGroup} />}
       {renaming && <RenameGroup groupId={renaming} onClose={() => setRenaming(null)} />}
 
