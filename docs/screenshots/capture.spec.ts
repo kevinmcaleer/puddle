@@ -130,7 +130,7 @@ test('analysing a file', async ({ page }) => {
   await issues.getByRole('button', { name: 'Choose fixes' }).click();
   await shot(page, 'analysing-choose-fixes', page.getByRole('dialog', { name: 'Choose fixes' }));
   await page.keyboard.press('Escape');
-  await issues.getByTestId('fix-all').getByRole('button', { name: /^Fix \d+ issues$/ }).click();
+  await issues.getByTestId('fix-all').getByRole('button', { name: /^Fix \d+ (of \d+ )?issues$/ }).click();
   await expect(page.getByTestId('group-Fixes')).toBeVisible({ timeout: 30_000 });
   await expect(page.getByTestId('results-table')).toHaveAttribute('aria-label', /^Results of Transform \d+/, { timeout: 30_000 });
   await page.getByRole('button', { name: 'Auto layout' }).click();
