@@ -11,15 +11,20 @@ let shared: Promise<PowerToolApp[]> | undefined;
 export function AppSwitcher({ load = () => (shared ??= loadApps()), navigate = (url: string) => window.location.assign(url) }: { load?: () => Promise<PowerToolApp[]>; navigate?: (url: string) => void }) {
   const [apps, setApps] = useState(BUNDLED_APPS);
   const items: MenuItem[] = [
-    ...apps.map((app) => ({
-      label: app.name,
-      hint: app.status === 'soon' ? 'Coming soon' : app.description,
-      disabled: app.status === 'soon',
-      group: "Kev's Power Tools",
-      // The app you are in is ticked, and choosing it stays put.
-      checked: app.id === CURRENT_APP_ID,
-      onSelect: () => app.id !== CURRENT_APP_ID && navigate(app.url),
-    })),
+    ...apps.map((app) => {
+      const current = app.id === CURRENT_APP_ID;
+      // An app that is not open yet is listed but cannot be chosen, unless it is the one you are in.
+      const soon = app.status === 'soon' && !current;
+      return {
+        label: app.name,
+        hint: soon ? 'Coming soon' : app.description,
+        disabled: soon,
+        group: "Kev's Power Tools",
+        // The app you are in is ticked, and choosing it stays put.
+        checked: current,
+        onSelect: () => !current && navigate(app.url),
+      };
+    }),
     { label: 'All tools', icon: 'web', hint: 'kevspowertools.com', onSelect: () => navigate(HOME_URL) },
   ];
   return (
