@@ -1,9 +1,10 @@
 # Puddle as a Docker Compose stack. From the repository root:
-#   docker compose up -d                      # Puddle on http://localhost:8088
+#   docker compose up -d                      # Puddle on http://localhost:8088, plus the profiles COMPOSE_PROFILES lists
 #   docker compose --profile tunnel up -d     # also a Cloudflare Tunnel (needs CLOUDFLARE_TUNNEL_TOKEN)
 #   docker compose --profile runner up -d     # also puddle-run, running the projects in ./projects on their schedules
 #   docker compose --profile connect up -d    # also puddle-connect, reached at /connect/ (needs PUDDLE_CONNECT_TOKEN and PUDDLE_CONNECT_ALLOW)
-# Settings come from the environment or a .env file next to this one. See deploy/README.md.
+# Settings come from the environment or a .env file next to this one: `cp .env.example .env`, whose
+# COMPOSE_PROFILES=tunnel makes plain `docker compose up -d` start cloudflared too. See deploy/README.md.
 services:
   puddle:
     # Uses the image built from the Dockerfile (`docker build -t puddle .`), and builds it if it's missing.
@@ -65,9 +66,12 @@ services:
       PUDDLE_CONNECT_ORIGIN: ${PUDDLE_CONNECT_ORIGIN:-}
     volumes: ['${PUDDLE_CONNECT_DATA:-./data}:/data:ro']
 
+  # cloudflared connects out to Cloudflare, so no port is opened. The tunnel's public hostname points at
+  # http://puddle:8080, the service above on this stack's network. Several nodes running this stack with the same
+  # token are replicas of one tunnel: Cloudflare sends each request to a connected one. deploy/README.md, "The tunnel".
   cloudflared:
     profiles: [tunnel]
-    image: cloudflare/cloudflared:latest
+    image: ${CLOUDFLARED_IMAGE:-cloudflare/cloudflared:latest}
     restart: unless-stopped
     command: tunnel --no-autoupdate run
     environment:

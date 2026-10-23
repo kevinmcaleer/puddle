@@ -30,7 +30,7 @@ Every feature ships with its own tests, and every bug fix with a regression test
 
 ## Deploying
 
-A Docker image (nginx serving the static build) behind a Cloudflare Tunnel at puddle.kevspowertools.com. `docker compose up -d` runs it on <http://localhost:8088>, and `docker compose --profile tunnel up -d` adds the tunnel. See [deploy/README.md](deploy/README.md).
+A Docker image (nginx serving the static build) behind a Cloudflare Tunnel at puddle.kevspowertools.com. `docker compose up -d` runs it on <http://localhost:8088>; with a `.env` made from `.env.example` and the tunnel token in it, the same command starts the tunnel too. See [deploy/README.md](deploy/README.md).
 
 ## Layout
 

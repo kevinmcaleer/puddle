@@ -20,7 +20,7 @@ Then open <http://localhost:8088>.
 docker compose up -d
 ```
 
-`PUDDLE_IMAGE`, `PUDDLE_PORT` and `CLOUDFLARE_TUNNEL_TOKEN` can be set in the environment or a `.env` file next to `compose.yaml`. `docker compose --profile tunnel up -d` adds a Cloudflare Tunnel, which puts Puddle on your own domain without opening a port.
+`PUDDLE_IMAGE`, `PUDDLE_PORT` and `CLOUDFLARE_TUNNEL_TOKEN` can be set in the environment or a `.env` file next to `compose.yaml`; `cp .env.example .env` starts one with every setting listed. A Cloudflare Tunnel puts Puddle on your own domain without opening a port: put the tunnel's token in `CLOUDFLARE_TUNNEL_TOKEN`, and the template's `COMPOSE_PROFILES=tunnel` makes `docker compose up -d` start cloudflared with Puddle. Run the same `.env` on several machines and each becomes a replica of the one tunnel. The repository's `deploy/README.md` has the steps.
 
 ## What the server must do
 

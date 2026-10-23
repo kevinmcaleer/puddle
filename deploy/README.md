@@ -34,14 +34,16 @@ docker compose up -d
 
 Then open <http://localhost:8088>. Compose uses the `puddle:latest` image you built with `docker build -t puddle .`, and builds it from the Dockerfile if it isn't there. After pulling new code, `docker compose up -d --build` rebuilds it.
 
-These settings can go in the environment or in a `.env` file next to `compose.yaml`:
+These settings can go in the environment or in a `.env` file next to `compose.yaml`; `.env.example` lists them all (`cp .env.example .env` to start one):
 
 | Variable | Default | What it does |
 | --- | --- | --- |
 | `PUDDLE_IMAGE` | `puddle:latest` | The image to run. Set `ghcr.io/kevinmcaleer/puddle:latest` to run the one CI publishes, and update it with `docker compose pull && docker compose up -d` |
 | `PUDDLE_PORT` | `8088` | The port Puddle answers on, on the host |
 | `FETCH_EXTENSIONS` | `1` | Set `0` to build where extensions.duckdb.org can't be reached (see below) |
-| `CLOUDFLARE_TUNNEL_TOKEN` | none | The tunnel's token, for the `tunnel` profile |
+| `COMPOSE_PROFILES` | none (`tunnel` in `.env.example`) | The optional services plain `docker compose up` starts too: `tunnel`, `runner`, `connect`, comma separated |
+| `CLOUDFLARE_TUNNEL_TOKEN` | none | The tunnel's token, for the `tunnel` profile (see [The tunnel](#the-tunnel)) |
+| `CLOUDFLARED_IMAGE` | `cloudflare/cloudflared:latest` | The cloudflared image; set a release tag to pin it |
 
 ## Scheduled runs (puddle-run)
 
@@ -150,15 +152,38 @@ jobs:
 
 ## The tunnel
 
-1. In Cloudflare Zero Trust, go to Networks, then Tunnels, and create a tunnel. Copy its token.
-2. Add a public hostname: `puddle.kevspowertools.com`, service `http://puddle:8080`.
-3. Next to `compose.yaml`, create a `.env` file containing `CLOUDFLARE_TUNNEL_TOKEN=<token>`, then start Puddle with the tunnel:
+A Cloudflare Tunnel puts Puddle on `puddle.kevspowertools.com` without opening a port: cloudflared, in the stack's `cloudflared` service, connects out to Cloudflare and passes requests to the `puddle` service on the stack's own network.
+
+1. In Cloudflare Zero Trust, go to Networks, then Tunnels, and create a tunnel (type Cloudflared). On the install step, copy the token: the long string after `--token` in any of the install commands. You don't need to run those commands; compose runs cloudflared.
+2. On the tunnel's **Public hostname** tab (**Published application routes** in newer dashboards), add one: subdomain `puddle`, domain `kevspowertools.com`, service type `HTTP`, URL `puddle:8080`. `puddle` is the compose service name, which cloudflared resolves on the stack's network, and `8080` the port nginx listens on inside the container (not `PUDDLE_PORT`, which is the host's). Cloudflare creates the DNS record for the hostname.
+3. Next to `compose.yaml`, make your `.env` from the template and put the token in it:
 
    ```sh
-   docker compose --profile tunnel up -d
+   cp .env.example .env
+   chmod 600 .env
+   # edit .env: CLOUDFLARE_TUNNEL_TOKEN=<token>
    ```
 
-   The tunnel starts once Puddle's health check passes.
+   `.env` is gitignored. Keep the token out of the repository, chat and screenshots: anyone with it can run a connector that serves your hostname. If it leaks, refresh it on the tunnel's page in the dashboard (which disconnects the connectors using the old one) and update `.env` on every node.
+4. Start the stack:
+
+   ```sh
+   docker compose up -d
+   ```
+
+   The template sets `COMPOSE_PROFILES=tunnel`, so plain `up` starts cloudflared with Puddle; it connects once Puddle's health check passes. Without a `.env` (or with `tunnel` taken out of `COMPOSE_PROFILES`) only Puddle starts. `docker compose --profile tunnel up -d` still works when the token comes from the environment instead. With `tunnel` listed and no token, cloudflared exits and restarts until one is set, so fill in the token or take the profile out.
+5. Check it: `docker compose logs cloudflared` should say `Registered tunnel connection` (four times, one per Cloudflare edge connection), and the tunnel shows **Healthy** in the dashboard.
+
+### Several nodes
+
+To serve Puddle from more than one Raspberry Pi, run the same stack with the same `.env`, and so the same token, on each. Every cloudflared started with one tunnel's token is a replica of that tunnel: the dashboard lists each node under the tunnel's connectors, Cloudflare sends each request to one of the connected replicas, and when a node goes down the others carry on serving `puddle.kevspowertools.com`. Nothing else changes: the public hostname stays `http://puddle:8080`, which each replica resolves to the Puddle on its own node.
+
+This works because Puddle is a static site and keeps nothing on the server, so it doesn't matter which node answers. Two things to watch:
+
+- Run the `runner` profile on one node only, or every schedule runs once per node and their outputs overwrite each other. Leave `runner` out of `COMPOSE_PROFILES` on the others.
+- `connect` (puddle-connect) keeps no state either, so it can run on each node, but give every node the same `PUDDLE_CONNECT_TOKEN` and `PUDDLE_CONNECT_ALLOW`: a browser can reach any replica.
+
+Update the nodes one at a time (`docker compose pull && docker compose up -d` on each), so one is always serving.
 
 Check that the headers survive the tunnel:
 
