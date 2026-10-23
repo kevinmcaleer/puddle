@@ -3,6 +3,7 @@ import { duplicateProject, importProject, newProject, openProject, projectOperat
 import { OperationButtons } from '../app/OperationButtons';
 import { THEME_ICON, THEME_LABEL, useTheme } from '../app/theme';
 import { Banner, Button, formatInstant, Menu, Toolbar, useDisplayFormat } from '../ui';
+import { AppSwitcher } from '../powertools/AppSwitcher';
 import { SamplePicker } from '../samples/SamplePicker';
 import { openProjectDialog } from './dialogs';
 import { PROVIDER_IDS, PROVIDERS } from '../sync';
@@ -53,7 +54,7 @@ export function HomeScreen() {
 
   return (
     <div className="grid h-full grid-rows-[auto_minmax(0,1fr)] bg-surface-canvas text-body text-ink" data-testid="home">
-      <Toolbar>
+      <Toolbar switcher={<AppSwitcher />}>
         <Button variant="ghost" icon="export" onClick={() => importInput.current?.click()}>Open project file</Button>
         <Button variant="ghost" icon="template" onClick={() => recipeInput.current?.click()}>Open recipe</Button>
         {PROVIDER_IDS.map((id) => (

@@ -18,4 +18,11 @@ describe('Toolbar', () => {
     expect(screen.queryByRole('button', { name: /all projects/ })).toBeNull();
     expect(screen.getByText('Puddle').tagName).toBe('SPAN');
   });
+
+  it('puts the switcher before the wordmark', () => {
+    render(<Toolbar switcher={<button type="button">Switch app</button>} />);
+    const header = screen.getByRole('banner');
+    expect(header.firstElementChild?.textContent).toBe('Switch app');
+    expect(header.children[1]?.textContent).toBe('Puddle');
+  });
 });

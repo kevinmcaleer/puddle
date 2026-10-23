@@ -48,6 +48,7 @@ import { DocumentSchemaDialog } from '../connections/DocumentSchemaDialog';
 import { openConnectionDialog } from '../connections/dialog';
 import { openODataDialog } from '../sources/odataDialog';
 import { cardKind } from '../canvas/kind';
+import { AppSwitcher } from '../powertools/AppSwitcher';
 import { Button, Menu, ResultsBar, StatusBadge, StatusStrip, Toolbar, useDisplayFormat, type NodeKind } from '../ui';
 import { ActivityControl } from './ActivityControl';
 import { addFiles, addNodeAfterSelection, addSchemaTable, addStepFromMenu, cancelWiring, chooseFiles as pickSourceFiles, addPastedText, groupSelection, layoutFlow, openSelected, pasteFromClipboard, searchAddStep, selectNeighbour, startWiring, viewSelected } from './actions';
@@ -246,8 +247,9 @@ function Strip() {
 
 /**
  * The fixed layout every feature lives in: toolbar on top, canvas in the centre, inspector docked right,
- * results docked below the canvas, status strip underneath. The toolbar keeps to seven controls: the wordmark
- * (the way back to every project), the project menu, Add, undo, redo, Help and the inspector toggle; the rest lives in menus or on the canvas.
+ * results docked below the canvas, status strip underneath. The toolbar keeps to eight controls: the app switcher, the
+ * wordmark (the way back to every project), the project menu, Add, undo, redo, Help and the inspector toggle; the rest
+ * lives in menus or on the canvas.
  */
 export function AppShell() {
   const project = useProject();
@@ -332,6 +334,7 @@ export function AppShell() {
         <h1 className="sr-only">{project.name}</h1>
         <Toolbar
           onHome={() => void goHome()}
+          switcher={<AppSwitcher />}
           project={project.name}
           projectMenu={[
             { label: 'Rename', icon: 'text', onSelect: () => openProjectDialog({ kind: 'rename', id: project.id, name: project.name }) },
