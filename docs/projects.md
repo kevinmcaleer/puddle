@@ -6,6 +6,8 @@ A project is your flow: its sources (how to read them, not their data), nodes, s
 
 The **Puddle** wordmark at the left of the toolbar, or **All projects** in the project menu (click the project's name), opens the home screen: your projects, newest first, with the samples and the library (your templates and the recipes) below. **New project** starts an empty one, and each project's **...** menu renames, duplicates or deletes it. Undo on this screen brings back a project deleted by mistake (see [Undo and redo](#undo-and-redo)).
 
+The grid button before the wordmark, **Switch app**, on the home screen and in a project, goes to the other apps of Kev's Power Tools, such as Mermaid Factory, or to **All tools** on kevspowertools.com. Puddle is ticked; an app marked **Coming soon** is listed but not open yet. The list comes from kevspowertools.com the first time you open the menu, and Puddle keeps its own copy for when that site cannot be reached. Nothing about your projects or data is sent.
+
 ![The projects home screen with samples and the library](_static/screenshots/projects-home.png)
 
 The project menu also renames the open project, saves and opens project files, and shares and opens recipes. In Puddle, *export* only ever means data leaving it, from an Output node.

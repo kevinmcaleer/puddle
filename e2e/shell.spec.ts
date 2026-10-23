@@ -4,9 +4,9 @@ test('the empty shell renders with every docked region', async ({ page }) => {
   await page.goto('/');
   await expect(page.locator('.ui-wordmark')).toHaveText('Puddle');
   await expect(page.getByRole('button', { name: 'Add', exact: true })).toBeVisible();
-  // Seven controls and no more: the wordmark (the way to every project), the project menu, Add, undo, redo, Help and
-  // the inspector toggle.
-  await expect(page.locator('.ui-toolbar').getByRole('button')).toHaveCount(7);
+  // Eight controls and no more: the app switcher, the wordmark (the way to every project), the project menu, Add, undo,
+  // redo, Help and the inspector toggle.
+  await expect(page.locator('.ui-toolbar').getByRole('button')).toHaveCount(8);
   await expect(page.locator('.ui-toolbar .ui-wordmark')).toHaveCount(1);
   await expect(page.getByTestId('canvas')).toBeVisible();
   await expect(page.getByTestId('inspector')).toBeVisible();
