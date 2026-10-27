@@ -10,6 +10,7 @@ import { headHash } from './hash';
 import { deleteHandles, loadHandles } from '../persistence/db';
 import { loadUrlSource, urlFetched } from './url';
 import { attachArchive, isArchiveSource } from './archive';
+import { fileSetChosen } from './fileSet';
 
 /** Connect a source of the open project to the file behind its stored handle. */
 export const connectHandle = async (sourceId: string, file: File, handle: FileHandle) => {
@@ -46,7 +47,7 @@ async function offerStoredHandles(project: Project, detached: string[]) {
 export async function attachProject(project: Project): Promise<void> {
   const next: Record<string, Attachment> = {};
   // A connection source is read through its connection (src/sources/connection.ts), so has nothing to attach.
-  for (const s of project.sources) next[s.id] = s.kind === 'clipboard' || s.kind === 'connection' || sourceFile(s.id) || (s.kind === 'url' && urlFetched(s.id)) ? 'attached' : 'detached';
+  for (const s of project.sources) next[s.id] = s.kind === 'clipboard' || s.kind === 'connection' || sourceFile(s.id) || fileSetChosen(s.id) || (s.kind === 'url' && urlFetched(s.id)) ? 'attached' : 'detached';
   const clipboard = project.sources.filter((s) => s.kind === 'clipboard' && s.clipboard && !isRewritten(s.format));
   if (clipboard.length) {
     const engine = await whenEngine();
@@ -146,6 +147,11 @@ export async function chooseFilesFor(waiting: Source[], files: File[]) {
 /** Why a source can't be read, and how to fix it. */
 
 export function detachedMessage(source: Source): string {
+  if (source.kind === 'files') {
+    const n = source.fileSet?.files.length ?? 0;
+    if (!n) return `Recipes hold the steps, not the data, so choose the files for ${source.name} to read them.`;
+    return `Projects save the steps, not the data, so choose ${source.fileSet?.folder ? `the folder ${source.fileSet.folder}` : `its ${n} ${n === 1 ? 'file' : 'files'}`} again to read ${n === 1 ? 'it' : 'them'}.`;
+  }
   if (!source.file && source.kind === 'file') return `Recipes hold the steps, not the data, so choose a file for ${source.name} to read it.`;
   const name = source.file?.originalName ?? source.name;
   return `Projects save the steps, not the data, so choose ${name} again to read it.`;

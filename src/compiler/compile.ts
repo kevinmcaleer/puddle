@@ -7,11 +7,13 @@ import { keptTable, knownKept, type KeptBook } from './keptBook';
 import { dateText, readDateFormat } from './dateRead';
 import { compileQuery, queryProblems } from './query';
 import { compileQuerySql, querySqlProblem } from './querySql';
-import { compileSqlNode, sqlNodeProblem } from './sqlNode';
+import { compileSqlNode, sqlNodeProblem, type SqlInput } from './sqlNode';
+import { compileScript, isScript, readScript, type ReadScript, type ScriptFile } from './sqlScript';
+import { fileSetFileName, fileSetMembers } from './fileSet';
 import { compileSchemaTable, failingRows, failureCounts, heldTableRows, LOAD_FAILURES, loadChecks, projectSchema, tableFor, type LoadCheck, type TableInput } from './schemaTable';
 import { foreignKey, schemaDdl } from './ddl/duckdb';
 import { knownSchemas, type SchemaBook } from './schemaBook';
-import { sourceRelation } from './sources';
+import { isLoadedTable, isRewritten, sourceFileName, sourceRelation } from './sources';
 import { isPlaceholder, looksLikeDate, looksLikeNumber } from './patterns';
 import { cteName, ident, num, str } from './sql';
 import { rulePredicate, ruleRefs, ruleScope, type RuleContext } from './rules';
@@ -88,7 +90,48 @@ interface Built {
   ctes: string[];
   /** The CTE holding each compiled node's output. */
   out: Map<string, string>;
+  /** The CTE of each table a SQL node's script creates, by node, then by the table's name in lower case. */
+  tables: Map<string, Map<string, string>>;
   order: string[];
+}
+
+/**
+ * The files a SQL node may read by name: those of the file sets and file sources wired into it, as chosen. A file
+ * Puddle reads into rows itself (Excel, XML...) or unpacks from an archive isn't one DuckDB can read by name.
+ */
+export function sqlNodeFiles(project: Project, nodeId: string): ScriptFile[] {
+  return inputEdges(project, nodeId).flatMap((e) => {
+    const n = nodeById(project, e.from.nodeId);
+    const source = n?.type === 'source' ? project.sources.find((x) => x.id === n.sourceId) : undefined;
+    if (!source) return [];
+    if (source.kind === 'files') return fileSetMembers(source).map((f) => ({ name: f.name, registered: fileSetFileName(source.id, f) }));
+    if (source.kind === 'file' && source.file && !source.archive && !isLoadedTable(source.format) && !isRewritten(source.format)) return [{ name: source.file.originalName, registered: sourceFileName(source) }];
+    return [];
+  });
+}
+
+/**
+ * Why a SQL node's query or script can't run, in words that say what to change, or undefined. For the inspector,
+ * which shows it as you type; the compiler refuses with the same words.
+ */
+export function sqlProblem(project: Project, nodeId: string): string | undefined {
+  const n = nodeById(project, nodeId);
+  if (n?.type !== 'sql') return undefined;
+  const inputs = inputEdges(project, nodeId).map((e) => ({ port: e.to.port as number, label: nodeById(project, e.from.nodeId)?.name ?? '' }));
+  if (!isScript(n.sqlSpec.query) && !sqlNodeProblem(n.sqlSpec, inputs)) return undefined;
+  const read = readScript(n.sqlSpec.query, inputs, sqlNodeFiles(project, n.id));
+  return 'problem' in read ? read.problem : undefined;
+}
+
+/**
+ * A SQL node's query read as a script, or undefined when it is one plain query its inputs alone satisfy (compiled as
+ * it always was). Throws the reason a script can't run.
+ */
+function sqlScript(project: Project, n: Extract<GraphNode, { type: 'sql' }>, inputs: Pick<SqlInput, 'port' | 'label'>[]): ReadScript | undefined {
+  if (!isScript(n.sqlSpec.query) && !sqlNodeProblem(n.sqlSpec, inputs)) return undefined;
+  const read = readScript(n.sqlSpec.query, inputs, sqlNodeFiles(project, n.id));
+  if ('problem' in read) throw new CompileError(`This ${isScript(n.sqlSpec.query) ? 'script' : 'query'} can’t run: ${read.problem}.`, n.id);
+  return read;
 }
 
 /** Whether a node is read from its kept table: kept, built for its current upstream, and not being rebuilt. */
@@ -119,6 +162,7 @@ function build(project: Project, target: Target, book: SchemaBook, options: Comp
   const order = topoSort(project, neededIds(project, target, options));
   const ctes: string[] = [];
   const out = new Map<string, string>();
+  const tables = new Map<string, Map<string, string>>();
 
   for (const id of order) {
     const n = nodeById(project, id)!;
@@ -212,11 +256,30 @@ function build(project: Project, target: Target, book: SchemaBook, options: Comp
         const wired = wiredInputs(project, n, out);
         if (!wired.length) throw new UnwiredError(`${n.name} has no inputs. Connect a wire into it.`, n.id, 0);
         const inputs = wired.map((w) => ({ port: w.port as number, cte: w.cte, label: nodeById(project, w.fromId)!.name }));
-        const problem = sqlNodeProblem(n.sqlSpec, inputs);
-        if (problem) throw new CompileError(`This query can’t run: ${problem}.`, n.id);
+        const script = sqlScript(project, n, inputs);
+        if (script) {
+          // One CTE per statement; the node's rows are the last one's.
+          const cteOf = (k: number) => ident(`n_${n.id}_t${k}`);
+          ctes.push(...compileScript(script, inputs, cteOf));
+          const made = new Map<string, string>();
+          script.statements.forEach((st, k) => st.table && made.set(st.table, cteOf(k)));
+          tables.set(n.id, made);
+          out.set(n.id, cteOf(script.statements.length - 1));
+          break;
+        }
         const name = cteName(n.id);
         ctes.push(`${name} AS (${compileSqlNode(n.sqlSpec, inputs)})`);
         out.set(n.id, name);
+        break;
+      }
+      case 'scriptTable': {
+        const edge = inputEdge(project, n.id, 0);
+        if (!edge) throw new UnwiredError(`${n.name} has no input. Connect the SQL node whose script creates ${n.scriptTable.table || 'it'}.`, n.id, 0);
+        const from = nodeById(project, edge.from.nodeId);
+        if (from?.type !== 'sql') throw new CompileError(`${n.name} reads a table of a SQL node’s script: connect a SQL node into it.`, n.id);
+        const cte = tables.get(from.id)?.get(n.scriptTable.table.toLowerCase());
+        if (!cte) throw new CompileError(n.scriptTable.table ? `${from.name}’s script doesn’t create a table called ${n.scriptTable.table}.` : `Choose which of ${from.name}’s tables ${n.name} holds.`, n.id);
+        out.set(n.id, cte);
         break;
       }
       case 'table': {
@@ -231,7 +294,7 @@ function build(project: Project, target: Target, book: SchemaBook, options: Comp
         break;
     }
   }
-  return { node, ctes, out, order };
+  return { node, ctes, out, tables, order };
 }
 
 /** A Schema table node's table, the schema it is in, and the load wired into it, if any. */
@@ -397,7 +460,7 @@ export function upstreamKey(project: Project, target: Target): string {
       const inputs = inputEdges(project, n.id).map((e) => [e.from.nodeId, e.to.port]);
       if (n.type === 'source') {
         const s = project.sources.find((x) => x.id === n.sourceId);
-        return { id: n.id, type: n.type, inputs, source: s && { id: s.id, format: s.format, parseOptions: s.parseOptions, file: s.file?.headHash, size: s.file?.size, clip: s.clipboard?.text, url: s.url && (s.url.odata ? [s.url.href, s.url.headHash, s.url.odata] : [s.url.href, s.url.headHash]), sample: s.sampleRows, connection: s.connection && [s.connection.connectionId, s.connection.table?.schema, s.connection.table?.name, s.connection.query, s.connection.limit] } };
+        return { id: n.id, type: n.type, inputs, source: s && { id: s.id, format: s.format, parseOptions: s.parseOptions, file: s.file?.headHash, size: s.file?.size, ...(s.fileSet ? { fileSet: { ...s.fileSet, path: undefined } } : {}), clip: s.clipboard?.text, url: s.url && (s.url.odata ? [s.url.href, s.url.headHash, s.url.odata] : [s.url.href, s.url.headHash]), sample: s.sampleRows, connection: s.connection && [s.connection.connectionId, s.connection.table?.schema, s.connection.table?.name, s.connection.query, s.connection.limit] } };
       }
       if (n.type === 'transform') {
         const steps = n.id === target.nodeId && target.stepIndex != null ? n.steps.slice(0, target.stepIndex + 1) : n.steps;
@@ -412,6 +475,7 @@ export function upstreamKey(project: Project, target: Target): string {
       if (n.type === 'query') return { id: n.id, type: n.type, inputs, query: { ...n.querySpec, tables: undefined }, ...(n.querySpec.sql != null ? { labels: inputEdges(project, n.id).map((e) => nodeById(project, e.from.nodeId)?.name) } : {}) };
       // The query reads its inputs by their node names, so those matter here.
       if (n.type === 'sql') return { id: n.id, type: n.type, inputs, sql: n.sqlSpec, labels: inputEdges(project, n.id).map((e) => nodeById(project, e.from.nodeId)?.name) };
+      if (n.type === 'scriptTable') return { id: n.id, type: n.type, inputs, table: n.scriptTable.table.toLowerCase() };
       // A schema table's rows follow the DBML (its DuckDB table is rebuilt from it); a load is checked against the
       // nodes of the tables its foreign keys point at, so those count too.
       if (n.type === 'table') return { id: n.id, type: n.type, inputs, table: n.tableSpec, ddl: schemaDdlKey(project.schema.dbml), parents: inputs.length ? parentKeys(project, n) : [] };

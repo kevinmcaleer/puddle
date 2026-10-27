@@ -41,13 +41,16 @@ import { CsvOptions } from '../sources/CsvOptions';
 import { FixedWidthOptions, LogOptions, PipesOptions, StructuredOptions } from '../sources/TextPanels';
 import { WordOptions } from '../sources/WordPanel';
 import { FORMAT_OPTIONS } from '../sources/formats';
+import { FileSetPanel } from '../sources/FileSetPanel';
+import { ScriptTablePanel } from './ScriptTablePanel';
 
 function SourceOptions({ source }: { source: Source }) {
   const apply = useProjectStore((s) => s.apply);
   return (
     <Section title="Read options">
       <div className="flex flex-col gap-3">
-        <FormatField source={source} />
+        {/* A file set's format is its files' kind: other files are another set. */}
+        {source.kind !== 'files' && <FormatField source={source} />}
         {(source.format === 'csv' || source.format === 'tsv') && <CsvOptions format={source.format} options={source.parseOptions} onChange={(o) => apply((p) => setParseOptions(p, source.id, o))} />}
         {source.format === 'fixed' && <FixedWidthOptions source={source} onChange={(o) => apply((p) => setParseOptions(p, source.id, o))} />}
         {source.format === 'pipes' && <PipesOptions source={source} onChange={(o) => apply((p) => setParseOptions(p, source.id, o))} />}
@@ -311,6 +314,17 @@ function NodeInspector({ node }: { node: GraphNode }) {
       </>
     );
 
+  if (node.type === 'scriptTable')
+    return (
+      <>
+        <ScriptTablePanel node={node} />
+        <KeepPanel key={node.id} node={node} />
+        <Columns nodeId={node.id} />
+        <RulesPanel node={node} />
+        <NodeNotes node={node} />
+      </>
+    );
+
   if (node.type === 'table')
     return (
       <>
@@ -344,6 +358,7 @@ function NodeInspector({ node }: { node: GraphNode }) {
         </div>
       </div>
       {source && source.kind === 'file' && <AttachmentBanner source={source} />}
+      {source && source.kind === 'files' && <FileSetPanel source={source} />}
       {source && source.kind === 'url' && <UrlPanel source={source} />}
       {source && isArchiveSource(source) && <ArchivePanel source={source} />}
       {source && isExcelSource(source) && <ExcelPanel source={source} />}

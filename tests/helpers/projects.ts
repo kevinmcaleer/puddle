@@ -17,6 +17,7 @@ interface FlowInit {
     | { id: string; type: 'lookup'; lookupSpec?: Partial<LookupSpec> }
     | { id: string; type: 'query'; querySpec?: Partial<QuerySpec> }
     | { id: string; type: 'sql'; sqlSpec?: Partial<SqlSpec> }
+    | { id: string; type: 'scriptTable'; scriptTable: { table: string } }
     | { id: string; type: 'output'; outputSpec?: Partial<OutputSpec> }
     | { id: string; type: 'table'; tableSpec: Partial<TableSpec> & { table: string } }
   >;

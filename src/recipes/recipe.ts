@@ -64,12 +64,14 @@ export function shareableHref(href: string): string {
 
 /**
  * A source as a recipe describes it: a label, its format, read options and the columns it is expected to have.
- * Never the file (its name, size, dates and head hash), pasted rows, a sample setting, request header values or the
+ * Never the file (its name, size, dates and head hash) or a file set's files, pasted rows, a sample setting, request header values or the
  * private parts of an address. A pasted source asks for a file instead, since its rows don't travel.
  */
 export function recipeSource(source: Source): Source {
   const { file: _f, sampleRows: _s, expected: _e, url, ...rest } = withoutHeaderValues(withoutPastedRows(source));
   const href = source.kind === 'url' && url ? shareableHref(url.href) : '';
+  // A file set keeps which files it reads (its pattern), never their names: it asks for its files like any source.
+  if (source.kind === 'files') return { ...rest, fileSet: { files: [], ...(source.fileSet?.pattern ? { pattern: source.fileSet.pattern } : {}), ...(source.fileSet?.fileColumn ? { fileColumn: true } : {}) } };
   if (href) return { ...rest, url: { href, ...(url?.headers ? { headers: url.headers } : {}), ...(url?.table ? { table: url.table } : {}), ...(url?.odata ? { odata: url.odata } : {}) } };
   // Pasted rows don't travel, and an address that can't be shared isn't one: either asks for a file.
   return { ...rest, kind: 'file' };

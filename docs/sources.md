@@ -1,15 +1,21 @@
 # Sources
 
-A source is data read into Puddle: a file on your computer, a file at a web address, a table on a web page, an OData feed, or rows pasted from the clipboard. Each source is a node on the canvas, and its data stays where it is. Puddle reads it in place each time and never copies it anywhere.
+A source is data read into Puddle: a file on your computer, a set of files read as one table, a file at a web address, a table on a web page, an OData feed, or rows pasted from the clipboard. Each source is a node on the canvas, and its data stays where it is. Puddle reads it in place each time and never copies it anywhere.
 
 ## Adding a source
 
-**Add** in the toolbar offers six ways in under **Sources**; an empty project also has an **Add source** button on the canvas.
+**Add** in the toolbar offers eight ways in under **Sources**; an empty project also has an **Add source** button on the canvas.
 
-![The Add menu's Sources group: Choose files, From URL, From web page, From OData feed and Paste from clipboard](_static/screenshots/sources-menu.png)
+![The Add menu's Sources group: Choose files, Files as one table, Folder as one table, From URL, From web page, From OData feed, From database and Paste from clipboard](_static/screenshots/sources-menu.png)
 
 Choose files
 : Pick one or more files from your computer (shortcut: A). You can also drop files straight onto the canvas.
+
+Files as one table
+: Pick several files of one kind (a month's extract each, say) and read them as one table. See [File sets](#file-sets).
+
+Folder as one table
+: Pick a folder and read every Parquet, CSV, TSV, JSON or NDJSON file in it, and in its subfolders, as one table. See [File sets](#file-sets).
 
 From URL
 : Read a CSV, TSV, JSON, NDJSON, Parquet or XML file from an https address. Puddle fetches it again each time the project opens, and **Refresh** in the inspector fetches it on demand. The site must allow browsers to read it (CORS).
@@ -51,6 +57,24 @@ Puddle reads these formats:
 Puddle reads the start of each file and decides its format from what is there, not only from its name: a `.txt` file of pipe-delimited rows is read as a pipe table, a `.csv` that turns out to be JSON as JSON, a `.xls` saved from a web page that is really HTML as the table in it, and a file inside a `.gz` or `.zip` as what the bytes inside say. The name settles it only when the content could be read several ways. The format it chose is shown as **Format** in the inspector, where a wrong guess is one change away: pick another and every node after the source updates.
 
 When the content could be two or three things and Puddle can't tell, it asks instead of guessing, in a dialog headed **How should this file be read?**, with what it saw and the formats that fit. Choose one and **Read it this way**; the choice is saved with the project.
+
+## File sets
+
+A file set is many files read as one table: a folder of monthly extracts, or the pieces a system splits a big export into. **Files as one table** takes the files you pick; **Folder as one table** takes a folder's files, its subfolders included. The set reads files of one kind (Parquet, CSV, TSV, JSON or NDJSON), the kind most of the files are, and leaves the others out (a readme, a spreadsheet), saying which. It is one node on the canvas, however many files it holds, and its card says how many ("Source · 42 Parquet files").
+
+The files' columns are lined up by name, as DuckDB's `union_by_name` does: a column only some files have is empty in the rows of the others, so a file with an extra column, or its columns in another order, still fits. A CSV set is read with the read options of its first file, which you can change as for any CSV source.
+
+In the inspector, under **Files**:
+
+- **Only files matching** keeps the files whose names match a pattern, such as `*.parquet` or `2024-*.csv`. `*` stands for any characters and `?` for one; a pattern with a `/` in it, such as `2024/*.parquet`, matches the path inside the folder, and one without matches the file's own name wherever it sits. Empty reads every file.
+- **Add a column naming each row's file** adds a column called `file` with the name of the file each row came from, as you chose it.
+- **Choose another folder** and **Choose other files** replace the set's files: choosing a folder again takes in the files added to it since.
+
+A file set can also be wired into a SQL node, whose query or script then reads its files by name (see {doc}`combining`).
+
+On the runner, **Path to the folder** says where `puddle-run` finds the files. It reads the files there that the pattern matches, so a folder that gains a file each night is read whole each run; with no pattern it reads the files of that name you chose in the browser. Left empty, it looks for a folder with the name of the one you chose beside the project file or in its `sources/` folder, then in the project file's own folder. `puddle-run check` says how many files it found where.
+
+When the project reopens, the set's files are chosen again, as a folder or as files, from its node.
 
 ## Tables on a web page
 

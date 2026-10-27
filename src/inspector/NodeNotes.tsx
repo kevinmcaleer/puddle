@@ -9,6 +9,7 @@ const PLACEHOLDER: Record<GraphNode['type'], string> = {
   lookup: 'What is looked up, and why these keys find it.',
   query: 'What this query answers, and why its tables join this way.',
   sql: 'What this SQL answers, and why it reads its inputs this way.',
+  scriptTable: 'What this table of the script holds.',
   table: 'What this table holds, and where its rows are loaded from.',
   output: 'Who uses this export, and where it goes.',
 };

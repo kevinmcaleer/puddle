@@ -2,11 +2,11 @@
 import { freePort, hasOutput, nodeById, removeNode } from './graph';
 import { newId } from './ids';
 import { viewWithout } from './view';
-import { DEFAULT_APPEND_SPEC, DEFAULT_JOIN_SPEC, DEFAULT_LOOKUP_SPEC, DEFAULT_QUERY_SPEC, DEFAULT_SQL_SPEC, type GraphNode, type NodeType, type ParseOptions, type Project, type Source, type TableSpec } from './schema';
+import { DEFAULT_APPEND_SPEC, DEFAULT_JOIN_SPEC, DEFAULT_LOOKUP_SPEC, DEFAULT_QUERY_SPEC, DEFAULT_SQL_SPEC, type FileSet, type GraphNode, type NodeType, type ParseOptions, type Project, type Source, type TableSpec } from './schema';
 
 type Position = { x: number; y: number };
 
-const KIND_NAME: Record<NodeType, string> = { source: 'Source', transform: 'Transform', join: 'Join', append: 'Append', lookup: 'Lookup', query: 'Query', sql: 'SQL', table: 'Table', output: 'Output' };
+const KIND_NAME: Record<NodeType, string> = { source: 'Source', transform: 'Transform', join: 'Join', append: 'Append', lookup: 'Lookup', query: 'Query', sql: 'SQL', scriptTable: 'Script table', table: 'Table', output: 'Output' };
 
 /** "Transform 3": the next free number for a node type. */
 export function nextNodeName(project: Project, type: NodeType): string {
@@ -22,7 +22,7 @@ export function addSource(project: Project, source: Source, position: Position, 
   return { ...project, sources: [...project.sources, source], nodes: [...project.nodes, node], view };
 }
 
-export type AddableNodeType = Exclude<NodeType, 'source'>;
+export type AddableNodeType = Exclude<NodeType, 'source' | 'scriptTable'>;
 
 function newNode(type: AddableNodeType, base: { id: string; name: string; position: Position; rules: [] }): GraphNode {
   switch (type) {
@@ -135,4 +135,83 @@ export function setParseOptions(project: Project, sourceId: string, parseOptions
 /** Read a source as another format: its read options start again from the ones given (the sniff's, or none). */
 export function setSourceFormat(project: Project, sourceId: string, format: Source['format'], parseOptions: ParseOptions = {}): Project {
   return { ...project, sources: project.sources.map((s) => (s.id === sourceId ? { ...s, format, parseOptions } : s)) };
+}
+
+/** A node name not yet used in the project: `name`, else `name 2`, `name 3`... */
+function freeName(project: Project, name: string): string {
+  const used = new Set(project.nodes.map((n) => n.name.toLowerCase()));
+  for (let i = 1; ; i++) {
+    const candidate = i === 1 ? name : `${name} ${i}`;
+    if (!used.has(candidate.toLowerCase())) return candidate;
+  }
+}
+
+/**
+ * Keep a SQL node's script table nodes in step with the tables its script creates, given the tables before and after
+ * an edit (as written, in order): once a script creates two or more, each table it newly creates gets a node of its
+ * own, wired from the SQL node and named after it. A table renamed in the script (as many gone as came, in order)
+ * takes its node with it. Nodes of tables the script no longer creates stay, and say so, so no wiring is lost.
+ */
+export function syncScriptTables(project: Project, sqlNodeId: string, before: string[], after: string[]): Project {
+  const sql = nodeById(project, sqlNodeId);
+  if (sql?.type !== 'sql') return project;
+  const lower = (names: string[]) => names.map((n) => n.toLowerCase());
+  const [was, now] = [lower(before), lower(after)];
+  const own = scriptTableNodes(project, sqlNodeId);
+  const has = (table: string) => own.some((n) => n.scriptTable.table.toLowerCase() === table);
+  let next = project;
+  // Renamed: the nodes of the tables that went take the names of the ones that came, in order.
+  const gone = was.filter((t) => !now.includes(t) && has(t));
+  const came = after.filter((t) => !was.includes(t.toLowerCase()) && !has(t.toLowerCase()));
+  if (gone.length && gone.length === came.length) {
+    next = {
+      ...next,
+      nodes: next.nodes.map((n) => {
+        if (n.type !== 'scriptTable' || !own.includes(n)) return n;
+        const at = gone.indexOf(n.scriptTable.table.toLowerCase());
+        if (at < 0) return n;
+        const table = came[at]!;
+        const renamed = n.name.toLowerCase() === n.scriptTable.table.toLowerCase() ? freeName({ ...next, nodes: next.nodes.filter((x) => x.id !== n.id) }, table) : n.name;
+        return { ...n, name: renamed, scriptTable: { table } };
+      }),
+    };
+    return next;
+  }
+  if (after.length < 2) return next;
+  // Every table once the script makes more than one; after that, the ones it newly makes.
+  return addScriptTableNodes(next, sqlNodeId, after.filter((t) => before.length < 2 || !was.includes(t.toLowerCase())));
+}
+
+/** The script table nodes wired from a SQL node. */
+const scriptTableNodes = (project: Project, sqlNodeId: string) =>
+  project.nodes.filter((n): n is Extract<GraphNode, { type: 'scriptTable' }> => n.type === 'scriptTable' && project.edges.some((e) => e.from.nodeId === sqlNodeId && e.to.nodeId === n.id));
+
+/** Add a node for each of these tables of a SQL node's script that has none, wired from it and stacked to its right. */
+export function addScriptTableNodes(project: Project, sqlNodeId: string, tables: string[]): Project {
+  const sql = nodeById(project, sqlNodeId);
+  if (sql?.type !== 'sql') return project;
+  const own = scriptTableNodes(project, sqlNodeId);
+  const wanted = tables.filter((t, i) => !own.some((n) => n.scriptTable.table.toLowerCase() === t.toLowerCase()) && tables.findIndex((x) => x.toLowerCase() === t.toLowerCase()) === i);
+  const below = own.length ? Math.max(...own.map((n) => n.position.y)) + 120 : sql.position.y;
+  let next = project;
+  wanted.forEach((table, i) => {
+    const id = newId('n');
+    const node: GraphNode = { id, type: 'scriptTable', name: freeName(next, table), position: { x: sql.position.x + 296, y: below + i * 120 }, rules: [], scriptTable: { table } };
+    next = { ...next, nodes: [...next.nodes, node], edges: [...next.edges, { id: newId('e'), from: { nodeId: sqlNodeId }, to: { nodeId: id, port: 0 } }] };
+  });
+  return next;
+}
+
+/** Point a script table node at another of its script's tables, taking the table's name if it still had the old one's. */
+export function setScriptTable(project: Project, nodeId: string, table: string): Project {
+  const node = nodeById(project, nodeId);
+  if (node?.type !== 'scriptTable' || node.scriptTable.table === table) return project;
+  const rename = node.name.toLowerCase() === node.scriptTable.table.toLowerCase() || !node.scriptTable.table;
+  const name = rename ? freeName({ ...project, nodes: project.nodes.filter((n) => n.id !== nodeId) }, table) : node.name;
+  return { ...project, nodes: project.nodes.map((n) => (n.id === nodeId ? { ...node, name, scriptTable: { table } } : n)) };
+}
+
+/** Change a file set's files, pattern, file column or runner folder. */
+export function setFileSet(project: Project, sourceId: string, patch: Partial<FileSet>): Project {
+  return { ...project, sources: project.sources.map((s) => (s.id === sourceId && s.fileSet ? { ...s, fileSet: { ...s.fileSet, ...patch } } : s)) };
 }

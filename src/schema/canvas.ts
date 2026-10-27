@@ -28,7 +28,7 @@ export interface CanvasSchema {
   derived: Set<string>;
 }
 
-const QUERY_TYPES = new Set(['query', 'sql', 'join', 'lookup', 'append']);
+const QUERY_TYPES = new Set(['query', 'sql', 'scriptTable', 'join', 'lookup', 'append']);
 
 /** A transform that ends its chain: nothing it feeds is another Transform. */
 const endsChain = (project: Project, node: GraphNode) => node.type === 'transform' && !outputEdges(project, node.id).some((e) => nodeById(project, e.to.nodeId)?.type === 'transform');
@@ -66,6 +66,8 @@ function describe(project: Project, node: GraphNode, columnsOf: ColumnsOf): stri
     }
     case 'sql':
       return `SQL over ${list(inputs)}:\n\n${node.sqlSpec.query}${notes}`;
+    case 'scriptTable':
+      return `Table ${node.scriptTable.table} of the script in ${list(inputs)}.${notes}`;
     case 'join': {
       const on = node.joinSpec.keys.map((k) => `${k.left} = ${k.right}`).join(', ');
       return `${node.joinSpec.kind[0]!.toUpperCase()}${node.joinSpec.kind.slice(1)} join of ${fed('left')} and ${fed('right')}${on ? ` on ${on}` : ''}.${notes}`;
