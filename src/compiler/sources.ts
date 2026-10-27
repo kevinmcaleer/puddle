@@ -1,5 +1,6 @@
 import { hashValue, type Source } from '../model';
 import { CompileError } from './errors';
+import { FILE_COLUMN, fileSetFileName, fileSetMembers, fileSetNames, isFileSetFormat } from './fileSet';
 import { bool, ident, num, str, strList } from './sql';
 
 const ROW = ident('__puddle_row');
@@ -75,9 +76,32 @@ export function compileAccessLoad(table: string, columns: { name: string; sqlTyp
 /** Drop a source's table (an Excel sheet read with options no longer in use). */
 export const dropTable = (name: string) => `DROP TABLE IF EXISTS ${ident(name)}`;
 
+/** The column DuckDB names each row's file in while a file set is read, before it becomes the file's own name. */
+const FILE_NAME = ident('__puddle_file');
+
+/**
+ * A file set's files read as one table, their columns lined up by name; with `fileColumn`, a column naming the file
+ * each row came from (as chosen, not as registered).
+ */
+function fileSetRelation(source: Source): string {
+  if (!isFileSetFormat(source.format)) throw new CompileError(`${source.name} can’t read ${source.format} files as a set: choose Parquet, CSV, TSV, JSON or NDJSON files.`);
+  const names = fileSetNames(source);
+  const file = strList(names);
+  const extra = ['union_by_name = true', ...(source.fileSet?.fileColumn ? [`filename = ${str('__puddle_file')}`] : [])];
+  const relation = fileRelation(source, file, extra);
+  if (!source.fileSet?.fileColumn) return relation;
+  const cases = fileSetMembers(source).map((f) => `WHEN ${str(fileSetFileName(source.id, f))} THEN ${str(f.name)}`);
+  return `(SELECT * EXCLUDE (${FILE_NAME}), CASE ${FILE_NAME} ${cases.join(' ')} END AS ${ident(FILE_COLUMN)} FROM ${relation})`;
+}
+
 /** The table function call that reads a source, e.g. read_csv('src_a.csv', delim = ','). */
 export function sourceRelation(source: Source): string {
-  const file = str(sourceFileName(source));
+  if (source.kind === 'files') return fileSetRelation(source);
+  return fileRelation(source, str(sourceFileName(source)));
+}
+
+/** The call that reads `file` (a quoted name, or a list of them) as the source's format, with `extra` arguments for a list. */
+function fileRelation(source: Source, file: string, extra: string[] = []): string {
   const o = source.parseOptions;
   const odata = source.url?.odata;
   if (odata) {
@@ -100,6 +124,7 @@ export function sourceRelation(source: Source): string {
       if (o.nullStrings?.length) args.push(`nullstr = ${strList([...new Set(['', ...o.nullStrings])])}`);
       if (o.skip) args.push(`skip = ${num(o.skip)}`);
       if (readsCompressed(source)) args.push(`compression = 'gzip'`);
+      args.push(...extra);
       // With a banner skipped, DuckDB's sniffer fails on a ragged row below, so the columns are given outright: the
       // names the file's own sniff read from the header line, every one as text (the steps type them after).
       // Ragged rows (a header with a trailing comma, an unquoted comma in one value) otherwise make the sniffer give
@@ -119,11 +144,11 @@ export function sourceRelation(source: Source): string {
       return relation;
     }
     case 'json':
-      return `read_json_auto(${[file, ...(readsCompressed(source) ? [`compression = 'gzip'`] : [])].join(', ')})`;
+      return `read_json_auto(${[file, ...(readsCompressed(source) ? [`compression = 'gzip'`] : []), ...extra].join(', ')})`;
     case 'ndjson':
-      return `read_json_auto(${[file, `format = 'newline_delimited'`, ...(readsCompressed(source) ? [`compression = 'gzip'`] : [])].join(', ')})`;
+      return `read_json_auto(${[file, `format = 'newline_delimited'`, ...(readsCompressed(source) ? [`compression = 'gzip'`] : []), ...extra].join(', ')})`;
     case 'parquet':
-      return `read_parquet(${file})`;
+      return `read_parquet(${[file, ...extra].join(', ')})`;
     case 'xlsx':
     case 'access':
     case 'connection':

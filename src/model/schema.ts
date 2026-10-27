@@ -114,10 +114,30 @@ export const ConnectionSourceZ = z.object({
   shape: ConnectionShapeZ.optional(),
 });
 
+/** One file of a file set: its path inside the set (the folder's own name left off) and what identifies its bytes. */
+export const FileSetFileZ = z.object({ name: z.string().min(1), size: z.number().nonnegative(), lastModified: z.number() });
+
+/**
+ * Many files read as one table, their columns lined up by name (DuckDB's union_by_name), as when a folder of monthly
+ * extracts is one dataset. The files are references, as for a single file: chosen again when the project reopens.
+ */
+export const FileSetZ = z.object({
+  /** The files chosen, in the order read. */
+  files: z.array(FileSetFileZ).default([]),
+  /** Only the files whose names match this glob are read (*.parquet, 2024-*.csv); unset or empty reads them all. */
+  pattern: z.string().optional(),
+  /** The name of the folder the files were chosen from, when they were chosen as a folder. */
+  folder: z.string().optional(),
+  /** Add a column naming the file each row came from. */
+  fileColumn: z.boolean().optional(),
+  /** Where the runner (puddle-run) finds the folder: absolute, or relative to the project file's folder. */
+  path: z.string().optional(),
+});
+
 export const SourceZ = z.object({
   id: z.string().min(1),
   name: z.string(),
-  kind: z.enum(['file', 'url', 'clipboard', 'connection']),
+  kind: z.enum(['file', 'url', 'clipboard', 'connection', 'files']),
   file: z
     .object({
       originalName: z.string(),
@@ -171,6 +191,8 @@ export const SourceZ = z.object({
     })
     .optional(),
   clipboard: z.object({ text: z.string() }).optional(),
+  /** A file set (Add source › Files as one table, or Folder as one table): many files of one format read as one table. */
+  fileSet: FileSetZ.optional(),
   /** A table or query of one of the project's connections (Add source › From database). */
   connection: ConnectionSourceZ.optional(),
   /**
@@ -409,12 +431,24 @@ export const DEFAULT_QUERY_SPEC = { tables: [], joins: [], fields: [], distinct:
  */
 export const QueryNodeZ = z.object({ ...NodeBase, type: z.literal('query'), querySpec: QuerySpecZ.default({ tables: [], joins: [], fields: [], distinct: false, totals: false, orRows: 0 }) });
 
-/** A hand-written DuckDB query over the node's inputs, each readable as input1, input2... and by its node's name. */
+/**
+ * A hand-written DuckDB query over the node's inputs, each readable as input1, input2... and by its node's name. It may
+ * also be a script: CREATE TABLE name AS ... statements, each reading the inputs and the tables made before it, then
+ * optionally a last query. Either can read the files of file sources wired in, by name (read_parquet('*.parquet')).
+ */
 export const SqlSpecZ = z.object({ query: z.string().default('') });
 
 export const DEFAULT_SQL_SPEC = { query: 'SELECT *\nFROM input1' } as const satisfies z.input<typeof SqlSpecZ>;
 
 export const SqlNodeZ = z.object({ ...NodeBase, type: z.literal('sql'), sqlSpec: SqlSpecZ.default(DEFAULT_SQL_SPEC) });
+
+/**
+ * One table a SQL node's script creates (CREATE TABLE log AS ...), as a node of its own: wired from the SQL node, its
+ * rows are that table's. The SQL node's own rows are its script's last statement.
+ */
+export const ScriptTableSpecZ = z.object({ table: z.string() });
+
+export const ScriptTableNodeZ = z.object({ ...NodeBase, type: z.literal('scriptTable'), scriptTable: ScriptTableSpecZ });
 
 /**
  * A table of the project's schema (its DBML), created in DuckDB with its keys and constraints. Its rows are the table's
@@ -431,7 +465,7 @@ export const TableSpecZ = z.object({
 
 export const SchemaTableNodeZ = z.object({ ...NodeBase, type: z.literal('table'), tableSpec: TableSpecZ });
 
-export const NodeZ = z.discriminatedUnion('type', [SourceNodeZ, TransformNodeZ, JoinNodeZ, AppendNodeZ, LookupNodeZ, QueryNodeZ, SqlNodeZ, SchemaTableNodeZ, OutputNodeZ]);
+export const NodeZ = z.discriminatedUnion('type', [SourceNodeZ, TransformNodeZ, JoinNodeZ, AppendNodeZ, LookupNodeZ, QueryNodeZ, SqlNodeZ, ScriptTableNodeZ, SchemaTableNodeZ, OutputNodeZ]);
 
 /** Named input ports: Join's left and right, Lookup's main and lookup. Nodes with one input, and the numbered inputs of Append and Query, use an index. */
 export const NAMED_PORTS = ['left', 'right', 'main', 'lookup'] as const;
@@ -607,6 +641,9 @@ export type QuerySpec = z.infer<typeof QuerySpecZ>;
 export type QueryNode = z.infer<typeof QueryNodeZ>;
 export type SqlSpec = z.infer<typeof SqlSpecZ>;
 export type SqlNode = z.infer<typeof SqlNodeZ>;
+export type ScriptTableNode = z.infer<typeof ScriptTableNodeZ>;
+export type FileSet = z.infer<typeof FileSetZ>;
+export type FileSetFile = z.infer<typeof FileSetFileZ>;
 export type TableSpec = z.infer<typeof TableSpecZ>;
 export type SchemaCheck = z.infer<typeof SchemaCheckZ>;
 export type SchemaTableNode = z.infer<typeof SchemaTableNodeZ>;

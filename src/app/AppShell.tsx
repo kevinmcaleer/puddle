@@ -51,7 +51,8 @@ import { cardKind } from '../canvas/kind';
 import { AppSwitcher } from '../powertools/AppSwitcher';
 import { Button, Menu, ResultsBar, StatusBadge, StatusStrip, Toolbar, useDisplayFormat, type NodeKind } from '../ui';
 import { ActivityControl } from './ActivityControl';
-import { ADD_AFTER_SELECTION, addFiles, addNodeAfterSelection, addSchemaTable, cancelWiring, chooseFiles as pickSourceFiles, addPastedText, groupSelection, layoutFlow, openSelected, pasteFromClipboard, searchAddStep, selectNeighbour, startWiring, viewSelected } from './actions';
+import { FileSetInputs } from '../sources/FileSetInputs';
+import { ADD_AFTER_SELECTION, addFiles, addFileSet, addNodeAfterSelection, addSchemaTable, cancelWiring, chooseFiles as pickSourceFiles, addPastedText, groupSelection, layoutFlow, openSelected, pasteFromClipboard, searchAddStep, selectNeighbour, startWiring, viewSelected } from './actions';
 import { useEngineStore, type EngineStatus } from './engine';
 import { ResultsPanel } from './ResultsPanel';
 import { Console } from '../console/Console';
@@ -270,6 +271,8 @@ export function AppShell() {
   // The relationships view belongs to the project it was opened on.
   useEffect(() => () => useSession.getState().setRelationshipsOpen(false), [project.id]);
   const fileInput = useRef<HTMLInputElement>(null);
+  const setInput = useRef<HTMLInputElement>(null);
+  const folderInput = useRef<HTMLInputElement>(null);
   const canvas = useRef<HTMLElement>(null);
   const inspector = useRef<HTMLElement>(null);
   // The inspector may only be drawn on the next render (it was hidden, or the notes were showing).
@@ -361,6 +364,8 @@ export function AppShell() {
             }}
             items={[
               { label: 'Choose files', icon: 'source', hint: 'CSV, TSV, JSON, Parquet', shortcut: shortcutText('add-source'), group: 'Sources', onSelect: chooseFiles },
+              { label: 'Files as one table', icon: 'source', hint: 'Many files', group: 'Sources', onSelect: () => setInput.current?.click() },
+              { label: 'Folder as one table', icon: 'source', hint: 'Its files', group: 'Sources', onSelect: () => folderInput.current?.click() },
               { label: 'From URL', icon: 'link', hint: 'https address', group: 'Sources', onSelect: () => openUrlDialog() },
               { label: 'From web page', icon: 'web', hint: 'Its tables', group: 'Sources', onSelect: () => openWebPageDialog() },
               { label: 'From OData feed', icon: 'database', hint: 'Its entity sets', group: 'Sources', onSelect: () => openODataDialog() },
@@ -419,6 +424,7 @@ export function AppShell() {
             if (file) void openRecipeFile(file);
           }}
         />
+        <FileSetInputs files={setInput} folder={folderInput} onFiles={(files) => void addFileSet(files)} testId="file-set-input" />
         <input
           ref={fileInput}
           type="file"

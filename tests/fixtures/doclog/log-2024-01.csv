@@ -1,0 +1,5 @@
+Document ID,Document Log id,Document Status,User Name,Actual Start Date of Process,Option Execute Cancelled
+D1,1,Open,ALICE,2024-01-03,
+D1,2,Open,bob ,2024-01-04,
+D2,3,Closed,BATCH01,2024-01-05,X
+,4,Open,ALICE,2024-01-06,

@@ -24,7 +24,8 @@ You can also add the next node from where you are looking: click a node's right-
 | Lookup | Brings columns across from a second input, keeping every row of the first. | {doc}`combining` |
 | Query | Designs a query over several tables with a grid, in the style of Access. | {doc}`query-designer` |
 | Schema table | A table designed in the Schema view, as a real DuckDB table holding its records and any rows wired into it, checked against its keys, types and checks. | {doc}`schema` |
-| SQL | One DuckDB query you write over any nodes wired into it, readable as `input1`, `input2`... or by their names. | |
+| SQL | A DuckDB query you write over any nodes wired into it, readable as `input1`, `input2`... or by their names; or a script of `CREATE TABLE` statements. It can read the files of the sources wired into it by name. | {doc}`combining` |
+| Script table | One table a SQL node's script creates, as a node of its own. | {doc}`combining` |
 | Output | Marks data that's ready, and exports it. | {doc}`exporting` |
 
 ## Selecting, viewing and moving

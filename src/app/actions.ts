@@ -9,6 +9,8 @@ import { buildStep } from '../inspector/addStep';
 import { addStepAt } from '../quickfix/place';
 import { addDatabaseFile, databaseDriverFor } from '../connections/addFile';
 import { addClipboardSource, addFileSource } from '../sources/add';
+import { addFileSetSource, setFilesOf } from '../sources/fileSet';
+import { formatLabel } from '../canvas/formatLabel';
 import type { StepForm } from '../steps';
 import { pickFiles, type PickedFile } from '../sources/handles';
 import { tableToCsv, type HtmlTable } from '../sources/html';
@@ -56,6 +58,19 @@ export function addFiles(files: Iterable<File | PickedFile>, at?: { x: number; y
       }
     }
   });
+}
+
+/** Add files chosen together, or a folder's files, as one source read as one table, below the existing sources. */
+export async function addFileSet(files: File[]) {
+  if (!files.length) return;
+  const picked = setFilesOf(files);
+  try {
+    const { source, left } = await addFileSetSource(picked.files, picked.folder, nextSourcePosition());
+    selectSource(source);
+    if (left.length) useSession.getState().notify({ tone: 'info', text: `${source.name} reads its ${formatLabel(source.format)} files; ${left.length === 1 ? `${left[0]} isn’t one and was` : `${left.length} other files were`} left out.` });
+  } catch (e) {
+    report(e);
+  }
 }
 
 /**

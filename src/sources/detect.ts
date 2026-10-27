@@ -40,6 +40,9 @@ const BY_EXTENSION: Record<string, SourceFormat> = {
 
 export const ACCEPT = `.csv,.txt,.tsv,.tab,.json,.ndjson,.jsonl,.parquet,.pq,.arrow,.feather,.ipc,${SPREADSHEET_EXTENSIONS.map((e) => `.${e}`).join(',')},.xml,.kml,.gpx,.yaml,.yml,.toml,.ini,.cfg,.geojson,.docx,.pdf,.mdb,.accdb,.gz,.zip,.dat,.log,.text,.prn`;
 
+/** The files a file set reads: Parquet, CSV, TSV, JSON and NDJSON, gzipped text too. */
+export const FILE_SET_ACCEPT = '.parquet,.pq,.csv,.tsv,.tab,.txt,.json,.ndjson,.jsonl,.gz';
+
 /** What Puddle reads, for the refusals. */
 export const READS = 'Add a CSV, TSV, JSON, NDJSON, Parquet, Arrow, spreadsheet (.xlsx, .xls, .ods, .numbers, .dbf), XML, YAML, TOML, INI, GeoJSON, Word (.docx), PDF or Access (.accdb, .mdb) file, or a .gz or .zip holding one.';
 

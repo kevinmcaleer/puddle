@@ -49,7 +49,7 @@ These settings can go in the environment or in a `.env` file next to `compose.ya
 
 The editor is browser-only, so nothing runs while the browser is closed. `puddle-run` is a second, small container that runs the same project files on the Pi, with the same compiler, on DuckDB's native build (fast on arm64, and it can load DuckDB's database and S3 extensions later).
 
-1. Put each project file where the runner can see it: export it from the editor's project menu (`.puddle.json`) into a folder, say `/srv/puddle/projects`, and put its source files beside it or in a `sources/` folder there. A source read from somewhere else gets its path in the editor: select the source node and fill in **Path to this file** under *On the runner* (absolute, or relative to the project file).
+1. Put each project file where the runner can see it: export it from the editor's project menu (`.puddle.json`) into a folder, say `/srv/puddle/projects`, and put its source files beside it or in a `sources/` folder there. A source read from somewhere else gets its path in the editor: select the source node and fill in **Path to this file** under *On the runner* (absolute, or relative to the project file). A file set (a folder read as one table) is found by its folder's name the same way, or by **Path to the folder**; each run reads the files in it that the set's pattern matches.
 2. Set when it runs in the editor's **Project** tab, **Run on a schedule**, in cron syntax: `0 3 * * *` is 03:00 every day, `*/15 * * * 1-5` every quarter hour on weekdays. A project with no schedule is never run from the folder.
 3. Start the runner next to Puddle:
 

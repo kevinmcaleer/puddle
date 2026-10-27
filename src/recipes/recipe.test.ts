@@ -164,6 +164,14 @@ describe('exporting a recipe', () => {
     expect(recipeFromProject(feed, { name: '', description: '' }).sources[1]!.url).toEqual({ href: 'https://services.odata.org/TripPinRESTierService', odata });
   });
 
+  it('keeps which of a file set’s files are read (its pattern), never their names, folder or runner path', () => {
+    const p = sensitive();
+    const set = { ...p, sources: p.sources.map((s, i) => (i === 0 ? { ...s, kind: 'files' as const, format: 'parquet' as const, file: undefined, fileSet: { files: [{ name: 'secret-q3.parquet', size: 1, lastModified: 1 }], folder: 'hr-extract', path: '/srv/hr', pattern: '*.parquet', fileColumn: true } } : s)) };
+    const source = recipeFromProject(set, { name: '', description: '' }).sources[0]!;
+    expect(source).toMatchObject({ kind: 'files', fileSet: { files: [], pattern: '*.parquet', fileColumn: true } });
+    expect(JSON.stringify(source)).not.toMatch(/secret-q3|hr-extract|srv/);
+  });
+
   it('names the file after the recipe', () => {
     expect(recipeFileName('Tidy a contact list!')).toBe('tidy-a-contact-list.puddle-recipe.json');
     expect(recipeFileName('  ')).toBe('recipe.puddle-recipe.json');

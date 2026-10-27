@@ -19,7 +19,8 @@ import { openDb } from './db';
 import { runProject, runSucceeded } from './run';
 import { nextRun, scheduleProblem } from './schedule';
 import { SCHEMA_USAGE, schemaCommand } from './schema';
-import { placeSources } from './sources';
+import { placeSources, type ListFolder } from './sources';
+import { listFolder } from './folder';
 import { existsSync } from 'node:fs';
 import { formatLabel } from '../canvas/formatLabel';
 
@@ -86,14 +87,15 @@ export function formatChanged(source: Source, path: string): string | undefined 
  * The lines `check` prints for a project: each source and where it reads from (or why it can't, or that its file
  * no longer looks like its format), each output, the schedule.
  */
-export function checkLines(project: Project, folder: string, exists: (path: string) => boolean, connections: PlaceOptions, now = () => new Date()): { lines: string[]; ok: boolean } {
+export function checkLines(project: Project, folder: string, exists: (path: string) => boolean, connections: PlaceOptions, now = () => new Date(), list: ListFolder = listFolder): { lines: string[]; ok: boolean } {
   const lines: string[] = [project.name];
   let ok = true;
-  for (const p of placeSources(project, folder, exists, connections)) {
+  for (const p of placeSources(project, folder, exists, connections, list)) {
     if (p.path === undefined) ok = false;
-    const changed = p.path && !p.connection ? formatChanged(p.source, p.path) : undefined;
+    const changed = p.path && !p.connection && p.source.kind !== 'files' ? formatChanged(p.source, p.path) : undefined;
     if (changed) ok = false;
-    const where = p.path === undefined ? p.reason : p.connection ? `reads ${describeConnectionSource(p.source, p.connection)}` : p.path || 'pasted text';
+    const files = p.source.kind === 'files' ? (p.source.fileSet?.files.length ?? 0) : 0;
+    const where = p.path === undefined ? p.reason : p.connection ? `reads ${describeConnectionSource(p.source, p.connection)}` : p.source.kind === 'files' ? `${files} ${files === 1 ? 'file' : 'files'} in ${p.path}` : p.path || 'pasted text';
     lines.push(`  source ${p.source.name}: ${where}${changed ? `; ${changed}` : ''}`);
   }
   for (const n of project.nodes) if (n.type === 'output') lines.push(`  output ${n.name}: ${n.outputSpec.format}`);

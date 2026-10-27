@@ -36,3 +36,33 @@ An Append stacks the rows of two or more inputs, one after the other, like `UNIO
 ![Two customer files appended into one](_static/screenshots/combine-append.png)
 
 Wire more inputs into the spare numbered input on the node to append more.
+
+## SQL
+
+A SQL node runs DuckDB SQL you write over the nodes wired into it. Each input is readable as `input1`, `input2`... and by its node's name (in double quotes when the name has spaces or dots), and a lone input also as `input`. The SQL console under the results turns a query into a SQL node in one click.
+
+### Reading files by name
+
+A SQL node can read the files of the sources wired into it, by name or by a pattern, as DuckDB reads files: `read_parquet('*.parquet', union_by_name = true)`, `read_csv('users.csv')`, or `FROM 'users.parquet'` in place of a table. Wire in a file set (see {doc}`sources`) to read many files this way, or single file sources. A pattern matches only the files wired in; nothing else on your computer can be read, and the reader's options (`union_by_name`, `filename`, `header`, `delim` and the like) can only be plain values.
+
+### Scripts
+
+A SQL node also takes a whole script: `CREATE TABLE name AS` a query, as many as you like, each able to read the inputs, the files and the tables made before it, and optionally a last `SELECT`. `CREATE OR REPLACE`, `TEMP` and `IF NOT EXISTS` are accepted, and so is `CREATE VIEW`; anything else (`INSERT`, `DROP`, `ATTACH`, `COPY` and the like) is refused, naming the statement.
+
+```sql
+CREATE OR REPLACE TABLE log AS
+SELECT DISTINCT "Document ID" AS docid, "User Name" AS user_name
+FROM read_parquet('*.parquet', union_by_name = true)
+WHERE "Document ID" IS NOT NULL;
+
+CREATE OR REPLACE TABLE users AS
+SELECT * FROM read_parquet('sap_users.parquet');
+
+CREATE OR REPLACE TABLE docs AS
+SELECT l.docid, count() AS steps
+FROM log l LEFT JOIN users u ON upper(trim(u."User Name")) = upper(trim(l.user_name))
+GROUP BY l.docid;
+```
+
+The node's own rows are the last statement's. Once a script creates two or more tables, each gets a **Script table** node of its own, wired from the SQL node and named after it (here `log`, `users` and `docs`), which you can view, check with rules, join, and export like any other node. A table renamed in the script takes its node with it; a node you delete stays deleted until the script creates a new table, and the inspector's **Tables it creates** adds one back. Nothing a script creates outlives the query: each table is worked out when a node after it needs it, as every node is.
+

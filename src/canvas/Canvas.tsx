@@ -22,7 +22,7 @@ import { droppedFiles } from '../sources/handles';
 import { FilesNotKeptBanner, ReconnectBanner } from '../sources/ReconnectBanner';
 import { useSession } from '../app/session';
 import { useFlowStore } from '../flow/status';
-import { JOIN_TYPES, projectSchema, ruleRefs } from '../compiler';
+import { fileSetMembers, JOIN_TYPES, projectSchema, ruleRefs, scriptTables } from '../compiler';
 import { qualified } from '../schema';
 import {
   canGroup,
@@ -142,9 +142,18 @@ function detailFor(node: GraphNode, sources: ReturnType<typeof useProject>['sour
     const n = edges.filter((e) => e.to.nodeId === node.id).length;
     return `Query · ${n} ${n === 1 ? 'table' : 'tables'}`;
   }
+  if (node.type === 'scriptTable') return `Script table · ${node.scriptTable.table || 'no table yet'}`;
+  if (node.type === 'sql') {
+    const n = scriptTables(node.sqlSpec.query).length;
+    return n ? `SQL script · ${n} ${n === 1 ? 'table' : 'tables'}` : undefined;
+  }
   if (node.type !== 'source') return undefined;
   const s = sources.find((x) => x.id === node.sourceId);
   if (!s) return 'Source';
+  if (s.kind === 'files' && s.fileSet) {
+    const n = fileSetMembers(s).length;
+    return `Source · ${n} ${formatLabel(s.format)} ${n === 1 ? 'file' : 'files'}`;
+  }
   if (s.kind === 'url' && s.url) return `${s.url.sample ? 'Sample' : hostOf(s.url.href)} · ${sourceFormatLabel(s)}`;
   return s.kind === 'clipboard' ? `Source · Pasted ${formatLabel(s.format)}` : `Source · ${sourceFormatLabel(s)}`;
 }

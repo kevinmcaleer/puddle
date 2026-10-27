@@ -10,7 +10,7 @@ import { readEntry } from '../archive';
 import { arrowColumns, readArrowFile } from '../arrow/read';
 import { openDatabase, readTable } from '../access/read';
 import { parseWorkbook, readSheet } from '../excel/read';
-import { compileAccessLoad, compileConnectionLoad, compileCount, compileExport, compileLoadCheck, compileRules, describeFailure, dropTable, exportFileName, fullData, readsCompressed, SchemaCache, sourceFileName, sourceTableName, str } from '../compiler';
+import { compileAccessLoad, compileConnectionLoad, compileCount, compileExport, compileLoadCheck, compileRules, describeFailure, dropTable, exportFileName, fileSetFileName, fileSetMembers, fullData, readsCompressed, SchemaCache, sourceFileName, sourceTableName, str } from '../compiler';
 import { nodeConnectors } from '../connect/node';
 import { readRequestOf } from '../connect/request';
 import type { Connector } from '../connect/types';
@@ -22,7 +22,8 @@ import { reportFiles, runReport } from './report';
 import type { QualityReport, ReportSource } from '../report/build';
 import { readFeed } from '../sources/odata';
 import { describeConnectionSource, type PlaceOptions } from './connections';
-import { placeSources, type SourcePlace } from './sources';
+import { listFileSets, placeSources, type SourcePlace } from './sources';
+import { listFolder } from './folder';
 import type { RunnerDb } from './db';
 import { tableToCsv, xmlToTable } from '../xml';
 import { loadPdfPages } from '../pdf/node';
@@ -109,6 +110,15 @@ async function stage(places: SourcePlace[], stageDir: string, { fetchText, fetch
     const { source } = p;
     if (p.path === undefined) {
       problems.set(source.id, p.reason);
+      continue;
+    }
+    if (source.kind === 'files') {
+      // Each file of the set beside the others, under the name the SQL reads it by.
+      try {
+        for (const f of fileSetMembers(source)) symlinkSync(join(p.path, f.name), join(stageDir, fileSetFileName(source.id, f)));
+      } catch (e) {
+        problems.set(source.id, `couldn’t be read: ${e instanceof Error ? e.message : String(e)}`);
+      }
       continue;
     }
     const target = join(stageDir, sourceFileName(source));
@@ -227,7 +237,7 @@ export interface Staged {
  */
 export async function stageProject(full: Project, opts: Pick<RunOptions, 'folder' | 'db' | 'fetchText' | 'fetchImpl' | 'connections' | 'connectors'>): Promise<Staged> {
   const stageDir = mkdtempSync(join(tmpdir(), 'puddle-run-'));
-  const places = placeSources(full, opts.folder, existsSync, opts.connections);
+  const places = placeSources(full, opts.folder, existsSync, opts.connections, listFolder);
   const loads = new Map<string, string>();
   const read = new Map<string, number>();
   const connectors = opts.connectors ?? (places.some((p) => p.connection) ? nodeConnectors({ files: [opts.folder] }) : undefined);
@@ -256,7 +266,8 @@ export async function runProject(project: Project, opts: RunOptions): Promise<{ 
   const now = opts.now ?? (() => new Date());
   const say = opts.log ?? (() => undefined);
   const started = now();
-  const full = fullData(project);
+  // A file set reads the files its folder holds now.
+  const full = listFileSets(fullData(project), opts.folder, existsSync, listFolder);
   mkdirSync(opts.outDir, { recursive: true });
   const outputs: OutputRun[] = [];
   let rules: RunLog['rules'] = {};
