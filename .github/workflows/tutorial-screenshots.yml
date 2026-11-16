@@ -14,7 +14,7 @@ jobs:
   retake:
     name: Retake the tutorial's screenshots
     if: github.event_name == 'workflow_dispatch' || (github.event.label.name == 'tutorial screenshots' && github.event.pull_request.head.repo.full_name == github.repository)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       contents: write
       pull-requests: write

@@ -12,7 +12,7 @@ concurrency:
 jobs:
   check:
     name: Lint, typecheck and unit tests
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -28,7 +28,7 @@ jobs:
     # Each browser's suite is split into shards that run as parallel jobs, each kept under about five minutes.
     # Chromium and Firefox run on every pull request; WebKit runs nightly, in nightly.yml.
     name: Playwright tests in ${{ matrix.browser }} (${{ matrix.shard }} of ${{ matrix.shards }})
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
       matrix:
@@ -128,7 +128,7 @@ jobs:
     # Retakes every screenshot from this commit's app, so a change that breaks one fails here, then builds the user
     # guide with warnings as errors. The pictures are kept as an artifact to compare with the committed ones.
     name: User guide and screenshots
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -165,7 +165,7 @@ jobs:
 
   container:
     name: Container image and deployment tests
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -218,7 +218,7 @@ jobs:
   runner:
     name: puddle-run image
     if: github.event_name != 'schedule'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     # The connection-sources project in the container reads a SQLite file beside it and this PostgreSQL, with the
     # secret from a PUDDLE_SECRETS file; the container shares the host's network to reach localhost:5432.
     services:
@@ -293,7 +293,7 @@ jobs:
   connect:
     name: puddle-connect
     if: github.event_name != 'schedule'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -341,7 +341,7 @@ jobs:
     # the log.
     name: ${{ matrix.name }} driver
     if: github.event_name != 'schedule'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
       matrix:
@@ -511,7 +511,7 @@ jobs:
     name: Publish the image
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     needs: [check, e2e, container, runner, connect, databases]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       contents: read
       packages: write
