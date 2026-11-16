@@ -11,7 +11,7 @@ const syncState = (page: Page) => page.getByTestId('sync-state');
 
 async function rename(page: Page, name: string) {
   await projectMenu(page, 'Rename');
-  await page.getByRole('textbox', { name: 'Name' }).fill(name);
+  await page.getByRole('dialog').getByRole('textbox', { name: 'Name', exact: true }).fill(name);
   await page.getByRole('button', { name: 'Rename' }).click();
   await expect(page.getByTestId('project-menu')).toContainText(name);
 }

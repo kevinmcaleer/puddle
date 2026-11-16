@@ -43,6 +43,7 @@ import {
   parsePort,
   removeNodes,
   renameGroup,
+  renameNode,
   samePort,
   setCollapsed,
   setGroupCollapsed,
@@ -229,6 +230,7 @@ function NodeMenu({ at, onClose, onRename, onGrouped }: { at: { x: number; y: nu
   const group = groupId ? groupById(project, groupId) : groupOf(project, at.flowId);
   const items: MenuItem[] = [];
   if (!groupId) {
+    items.push({ label: 'Rename…', shortcut: shortcutText('rename'), onSelect: () => useSession.getState().askRename(at.flowId) });
     // Right-clicking a node outside the selection acts on that node alone, as in a file manager.
     const ids = selected.includes(at.flowId) ? selected : [at.flowId];
     const check = canMakeGroup(project, ids);
@@ -288,6 +290,35 @@ function RenameGroup({ groupId, onClose }: { groupId: string; onClose: () => voi
     >
       <Field label="Name" htmlFor="group-name">
         <TextInput id="group-name" data-autofocus value={name} onChange={(e) => setName(e.target.value)} />
+      </Field>
+    </Dialog>
+  );
+}
+
+/** The dialog a node is renamed in, from its menu or F2: the name its card, the results and SQL know it by. */
+function RenameNode() {
+  const nodeId = useSession((s) => s.renamingNodeId);
+  const node = useProjectStore((s) => (nodeId ? nodeById(s.history.present, nodeId) : undefined));
+  if (!node) return null;
+  return <RenameNodeDialog key={node.id} nodeId={node.id} current={node.name} />;
+}
+
+function RenameNodeDialog({ nodeId, current }: { nodeId: string; current: string }) {
+  const [name, setName] = useState(current);
+  const close = () => useSession.getState().askRename(null);
+  return (
+    <Dialog
+      title="Rename node"
+      confirm="Rename"
+      confirmDisabled={!name.trim()}
+      onClose={close}
+      onConfirm={() => {
+        useProjectStore.getState().apply((p) => renameNode(p, nodeId, name));
+        close();
+      }}
+    >
+      <Field label="Name" htmlFor="rename-node-name" hint="Shown on the canvas and in the results. SQL that reads this node by name needs the new name.">
+        <TextInput id="rename-node-name" data-autofocus value={name} onChange={(e) => setName(e.target.value)} />
       </Field>
     </Dialog>
   );
@@ -616,6 +647,7 @@ export function Canvas({ onAddSource, onLayout }: { onAddSource: () => void; onL
       {selectedNodeIds.length > 1 && <GroupBar ids={selectedNodeIds} onGrouped={setSelectedGroup} />}
       <ConnectorMenu />
       {menu && <NodeMenu at={menu} onClose={() => setMenu(null)} onRename={setRenaming} onGrouped={setSelectedGroup} />}
+      <RenameNode />
       {renaming && <RenameGroup groupId={renaming} onClose={() => setRenaming(null)} />}
 
       <div className="pointer-events-none absolute left-4 right-4 top-4 z-panel mx-auto flex max-w-[560px] flex-col gap-2 [&>*]:pointer-events-auto">

@@ -12,7 +12,7 @@ const report = (err: unknown) => useSession.getState().notify({ tone: 'fail', te
  * "Choose file": connect a detached source to its file again. Where the browser keeps file handles (Chromium) the
  * picker's handle is kept too, so next time the file reconnects with a click.
  */
-export function ReattachButton({ source, label = 'Choose file' }: { source: Source; label?: string }) {
+export function ReattachButton({ source, label = 'Choose file', variant = 'primary' }: { source: Source; label?: string; variant?: 'primary' | 'ghost' }) {
   const input = useRef<HTMLInputElement>(null);
   const choose = async () => {
     let picked: PickedFile[] | null;
@@ -27,7 +27,7 @@ export function ReattachButton({ source, label = 'Choose file' }: { source: Sour
   };
   return (
     <>
-      <Button size="sm" variant="primary" icon="source" onClick={() => void choose()}>{label}</Button>
+      <Button size="sm" variant={variant} icon="source" onClick={() => void choose()}>{label}</Button>
       <input
         ref={input}
         type="file"

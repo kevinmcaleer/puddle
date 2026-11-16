@@ -2,7 +2,7 @@ import { whenEngine } from '../app/engine';
 import { useSession } from '../app/session';
 import { isRewritten, sourceFileName } from '../compiler';
 import { updateSource, useProjectStore, type Project, type Source } from '../model';
-import { registerSourceFile, rememberFile, sourceFile } from './add';
+import { readByDuckDb, registerSourceFile, rememberFile, sourceFile } from './add';
 import { markAttached, useAttachments, type Attachment } from './attachments';
 import { extensionOf, formatFromName, knownFormat, SourceError, TEXT_EXTENSIONS } from './detect';
 import { keepHandle, offerHandles, settleSource, supportsFileHandles, useReconnect, type FileHandle } from './handles';
@@ -72,18 +72,20 @@ export async function reattachFile(source: Source, file: File, handle?: FileHand
   const hash = await headHash(file);
   const same = source.file?.headHash === hash;
   const engine = await whenEngine();
+  // The source as it is once this file is in use. The name DuckDB reads some files by follows the file's hash (one
+  // from an archive, say), so the file is registered under the name the source will read, not the one it had.
+  const next = { ...source, file: { ...source.file, originalName: file.name, size: file.size, lastModified: file.lastModified, headHash: hash } };
+  if (readByDuckDb(source.format) && sourceFileName(next) !== sourceFileName(source)) await engine.dropFile(sourceFileName(source)).catch(() => undefined);
   // Excel, Access and XML are read again once the file is remembered (see ./excel, ./access and ./xml).
-  if (isArchiveSource(source)) await attachArchive(engine, source, file);
+  if (isArchiveSource(next)) await attachArchive(engine, next, file);
   else {
-    await registerSourceFile(engine, source, file);
+    await registerSourceFile(engine, next, file);
     rememberFile(source.id, file);
   }
   keepHandle(source.id, handle);
   settleSource(source.id);
   // Record the file now in use, so the upstream key (and every cached result) follows the new bytes.
-  useProjectStore.getState().amend((p) =>
-    updateSource(p, source.id, { file: { ...source.file, originalName: file.name, size: file.size, lastModified: file.lastModified, headHash: hash } }),
-  );
+  useProjectStore.getState().amend((p) => updateSource(p, source.id, { file: next.file }));
   // A source with no file yet (one opened from a recipe) has nothing to compare against: its columns are checked instead.
   const state: Attachment = same || !source.file ? 'attached' : 'mismatch';
   markAttached(source.id, state);

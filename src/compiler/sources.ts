@@ -43,6 +43,20 @@ export function sourceFileName(source: Source): string {
 }
 
 /**
+ * A message from DuckDB with the names it knows the project's files by (src_s1ab_0c2f.parquet) put back as the names
+ * the user knows: the file chosen, or the file inside an archive and the archive it is in.
+ */
+export function withFileNames(message: string, sources: Source[]): string {
+  let out = message;
+  for (const s of sources) {
+    if (s.kind !== 'file' && s.kind !== 'url' && s.kind !== 'clipboard') continue;
+    const chosen = s.file?.originalName ?? s.name;
+    out = out.split(sourceFileName(s)).join(s.archive ? `${s.archive.entry} in ${chosen}` : chosen);
+  }
+  return out;
+}
+
+/**
  * Excel is parsed by SheetJS into an Arrow table and registered as a table, not read as a file, and so is a table
  * of an Access database (read by mdb-reader). The name follows the file and the read options, so a table read with
  * other options (or from another file) is never mistaken for it.

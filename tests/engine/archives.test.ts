@@ -2,6 +2,7 @@
 // a zip opened for the file inside with its other files added as sources, a gzipped workbook unpacked for SheetJS,
 // and an Arrow file loaded as a typed table.
 import { readFileSync } from 'node:fs';
+import { gzipSync } from 'node:zlib';
 import { join } from 'node:path';
 import { useEngineStore } from '../../src/app/engine';
 import { compile, readsCompressed, sourceFileName, sourceTableName } from '../../src/compiler';
@@ -114,6 +115,19 @@ describe('a zip archive', () => {
     expect(await reattachFile(sourceOf(s.id), fixture('orders.zip'))).toBe('attached');
     expect(sourceArchive(s.id)?.name).toBe('orders.zip');
     expect((await rows(s.id)).length).toBe(5);
+  });
+});
+
+describe('an archive chosen again after it changed', () => {
+  // Regression: the changed archive was registered under the name of the old one, so the source read a file DuckDB
+  // didn't have ("File 'src_..._....parquet' too small to be a Parquet file", "No files found that match the pattern").
+  it('is read under its new name, and says it looks different', async () => {
+    const s = await addFileSource(fixture('orders.csv.gz'));
+    const before = sourceFileName(sourceOf(s.id));
+    const changed = new File([gzipSync('order_id,total\n1,2.5\n2,4\n3,6\n') as Uint8Array<ArrayBuffer>], 'orders.csv.gz');
+    expect(await reattachFile(sourceOf(s.id), changed)).toBe('mismatch');
+    expect(sourceFileName(sourceOf(s.id))).not.toBe(before);
+    expect(await rows(s.id)).toEqual([{ order_id: 1, total: 2.5 }, { order_id: 2, total: 4 }, { order_id: 3, total: 6 }]);
   });
 });
 
