@@ -31,6 +31,19 @@ describe('toEngineError', () => {
     expect(e.detail).toBe(raw);
   });
 
+  it('reads an error DuckDB gives as JSON like any other', () => {
+    const json = JSON.stringify({ exception_type: 'Parser', exception_message: 'syntax error at or near "WHERE"\n\nLINE 48: FILTER ((WHERE x), \'0\') AS po_n...\n                 ^', error_subtype: 'SYNTAX_ERROR' });
+    const e = toEngineError(new Error(json));
+    expect(e.code).toBe('syntax');
+    expect(e.message).toBe('The SQL couldn\'t be read: syntax error at or near "WHERE". Check the expression for typos.');
+    expect(e.detail).toMatch(/^Parser Error: syntax error at or near "WHERE"\n\nLINE 48: FILTER/);
+    // Each kind is told apart as before.
+    expect(toEngineError(new Error(JSON.stringify({ exception_type: 'Binder', exception_message: 'Referenced column "totl" not found in FROM clause!' }))).message).toMatch(/^Column totl doesn't exist/);
+    expect(toEngineError(new Error(JSON.stringify({ exception_type: 'INTERRUPT', exception_message: 'Interrupted!' }))).code).toBe('cancelled');
+    // Text that only looks like it is left as it is.
+    expect(toEngineError(new Error('{"exception_type": broken}')).message).toBe('{"exception_type": broken}');
+  });
+
   it('passes EngineErrors through', () => {
     const e = new EngineError('io', 'x');
     expect(toEngineError(e)).toBe(e);

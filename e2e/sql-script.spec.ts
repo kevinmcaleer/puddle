@@ -59,3 +59,31 @@ test('several files become one source, and a SQL script over them makes a node f
   await expect(page.getByTestId('inspector-sql').getByText('This script can’t run')).toBeVisible();
   await expect(page.getByTestId('inspector-sql')).toContainText('In users: no file wired into this node is called sap_users.csv.');
 });
+
+test('a script DuckDB refuses says why in plain words, with the line of the script', async ({ page }) => {
+  await openApp(page);
+  const chooser = page.waitForEvent('filechooser');
+  await page.getByRole('button', { name: 'Add', exact: true }).click();
+  await page.getByRole('menuitem', { name: /Files as one table/ }).click();
+  await (await chooser).setFiles(['log-2024-01.csv', 'log-2024-02.csv'].map((f) => fixture(`doclog/${f}`)));
+  await expect(node(page, 'CSV files')).toHaveAttribute('data-status', 'ok', { timeout: 20_000 });
+  await page.getByRole('button', { name: 'Add', exact: true }).click();
+  await page.getByRole('menuitem', { name: /^SQL/ }).click();
+
+  // FILTER written as a function: a syntax error on the script's line 6, far further down what Puddle sends.
+  const query = page.getByLabel('SQL query');
+  await query.fill(`CREATE OR REPLACE TABLE log AS
+SELECT "Document ID" AS docid, "User Name" AS user_name FROM input1;
+
+CREATE OR REPLACE TABLE doc_user AS
+SELECT docid,
+FILTER ((WHERE user_name IS NOT NULL), '0') AS user_name
+FROM log
+GROUP BY docid`);
+  await query.press('Control+Enter');
+  await expect(node(page, 'SQL 1')).toHaveAttribute('data-status', 'error', { timeout: 20_000 });
+  const refused = page.getByRole('alert').filter({ hasText: 'DuckDB refused the script' });
+  await expect(refused).toContainText(`The SQL couldn't be read: syntax error at or near "WHERE".`);
+  await expect(refused).toContainText("Line 6: FILTER ((WHERE user_name IS NOT NULL), '0') AS user_name");
+  await expect(refused).not.toContainText('exception_type');
+});

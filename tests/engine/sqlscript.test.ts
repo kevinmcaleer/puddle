@@ -4,6 +4,7 @@ import { readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { compile, fileSetFileName } from '../../src/compiler';
 import { EngineClient, tableRows } from '../../src/engine/client';
+import { evaluateFlow, invalidateCaches, useFlowStore } from '../../src/flow/status';
 import type { FileSetFile, Source } from '../../src/model';
 import { createNodeBackend } from '../helpers/nodeBackend';
 import { flow, src } from '../helpers/projects';
@@ -141,5 +142,28 @@ describe('a file set', () => {
     const all = tableRows((await engine.query(compile(project('SELECT 1', only), { nodeId: 'logs' }).sql)).table);
     expect(new Set(all.map((r) => r.file))).toEqual(new Set(['log-2024-01.csv', 'log-2024-02.csv']));
     expect(Object.keys(all[0]!)).not.toContain('__puddle_file');
+  });
+});
+
+describe('a script DuckDB refuses', () => {
+  // Kev's: FILTER written as a function. DuckDB counts the lines of everything Puddle sends; the message counts his.
+  const BAD = `CREATE OR REPLACE TABLE log AS
+SELECT "Document ID" AS docid, "User Name" AS po_number
+FROM read_csv('*.csv', union_by_name = true);
+
+CREATE OR REPLACE TABLE doc_po AS
+SELECT docid,
+FILTER ((WHERE nullif(trim(po_number),'') IS NOT NULL), '0') AS po_number
+FROM log
+GROUP BY docid;`;
+
+  it('says which line of the script, in the script’s own line numbers', async () => {
+    invalidateCaches();
+    await evaluateFlow(engine, project(BAD));
+    const status = useFlowStore.getState().nodes.script!.status;
+    expect(status).toMatchObject({ state: 'error' });
+    expect(status.state === 'error' && status.message).toBe(
+      `The SQL couldn't be read: syntax error at or near "WHERE". Check the expression for typos. Line 7: FILTER ((WHERE nullif(trim(po_number),'') IS NOT NULL), '0') AS po_number`,
+    );
   });
 });

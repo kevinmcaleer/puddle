@@ -1,6 +1,6 @@
 import { useCallback } from 'react';
 import { useSession } from '../app/session';
-import { compile, customSqlErrorLine, isScript, scriptTables, splitScript, sqlInputNames, sqlNodeFiles, sqlProblem, sqlTableMarks } from '../compiler';
+import { isScript, scriptTables, splitScript, sqlInputNames, sqlNodeFiles, sqlProblem, sqlTableMarks } from '../compiler';
 import { useFlowStore, useNodeStatus } from '../flow/status';
 import { addScriptTableNodes, inputEdges, nodeById, outputEdges, renameNode, setSqlQuery, syncScriptTables, useProject, useProjectStore, type ColumnSchema, type Project, type SqlNode } from '../model';
 import { CommitInput } from '../steps/CommitInput';
@@ -12,16 +12,6 @@ import { Banner, Button, Field, Section } from '../ui';
 const LISTED = 6;
 
 const apply = (edit: (p: Project) => Project) => useProjectStore.getState().apply(edit);
-
-/** Where DuckDB's error points, in the query's own line numbers. */
-function errorLineOf(project: Project, node: SqlNode, message: string) {
-  if (isScript(node.sqlSpec.query)) return undefined;
-  try {
-    return customSqlErrorLine(compile(project, { nodeId: node.id }).sql, node.sqlSpec.query, message);
-  } catch {
-    return undefined;
-  }
-}
 
 /** The inspector for a SQL node: its name, the tables its query may read, and the query itself. */
 export function SqlPanel({ node }: { node: SqlNode }) {
@@ -54,7 +44,6 @@ export function SqlPanel({ node }: { node: SqlNode }) {
   const commit = (query: string) => apply((p) => syncScriptTables(setSqlQuery(p, node.id, query), node.id, tables, scriptTables(query)));
   // Each table the query names, as it is typed: found (and which node it is) or not.
   const marks = useCallback((text: string) => sqlTableMarks(project, node.id, text), [project, node.id]);
-  const errorLine = status.state === 'error' && !problem ? errorLineOf(project, node, status.message) : undefined;
 
   return (
     <div data-testid="inspector-sql">
@@ -117,7 +106,6 @@ export function SqlPanel({ node }: { node: SqlNode }) {
           {!problem && status.state === 'error' && (
             <Banner tone="fail" title={script ? 'DuckDB refused the script' : 'DuckDB refused the query'}>
               {status.message}
-              {errorLine && <div className="mt-1 font-mono text-label">Line {errorLine.line} of the query: {errorLine.text}</div>}
             </Banner>
           )}
         </div>

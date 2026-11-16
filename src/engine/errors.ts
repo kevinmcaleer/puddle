@@ -35,10 +35,27 @@ export const isStopped = (e: unknown): e is EngineError => e instanceof EngineEr
 
 const firstLine = (s: string) => s.split('\n')[0]!.trim();
 
+/**
+ * DuckDB's own text for an error. A query sent to be streamed (as the browser sends them) can fail with the error as
+ * JSON, {"exception_type":"Parser","exception_message":"..."}; that is put back as "Parser Error: ...", the form
+ * everything here reads.
+ */
+function plainText(raw: string): string {
+  const json = /\{\s*"exception_type"[\s\S]*\}\s*$/.exec(raw);
+  if (!json) return raw;
+  try {
+    const parsed = JSON.parse(json[0]) as { exception_type?: unknown; exception_message?: unknown };
+    if (typeof parsed.exception_message !== 'string') return raw;
+    return typeof parsed.exception_type === 'string' && parsed.exception_type ? `${parsed.exception_type} Error: ${parsed.exception_message}` : parsed.exception_message;
+  } catch {
+    return raw;
+  }
+}
+
 /** Turn whatever DuckDB threw into an EngineError that says what happened and how to fix it. */
 export function toEngineError(e: unknown): EngineError {
   if (e instanceof EngineError) return e;
-  const raw = e instanceof Error ? e.message : String(e);
+  const raw = plainText(e instanceof Error ? e.message : String(e));
   const line = firstLine(raw);
   const body = line.replace(/^[A-Za-z ]+ Error:\s*/, '');
 
