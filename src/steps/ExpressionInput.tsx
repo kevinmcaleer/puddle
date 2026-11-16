@@ -1,7 +1,8 @@
-import { useLayoutEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { ColumnSchema } from '../model';
 import { appUndo, columnKind, cx, TypeTag } from '../ui';
 import { insertColumn, suggest, wordAt } from './expression';
+import { markedPieces, type TextMark } from './marks';
 
 /**
  * A DuckDB SQL expression editor: monospace, commits on blur or Ctrl+Enter, and suggests the step's columns
@@ -16,6 +17,8 @@ export function ExpressionInput({
   placeholder,
   'aria-label': ariaLabel,
   onCommit,
+  marks,
+  onPoint,
 }: {
   id: string;
   value: string;
@@ -27,6 +30,10 @@ export function ExpressionInput({
   /** For an editor with no visible label of its own. */
   'aria-label'?: string;
   onCommit: (v: string) => void;
+  /** The marks for the text as it is being typed, such as the tables a query names. With it the text is drawn coloured. */
+  marks?: (text: string) => TextMark[];
+  /** The mark under the pointer, else the one the caret is in while the editor has focus; undefined when neither. */
+  onPoint?: (mark: TextMark | undefined) => void;
 }) {
   const [draft, setDraft] = useState(value);
   const [caret, setCaret] = useState(0);
@@ -42,6 +49,45 @@ export function ExpressionInput({
   });
   const matches = open ? suggest(columns, wordAt(draft, caret).word) : [];
 
+  const under = useRef<HTMLPreElement>(null);
+  const pieces = useMemo(() => (marks ? markedPieces(draft, marks(draft)) : undefined), [marks, draft]);
+  const [hovered, setHovered] = useState<TextMark | undefined>();
+  const [focused, setFocused] = useState(false);
+  const atCaret = focused ? pieces?.find((p) => p.mark && p.mark.start <= caret && caret <= p.mark.end)?.mark : undefined;
+  const pointed = hovered ?? atCaret;
+  const pointedKey = pointed ? `${pointed.start}:${pointed.end}:${pointed.nodeId ?? ''}` : '';
+  // The latest callback and mark, for effects that run only when the mark pointed at changes.
+  const latest = useRef({ onPoint, pointed });
+  useEffect(() => {
+    latest.current = { onPoint, pointed };
+  });
+  useEffect(() => latest.current.onPoint?.(latest.current.pointed), [pointedKey]);
+  // Nothing stays pointed at once the editor has gone.
+  useEffect(() => () => latest.current.onPoint?.(undefined), []);
+  // The coloured copy wraps where the textarea does (it loses the scrollbar's width) and scrolls with it.
+  const fit = () => {
+    const [el, pre] = [ref.current, under.current];
+    if (!el || !pre) return;
+    pre.style.paddingRight = `calc(var(--space-2) + ${el.offsetWidth - el.clientWidth - 2 * el.clientLeft}px)`;
+    pre.scrollTop = el.scrollTop;
+  };
+  useLayoutEffect(() => {
+    if (!marks) return;
+    fit();
+    const el = ref.current;
+    if (!el || typeof ResizeObserver === 'undefined') return;
+    const observer = new ResizeObserver(fit);
+    observer.observe(el);
+    return () => observer.disconnect();
+  });
+  /** The mark whose drawn text is under a point on screen. */
+  const markAt = (x: number, y: number): TextMark | undefined => {
+    for (const span of under.current?.querySelectorAll<HTMLElement>('[data-mark]') ?? []) {
+      for (const r of span.getClientRects()) if (x >= r.left && x <= r.right && y >= r.top && y <= r.bottom) return pieces?.[Number(span.dataset.mark)]?.mark;
+    }
+    return undefined;
+  };
+
   const pick = (column: string) => {
     const next = insertColumn(draft, caret, column);
     setDraft(next.text);
@@ -51,7 +97,22 @@ export function ExpressionInput({
   };
 
   return (
-    <div className="relative">
+    <div className={cx('relative', marks && 'puddle-sql')}>
+      {pieces && (
+        <pre ref={under} aria-hidden="true" data-testid={`${id}-marks`} className="ui-input is-mono puddle-sql__under py-1">
+          {pieces.map((p, i) =>
+            p.mark ? (
+              <span key={i} data-mark={i} data-found={p.mark.found} className={cx(p.mark.found ? 'sql-table-found' : 'sql-table-missing', pointed && p.mark.start === pointed.start && p.mark.end === pointed.end && 'is-pointed')}>
+                {p.text}
+              </span>
+            ) : (
+              p.text
+            ),
+          )}
+          {/* A last empty line has height in a textarea; give it one here too. */}
+          {draft.endsWith('\n') ? ' ' : ''}
+        </pre>
+      )}
       <textarea
         ref={ref}
         id={id}
@@ -63,7 +124,11 @@ export function ExpressionInput({
         aria-expanded={matches.length > 0}
         aria-controls={`${id}-columns`}
         aria-autocomplete="list"
-        className={cx('ui-input is-mono h-auto resize-y py-1', error && 'is-error')}
+        className={cx('ui-input is-mono h-auto resize-y py-1', error && 'is-error', marks && 'puddle-sql__text')}
+        onScroll={marks ? fit : undefined}
+        onFocus={marks ? () => setFocused(true) : undefined}
+        onMouseMove={marks ? (e) => setHovered(markAt(e.clientX, e.clientY)) : undefined}
+        onMouseLeave={marks ? () => setHovered(undefined) : undefined}
         value={draft}
         {...appUndo(draft === value)}
         onChange={(e) => {
@@ -74,6 +139,7 @@ export function ExpressionInput({
         }}
         onSelect={(e) => setCaret(e.currentTarget.selectionStart)}
         onBlur={() => {
+          setFocused(false);
           setOpen(false);
           if (draft !== value) onCommit(draft);
         }}

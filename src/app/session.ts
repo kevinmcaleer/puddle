@@ -42,6 +42,9 @@ interface SessionState {
   connectFrom: string | null;
   /** The menu a click on a node's output connector opened: the node, and where on screen the menu sits. */
   connectorMenu: { nodeId: string; x: number; y: number } | null;
+  /** The node a table name under the pointer (or caret) in a SQL editor means, marked on the canvas while it is. */
+  pointedNodeId: string | null;
+  pointAt: (id: string | null) => void;
   select: (id: string | null) => void;
   toggleSelected: (id: string) => void;
   selectStep: (id: string | null) => void;
@@ -94,6 +97,8 @@ export const useSession = create<SessionState>((set) => ({
   connectFrom: null,
   revealIssues: null,
   connectorMenu: null,
+  pointedNodeId: null,
+  pointAt: (pointedNodeId) => set((s) => (s.pointedNodeId === pointedNodeId ? s : { pointedNodeId })),
   // Picking a node shows it in the inspector's Node tab.
   select: (id) => set((s) => ({ selectedNodeId: id, selectedNodeIds: id ? [id] : [], selectedStepId: null, inspectorTab: id ? 'node' : s.inspectorTab })),
   toggleSelected: (id) =>

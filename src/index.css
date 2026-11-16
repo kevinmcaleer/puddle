@@ -70,3 +70,15 @@
   border-bottom: 1px solid var(--line);
   background: var(--surface-panel);
 }
+
+/* A SQL editor that marks the tables it names: the coloured copy sits under the textarea, whose own text is clear.
+   Both take ui-input's box and font, so every character lands on its twin. */
+.puddle-sql { position: relative; }
+.puddle-sql__under,
+.puddle-sql__text { display: block; margin: 0; white-space: pre-wrap; overflow-wrap: break-word; font-variant-ligatures: none; tab-size: 2; }
+.puddle-sql__under { position: absolute; inset: 0; height: auto; overflow: hidden; pointer-events: none; border-color: transparent; background: var(--surface-sunken); color: var(--ink); }
+.puddle-sql__text { position: relative; background: transparent; color: transparent; caret-color: var(--ink); }
+.puddle-sql__text::selection { background: var(--brand-tint); color: transparent; }
+.sql-table-found { color: var(--pass); font-weight: 600; text-decoration: underline; text-underline-offset: 3px; }
+.sql-table-missing { color: var(--fail); font-weight: 600; text-decoration: underline wavy var(--fail); text-decoration-skip-ink: none; text-underline-offset: 3px; }
+.sql-table-found.is-pointed { background: var(--pass-tint); border-radius: var(--radius-xs); }

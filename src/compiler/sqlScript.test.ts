@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { flow, src } from '../../tests/helpers/projects';
-import { compile, sqlNodeFiles, sqlProblem } from './compile';
+import { compile, sqlNodeFiles, sqlProblem, sqlTableMarks } from './compile';
 import { UnwiredError } from './errors';
 import { fileSetFileName } from './fileSet';
-import { compileScript, isScript, liftFileReads, readScript, scriptTables, splitScript, type ScriptFile } from './sqlScript';
+import { compileScript, isScript, liftFileReads, readScript, scriptTableRefs, scriptTables, splitScript, type ScriptFile } from './sqlScript';
 
 const files: ScriptFile[] = [
   { name: 'log-1.parquet', registered: 'src_s_1.parquet' },
@@ -181,5 +181,70 @@ describe('SQL written on other nodes', () => {
     expect(compile(p('SELECT 1 AS one'), { nodeId: 'q' }).sql).toBe('WITH "n_q" AS (SELECT * FROM (\nSELECT 1 AS one\n))\nSELECT * FROM "n_q"');
     expect(() => compile(p('SELECT * FROM input1'), { nodeId: 'q' })).toThrow(UnwiredError);
     expect(() => compile(p(''), { nodeId: 'q' })).toThrow('q has no inputs. Connect a wire into it.');
+  });
+});
+
+describe('the tables a query names, for its editor to mark', () => {
+  const at = (sql: string, refs: { start: number; end: number }[]) => refs.map((r) => sql.slice(r.start, r.end));
+
+  it('finds each table after FROM and JOIN, known or not, and leaves CTEs, columns, functions and files alone', () => {
+    const sql = `WITH big AS (SELECT * FROM input1 WHERE total > 5)\nSELECT b.total, "from" FROM big b JOIN Orders o ON o.id = b.id, nowhere n\nCROSS JOIN range(3) LEFT JOIN 'users.csv' u ON true`;
+    const refs = scriptTableRefs(sql, ['input1', 'orders']);
+    expect(at(sql, refs)).toEqual(['input1', 'Orders', 'nowhere']);
+    expect(refs.map((r) => r.kind)).toEqual(['input', 'input', 'unknown']);
+  });
+
+  it('reads on past a table that isn’t there, where the check stops', () => {
+    const sql = 'SELECT * FROM missing m JOIN input1 i ON i.id = m.id';
+    expect(scriptTableRefs(sql, ['input1']).map((r) => [r.name, r.kind])).toEqual([
+      ['missing', 'unknown'],
+      ['input1', 'input'],
+    ]);
+  });
+
+  it('marks a table where a script creates it and where later statements read it, not before', () => {
+    const sql = 'CREATE TABLE a AS SELECT * FROM b;\nCREATE OR REPLACE TABLE "B" AS (SELECT * FROM a JOIN input1 USING (id));\nSELECT * FROM b';
+    const refs = scriptTableRefs(sql, ['input1']);
+    expect(refs.map((r) => [sql.slice(r.start, r.end), r.kind])).toEqual([
+      ['a', 'made'],
+      ['b', 'unknown'],
+      ['"B"', 'made'],
+      ['a', 'made'],
+      ['input1', 'input'],
+      ['b', 'made'],
+    ]);
+  });
+
+  it('marks nothing while the text can’t be read', () => {
+    expect(scriptTableRefs('CREATE TABLE', ['input1'])).toEqual([]);
+    expect(scriptTableRefs("SELECT 'open FROM input1", ['input1'])).toEqual([]);
+    expect(scriptTableRefs('', ['input1'])).toEqual([]);
+  });
+
+  it('gives each mark the node on the canvas it means: the node wired in, or the table’s own node', () => {
+    const orders = src({ id: 'orders', format: 'csv' });
+    const p = flow({
+      sources: [orders],
+      nodes: [
+        { id: 'o', type: 'source', sourceId: 'orders', name: 'Orders' },
+        { id: 'q', type: 'sql' },
+        { id: 't', type: 'scriptTable', scriptTable: { table: 'Big' } },
+        { id: 'other', type: 'transform', name: 'elsewhere' },
+      ],
+      wires: [
+        ['o', 'q', 0],
+        ['q', 't'],
+      ],
+    });
+    const sql = 'CREATE TABLE big AS SELECT * FROM orders; CREATE TABLE small AS SELECT * FROM input JOIN elsewhere USING (id); SELECT * FROM big';
+    expect(sqlTableMarks(p, 'q', sql).map((m) => [sql.slice(m.start, m.end), m.found, m.nodeId])).toEqual([
+      ['big', true, 't'],
+      ['orders', true, 'o'],
+      ['small', true, undefined],
+      ['input', true, 'o'],
+      ['elsewhere', false, undefined],
+      ['big', true, 't'],
+    ]);
+    expect(sqlTableMarks(p, 'other', sql)).toEqual([]);
   });
 });
