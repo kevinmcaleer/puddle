@@ -115,6 +115,14 @@ export function pivotValuesSpec(spec: QuerySpec, fieldId: string): QuerySpec | u
   return { ...spec, fields: [own, ...filters], totals: false, distinct: true, limit: MAX_PIVOT_COLUMNS + 1, sql: undefined };
 }
 
+/**
+ * The SQL that reads a field's pivot values from the compiled pivotValuesSpec design: each value as DuckDB writes it
+ * as text, which is what the pivot columns compare with (CAST(field AS VARCHAR) = value). Turning the values into text
+ * in the browser instead gives other text for most types (a date as milliseconds, 8.0 as 8, a decimal's digits).
+ * Kept in the field's own order.
+ */
+export const pivotValuesSql = (probeSql: string) => `SELECT CAST(${ident('v')} AS VARCHAR) AS ${ident('v')}\nFROM (\n${probeSql}\n) AS ${ident('p')}(${ident('v')})\nORDER BY ${ident('p')}.${ident('v')} ASC`;
+
 /** How a pivot value reads in a column name: an empty text value would vanish. */
 export const pivotLabel = (value: string) => (value === '' ? '(empty)' : value);
 

@@ -38,7 +38,7 @@ export { compileJoin, JOIN_TYPES, joinColumns, joinProblems, keepsRightColumns, 
 export { compileLookup, lookupColumns, suggestLookupColumns, lookupProblems, type LookupColumn, type LookupProblem } from './lookup';
 export { KeptBook, keptTable, keptTableName, knownKept, type KeptTable } from './keptBook';
 export { appendColumns, appendProblems, compileAppend, type AppendColumn, type AppendInput, type AppendProblem } from './append';
-export { compileQuery, CRITERIA_OPS, criteriaClauses, criteriaPlace, criteriaRows, crossJoinedTables, defaultNames, fieldTerm, fieldTotal, joinPlan, MAX_PIVOT_COLUMNS, pivotField, pivotLabel, pivotValuesSpec, QUERY_JOIN_TYPES, queryColumns, queryProblems, resultType, tableAlias, TOTALS, totalsProblems, type QueryColumn, type QueryJoinStep, type QueryProblem, type QueryTable } from './query';
+export { compileQuery, CRITERIA_OPS, criteriaClauses, criteriaPlace, criteriaRows, crossJoinedTables, defaultNames, fieldTerm, fieldTotal, joinPlan, MAX_PIVOT_COLUMNS, pivotField, pivotLabel, pivotValuesSpec, pivotValuesSql, QUERY_JOIN_TYPES, queryColumns, queryProblems, resultType, tableAlias, TOTALS, totalsProblems, type QueryColumn, type QueryJoinStep, type QueryProblem, type QueryTable } from './query';
 export { compileQuerySql, designSql, querySqlNames, querySqlProblem, readQuerySql, type QuerySqlReading } from './querySql';
 export { knownSchemas, SchemaBook } from './schemaBook';
 export { cleanCustomSql, customSqlProblem, INPUT_NAME, lexSql, SqlRefusal, sqlTableRefs, type SqlTableRef, type SqlToken, type SqlTokenKind } from './customSql';
