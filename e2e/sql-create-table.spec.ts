@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { addFiles, expectRows, fixture, node, openApp, selectNode } from './helpers/app';
+import { addFiles, expectRows, expectSql, fixture, node, openApp, selectNode, sqlText } from './helpers/app';
 
 test('CREATE OR REPLACE TABLE in a Query’s SQL view makes a table with a node of its own on the canvas', async ({ page }) => {
   await openApp(page);
@@ -46,7 +46,7 @@ test('CREATE TABLE in the console adds a SQL node and the table’s node, only w
   await expect(page.locator('.react-flow__node')).toHaveCount(3);
   await expect(node(page, 'SQL 1')).toHaveAttribute('data-status', 'ok', { timeout: 20_000 });
   await expect(node(page, 'big_orders')).toHaveAttribute('data-status', 'ok', { timeout: 20_000 });
-  await expect(page.getByLabel('SQL query')).toHaveValue('CREATE OR REPLACE TABLE big_orders AS SELECT * FROM input WHERE total > 5');
+  await expectSql(page.getByLabel('SQL query'), 'CREATE OR REPLACE TABLE big_orders AS SELECT * FROM input WHERE total > 5');
   await selectNode(page, 'big_orders');
   await expectRows(page, 3);
 });
@@ -59,7 +59,7 @@ test('Add › Table from SQL makes a table on the canvas from a query, with noth
   // A SQL node that makes its rows itself, and the table it creates as a node after it.
   await expect(node(page, 'SQL 1')).toHaveAttribute('data-status', 'ok', { timeout: 30_000 });
   await expect(node(page, 'table1')).toHaveAttribute('data-status', 'ok', { timeout: 20_000 });
-  await expect(page.getByLabel('SQL query')).toHaveValue(/^CREATE OR REPLACE TABLE table1 AS\nSELECT \*\nFROM \(VALUES/);
+  await expectSql(page.getByLabel('SQL query'), /^CREATE OR REPLACE TABLE table1 AS\nSELECT \*\nFROM \(VALUES/);
 
   // Rewriting the query renames the table's node and changes its rows.
   await page.getByLabel('SQL query').fill('CREATE OR REPLACE TABLE sizes AS\nSELECT * FROM (VALUES (\'S\'), (\'M\'), (\'L\')) AS t(size)');
@@ -81,8 +81,8 @@ test('emptying a Query’s SQL view goes back to the design instead of saying th
   await page.getByTestId('query-field-1-order_id').dblclick();
   await designer.getByRole('tab', { name: 'SQL' }).click();
   const sql = designer.getByLabel('SQL', { exact: true });
-  await expect(sql).toHaveValue(/^SELECT /);
-  const design = await sql.inputValue();
+  await expectSql(sql, /^SELECT /);
+  const design = await sqlText(sql);
 
   // Clearing the design's SQL and clicking away keeps nothing, so there is nothing to refuse.
   await sql.fill('');
@@ -98,6 +98,6 @@ test('emptying a Query’s SQL view goes back to the design instead of saying th
   await designer.getByText('Edit the SQL, then press').click();
   await expect(designer.getByText('This query can’t run')).toHaveCount(0);
   await expect(designer.getByTestId('query-sql-kept')).toHaveCount(0);
-  await expect(sql).toHaveValue(design);
+  await expectSql(sql, design);
   await expectRows(page, 5);
 });

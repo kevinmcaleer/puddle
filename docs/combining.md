@@ -41,6 +41,8 @@ Wire more inputs into the spare numbered input on the node to append more.
 
 A SQL node runs DuckDB SQL you write over the nodes wired into it. Each input is readable as `input1`, `input2`... and by its node's name (in double quotes when the name has spaces or dots), and a lone input also as `input`. The SQL console under the results turns a query into a SQL node in one click.
 
+The editor colours the query as you type: keywords, strings, numbers and comments each in their own colour. Keywords are written in capitals for you, each as you finish it (`select` becomes `SELECT` when you type the space after it), and all of them when the query is applied. Names, strings and comments stay as typed, as do words that are also functions (`left(name, 2)`) and words as likely to be a column (`name`, `date`, `value`). It suggests keywords and the tables' columns: press the down arrow to pick one, then Enter. Until you pick, Enter is always a new line. The Query's SQL view and the SQL console use the same editor.
+
 As you type, the editor marks each table the query names: underlined in the pass colour when it is an input or a table the script creates, and with a red wavy underline when nothing wired in is called that. Point at a marked name, or put the caret in it, and the node it means is outlined on the canvas. A Query's SQL view marks its tables the same way.
 
 ### Reading files by name
