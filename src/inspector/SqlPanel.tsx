@@ -70,7 +70,7 @@ export function SqlPanel({ node }: { node: SqlNode }) {
             ))}
           </ul>
         ) : (
-          <p className="text-ink-muted">Wire a node into it: the query reads each input as input1, input2, or by its node’s name.</p>
+          <p className="text-ink-muted">Wire a node into it: the query reads each input as input1, input2, or by its node’s name. With nothing wired in, a query that reads no input still runs, such as CREATE TABLE sizes AS SELECT * FROM (VALUES ('S'), ('M')) AS t(size).</p>
         )}
       </Section>
       {files.length > 0 && (
@@ -99,7 +99,7 @@ export function SqlPanel({ node }: { node: SqlNode }) {
             placeholder={'SELECT region, sum(total) AS total\nFROM input1\nGROUP BY region'}
             onCommit={commit}
           />
-          <p className="text-label text-ink-muted">One DuckDB query over the tables above, or a script: CREATE TABLE name AS a query, as many as you like, each reading the tables before it. The node’s rows are the last statement’s. Ctrl+Enter applies it. It can’t read other nodes, or files not wired in.</p>
+          <p className="text-label text-ink-muted">One DuckDB query over the tables above, or a script: CREATE TABLE name AS a query, as many as you like, each reading the tables before it. Each table gets a node of its own on the canvas; this node’s rows are the last statement’s. Ctrl+Enter applies it. It can’t read other nodes, or files not wired in.</p>
           {problem && (
             <Banner tone="fail" title={script ? 'This script can’t run' : 'This query can’t run'}>
               {problem[0]!.toUpperCase() + problem.slice(1)}.

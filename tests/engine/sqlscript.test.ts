@@ -89,6 +89,46 @@ describe('a SQL script', () => {
   });
 });
 
+describe('a script outside a wired SQL node', () => {
+  const run = async (p: ReturnType<typeof flow>, nodeId: string) => tableRows((await engine.query(compile(p, { nodeId }).sql)).table).map((r) => Object.fromEntries(Object.entries(r).map(([k, v]) => [k, typeof v === 'bigint' ? Number(v) : v])));
+
+  it('runs as a Query’s SQL: the table it creates goes to its node, the last statement to the Query', async () => {
+    const source = set();
+    const p = flow({
+      sources: [source],
+      nodes: [
+        { id: 'logs', type: 'source', sourceId: source.id, name: 'logs' },
+        { id: 'q', type: 'query', querySpec: { sql: `CREATE OR REPLACE TABLE cancelled AS (SELECT "Document ID" AS docid FROM logs WHERE "Option Execute Cancelled" = 'X');\nSELECT count(*) AS n FROM cancelled` } },
+        { id: 't', type: 'scriptTable', scriptTable: { table: 'cancelled' } },
+      ],
+      wires: [
+        ['logs', 'q', 0],
+        ['q', 't'],
+      ],
+    });
+    expect(await run(p, 't')).toEqual([{ docid: 'D2' }]);
+    expect(await run(p, 'q')).toEqual([{ n: 1 }]);
+  });
+
+  it('runs in a SQL node with nothing wired in, when it makes its rows itself', async () => {
+    const p = flow({
+      nodes: [
+        { id: 'q', type: 'sql', sqlSpec: { query: `CREATE OR REPLACE TABLE sizes AS\nSELECT *\nFROM (VALUES (1, 'first'), (2, 'second')) AS t(id, name)` } },
+        { id: 't', type: 'scriptTable', scriptTable: { table: 'sizes' } },
+      ],
+      wires: [['q', 't']],
+    });
+    const made = [
+      { id: 1, name: 'first' },
+      { id: 2, name: 'second' },
+    ];
+    expect(await run(p, 't')).toEqual(made);
+    expect(await run(p, 'q')).toEqual(made);
+    const plain = flow({ nodes: [{ id: 'q', type: 'sql', sqlSpec: { query: 'SELECT range AS n FROM range(3)' } }] });
+    expect(await run(plain, 'q')).toEqual([{ n: 0 }, { n: 1 }, { n: 2 }]);
+  });
+});
+
 describe('a file set', () => {
   it('reads its files as one table, columns lined up by name', async () => {
     const all = tableRows((await engine.query(compile(project('SELECT 1'), { nodeId: 'logs' }).sql)).table);

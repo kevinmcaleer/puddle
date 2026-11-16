@@ -146,15 +146,19 @@ function freeName(project: Project, name: string): string {
   }
 }
 
+/** True for a node that can run a script: a SQL node, or a Query (in its SQL view). */
+const runsScripts = (node: GraphNode | undefined): node is Extract<GraphNode, { type: 'sql' | 'query' }> => node?.type === 'sql' || node?.type === 'query';
+
 /**
- * Keep a SQL node's script table nodes in step with the tables its script creates, given the tables before and after
- * an edit (as written, in order): once a script creates two or more, each table it newly creates gets a node of its
- * own, wired from the SQL node and named after it. A table renamed in the script (as many gone as came, in order)
- * takes its node with it. Nodes of tables the script no longer creates stay, and say so, so no wiring is lost.
+ * Keep the script table nodes of a SQL node (or of a Query that runs SQL) in step with the tables its script creates,
+ * given the tables before and after an edit (as written, in order): each table the script newly creates gets a node
+ * of its own, wired from the node and named after the table. A table renamed in the script (as many gone as came, in
+ * order) takes its node with it. Nodes of tables the script no longer creates stay, and say so, so no wiring is lost;
+ * a node deleted stays deleted while its table stays in the script.
  */
 export function syncScriptTables(project: Project, sqlNodeId: string, before: string[], after: string[]): Project {
   const sql = nodeById(project, sqlNodeId);
-  if (sql?.type !== 'sql') return project;
+  if (!runsScripts(sql)) return project;
   const lower = (names: string[]) => names.map((n) => n.toLowerCase());
   const [was, now] = [lower(before), lower(after)];
   const own = scriptTableNodes(project, sqlNodeId);
@@ -177,19 +181,17 @@ export function syncScriptTables(project: Project, sqlNodeId: string, before: st
     };
     return next;
   }
-  if (after.length < 2) return next;
-  // Every table once the script makes more than one; after that, the ones it newly makes.
-  return addScriptTableNodes(next, sqlNodeId, after.filter((t) => before.length < 2 || !was.includes(t.toLowerCase())));
+  return addScriptTableNodes(next, sqlNodeId, after.filter((t) => !was.includes(t.toLowerCase())));
 }
 
 /** The script table nodes wired from a SQL node. */
 const scriptTableNodes = (project: Project, sqlNodeId: string) =>
   project.nodes.filter((n): n is Extract<GraphNode, { type: 'scriptTable' }> => n.type === 'scriptTable' && project.edges.some((e) => e.from.nodeId === sqlNodeId && e.to.nodeId === n.id));
 
-/** Add a node for each of these tables of a SQL node's script that has none, wired from it and stacked to its right. */
+/** Add a node for each of these tables of a script (a SQL node's, or a Query's SQL) that has none, wired from it and stacked to its right. */
 export function addScriptTableNodes(project: Project, sqlNodeId: string, tables: string[]): Project {
   const sql = nodeById(project, sqlNodeId);
-  if (sql?.type !== 'sql') return project;
+  if (!runsScripts(sql)) return project;
   const own = scriptTableNodes(project, sqlNodeId);
   const wanted = tables.filter((t, i) => !own.some((n) => n.scriptTable.table.toLowerCase() === t.toLowerCase()) && tables.findIndex((x) => x.toLowerCase() === t.toLowerCase()) === i);
   const below = own.length ? Math.max(...own.map((n) => n.position.y)) + 120 : sql.position.y;

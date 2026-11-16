@@ -10,6 +10,7 @@ export const step = (id: string, type: string, params: Record<string, unknown>, 
 interface FlowInit {
   sources?: Source[];
   nodes: Array<
+    (
     | { id: string; type: 'source'; sourceId: string }
     | { id: string; type: 'transform'; steps?: Step[] }
     | { id: string; type: 'join'; joinSpec?: Partial<JoinSpec> }
@@ -20,6 +21,7 @@ interface FlowInit {
     | { id: string; type: 'scriptTable'; scriptTable: { table: string } }
     | { id: string; type: 'output'; outputSpec?: Partial<OutputSpec> }
     | { id: string; type: 'table'; tableSpec: Partial<TableSpec> & { table: string } }
+  ) & { /** The node's name, when it isn't its id. */ name?: string }
   >;
   /** A wire goes into input 0 unless it names a port ("left", "right"). */
   wires?: Array<[from: string, to: string, port?: Port]>;

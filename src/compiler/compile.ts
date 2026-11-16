@@ -6,9 +6,10 @@ import { compileLookup, firstMatches, lookupCondition, lookupProblems } from './
 import { keptTable, knownKept, type KeptBook } from './keptBook';
 import { dateText, readDateFormat } from './dateRead';
 import { compileQuery, queryProblems } from './query';
-import { compileQuerySql, querySqlProblem } from './querySql';
-import { compileSqlNode, sqlNodeProblem, type SqlInput } from './sqlNode';
-import { compileScript, isScript, readScript, type ReadScript, type ScriptFile } from './sqlScript';
+import { compileQuerySql, querySqlNames } from './querySql';
+import { customSqlProblem } from './customSql';
+import { compileSqlNode, sqlInputNames, type SqlInput } from './sqlNode';
+import { compileScriptOver, isScript, readScriptOver, type ReadScript, type ScriptBinding, type ScriptFile } from './sqlScript';
 import { fileSetFileName, fileSetMembers } from './fileSet';
 import { compileSchemaTable, failingRows, failureCounts, heldTableRows, LOAD_FAILURES, loadChecks, projectSchema, tableFor, type LoadCheck, type TableInput } from './schemaTable';
 import { foreignKey, schemaDdl } from './ddl/duckdb';
@@ -110,28 +111,38 @@ export function sqlNodeFiles(project: Project, nodeId: string): ScriptFile[] {
   });
 }
 
-/**
- * Why a SQL node's query or script can't run, in words that say what to change, or undefined. For the inspector,
- * which shows it as you type; the compiler refuses with the same words.
- */
-export function sqlProblem(project: Project, nodeId: string): string | undefined {
-  const n = nodeById(project, nodeId);
-  if (n?.type !== 'sql') return undefined;
-  const inputs = inputEdges(project, nodeId).map((e) => ({ port: e.to.port as number, label: nodeById(project, e.from.nodeId)?.name ?? '' }));
-  if (!isScript(n.sqlSpec.query) && !sqlNodeProblem(n.sqlSpec, inputs)) return undefined;
-  const read = readScript(n.sqlSpec.query, inputs, sqlNodeFiles(project, n.id));
-  return 'problem' in read ? read.problem : undefined;
+/** The SQL a node runs as written: a SQL node's query, or the SQL kept on a Query. Undefined for any other node. */
+export function writtenSql(node: GraphNode | undefined): string | undefined {
+  return node?.type === 'sql' ? node.sqlSpec.query : node?.type === 'query' ? node.querySpec.sql : undefined;
+}
+
+/** The names the inputs of a node that runs SQL as written may be read by, each with the CTE it reads. */
+function writtenBindings(n: GraphNode, inputs: SqlInput[]): ScriptBinding[] {
+  if (n.type !== 'query') return inputs.flatMap((i) => sqlInputNames(i, inputs.length).map((name) => ({ name, cte: i.cte })));
+  const names = querySqlNames(inputs);
+  return inputs.flatMap((i) => names.get(i.port)!.map((name) => ({ name, cte: i.cte })));
 }
 
 /**
- * A SQL node's query read as a script, or undefined when it is one plain query its inputs alone satisfy (compiled as
- * it always was). Throws the reason a script can't run.
+ * SQL written on a node read as a script, undefined when it is one plain query its inputs alone satisfy (compiled as
+ * it always was), or the reason it can't run.
  */
-function sqlScript(project: Project, n: Extract<GraphNode, { type: 'sql' }>, inputs: Pick<SqlInput, 'port' | 'label'>[]): ReadScript | undefined {
-  if (!isScript(n.sqlSpec.query) && !sqlNodeProblem(n.sqlSpec, inputs)) return undefined;
-  const read = readScript(n.sqlSpec.query, inputs, sqlNodeFiles(project, n.id));
-  if ('problem' in read) throw new CompileError(`This ${isScript(n.sqlSpec.query) ? 'script' : 'query'} can’t run: ${read.problem}.`, n.id);
-  return read;
+function readWritten(project: Project, n: GraphNode, sql: string, names: string[]): ReadScript | { problem: string } | undefined {
+  if (!isScript(sql) && !customSqlProblem(sql, names)) return undefined;
+  return readScriptOver(sql, names, sqlNodeFiles(project, n.id));
+}
+
+/**
+ * Why the SQL written on a SQL node, or kept on a Query, can't run, in words that say what to change, or undefined.
+ * For the inspector and the query designer, which show it as you type; the compiler refuses with the same words.
+ */
+export function sqlProblem(project: Project, nodeId: string): string | undefined {
+  const n = nodeById(project, nodeId);
+  const sql = writtenSql(n);
+  if (!n || sql == null) return undefined;
+  const inputs = inputEdges(project, nodeId).map((e) => ({ port: e.to.port as number, cte: '', label: nodeById(project, e.from.nodeId)?.name ?? '' }));
+  const read = readWritten(project, n, sql, writtenBindings(n, inputs).map((b) => b.name));
+  return read && 'problem' in read ? read.problem : undefined;
 }
 
 /** Whether a node is read from its kept table: kept, built for its current upstream, and not being rebuilt. */
@@ -163,6 +174,23 @@ function build(project: Project, target: Target, book: SchemaBook, options: Comp
   const ctes: string[] = [];
   const out = new Map<string, string>();
   const tables = new Map<string, Map<string, string>>();
+  /**
+   * SQL written on a node, compiled when it is a script (or reads files): one CTE per statement, the node's rows the
+   * last one's. False when it is one plain query, left to its node's own compiler. Throws the reason it can't run.
+   */
+  const written = (n: GraphNode, sql: string, inputs: SqlInput[]): boolean => {
+    const bindings = writtenBindings(n, inputs);
+    const script = readWritten(project, n, sql, bindings.map((b) => b.name));
+    if (!script) return false;
+    if ('problem' in script) throw new CompileError(`This ${isScript(sql) ? 'script' : 'query'} can’t run: ${script.problem}.`, n.id);
+    const cteOf = (k: number) => ident(`n_${n.id}_t${k}`);
+    ctes.push(...compileScriptOver(script, bindings, cteOf));
+    const made = new Map<string, string>();
+    script.statements.forEach((st, k) => st.table && made.set(st.table, cteOf(k)));
+    tables.set(n.id, made);
+    out.set(n.id, cteOf(script.statements.length - 1));
+    return true;
+  };
 
   for (const id of order) {
     const n = nodeById(project, id)!;
@@ -239,10 +267,10 @@ function build(project: Project, target: Target, book: SchemaBook, options: Comp
         if (kept != null) {
           // SQL from the SQL view that the grid can't show runs as written.
           const inputs = wired.map((w) => ({ port: w.port as number, cte: w.cte, label: nodeById(project, w.fromId)!.name }));
-          const problem = querySqlProblem(kept, inputs);
-          if (problem) throw new CompileError(`This query can’t run: ${problem}.`, n.id);
-          ctes.push(`${name} AS (${compileQuerySql(kept, inputs)})`);
-          out.set(n.id, name);
+          if (!written(n, kept, inputs)) {
+            ctes.push(`${name} AS (${compileQuerySql(kept, inputs)})`);
+            out.set(n.id, name);
+          }
           break;
         }
         const tables = wired.map((w) => ({ port: w.port as number, cte: w.cte, label: nodeById(project, w.fromId)!.name, columns: inputColumns(project, n, w, book) }));
@@ -254,19 +282,13 @@ function build(project: Project, target: Target, book: SchemaBook, options: Comp
       }
       case 'sql': {
         const wired = wiredInputs(project, n, out);
-        if (!wired.length) throw new UnwiredError(`${n.name} has no inputs. Connect a wire into it.`, n.id, 0);
         const inputs = wired.map((w) => ({ port: w.port as number, cte: w.cte, label: nodeById(project, w.fromId)!.name }));
-        const script = sqlScript(project, n, inputs);
-        if (script) {
-          // One CTE per statement; the node's rows are the last one's.
-          const cteOf = (k: number) => ident(`n_${n.id}_t${k}`);
-          ctes.push(...compileScript(script, inputs, cteOf));
-          const made = new Map<string, string>();
-          script.statements.forEach((st, k) => st.table && made.set(st.table, cteOf(k)));
-          tables.set(n.id, made);
-          out.set(n.id, cteOf(script.statements.length - 1));
-          break;
+        // With nothing wired in, only a query that reads no input runs: CREATE TABLE sizes AS SELECT * FROM (VALUES ...).
+        if (!wired.length) {
+          const alone = readWritten(project, n, n.sqlSpec.query, []);
+          if (alone && 'problem' in alone) throw new UnwiredError(`${n.name} has no inputs. Connect a wire into it.`, n.id, 0);
         }
+        if (written(n, n.sqlSpec.query, inputs)) break;
         const name = cteName(n.id);
         ctes.push(`${name} AS (${compileSqlNode(n.sqlSpec, inputs)})`);
         out.set(n.id, name);
@@ -274,9 +296,9 @@ function build(project: Project, target: Target, book: SchemaBook, options: Comp
       }
       case 'scriptTable': {
         const edge = inputEdge(project, n.id, 0);
-        if (!edge) throw new UnwiredError(`${n.name} has no input. Connect the SQL node whose script creates ${n.scriptTable.table || 'it'}.`, n.id, 0);
+        if (!edge) throw new UnwiredError(`${n.name} has no input. Connect the SQL node or Query whose script creates ${n.scriptTable.table || 'it'}.`, n.id, 0);
         const from = nodeById(project, edge.from.nodeId);
-        if (from?.type !== 'sql') throw new CompileError(`${n.name} reads a table of a SQL node’s script: connect a SQL node into it.`, n.id);
+        if (!from || writtenSql(from) == null) throw new CompileError(`${n.name} reads a table that a SQL node’s script, or a Query’s SQL, creates: connect one into it.`, n.id);
         const cte = tables.get(from.id)?.get(n.scriptTable.table.toLowerCase());
         if (!cte) throw new CompileError(n.scriptTable.table ? `${from.name}’s script doesn’t create a table called ${n.scriptTable.table}.` : `Choose which of ${from.name}’s tables ${n.name} holds.`, n.id);
         out.set(n.id, cte);

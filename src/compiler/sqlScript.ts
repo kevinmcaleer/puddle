@@ -69,9 +69,25 @@ export function splitScript(sql: string): { statements: ScriptStatement[] } | { 
     const as = words[k + 1];
     if (!as || as.kind !== 'word' || as.value !== 'as') return { problem: `give ${name.text} its rows with AS and a query: CREATE TABLE ${name.text} AS SELECT ... (a script can’t declare columns or insert rows)` };
     if (!words[k + 2]) return { problem: `write the query ${name.text} is made from after AS` };
-    statements.push({ table: name.value, label: name.kind === 'quoted' ? name.text.slice(1, -1).replace(/""/g, '"') : name.text, query: sql.slice(words[k + 2]!.start, to) });
+    // CREATE TABLE name AS (SELECT ...): the brackets around the whole query say nothing, so they go.
+    const body = wrapped(words, k + 2) ? words.slice(k + 3, -1) : words.slice(k + 2);
+    if (!body.length) return { problem: `write the query ${name.text} is made from after AS` };
+    statements.push({ table: name.value, label: name.kind === 'quoted' ? name.text.slice(1, -1).replace(/""/g, '"') : name.text, query: sql.slice(body[0]!.start, end(body[body.length - 1]!)) });
   }
   return { statements };
+}
+
+/** True when the bracket opening at `from` closes on the last token, so it wraps everything from there on. */
+function wrapped(tokens: SqlToken[], from: number): boolean {
+  if (tokens[from]?.kind !== 'op' || tokens[from]!.text !== '(') return false;
+  let depth = 0;
+  for (let i = from; i < tokens.length; i++) {
+    const t = tokens[i]!;
+    if (t.kind !== 'op') continue;
+    if (t.text === '(') depth++;
+    else if (t.text === ')' && --depth === 0) return i === tokens.length - 1;
+  }
+  return false;
 }
 
 const shown = (tokens: SqlToken[], from: number, to: number) => tokens.slice(from, to).map((t) => t.text.toUpperCase()).join(' ');
@@ -232,10 +248,15 @@ const fileCte = (n: number) => `__puddle_file_${n}`;
  * statement may read the inputs, the tables made before it and the files it names, nothing else.
  */
 export function readScript(sql: string, inputs: Pick<SqlInput, 'port' | 'label'>[], files: ScriptFile[]): ReadScript | { problem: string } {
+  return readScriptOver(sql, inputs.flatMap((i) => sqlInputNames(i, inputs.length)), files);
+}
+
+/** readScript for any node that runs SQL as written: `names` are the names its inputs may be read by. */
+export function readScriptOver(sql: string, names: readonly string[], files: ScriptFile[]): ReadScript | { problem: string } {
   const split = splitScript(sql);
   if ('problem' in split) return split;
-  if (!split.statements.length) return { problem: 'write a query, such as SELECT * FROM input1' };
-  const inputNames = inputs.flatMap((i) => sqlInputNames(i, inputs.length)).map((n) => n.toLowerCase());
+  if (!split.statements.length) return { problem: `write a query, such as SELECT * FROM ${names[0] ?? 'input1'}` };
+  const inputNames = names.map((n) => n.toLowerCase());
   const made: string[] = [];
   let n = 0;
   const statements: ReadScript['statements'] = [];
@@ -260,7 +281,18 @@ export function readScript(sql: string, inputs: Pick<SqlInput, 'port' | 'label'>
  * file reads around its query. The last is the node's rows. Call only on a script readScript accepts.
  */
 export function compileScript(script: ReadScript, inputs: SqlInput[], cteOf: (k: number) => string): string[] {
-  const bound = inputs.flatMap((i) => sqlInputNames(i, inputs.length).map((name) => `${ident(name)} AS (SELECT * FROM ${i.cte})`));
+  return compileScriptOver(script, inputs.flatMap((i) => sqlInputNames(i, inputs.length).map((name) => ({ name, cte: i.cte }))), cteOf);
+}
+
+/** One name an input may be read by, and the CTE holding that input's rows. */
+export interface ScriptBinding {
+  name: string;
+  cte: string;
+}
+
+/** compileScript for a script read by readScriptOver: `bindings` give each of its names the CTE it reads. */
+export function compileScriptOver(script: ReadScript, bindings: ScriptBinding[], cteOf: (k: number) => string): string[] {
+  const bound = bindings.map((b) => `${ident(b.name)} AS (SELECT * FROM ${b.cte})`);
   return script.statements.map((s, k) => {
     const earlier = script.statements.slice(0, k).flatMap((e, j) => (e.table ? [`${ident(e.table)} AS (SELECT * FROM ${cteOf(j)})`] : []));
     const reads = s.reads.map((r) => `${ident(r.cte)} AS (SELECT * FROM ${r.relation})`);

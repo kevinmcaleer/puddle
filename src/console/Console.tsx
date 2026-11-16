@@ -1,11 +1,11 @@
 import { useRef, useState } from 'react';
 import { useEngineStore } from '../app/engine';
-import { compileConsole, CONSOLE_ROW_LIMIT, consoleProblem, customSqlErrorLine } from '../compiler';
+import { compileConsole, CONSOLE_ROW_LIMIT, consoleProblem, customSqlErrorLine, isScript, scriptTables } from '../compiler';
 import { isCancelled, tableColumns, tableRows, toEngineError } from '../engine';
 import { useNodeStatus } from '../flow/status';
 import { nodeById, type ColumnSchema, type Project } from '../model';
 import { ExpressionInput } from '../steps/ExpressionInput';
-import { Banner, Button, columnKind, TypeTag } from '../ui';
+import { announce, Banner, Button, columnKind, TypeTag } from '../ui';
 import { makeSqlNode } from './actions';
 import { DEFAULT_QUERY, useConsoleDraft } from './draft';
 
@@ -32,9 +32,29 @@ export function Console({ project }: { project: Project }) {
   const answer = last && last.nodeId === viewedId ? last : null;
   const runId = useRef(0);
   const problem = consoleProblem(query);
+  // CREATE TABLE name AS ... isn't answered here: it becomes a SQL node, and each table a node of its own.
+  const creates = isScript(query) ? scriptTables(query) : [];
+  const script = isScript(query);
+  // Ctrl+Enter was pressed in the editor, so the commit that follows is asked for, not just the editor losing focus.
+  const asked = useRef(false);
+
+  const create = (q: string) => {
+    setQuery(q);
+    if (!viewedId || consoleProblem(q)) return;
+    const tables = scriptTables(q);
+    makeSqlNode(viewedId, q);
+    setAnswer(null);
+    announce(tables.length ? `${tables.join(', ')} ${tables.length === 1 ? 'is now a table' : 'are now tables'} on the canvas` : 'The script is now a SQL node');
+  };
 
   const run = async (q: string) => {
     setQuery(q);
+    if (isScript(q)) {
+      // A script adds nodes, so only when asked: Ctrl+Enter or the button, never the editor losing focus.
+      if (asked.current) create(q);
+      else setAnswer(null);
+      return;
+    }
     if (!engine || !viewedId || consoleProblem(q)) return;
     const id = ++runId.current;
     setAnswer({ nodeId: viewedId, state: 'running' });
@@ -55,23 +75,41 @@ export function Console({ project }: { project: Project }) {
   return (
     <section className="flex min-h-0 flex-col gap-2 border-t border-line px-3 py-2" aria-label="SQL console" data-testid="sql-console">
       <div className="flex items-start gap-2">
-        <div className="min-w-0 flex-1">
+        <div
+          className="min-w-0 flex-1"
+          onKeyDownCapture={(e) => {
+            asked.current = e.key === 'Enter' && (e.ctrlKey || e.metaKey);
+            // The editor commits only what has changed; a script it already handed over is created from here.
+            if (asked.current && script && (e.target as HTMLTextAreaElement).value === query) create(query);
+          }}
+          onBlurCapture={() => {
+            asked.current = false;
+          }}
+        >
           <ExpressionInput id="console-query" aria-label="Console query" rows={3} value={query} columns={columns} error={!!problem} placeholder={DEFAULT_QUERY} onCommit={(v) => void run(v)} />
           <p className="mt-1 text-label text-ink-muted">
-            {viewed ? <>Reads the rows of <strong>{viewed.name}</strong> as <code>input</code>. Ctrl+Enter runs it; the answer shows up to {CONSOLE_ROW_LIMIT} rows and changes nothing.</> : 'View a node to query its rows here.'}
+            {viewed ? <>Reads the rows of <strong>{viewed.name}</strong> as <code>input</code>. Ctrl+Enter runs it; the answer shows up to {CONSOLE_ROW_LIMIT} rows and changes nothing. CREATE TABLE name AS a query adds the table to the canvas.</> : 'View a node to query its rows here.'}
           </p>
         </div>
         <div className="flex shrink-0 flex-col gap-1">
-          <Button size="sm" variant="primary" icon="code" disabled={!engine || !viewed || !!problem} onClick={() => void run(query)}>
-            Run
-          </Button>
-          <Button size="sm" variant="secondary" icon="plus" disabled={!viewed || !!problem} title="Add a SQL node after the viewed node that keeps this query" onClick={() => viewedId && makeSqlNode(viewedId, query)}>
-            Make a SQL node
-          </Button>
+          {script ? (
+            <Button size="sm" variant="primary" icon="plus" disabled={!viewed || !!problem} title="Add a SQL node after the viewed node that runs this script, and a node for each table it creates" onClick={() => create(query)}>
+              {creates.length === 1 ? 'Create table' : 'Create tables'}
+            </Button>
+          ) : (
+            <>
+              <Button size="sm" variant="primary" icon="code" disabled={!engine || !viewed || !!problem} onClick={() => void run(query)}>
+                Run
+              </Button>
+              <Button size="sm" variant="secondary" icon="plus" disabled={!viewed || !!problem} title="Add a SQL node after the viewed node that keeps this query" onClick={() => viewedId && makeSqlNode(viewedId, query)}>
+                Make a SQL node
+              </Button>
+            </>
+          )}
         </div>
       </div>
       {problem && query.trim() && (
-        <Banner tone="fail" title="This query can’t run">
+        <Banner tone="fail" title={script ? 'This script can’t run' : 'This query can’t run'}>
           {problem[0]!.toUpperCase() + problem.slice(1)}.
         </Banner>
       )}

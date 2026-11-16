@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { flow, src } from '../../tests/helpers/projects';
 import { compile, sqlNodeFiles, sqlProblem } from './compile';
+import { UnwiredError } from './errors';
 import { fileSetFileName } from './fileSet';
 import { compileScript, isScript, liftFileReads, readScript, scriptTables, splitScript, type ScriptFile } from './sqlScript';
 
@@ -36,6 +37,12 @@ SELECT * FROM docs;`);
     expect(splitScript('CREATE SCHEMA s')).toEqual({ problem: expect.stringMatching(/^CREATE SCHEMA isn’t something a script can do/) });
     expect(splitScript('CREATE TABLE main.t AS SELECT 1')).toEqual({ problem: expect.stringMatching(/without a schema/) });
     expect(splitScript('CREATE TABLE t AS')).toEqual({ problem: 'write the query t is made from after AS' });
+    expect(splitScript('CREATE TABLE t AS ()')).toEqual({ problem: 'write the query t is made from after AS' });
+  });
+
+  it('reads a query in brackets after AS as the query, and leaves brackets that only start it', () => {
+    expect(splitScript('CREATE OR REPLACE TABLE t AS (SELECT (1) AS a FROM input1);')).toEqual({ statements: [{ table: 't', label: 't', query: 'SELECT (1) AS a FROM input1' }] });
+    expect(splitScript('CREATE TABLE t AS (SELECT 1) UNION ALL (SELECT 2)')).toEqual({ statements: [{ table: 't', label: 't', query: '(SELECT 1) UNION ALL (SELECT 2)' }] });
   });
 
   it('knows a script from a plain query', () => {
@@ -134,5 +141,45 @@ describe('a SQL node with a script', () => {
     expect(sqlProblem(project(`CREATE TABLE log AS SELECT * FROM 'b.parquet'`), 'q')).toBe('no file wired into this node is called b.parquet');
     expect(() => compile(project(`CREATE TABLE log AS SELECT * FROM 'b.parquet'`), { nodeId: 'q' })).toThrow('This script can’t run: no file wired into this node is called b.parquet.');
     expect(sqlProblem(project('SELECT * FROM input1'), 'q')).toBeUndefined();
+  });
+});
+
+describe('SQL written on other nodes', () => {
+  const orders = src({ id: 'orders', format: 'csv', file: { originalName: 'orders.csv', size: 1, lastModified: 1, headHash: 'h' } });
+  const SCRIPT = 'CREATE OR REPLACE TABLE big AS SELECT * FROM orders WHERE total > 5';
+
+  it('a Query’s SQL may be a script: its rows are the last statement’s, and each table goes to its script table node', () => {
+    const p = flow({
+      sources: [orders],
+      nodes: [
+        { id: 'o', type: 'source', sourceId: 'orders', name: 'orders' },
+        { id: 'q', type: 'query', querySpec: { sql: `${SCRIPT}; SELECT count(*) AS n FROM big` } },
+        { id: 't', type: 'scriptTable', scriptTable: { table: 'Big' } },
+      ],
+      wires: [
+        ['o', 'q', 0],
+        ['q', 't'],
+      ],
+    });
+    expect(sqlProblem(p, 'q')).toBeUndefined();
+    expect(compile(p, { nodeId: 'q' }).sql).toMatch(/"orders" AS \(SELECT \* FROM "n_o"\).*SELECT \* FROM "n_q_t1"$/s);
+    expect(compile(p, { nodeId: 't' }).sql).toMatch(/SELECT \* FROM "n_q_t0"$/);
+  });
+
+  it('a Query says why its SQL can’t run in the same words, and still runs a plain query as before', () => {
+    const p = (sql: string) => flow({ sources: [orders], nodes: [{ id: 'o', type: 'source', sourceId: 'orders', name: 'orders' }, { id: 'q', type: 'query', querySpec: { sql } }], wires: [['o', 'q', 0]] });
+    expect(sqlProblem(p('CREATE TABLE big (id INT)'), 'q')).toMatch(/give big its rows with AS and a query/);
+    expect(() => compile(p('CREATE TABLE orders AS SELECT 1'), { nodeId: 'q' })).toThrow('This script can’t run: orders is already the name of an input: give the table another name.');
+    expect(() => compile(p('DROP TABLE orders'), { nodeId: 'q' })).toThrow(/^This query can’t run: DROP isn’t allowed/);
+    expect(compile(p('SELECT * FROM orders'), { nodeId: 'q' }).sql).toContain('"n_q" AS (WITH "input1"');
+  });
+
+  it('a SQL node with nothing wired in runs a query that reads no input, and waits for a wire otherwise', () => {
+    const p = (query: string) => flow({ nodes: [{ id: 'q', type: 'sql', sqlSpec: { query } }, { id: 't', type: 'scriptTable', scriptTable: { table: 'sizes' } }], wires: [['q', 't']] });
+    const made = p(`CREATE TABLE sizes AS SELECT * FROM (VALUES ('S'), ('M')) AS t(size)`);
+    expect(compile(made, { nodeId: 't' }).sql).toMatch(/SELECT \* FROM "n_q_t0"$/);
+    expect(compile(p('SELECT 1 AS one'), { nodeId: 'q' }).sql).toBe('WITH "n_q" AS (SELECT * FROM (\nSELECT 1 AS one\n))\nSELECT * FROM "n_q"');
+    expect(() => compile(p('SELECT * FROM input1'), { nodeId: 'q' })).toThrow(UnwiredError);
+    expect(() => compile(p(''), { nodeId: 'q' })).toThrow('q has no inputs. Connect a wire into it.');
   });
 });

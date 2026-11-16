@@ -23,6 +23,15 @@ describe('the scratch console', () => {
     expect(CONSOLE_ROW_LIMIT).toBe(200);
   });
 
+  it('accepts a script that creates tables from input, for the SQL node it becomes, and never runs one itself', () => {
+    expect(consoleProblem('CREATE OR REPLACE TABLE big AS SELECT * FROM input WHERE total > 5')).toBeUndefined();
+    expect(consoleProblem('CREATE TABLE a AS SELECT * FROM input; SELECT count(*) FROM a')).toBeUndefined();
+    expect(consoleProblem('CREATE TABLE input AS SELECT 1')).toBe('input is already the name of an input: give the table another name');
+    expect(consoleProblem('CREATE TABLE a (id INT)')).toMatch(/give a its rows with AS and a query/);
+    expect(consoleProblem('CREATE TABLE a AS SELECT * FROM other')).toMatch(/no table other/);
+    expect(() => compileConsole(project, { nodeId: 'a' }, 'CREATE TABLE big AS SELECT * FROM input')).toThrow(/runs in a SQL node/);
+  });
+
   it('refuses a query the guard refuses before any SQL is built', () => {
     expect(() => compileConsole(project, { nodeId: 'a' }, "COPY input TO 'x.csv'")).toThrow(/can’t run/);
   });

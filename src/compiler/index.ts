@@ -11,6 +11,7 @@ export {
   schemaDdlKey,
   sqlNodeFiles,
   sqlProblem,
+  writtenSql,
   compileLookupCheck,
   compilePivotValues,
   compileTransposeRows,
@@ -41,7 +42,7 @@ export { knownSchemas, SchemaBook } from './schemaBook';
 export { cleanCustomSql, customSqlProblem, INPUT_NAME, lexSql, SqlRefusal, type SqlToken, type SqlTokenKind } from './customSql';
 export { compileConsole, CONSOLE_ROW_LIMIT, consoleProblem } from './console';
 export { compileSqlNode, sqlInputNames, sqlNodeProblem, sqlTableNames, type SqlInput } from './sqlNode';
-export { compileScript, isScript, liftFileReads, readScript, scriptTables, splitScript, type FileRead, type ReadScript, type ScriptFile, type ScriptStatement } from './sqlScript';
+export { compileScript, compileScriptOver, isScript, liftFileReads, readScript, readScriptOver, scriptTables, splitScript, type FileRead, type ScriptBinding, type ReadScript, type ScriptFile, type ScriptStatement } from './sqlScript';
 export { FILE_COLUMN, FILE_SET_FORMATS, fileSetFileName, fileSetMembers, fileSetNames, globMatches, globRegExp, isFileSetFormat, isGlob } from './fileSet';
 export { renameSqlColumns, sqlColumnRefs } from './columnRefs';
 export { describeType, typeFamily, typesFit } from './types';

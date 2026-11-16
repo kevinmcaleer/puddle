@@ -41,3 +41,5 @@ The grid can show:
 - `LIMIT` with a number of rows, as Top values
 
 Some SQL has no place in the grid: `OFFSET`, `UNION`, subqueries, `CASE` and the like. Puddle says why, and keeps your SQL: the query runs it as written, and **Design** is unavailable until you choose **Back to the design**, which discards the SQL and brings back the design as it was.
+
+The SQL view also takes `CREATE TABLE name AS` a query (with `OR REPLACE` if you like), alone or as a script of several, each reading the tables before it. It runs as written, the Query's rows are the last statement's, and each table gets a node of its own on the canvas, wired from the Query (see {doc}`combining`).

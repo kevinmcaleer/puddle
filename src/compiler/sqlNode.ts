@@ -35,5 +35,5 @@ export function sqlNodeProblem(spec: SqlSpec, inputs: Pick<SqlInput, 'port' | 'l
 /** The node's SELECT: the inputs bound by their names as CTEs around the query, which runs as a subquery. */
 export function compileSqlNode(spec: SqlSpec, inputs: SqlInput[]): string {
   const ctes = inputs.flatMap((i) => sqlInputNames(i, inputs.length).map((name) => `${ident(name)} AS (SELECT * FROM ${i.cte})`));
-  return `WITH ${ctes.join(', ')}\n${CUSTOM_SQL_OPENER}\n${cleanCustomSql(spec.query)}\n)`;
+  return `${ctes.length ? `WITH ${ctes.join(', ')}\n` : ''}${CUSTOM_SQL_OPENER}\n${cleanCustomSql(spec.query)}\n)`;
 }
