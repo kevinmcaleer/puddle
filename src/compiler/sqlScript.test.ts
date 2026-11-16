@@ -37,7 +37,24 @@ SELECT * FROM docs;`);
     expect(splitScript('CREATE SCHEMA s')).toEqual({ problem: expect.stringMatching(/^CREATE SCHEMA isn’t something a script can do/) });
     expect(splitScript('CREATE TABLE main.t AS SELECT 1')).toEqual({ problem: expect.stringMatching(/without a schema/) });
     expect(splitScript('CREATE TABLE t AS')).toEqual({ problem: 'write the query t is made from after AS' });
+  });
+
+  // Regression: a query written straight after the name was told it "can't declare columns or insert rows".
+  it('says only AS is missing when the query follows the table’s name', () => {
+    expect(splitScript('create or replace table users select * from input1')).toEqual({ problem: 'put AS between users and its query: CREATE OR REPLACE TABLE users AS select ...' });
+    expect(splitScript('CREATE TABLE t FROM input1')).toEqual({ problem: 'put AS between t and its query: CREATE TABLE t AS FROM ...' });
     expect(splitScript('CREATE TABLE t AS ()')).toEqual({ problem: 'write the query t is made from after AS' });
+  });
+
+  // Regression: AS written before the name was read as the table, and the message said "give AS its rows with AS".
+  it('says the name goes before AS when AS is written first', () => {
+    expect(splitScript('create or replace table AS users \nSELECT *\nFROM input1 ')).toEqual({ problem: 'put the table’s name before AS: CREATE OR REPLACE TABLE users AS SELECT ...' });
+    expect(splitScript('CREATE TABLE AS "My table" FROM input1')).toEqual({ problem: 'put the table’s name before AS: CREATE TABLE "My table" AS FROM ...' });
+    expect(splitScript('CREATE TABLE AS users')).toEqual({ problem: 'put the table’s name before AS: CREATE TABLE users AS SELECT ...' });
+    expect(splitScript('CREATE TABLE AS SELECT 1')).toEqual({ problem: 'name the table before AS: CREATE TABLE name AS SELECT ...' });
+    expect(splitScript('CREATE TABLE AS')).toEqual({ problem: 'name the table before AS: CREATE TABLE name AS SELECT ...' });
+    // A table really called "as" has to be quoted, and still works.
+    expect(splitScript('CREATE TABLE "as" AS SELECT 1')).toEqual({ statements: [{ table: 'as', label: 'as', query: 'SELECT 1' }] });
   });
 
   it('reads a query in brackets after AS as the query, and leaves brackets that only start it', () => {
