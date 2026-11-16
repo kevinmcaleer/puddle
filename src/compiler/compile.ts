@@ -9,7 +9,7 @@ import { compileQuery, queryProblems } from './query';
 import { compileQuerySql, querySqlNames } from './querySql';
 import { customSqlProblem } from './customSql';
 import { compileSqlNode, sqlInputNames, type SqlInput } from './sqlNode';
-import { compileScriptOver, isScript, readScriptOver, type ReadScript, type ScriptBinding, type ScriptFile } from './sqlScript';
+import { compileScriptOver, isScript, readScriptOver, scriptTableRefs, type ReadScript, type ScriptBinding, type ScriptFile } from './sqlScript';
 import { fileSetFileName, fileSetMembers } from './fileSet';
 import { compileSchemaTable, failingRows, failureCounts, heldTableRows, LOAD_FAILURES, loadChecks, projectSchema, tableFor, type LoadCheck, type TableInput } from './schemaTable';
 import { foreignKey, schemaDdl } from './ddl/duckdb';
@@ -143,6 +143,32 @@ export function sqlProblem(project: Project, nodeId: string): string | undefined
   const inputs = inputEdges(project, nodeId).map((e) => ({ port: e.to.port as number, cte: '', label: nodeById(project, e.from.nodeId)?.name ?? '' }));
   const read = readWritten(project, n, sql, writtenBindings(n, inputs).map((b) => b.name));
   return read && 'problem' in read ? read.problem : undefined;
+}
+
+/** A table named in SQL written on a node, for its editor to mark: where the name is, and the node on the canvas it means. */
+export interface SqlTableMark {
+  start: number;
+  end: number;
+  /** False when nothing the node can read is called this. */
+  found: boolean;
+  /** The node holding the table: the one wired in, or the script table node of a table the SQL creates (if it has one). */
+  nodeId?: string;
+}
+
+/**
+ * The tables `sql` names, were it the SQL written on this SQL node or Query: each input by the node wired in, each
+ * table the script creates by its script table node, and anything else as not found. Takes the text, not the node's
+ * own SQL, so an editor can mark what is being typed.
+ */
+export function sqlTableMarks(project: Project, nodeId: string, sql: string): SqlTableMark[] {
+  const n = nodeById(project, nodeId);
+  if (!n || (n.type !== 'sql' && n.type !== 'query')) return [];
+  const inputs = inputEdges(project, nodeId).map((e) => ({ port: e.to.port as number, cte: e.from.nodeId, label: nodeById(project, e.from.nodeId)?.name ?? '' }));
+  // Each name an input is read by, to the node feeding it (carried where a compile carries the CTE).
+  const feeds = new Map(writtenBindings(n, inputs).map((b) => [b.name.toLowerCase(), b.cte]));
+  const tableNode = (table: string) =>
+    project.nodes.find((x) => x.type === 'scriptTable' && x.scriptTable.table.toLowerCase() === table && project.edges.some((e) => e.from.nodeId === nodeId && e.to.nodeId === x.id))?.id;
+  return scriptTableRefs(sql, [...feeds.keys()]).map((r) => ({ start: r.start, end: r.end, found: r.kind !== 'unknown', nodeId: r.kind === 'input' ? feeds.get(r.name) : r.kind === 'made' ? tableNode(r.name) : undefined }));
 }
 
 /** Whether a node is read from its kept table: kept, built for its current upstream, and not being rebuilt. */

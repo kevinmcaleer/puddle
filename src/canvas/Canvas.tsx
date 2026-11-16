@@ -320,6 +320,7 @@ export function Canvas({ onAddSource, onLayout }: { onAddSource: () => void; onL
   const selectedNodeIds = useSession((s) => s.selectedNodeIds);
   const notice = useSession((s) => s.notice);
   const connectFrom = useSession((s) => s.connectFrom);
+  const pointedId = useSession((s) => s.pointedNodeId);
   const statuses = useFlowStore((s) => s.nodes);
   const [dragging, setDragging] = useState<Record<string, { x: number; y: number }>>({});
   // Each node's size as React Flow measured it. The nodes below are rebuilt on every change to the flow, and a node
@@ -382,13 +383,13 @@ export function Canvas({ onAddSource, onLayout }: { onAddSource: () => void; onL
         measured: measured[n.id],
         selected: selectedNodeIds.includes(n.id),
         ariaLabel: nodeLabel(n, { detail: detailFor(n, project.sources, project.edges), status: statuses[n.id]?.status, viewed: n.id === viewedId }),
-        className: n.id === connectFrom ? 'is-wiring-from' : undefined,
+        className: [n.id === connectFrom && 'is-wiring-from', n.id === pointedId && 'is-pointed'].filter(Boolean).join(' ') || undefined,
         data: { node: n, viewed: n.id === viewedId, detail: detailFor(n, project.sources, project.edges), refIn: ends.to.has(n.id), refOut: ends.from.has(n.id) },
       })),
       ...cards,
     ];
     // eslint-disable-next-line react-hooks/exhaustive-deps -- references are read from project.nodes
-  }, [project.nodes, project.sources, project.edges, project.groups, collapsedOf, dragging, measured, selectedNodeIds, selectedGroup, viewedId, statuses, connectFrom],
+  }, [project.nodes, project.sources, project.edges, project.groups, collapsedOf, dragging, measured, selectedNodeIds, selectedGroup, viewedId, statuses, connectFrom, pointedId],
   );
 
   const edges: PuddleEdge[] = useMemo(

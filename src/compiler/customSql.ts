@@ -165,6 +165,30 @@ const isName = (t: SqlToken | undefined) => !!t && (t.kind === 'word' || t.kind 
  * node's inputs.
  */
 export function customSqlProblem(sql: string, tables: readonly string[] = [INPUT_NAME]): string | undefined {
+  return scanSql(sql, tables);
+}
+
+/** A table a query names where it reads one (after FROM, JOIN and the like): where the name is, and whether it may be read. */
+export interface SqlTableRef {
+  start: number;
+  end: number;
+  /** The name in lower case, as DuckDB compares it. */
+  name: string;
+  /** One of the tables the query may read. A CTE the query defines isn't listed at all. */
+  known: boolean;
+}
+
+/**
+ * Every table a query names, in order, for an editor to mark as you type. It reads on past a table that isn't there,
+ * or a file read, where customSqlProblem stops; anything else it can't follow ends the list at that point.
+ */
+export function sqlTableRefs(sql: string, tables: readonly string[] = [INPUT_NAME]): SqlTableRef[] {
+  const refs: SqlTableRef[] = [];
+  scanSql(sql, tables, refs);
+  return refs;
+}
+
+function scanSql(sql: string, tables: readonly string[], refs?: SqlTableRef[]): string | undefined {
   const allowed = new Set(tables.map((t) => t.toLowerCase()));
   // How the refusals name what may be read: "input", or "input1, input2 or their node names".
   const readable = tables.length === 1 ? tables[0]! : 'one of its inputs';
@@ -216,15 +240,18 @@ export function customSqlProblem(sql: string, tables: readonly string[] = [INPUT
         // A function's first argument named like a statement, such as sum(start): not a statement.
       } else return `${word.toUpperCase()} isn’t allowed: a step can only read its input with SELECT`;
     }
-    if (isCall && READERS.test(name)) return `calling ${t.text}() isn’t allowed: a step can only read its input, not files or other tables`;
+    if (isCall && READERS.test(name) && !refs) return `calling ${t.text}() isn’t allowed: a step can only read its input, not files or other tables`;
 
     if (wasExpecting) {
       if (word === 'lateral') {
         expectTable = true;
         continue;
       }
-      if (t.kind === 'string') return `FROM ${t.text} isn’t allowed: a step can only read its input, not files`;
-      if (name != null) {
+      if (t.kind === 'string' && !refs) return `FROM ${t.text} isn’t allowed: a step can only read its input, not files`;
+      if (refs && name != null && !isCall && next?.text !== '.' && !levels.some((l) => l.ctes.has(name))) refs.push({ start: t.start, end: t.start + t.text.length, name, known: allowed.has(name) });
+      if (refs) {
+        // Marking, not judging: read on whatever follows FROM.
+      } else if (name != null) {
         if (next?.text === '.') return `reading ${shown(t)}.${tokens[k + 2]?.text ?? ''} isn’t allowed: a step can only read ${readable} or the CTEs it defines`;
         if (isCall) {
           if (!TABLE_FUNCTIONS.has(name)) return `calling ${t.text}() after FROM isn’t allowed: a step can only read ${readable}, or rows from range, generate_series or unnest`;

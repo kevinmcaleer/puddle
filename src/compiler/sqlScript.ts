@@ -5,7 +5,7 @@
 // chain, cache and stop like any other node, and nothing it does outlives the query. A file read is lifted out of
 // the query into a CTE of its own that reads exactly the wired files its name or pattern matches; what remains is
 // checked by customSqlProblem like any SQL node's query, so the script still can't reach anything else.
-import { cleanCustomSql, customSqlProblem, lexSql, SqlRefusal, type SqlToken } from './customSql';
+import { cleanCustomSql, customSqlProblem, lexSql, SqlRefusal, sqlTableRefs, type SqlToken } from './customSql';
 import { globMatches, isGlob } from './fileSet';
 import { sqlInputNames, type SqlInput } from './sqlNode';
 import { ident, strList } from './sql';
@@ -33,6 +33,14 @@ const isName = (t: SqlToken | undefined): t is SqlToken => !!t && (t.kind === 'w
  * TABLE name AS query, or as a query. Returns a reason when the text can't be read that way.
  */
 export function splitScript(sql: string): { statements: ScriptStatement[] } | { problem: string } {
+  const split = splitPlaced(sql);
+  return 'problem' in split ? split : { statements: split.statements.map(({ at: _at, name: _name, ...s }) => s) };
+}
+
+/** A statement with where it sits in the script: its query's offset, and the span of the table name it creates. */
+type PlacedStatement = ScriptStatement & { at: number; name?: [start: number, end: number] };
+
+function splitPlaced(sql: string): { statements: PlacedStatement[] } | { problem: string } {
   let tokens: SqlToken[];
   try {
     tokens = lexSql(sql);
@@ -45,14 +53,14 @@ export function splitScript(sql: string): { statements: ScriptStatement[] } | { 
     if (t.kind === 'op' && t.text === ';') chunks.push([]);
     else chunks[chunks.length - 1]!.push(t);
   }
-  const statements: ScriptStatement[] = [];
+  const statements: PlacedStatement[] = [];
   for (const chunk of chunks) {
     const words = chunk.filter((t) => t.kind !== 'comment');
     if (!words.length) continue;
     const from = words[0]!.start;
     const to = end(words[words.length - 1]!);
     if (words[0]!.value !== 'create' || words[0]!.kind !== 'word') {
-      statements.push({ query: sql.slice(from, to) });
+      statements.push({ query: sql.slice(from, to), at: from });
       continue;
     }
     // CREATE [OR REPLACE] [TEMP | TEMPORARY] TABLE | VIEW [IF NOT EXISTS] name AS query
@@ -72,7 +80,7 @@ export function splitScript(sql: string): { statements: ScriptStatement[] } | { 
     // CREATE TABLE name AS (SELECT ...): the brackets around the whole query say nothing, so they go.
     const body = wrapped(words, k + 2) ? words.slice(k + 3, -1) : words.slice(k + 2);
     if (!body.length) return { problem: `write the query ${name.text} is made from after AS` };
-    statements.push({ table: name.value, label: name.kind === 'quoted' ? name.text.slice(1, -1).replace(/""/g, '"') : name.text, query: sql.slice(body[0]!.start, end(body[body.length - 1]!)) });
+    statements.push({ table: name.value, label: name.kind === 'quoted' ? name.text.slice(1, -1).replace(/""/g, '"') : name.text, query: sql.slice(body[0]!.start, end(body[body.length - 1]!)), at: body[0]!.start, name: [name.start, end(name)] });
   }
   return { statements };
 }
@@ -102,6 +110,40 @@ export function isScript(sql: string): boolean {
 export function scriptTables(sql: string): string[] {
   const split = splitScript(sql);
   return 'problem' in split ? [] : split.statements.flatMap((s) => (s.label ? [s.label] : []));
+}
+
+/** A table named in a script, for an editor to mark: an input, a table the script makes, or one that isn't there. */
+export interface ScriptTableRef {
+  start: number;
+  end: number;
+  /** The name in lower case. */
+  name: string;
+  kind: 'input' | 'made' | 'unknown';
+}
+
+/**
+ * Every table a query or script names where it reads or creates one, in order: `names` are the names its inputs may
+ * be read by. A table is `made` where the script creates it and wherever a later statement reads it. Empty while the
+ * text can't be split into statements.
+ */
+export function scriptTableRefs(sql: string, names: readonly string[]): ScriptTableRef[] {
+  const split = splitPlaced(sql);
+  if ('problem' in split) return [];
+  const inputs = names.map((n) => n.toLowerCase());
+  const made: string[] = [];
+  const out: ScriptTableRef[] = [];
+  for (const s of split.statements) {
+    if (s.table && s.name) out.push({ start: s.name[0], end: s.name[1], name: s.table, kind: 'made' });
+    let refs: ReturnType<typeof sqlTableRefs> = [];
+    try {
+      refs = sqlTableRefs(s.query, [...inputs, ...made]);
+    } catch {
+      // Text the lexer won't guess about: nothing to mark in this statement.
+    }
+    for (const r of refs) out.push({ start: s.at + r.start, end: s.at + r.end, name: r.name, kind: !r.known ? 'unknown' : made.includes(r.name) ? 'made' : 'input' });
+    if (s.table) made.push(s.table);
+  }
+  return out.sort((a, b) => a.start - b.start);
 }
 
 /** Functions that read files, and the reader each one stands for. */
