@@ -2,7 +2,7 @@ import { flow, src } from '../../tests/helpers/projects';
 import type { ColumnSchema, QueryField, QueryJoin, QuerySpec } from '../model';
 import { compile, upstreamKey } from './compile';
 import { CompileError, PendingSchemaError, UnwiredError } from './errors';
-import { compileQuery, criteriaPlace, crossJoinedTables, defaultNames, joinPlan, queryColumns, queryProblems, totalsProblems, type QueryTable } from './query';
+import { compileQuery, criteriaPlace, crossJoinedTables, defaultNames, joinPlan, pivotValuesSpec, queryColumns, queryProblems, totalsProblems, type QueryTable } from './query';
 import { SchemaBook } from './schemaBook';
 
 const CUSTOMERS: ColumnSchema[] = [
@@ -432,5 +432,54 @@ describe('query nodes in a flow', () => {
     expect(upstreamKey(shopFlow({ ...shop, totals: true }), { nodeId: 'q' })).not.toBe(key);
     expect(upstreamKey(shopFlow({ ...shop, orRows: 1, fields: [...shop.fields, field('f4', 1, 'status', { show: false, or: [{ op: '=', value: 'x' }] })] }), { nodeId: 'q' })).not.toBe(key);
     expect(upstreamKey(shopFlow({ ...shop, joins: [line('j1', [0, 'customer_id'], [1, 'customer_id'], 'left')] }), { nodeId: 'q' })).not.toBe(key);
+  });
+});
+
+describe('pivot columns', () => {
+  const pivot = (fields: QueryField[], s: Partial<QuerySpec> = {}) => spec({ totals: true, joins: [line('j1', [0, 'customer_id'], [1, 'customer_id'])], fields, ...s });
+  const byStatus = field('p', 1, 'status', { total: 'pivot', pivotValues: ['pending', 'shipped'] });
+
+  it('gives each summary a column for every value of the Pivot columns field, grouped by the rest', () => {
+    const q = pivot([field('r', 0, 'name'), byStatus, field('v', 1, 'total', { total: 'sum' })]);
+    expect(queryColumns(q, tables(CUSTOMERS, ORDERS)).map((c) => [c.name, c.type])).toEqual([['name', 'VARCHAR'], ['pending', 'DOUBLE'], ['shipped', 'DOUBLE']]);
+    expect(compileQuery(q, tables(CUSTOMERS, ORDERS))).toBe(
+      'SELECT "t1"."name", sum("t2"."total") FILTER (WHERE CAST("t2"."status" AS VARCHAR) = \'pending\') AS "pending", sum("t2"."total") FILTER (WHERE CAST("t2"."status" AS VARCHAR) = \'shipped\') AS "shipped" ' +
+        'FROM "in1" AS "t1" INNER JOIN "in2" AS "t2" ON "t1"."customer_id" = "t2"."customer_id" GROUP BY "t1"."name"',
+    );
+  });
+
+  it('names the columns for the value and the summary when there are several summaries, and keeps names apart', () => {
+    const q = pivot([field('r', 0, 'name'), byStatus, field('v', 1, 'total', { total: 'sum' }), field('n', 1, 'order_id', { total: 'count', alias: 'orders' })]);
+    expect(queryColumns(q, tables(CUSTOMERS, ORDERS)).map((c) => c.name)).toEqual(['name', 'pending SumOftotal', 'shipped SumOftotal', 'pending orders', 'shipped orders']);
+    // A value spelled like a row field, and an empty one.
+    const clash = pivot([field('r', 0, 'name'), field('p', 1, 'status', { total: 'pivot', pivotValues: ['Name', ''] }), field('v', 1, 'total', { total: 'sum' })]);
+    expect(queryColumns(clash, tables(CUSTOMERS, ORDERS)).map((c) => c.name)).toEqual(['name', 'Name_2', '(empty)']);
+  });
+
+  it('filters rows on the pivot field’s criteria before grouping, and sorts rows on a summary of every value', () => {
+    const q = pivot([field('r', 0, 'name'), { ...byStatus, criteria: { op: '<>', value: 'cancelled' } }, field('v', 1, 'total', { total: 'sum', sort: 'desc' })]);
+    expect(criteriaPlace(q, q.fields[1]!)).toBe('where');
+    const sql = compileQuery(q, tables(CUSTOMERS, ORDERS));
+    expect(sql).toContain('WHERE "t2"."status" <> \'cancelled\' GROUP BY "t1"."name" ORDER BY sum("t2"."total") DESC');
+    expect(sql).not.toContain('HAVING');
+  });
+
+  it('says what a Pivot columns field still needs', () => {
+    const problems = (fields: QueryField[]) => totalsProblems(pivot(fields), tables(CUSTOMERS, ORDERS)).map((p) => p.message);
+    expect(problems([field('r', 0, 'name'), field('p', 1, 'status', { total: 'pivot' }), field('v', 1, 'total', { total: 'sum' })])).toEqual([expect.stringMatching(/its values haven’t been read/)]);
+    expect(problems([field('r', 0, 'name'), byStatus])).toEqual([expect.stringMatching(/add a field to summarise under each of its values/)]);
+    expect(problems([byStatus, field('p2', 0, 'status', { total: 'pivot', pivotValues: ['a'] }), field('v', 1, 'total', { total: 'sum' })])).toEqual([expect.stringMatching(/Only one field can be Pivot columns/)]);
+    expect(problems([{ ...byStatus, sort: 'asc' }, field('v', 1, 'total', { total: 'sum' })])).toEqual([expect.stringMatching(/can’t sort the rows/)]);
+    expect(problems([field('p', 1, 'status', { total: 'pivot', pivotValues: Array.from({ length: 201 }, (_, i) => String(i)) }), field('v', 1, 'total', { total: 'sum' })])).toEqual([expect.stringMatching(/only 200 can become columns/)]);
+    expect(problems([field('r', 0, 'name'), byStatus, field('v', 1, 'total', { total: 'sum' })])).toEqual([]);
+  });
+
+  it('lists a field’s values from the same tables, behind the same Where fields', () => {
+    const q = pivot([field('r', 0, 'name'), byStatus, field('v', 1, 'total', { total: 'sum' }), field('w', 1, 'total', { total: 'where', show: false, criteria: { op: '>', value: '5' } })]);
+    const probe = pivotValuesSpec(q, 'p')!;
+    expect(compileQuery(probe, tables(CUSTOMERS, ORDERS))).toBe(
+      'SELECT DISTINCT "t2"."status" FROM "in1" AS "t1" INNER JOIN "in2" AS "t2" ON "t1"."customer_id" = "t2"."customer_id" WHERE "t2"."total" > 5 ORDER BY "t2"."status" ASC LIMIT 201',
+    );
+    expect(pivotValuesSpec(q, 'nope')).toBeUndefined();
   });
 });

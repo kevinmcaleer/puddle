@@ -7,6 +7,7 @@ import { compileDisplayPage, designSql, readQuerySql, sourceFileName, type Query
 import { EngineClient, tableRows } from '../../src/engine/client';
 import { evaluateFlow, invalidateCaches, schemaCacheFor, useFlowStore } from '../../src/flow/status';
 import { addQueryField, addQueryJoin, addQueryOrRow, addQueryTable, removeQueryOrRow, removeQueryTable, setQueryCriteria, setQueryDesign, setQueryJoinKind, setQuerySpec, setQuerySql, updateQueryField, type Project, type QueryField, type QueryJoinKind } from '../../src/model';
+import { readPivotValues } from '../../src/query/pivotValues';
 import { createNodeBackend } from '../helpers/nodeBackend';
 import { flow, src, step } from '../helpers/projects';
 
@@ -352,5 +353,36 @@ ORDER BY spent DESC`;
     expect(await run(setQuerySql(kept, 'q', undefined))).toEqual(await run(p));
     await evaluateFlow(engine, setQuerySql(p, 'q', 'SELECT * FROM somewhere'));
     expect(useFlowStore.getState().nodes.q!.status).toMatchObject({ state: 'error', message: expect.stringContaining('This query can’t run: there’s no table somewhere') });
+  });
+});
+
+describe('pivot columns', () => {
+  const pivoted = (values: string[]) => {
+    let p = shop('inner', [[0, 'name', { sort: 'asc' }], [1, 'status', { total: 'pivot', pivotValues: values }], [1, 'total', { total: 'sum' }]]);
+    p = setQuerySpec(p, 'q', { totals: true });
+    return p;
+  };
+
+  it('reads the values a field would give as columns, each once and in order', async () => {
+    expect(await readPivotValues(engine, pivoted([]), 'q', 'f1')).toEqual(['pending', 'shipped']);
+  });
+
+  it('gives a column per value under each row, empty where a row has none of that value', async () => {
+    const { columns, types, rows } = await run(pivoted(['pending', 'shipped']));
+    expect(columns).toEqual(['name', 'pending', 'shipped']);
+    expect(types).toEqual(['VARCHAR', 'DOUBLE', 'DOUBLE']);
+    // The display page gives numbers as text.
+    expect(rows.map((r) => r.map((v, i) => (i && v != null ? Number(v) : v)))).toEqual([
+      ['Ada', null, 15.75],
+      ['Barbara', 1, null],
+      ['Barbara L', 1, null],
+      ['Grace', 8, null],
+    ]);
+  });
+
+  it('keeps the columns it was given: a value no row has is an empty column, and one left out is left out', async () => {
+    const { columns, rows } = await run(pivoted(['shipped', 'returned']));
+    expect(columns).toEqual(['name', 'shipped', 'returned']);
+    expect(rows[0]).toEqual(['Ada', '15.75', null]);
   });
 });

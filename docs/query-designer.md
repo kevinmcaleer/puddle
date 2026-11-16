@@ -23,6 +23,25 @@ Drag a field into the grid, or double-click it, to add it to the result. For eac
 
 **Totals** adds a Total row for grouping and summarising, as in Access: each field is Group by, or a summary such as Sum, Average, Min, Max, Count, Count distinct, First, Last, StDev or Var. Where filters on a field before grouping, and Expression takes a calculation over the others. **Unique values** removes repeated rows from the result. **Top values** keeps only the first 5, 10, 25 or more rows, after sorting, as in Access; All keeps every row.
 
+## The Pivot view
+
+**Pivot**, beside Design and SQL, builds a pivot table from the query's tables, as a spreadsheet does. The tables' fields are listed on the left, and there are four wells to put them in. Drag a field into a well, or pick it from the well's **Add a field** list.
+
+![The Pivot view: name in Rows, the orders' status in Columns and the sum of total in Values, giving a row per customer with a pending and a shipped column](_static/screenshots/query-pivot.png)
+
+| Well | What it does |
+| --- | --- |
+| Rows | One row for each value, or each mix of values, of these fields. |
+| Columns | One column for each value of this field, under every summary. It holds one field. |
+| Values | What is summarised in each cell. A number starts as a Sum and anything else as a Count; change the summary on the field. |
+| Filters | Leaves rows out before anything is counted. A filter starts as **Is not empty**; pick another condition and give it a value. |
+
+The tables are joined by the query's join lines. The project's relationships draw those as each table is added (see {doc}`relationships`), so fields from related tables can be mixed freely; if two tables have no join line, a note says every row of one is paired with every row of the other.
+
+The Pivot view is another face of the design grid, with **Totals** on: Rows are the grid's Group by fields, Values its summaries, Filters its Where fields, and the Columns field has the Total **Pivot columns**. Switch between the two views freely.
+
+The values of the Columns field are read when you put it there and kept in the design: the query always gives those columns, whatever the data holds later, so the nodes after it never find a column gone. When the data gains a value, **Read values** on the field reads them again. With one field in Values each column is named for its value (`pending`, `shipped`); with several, for the value and the summary (`pending SumOftotal`). A field can give up to 200 columns.
+
 ## SQL view
 
 As in Access, the designer turns the query into SQL and back again. Choose **SQL** at the top of the designer to see the design written as a DuckDB query, and **Design** to return to the grid.

@@ -42,3 +42,19 @@
 .puddle-qd:focus-visible { outline-offset: calc(var(--space-0\.5) * -1); }
 .puddle-qd-top { display: inline-flex; align-items: center; gap: var(--space-2); color: var(--ink); }
 .puddle-qd-top .ui-select { height: var(--size-control-sm); width: auto; }
+
+/* The Pivot view (PivotView.tsx): the tables' fields on the left, and the four wells they go in. */
+.puddle-qd-pivot { grid-row: 3 / span 2; display: grid; grid-template-columns: minmax(calc(var(--size-node-width) - var(--space-8)), auto) minmax(0, 1fr); min-height: 0; border-top: 1px solid var(--line); }
+.puddle-qd-pivot__fields { display: flex; flex-direction: column; gap: var(--space-3); padding: var(--space-3); overflow: auto; border-right: 1px solid var(--line); background: var(--surface-canvas); }
+.puddle-qd-pivot__fields ul { list-style: none; margin: var(--space-1) 0 0; padding: 0; }
+.puddle-qd-pivot__field { display: flex; align-items: center; gap: var(--space-2); padding: var(--space-1) var(--space-2); border-radius: var(--radius-sm); cursor: grab; }
+.puddle-qd-pivot__field:hover { background: var(--surface-hover); }
+.puddle-qd-pivot__wells { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-content: start; gap: var(--space-3); padding: var(--space-3); overflow: auto; }
+.puddle-qd-pivot__wells > .ui-banner, .puddle-qd-pivot__wells > p { grid-column: 1 / -1; }
+.puddle-qd-well { display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-3); border: 1px dashed var(--line-strong); border-radius: var(--radius-md); background: var(--surface-raised); }
+.puddle-qd-well.is-over { border-color: var(--brand); background: var(--brand-tint); }
+.puddle-qd-well__fields { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-1); }
+.puddle-qd-well__fields:empty { display: none; }
+.puddle-qd-chip { display: flex; align-items: center; gap: var(--space-2); padding: var(--space-1) var(--space-1) var(--space-1) var(--space-2); border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--surface-sunken); }
+.puddle-qd-chip > .ui-col { flex: 1; }
+.puddle-qd-chip .ui-select, .puddle-qd-chip .ui-input { width: auto; min-width: 0; flex: 0 1 auto; }

@@ -379,10 +379,11 @@ export const QUERY_CRITERIA_OPS = ['=', '<>', '<', '<=', '>', '>=', 'contains', 
 export const QueryCriteriaZ = z.object({ op: z.enum(QUERY_CRITERIA_OPS), value: z.string().default('') });
 
 /**
- * A field's Total, when the grid has its Totals row: group by it, summarise it, an expression of summaries, or Where
- * (filter rows on it before grouping, without showing it).
+ * A field's Total, when the grid has its Totals row: group by it, summarise it, an expression of summaries, Where
+ * (filter rows on it before grouping, without showing it), or Pivot columns (each of its values becomes a column of
+ * every summary, as the Columns of a pivot table do).
  */
-export const QUERY_TOTALS = ['group', 'sum', 'avg', 'min', 'max', 'count', 'countDistinct', 'first', 'last', 'stdev', 'var', 'expression', 'where'] as const;
+export const QUERY_TOTALS = ['group', 'sum', 'avg', 'min', 'max', 'count', 'countDistinct', 'first', 'last', 'stdev', 'var', 'expression', 'where', 'pivot'] as const;
 
 /** One column of the query grid: a field of one table ("*" for all of them), and what to do with it. */
 export const QueryFieldZ = z.object({
@@ -401,6 +402,11 @@ export const QueryFieldZ = z.object({
   total: z.enum(QUERY_TOTALS).optional(),
   /** A DuckDB expression over the tables' columns, using summaries such as sum(total), for the Expression total. */
   expression: z.string().optional(),
+  /**
+   * For Pivot columns: the values that become columns, in order, as text. Kept in the design rather than read as the
+   * query runs, so the columns a query gives never change under the nodes after it.
+   */
+  pivotValues: z.array(z.string()).optional(),
 });
 
 export const QuerySpecZ = z.object({
