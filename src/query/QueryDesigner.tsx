@@ -551,6 +551,13 @@ function SqlView({ node, tables, onDiscard }: { node: QueryNode; tables: Designe
 
   const commit = (sql: string) => {
     if (sql.trim() === shown.trim()) return;
+    // An emptied box is no query to keep: any SQL kept goes, and the design runs (and is written here) again.
+    if (!sql.trim()) {
+      if (kept == null) return;
+      apply((p) => setQuerySql(p, node.id, undefined));
+      announce('The SQL is empty, so the query runs its design again');
+      return;
+    }
     const script = isScript(sql);
     const read = known && !script ? readQuerySql(sql, queryTables, node.querySpec) : undefined;
     if (read && 'spec' in read) {

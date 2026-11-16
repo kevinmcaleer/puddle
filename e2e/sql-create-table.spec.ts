@@ -70,3 +70,34 @@ test('Add › Table from SQL makes a table on the canvas from a query, with noth
   await expect(page.getByTestId('results-title')).toHaveText('sizes');
   await expectRows(page, 3);
 });
+
+test('emptying a Query’s SQL view goes back to the design instead of saying the empty query can’t run', async ({ page }) => {
+  await openApp(page);
+  await addFiles(page, [fixture('shop-orders.csv')]);
+  await expect(node(page, 'shop-orders.csv')).toHaveAttribute('data-status', 'ok', { timeout: 20_000 });
+  await page.getByRole('button', { name: 'Add', exact: true }).click();
+  await page.getByRole('menuitem', { name: /Query/ }).click();
+  const designer = page.getByTestId('query-designer');
+  await page.getByTestId('query-field-1-order_id').dblclick();
+  await designer.getByRole('tab', { name: 'SQL' }).click();
+  const sql = designer.getByLabel('SQL', { exact: true });
+  await expect(sql).toHaveValue(/^SELECT /);
+  const design = await sql.inputValue();
+
+  // Clearing the design's SQL and clicking away keeps nothing, so there is nothing to refuse.
+  await sql.fill('');
+  await designer.getByText('Edit the SQL, then press').click();
+  await expect(designer.getByText('This query can’t run')).toHaveCount(0);
+  await expect(designer.getByRole('tab', { name: 'Design' })).toBeEnabled();
+
+  // Clearing SQL that was kept as written discards it: the design is written here again, and runs.
+  await sql.fill('SELECT order_id FROM input1 LIMIT 1 OFFSET 1');
+  await sql.press('Control+Enter');
+  await expect(designer.getByTestId('query-sql-kept')).toBeVisible();
+  await sql.fill('');
+  await designer.getByText('Edit the SQL, then press').click();
+  await expect(designer.getByText('This query can’t run')).toHaveCount(0);
+  await expect(designer.getByTestId('query-sql-kept')).toHaveCount(0);
+  await expect(sql).toHaveValue(design);
+  await expectRows(page, 5);
+});
