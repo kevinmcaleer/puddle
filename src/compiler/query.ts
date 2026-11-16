@@ -65,7 +65,11 @@ export const TOTALS: Record<QueryTotal, TotalInfo> = {
   var: { label: 'Var', prefix: 'Var', sql: (c) => `var_samp(${c})`, numeric: true, type: 'DOUBLE' },
   expression: { label: 'Expression' },
   where: { label: 'Where' },
+  pivot: { label: 'Pivot columns' },
 };
+
+/** The most values a Pivot columns field may turn into columns. */
+export const MAX_PIVOT_COLUMNS = 200;
 
 /** A field's Total: Group by unless chosen, and none while the Totals row is off. */
 export const fieldTotal = (spec: Pick<QuerySpec, 'totals'>, f: Pick<QueryField, 'total'>): QueryTotal | undefined => (spec.totals ? (f.total ?? 'group') : undefined);
@@ -76,7 +80,8 @@ export const fieldTotal = (spec: Pick<QuerySpec, 'totals'>, f: Pick<QueryField, 
  */
 export const criteriaPlace = (spec: Pick<QuerySpec, 'totals'>, f: Pick<QueryField, 'total'>): 'where' | 'having' => {
   const total = fieldTotal(spec, f);
-  return !total || total === 'where' ? 'where' : 'having';
+  // A Pivot columns field has no column of its own in the groups, so its criteria filter the rows going in.
+  return !total || total === 'where' || total === 'pivot' ? 'where' : 'having';
 };
 
 /** The criteria rows: 0 is the Criteria row, then the "or" rows below it. */
@@ -86,7 +91,32 @@ export const criteriaRows = (spec: Pick<QuerySpec, 'orRows'>) => Array.from({ le
 const hasCriteria = (spec: QuerySpec, f: QueryField) => criteriaRows(spec).some((r) => criteriaCell(f, r));
 
 /** Whether the field is in the result: shown, and not a Where field (which only filters). */
-const inResult = (spec: QuerySpec, f: QueryField) => f.show && fieldTotal(spec, f) !== 'where';
+const inResult = (spec: QuerySpec, f: QueryField) => f.show && fieldTotal(spec, f) !== 'where' && fieldTotal(spec, f) !== 'pivot';
+
+/** The Pivot columns field, when the Totals row is on and one is chosen: its values become columns of every summary. */
+export const pivotField = (spec: QuerySpec): QueryField | undefined => (spec.totals ? spec.fields.find((f) => f.total === 'pivot' && f.column !== '*') : undefined);
+
+/** Whether a field is a summary of one column (Sum, Count...), which Pivot columns spreads across its values. */
+const isSummary = (spec: QuerySpec, f: QueryField) => {
+  const total = fieldTotal(spec, f);
+  return !!total && !!TOTALS[total].sql && f.column !== '*';
+};
+
+/**
+ * The design that lists the values a field would give as pivot columns: the field alone, each value once and in
+ * order, from the same tables and joins and behind the same Where fields (and its own criteria), one more than can
+ * become columns so too many can be told from just enough. Undefined for a field that isn't in the grid.
+ */
+export function pivotValuesSpec(spec: QuerySpec, fieldId: string): QuerySpec | undefined {
+  const f = spec.fields.find((x) => x.id === fieldId);
+  if (!f || f.column === '*') return undefined;
+  const own: QueryField = { ...f, total: undefined, alias: undefined, expression: undefined, pivotValues: undefined, show: true, sort: 'asc' };
+  const filters = spec.totals ? spec.fields.filter((x) => x.id !== fieldId && x.total === 'where').map((x): QueryField => ({ ...x, total: undefined, show: false, sort: 'none' })) : [];
+  return { ...spec, fields: [own, ...filters], totals: false, distinct: true, limit: MAX_PIVOT_COLUMNS + 1, sql: undefined };
+}
+
+/** How a pivot value reads in a column name: an empty text value would vanish. */
+export const pivotLabel = (value: string) => (value === '' ? '(empty)' : value);
 
 /**
  * The names fields get unless renamed, by field id: the column's own, or Access's for a summary (SumOfAmount) and
@@ -142,10 +172,23 @@ export function queryColumns(spec: QuerySpec, tables: QueryTable[]): QueryColumn
     return n;
   };
   const defaults = defaultNames(spec);
+  const pivot = pivotField(spec);
+  const summaries = pivot ? spec.fields.filter((f) => inResult(spec, f) && isSummary(spec, f)).length : 0;
   for (const f of spec.fields) {
     const table = tables.find((t) => t.port === f.port);
     if (!inResult(spec, f) || !table) continue;
     const cols = f.column === '*' ? table.columns : table.columns.filter((c) => c.name === f.column);
+    if (pivot && isSummary(spec, f)) {
+      // One column per pivot value: the summary of the rows whose pivot field has that value. With one summary the
+      // columns are named for the values alone; with several, for the value and the summary.
+      const own = f.alias?.trim() || defaults.get(f.id)!;
+      for (const c of cols)
+        for (const v of pivot.pivotValues ?? []) {
+          const as = name(summaries > 1 ? `${pivotLabel(v)} ${own}` : pivotLabel(v));
+          out.push({ name: as, type: resultType(spec, f, c.type), field: f.id, sql: `${fieldTerm(spec, f)} FILTER (WHERE CAST(${fieldSql(pivot)} AS VARCHAR) = ${str(v)}) AS ${ident(as)}` });
+        }
+      continue;
+    }
     for (const c of cols) {
       const as = name(f.column !== '*' && f.alias?.trim() ? f.alias.trim() : f.column === '*' ? c.name : defaults.get(f.id)!);
       const raw = `${tableAlias(f.port)}.${ident(c.name)}`;
@@ -321,6 +364,13 @@ function totalsProblem(spec: QuerySpec, f: QueryField, col: ColumnSchema): strin
     const problem = expressionProblem(expr);
     if (problem) return `The expression for ${f.column} can’t be read: ${problem}.`;
   }
+  if (total === 'pivot') {
+    if (spec.fields.find((x) => x.total === 'pivot' && x.column !== '*') !== f) return `Only one field can be Pivot columns, and there is one before ${f.column}. Pick another Total for it.`;
+    if (!f.pivotValues?.length) return `${f.column} is Pivot columns, but its values haven’t been read: read them in the Pivot view, so each can become a column.`;
+    if (f.pivotValues.length > MAX_PIVOT_COLUMNS) return `${f.column} has ${f.pivotValues.length} values, and only ${MAX_PIVOT_COLUMNS} can become columns. Filter it, or group by it instead.`;
+    if (!spec.fields.some((x) => x !== f && x.show && isSummary(spec, x))) return `${f.column} is Pivot columns, so add a field to summarise under each of its values, such as a Sum or a Count.`;
+    if (f.sort !== 'none') return `${f.column} is Pivot columns: its values are columns, in the order they were read, so it can’t sort the rows. Turn off its sort.`;
+  }
   if (total === 'where') {
     if (f.show) return `${f.column} is a Where field: it filters rows before they’re grouped, so it can’t show. Turn off its Show, or pick another Total.`;
     if (!hasCriteria(spec, f)) return `${f.column} is a Where field, so give it criteria to filter on, or pick another Total.`;
@@ -425,7 +475,7 @@ export function queryClauses(spec: QuerySpec, tables: Array<QueryTable & { cte: 
   // Every Group by field groups, shown or not, as in Access.
   const group = [...new Set(single.filter((f) => fieldTotal(spec, f) === 'group').map(fieldSql))];
   // The sort applies to the grouped result, so it's on what each field stands for there.
-  const order = single.filter((f) => f.sort !== 'none').map((f) => `${fieldTerm(spec, f)} ${f.sort === 'asc' ? 'ASC' : 'DESC'}`);
+  const order = single.filter((f) => f.sort !== 'none' && fieldTotal(spec, f) !== 'pivot').map((f) => `${fieldTerm(spec, f)} ${f.sort === 'asc' ? 'ASC' : 'DESC'}`);
   const columns = queryColumns(spec, tables).map((c) => c.sql);
   return [
     [`SELECT ${spec.distinct ? 'DISTINCT ' : ''}${columns.join(', ')}`],

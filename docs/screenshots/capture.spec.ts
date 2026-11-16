@@ -375,6 +375,16 @@ test('query designer', async ({ page }) => {
   await designer.getByRole('tab', { name: 'SQL' }).click();
   await expect(page.getByRole('textbox', { name: 'SQL', exact: true })).toContainText('WHERE "shop-orders.csv".total > 5');
   await shot(page, 'query-sql-view');
+  // The Pivot view of the same tables: a row per customer, a column per order status, the totals summed.
+  await designer.getByRole('tab', { name: 'Pivot' }).click();
+  const pivot = designer.getByTestId('query-pivot');
+  await pivot.getByRole('button', { name: 'Remove order_id' }).click();
+  await pivot.getByRole('button', { name: 'Remove total' }).click();
+  await pivot.getByLabel('Add a field to Values').selectOption({ label: 'shop-orders.csv.total' });
+  await pivot.getByLabel('Add a field to Columns').selectOption({ label: 'shop-orders.csv.status' });
+  await expect(pivot.getByTestId('pivot-values-count')).toHaveText('2 values');
+  await expect(page.getByTestId('inspector-columns').locator('.ui-col')).toHaveText(['name', 'pending', 'shipped']);
+  await shot(page, 'query-pivot');
 });
 
 test('relationships', async ({ page }) => {

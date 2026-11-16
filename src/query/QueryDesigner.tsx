@@ -38,6 +38,7 @@ import { SqlEditor } from '../steps/SqlEditor';
 import { DockedSql } from '../app/SqlDock';
 import { useSqlDocked } from '../app/sqlDockState';
 import { announce, Banner, Button, columnKind, cx, Dialog, Field, Icon, Menu, NODE_KIND, Select, Switch, Tabs, TypeTag } from '../ui';
+import { PivotView } from './PivotView';
 import { designerTables, refKey, tableCandidates, useDesigner, type DesignerTable } from './tables';
 import './query.css';
 
@@ -650,7 +651,7 @@ export function QueryDesigner({ node }: { node: QueryNode }) {
   // Kept SQL the grid can show now (written before the grid could, such as a LIMIT) opens in the design.
   const keptDesign = kept && tables.every((t) => t.columns) ? readQuerySql(node.querySpec.sql!, tables.map((t) => ({ port: t.port, label: t.label, columns: t.columns ?? [] })), node.querySpec) : undefined;
   const readable = !!keptDesign && 'spec' in keptDesign;
-  const [chosen, setView] = useState<'design' | 'sql'>(kept ? 'sql' : 'design');
+  const [chosen, setView] = useState<'design' | 'pivot' | 'sql'>(kept ? 'sql' : 'design');
   // SQL the grid can't show is all there is to see until it's discarded.
   const view = kept ? 'sql' : chosen;
   // The SQL view with its editor in the dock beside the rows, and a design the grid can show: both are on screen.
@@ -659,8 +660,8 @@ export function QueryDesigner({ node }: { node: QueryNode }) {
     apply((p) => setQuerySql(p, node.id, undefined));
     setView('design');
   };
-  const choose = (v: 'design' | 'sql') => {
-    if (v === 'design' && keptDesign && 'spec' in keptDesign) apply((p) => setQueryDesign(p, node.id, keptDesign.spec));
+  const choose = (v: 'design' | 'pivot' | 'sql') => {
+    if (v !== 'sql' && keptDesign && 'spec' in keptDesign) apply((p) => setQueryDesign(p, node.id, keptDesign.spec));
     setView(v);
   };
 
@@ -687,9 +688,10 @@ export function QueryDesigner({ node }: { node: QueryNode }) {
         <Tabs
           label="View"
           value={view}
-          onChange={(v) => choose(v as 'design' | 'sql')}
+          onChange={(v) => choose(v as 'design' | 'pivot' | 'sql')}
           items={[
             { id: 'design', label: 'Design', disabled: kept && !readable, title: kept && !readable ? 'The grid can’t show this SQL: go back to the design to discard it' : undefined },
+            { id: 'pivot', label: 'Pivot', disabled: kept && !readable, title: kept && !readable ? 'A pivot can’t show this SQL: go back to the design to discard it' : 'Rows, columns and values, as in a pivot table' },
             { id: 'sql', label: 'SQL' },
           ]}
         />
@@ -737,14 +739,14 @@ export function QueryDesigner({ node }: { node: QueryNode }) {
           }))}
         />
       </div>
-      {(error || beside || (view === 'design' && (cross.length > 0 || problems.length > 0))) && (
+      {(error || beside || (view !== 'sql' && (cross.length > 0 || problems.length > 0))) && (
         <div className="puddle-qd-notes">
           {error && (
             <Banner tone="warn" action={<Button variant="ghost" size="sm" onClick={() => setError(null)}>Dismiss</Button>}>
               {error}
             </Banner>
           )}
-          {view === 'design' && problems.length > 0 && (
+          {view !== 'sql' && problems.length > 0 && (
             <div data-testid="query-totals-problems">
               <Banner tone="warn" title={problems.length === 1 ? 'This query can’t run yet' : `This query can’t run yet: ${problems.length} problems`}>
                 {problems.length === 1 ? (
@@ -761,7 +763,7 @@ export function QueryDesigner({ node }: { node: QueryNode }) {
           )}
           {/* With the SQL beside the rows, the design it is written from stays in view above, each following the other. */}
           {beside && <SqlView node={node} tables={tables} beside onDiscard={discard} />}
-          {view === 'design' && cross.length > 0 && (
+          {view !== 'sql' && cross.length > 0 && (
             <div data-testid="query-cross-join">
               <Banner tone="info">
                 {cross.map((p) => tables.find((t) => t.port === p)!.label).join(', ')} {cross.length === 1 ? 'has' : 'have'} no join line, so every row pairs with every row. Drag a field onto the matching field of another table to join them, or press Enter on a field.
@@ -770,7 +772,9 @@ export function QueryDesigner({ node }: { node: QueryNode }) {
           )}
         </div>
       )}
-      {view === 'design' || beside ? (
+      {view === 'pivot' ? (
+        <PivotView node={node} tables={tables} />
+      ) : view === 'design' || beside ? (
         <>
           <TablePane node={node} tables={tables} />
           <QueryGrid node={node} tables={tables} />
