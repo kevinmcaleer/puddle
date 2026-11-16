@@ -1,6 +1,6 @@
 import { autocompletion, type CompletionContext, type CompletionResult } from '@codemirror/autocomplete';
 import { defaultKeymap, history, historyKeymap } from '@codemirror/commands';
-import { sql } from '@codemirror/lang-sql';
+import { PostgreSQL, sql } from '@codemirror/lang-sql';
 import { HighlightStyle, syntaxHighlighting } from '@codemirror/language';
 import { EditorState, Prec, StateEffect, StateField, Transaction } from '@codemirror/state';
 import { Decoration, EditorView, keymap, placeholder as placeholderText, tooltips, type DecorationSet } from '@codemirror/view';
@@ -15,7 +15,9 @@ import { keywordCase, upperKeywords } from './sqlKeywords';
 /** SQL's parts in the design system's colours. */
 const HIGHLIGHT = HighlightStyle.define([
   { tag: tags.keyword, class: 'sql-keyword' },
-  { tag: [tags.string, tags.special(tags.string)], class: 'sql-string' },
+  { tag: tags.string, class: 'sql-string' },
+  // A name in double quotes is a special kind of string to the parser: it is drawn as a name.
+  { tag: tags.special(tags.string), class: 'sql-name' },
   { tag: [tags.number, tags.bool, tags.null], class: 'sql-number' },
   { tag: tags.comment, class: 'sql-comment' },
   { tag: tags.typeName, class: 'sql-type' },
@@ -126,7 +128,8 @@ export function SqlEditor({
         validFor: /^[\w$]*$/,
       };
     };
-    const language = sql({ upperCaseKeywords: true });
+    // DuckDB follows PostgreSQL's SQL: a name in double quotes is a name, not a string.
+    const language = sql({ dialect: PostgreSQL, upperCaseKeywords: true });
 
     const editor = new EditorView({
       parent: host.current!,
