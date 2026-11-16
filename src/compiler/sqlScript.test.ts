@@ -37,6 +37,12 @@ SELECT * FROM docs;`);
     expect(splitScript('CREATE SCHEMA s')).toEqual({ problem: expect.stringMatching(/^CREATE SCHEMA isn’t something a script can do/) });
     expect(splitScript('CREATE TABLE main.t AS SELECT 1')).toEqual({ problem: expect.stringMatching(/without a schema/) });
     expect(splitScript('CREATE TABLE t AS')).toEqual({ problem: 'write the query t is made from after AS' });
+  });
+
+  // Regression: a query written straight after the name was told it "can't declare columns or insert rows".
+  it('says only AS is missing when the query follows the table’s name', () => {
+    expect(splitScript('create or replace table users select * from input1')).toEqual({ problem: 'put AS between users and its query: CREATE OR REPLACE TABLE users AS select ...' });
+    expect(splitScript('CREATE TABLE t FROM input1')).toEqual({ problem: 'put AS between t and its query: CREATE TABLE t AS FROM ...' });
     expect(splitScript('CREATE TABLE t AS ()')).toEqual({ problem: 'write the query t is made from after AS' });
   });
 

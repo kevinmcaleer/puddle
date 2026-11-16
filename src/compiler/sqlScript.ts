@@ -25,6 +25,9 @@ export interface ScriptStatement {
   query: string;
 }
 
+/** The words a query starts with, for telling a query written straight after a table's name from anything else. */
+const QUERY_WORDS = new Set(['select', 'with', 'from', 'values']);
+
 const end = (t: SqlToken) => t.start + t.text.length;
 const isName = (t: SqlToken | undefined): t is SqlToken => !!t && (t.kind === 'word' || t.kind === 'quoted');
 
@@ -67,6 +70,8 @@ export function splitScript(sql: string): { statements: ScriptStatement[] } | { 
     if (!isName(name)) return { problem: 'name the table: CREATE TABLE name AS SELECT ...' };
     if (words[k + 1]?.text === '.') return { problem: `create ${name.text} without a schema or database: CREATE TABLE ${words[k + 2]?.text ?? 'name'} AS SELECT ...` };
     const as = words[k + 1];
+    // CREATE TABLE users SELECT ...: the query is there, only the AS before it is missing.
+    if (as?.kind === 'word' && QUERY_WORDS.has(as.value)) return { problem: `put AS between ${name.text} and its query: ${shown(words, 0, k)} ${name.text} AS ${as.text} ...` };
     if (!as || as.kind !== 'word' || as.value !== 'as') return { problem: `give ${name.text} its rows with AS and a query: CREATE TABLE ${name.text} AS SELECT ... (a script can’t declare columns or insert rows)` };
     if (!words[k + 2]) return { problem: `write the query ${name.text} is made from after AS` };
     // CREATE TABLE name AS (SELECT ...): the brackets around the whole query say nothing, so they go.
