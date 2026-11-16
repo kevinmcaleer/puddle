@@ -3,7 +3,7 @@ import { flow, src } from '../../tests/helpers/projects';
 import { compile, sqlNodeFiles, sqlProblem, sqlTableMarks } from './compile';
 import { UnwiredError } from './errors';
 import { fileSetFileName } from './fileSet';
-import { compileScript, isScript, liftFileReads, readScript, scriptTableRefs, scriptTables, splitScript, type ScriptFile } from './sqlScript';
+import { compileScript, isScript, liftFileReads, readScript, scriptTableRefs, scriptTables, splitScript, writtenSqlErrorLine, type ScriptFile } from './sqlScript';
 
 const files: ScriptFile[] = [
   { name: 'log-1.parquet', registered: 'src_s_1.parquet' },
@@ -263,5 +263,50 @@ describe('the tables a query names, for its editor to mark', () => {
       ['big', true, 't'],
     ]);
     expect(sqlTableMarks(p, 'other', sql)).toEqual([]);
+  });
+});
+
+describe('the line of written SQL a DuckDB error points at', () => {
+  const p = (query: string) =>
+    flow({
+      sources: [src({ id: 'orders', format: 'csv' })],
+      nodes: [
+        { id: 'o', type: 'source', sourceId: 'orders', name: 'Orders' },
+        { id: 'q', type: 'sql', sqlSpec: { query } },
+      ],
+      wires: [['o', 'q', 0]],
+    });
+  /** DuckDB's error for the compiled line holding `text`, quoting that line as it does. */
+  const errorAt = (compiled: string, text: string) => {
+    const lines = compiled.split('\n');
+    const k = lines.findIndex((l) => l.includes(text));
+    return `Parser Error: syntax error at or near "WHERE"\n\nLINE ${k + 1}: ${lines[k]}\n    ^`;
+  };
+
+  it('counts a script’s lines as written, not as compiled', () => {
+    const script = '-- Kev’s tables\nCREATE OR REPLACE TABLE log AS\nSELECT id, po FROM input1;\n\nCREATE OR REPLACE TABLE doc_po AS\nSELECT id,\nFILTER ((WHERE po IS NOT NULL), 0) AS po\nFROM log\nGROUP BY id;';
+    const compiled = compile(p(script), { nodeId: 'q' }).sql;
+    expect(writtenSqlErrorLine(compiled, script, errorAt(compiled, 'FILTER'))).toEqual({ line: 7, text: 'FILTER ((WHERE po IS NOT NULL), 0) AS po' });
+    expect(writtenSqlErrorLine(compiled, script, errorAt(compiled, 'SELECT id, po'))).toEqual({ line: 3, text: 'SELECT id, po FROM input1;' });
+  });
+
+  it('counts one query’s lines, comments above it and all', () => {
+    const query = '-- totals\n\nSELECT id,\n  sum(totl)\nFROM input1';
+    const compiled = compile(p(query), { nodeId: 'q' }).sql;
+    expect(writtenSqlErrorLine(compiled, query, errorAt(compiled, 'sum(totl)'))).toEqual({ line: 4, text: 'sum(totl)' });
+  });
+
+  it('finds a line of a statement whose file read was lifted by the text DuckDB quotes', () => {
+    const script = "CREATE TABLE log AS\nSELECT id,\n  nope(po) AS po\nFROM 'orders.csv';\nSELECT * FROM log";
+    expect(writtenSqlErrorLine('WITH x AS (\nSELECT 1)', script, 'Catalog Error: no nope\n\nLINE 2: ...  nope(po) AS po\n    ^')).toEqual({ line: 3, text: 'nope(po) AS po' });
+  });
+
+  it('says nothing when the error points outside what was written, or at no line', () => {
+    const query = 'SELECT id\nFROM input1';
+    const compiled = compile(p(query), { nodeId: 'q' }).sql;
+    expect(writtenSqlErrorLine(compiled, query, 'Parser Error: nothing\n\nLINE 1: WITH "n_o" AS (SELECT')).toBeUndefined();
+    expect(writtenSqlErrorLine(compiled, query, 'Binder Error: no line')).toBeUndefined();
+    // A quoted line two lines of the script hold could be either.
+    expect(writtenSqlErrorLine('x', 'SELECT a\nFROM t;\nSELECT a\nFROM u', 'Error\n\nLINE 9: SELECT a')).toBeUndefined();
   });
 });

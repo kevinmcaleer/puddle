@@ -97,6 +97,35 @@ function splitPlaced(sql: string): { statements: PlacedStatement[] } | { problem
   return { statements };
 }
 
+/**
+ * The line of SQL written on a node (a query or a script) that a DuckDB error points at ("LINE 48: ..."), given the
+ * compiled SQL that failed. DuckDB counts the lines of everything sent to it; each statement's query is found there, and
+ * has its own place in what was written. A statement whose text was changed on the
+ * way (a file read lifted out of it) is found by the text DuckDB quotes, when one line alone holds it.
+ */
+export function writtenSqlErrorLine(compiledSql: string, sql: string, error: string): { line: number; text: string } | undefined {
+  const at = /LINE (\d+):[ \t]?(.*)/.exec(error);
+  const split = splitPlaced(sql);
+  if (!at || 'problem' in split) return undefined;
+  const lines = sql.split('\n');
+  const found = (line: number) => (line >= 1 && line <= lines.length ? { line, text: lines[line - 1]!.trim() } : undefined);
+  const failed = Number(at[1]);
+  for (const s of split.statements) {
+    const cleaned = cleanCustomSql(s.query);
+    const body = `${cleaned}\n)`;
+    const count = cleaned.split('\n').length;
+    for (let pos = compiledSql.indexOf(body); pos >= 0; pos = compiledSql.indexOf(body, pos + 1)) {
+      const within = failed - compiledSql.slice(0, pos).split('\n').length + 1;
+      if (within >= 1 && within <= count) return found(sql.slice(0, s.at).split('\n').length + within - 1);
+    }
+  }
+  // DuckDB quotes the line, cut short with "..." at either end when it is long.
+  const quoted = at[2]!.replace(/^\.\.\./, '').replace(/\.\.\.$/, '').trim();
+  if (!quoted) return undefined;
+  const holding = lines.flatMap((l, i) => (l.includes(quoted) ? [i + 1] : []));
+  return holding.length === 1 ? found(holding[0]!) : undefined;
+}
+
 /** True when the bracket opening at `from` closes on the last token, so it wraps everything from there on. */
 function wrapped(tokens: SqlToken[], from: number): boolean {
   if (tokens[from]?.kind !== 'op' || tokens[from]!.text !== '(') return false;

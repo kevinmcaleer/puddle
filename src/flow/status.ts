@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { compile, CompileError, compileCount, compileLoadCheck, describeFailure, SchemaCache, UnwiredError, upstreamKey, withFileNames } from '../compiler';
+import { compile, CompileError, compileCount, compileLoadCheck, describeFailure, SchemaCache, UnwiredError, upstreamKey, withFileNames, writtenSql, writtenSqlErrorLine } from '../compiler';
 import { EngineError, tableRows, toEngineError, type EngineClient } from '../engine';
 import { inputEdges, topoSort, type ColumnSchema, type GraphNode, type Port, type Project } from '../model';
 
@@ -14,6 +14,18 @@ import { inputEdges, topoSort, type ColumnSchema, type GraphNode, type Port, typ
  * A Schema table node whose load breaks its table's constraints is an error listing each kind of failure in `failures`,
  * so nothing downstream reads rows the table wouldn't take.
  */
+/** An engine error on a node that runs SQL as written, with the line of that SQL DuckDB points at. */
+function withWrittenLine(project: Project, node: GraphNode | undefined, error: EngineError, cache: SchemaCache): string {
+  const sql = writtenSql(node);
+  if (!node || sql == null || !error.detail) return error.message;
+  try {
+    const at = writtenSqlErrorLine(compile(project, { nodeId: node.id }, { schemas: cache.book }).sql, sql, error.detail);
+    return at ? `${error.message} Line ${at.line}: ${at.text}` : error.message;
+  } catch {
+    return error.message;
+  }
+}
+
 export type NodeStatus =
   | { state: 'pending' }
   | { state: 'detached' }
@@ -188,7 +200,7 @@ export async function evaluateFlow(engine: EngineClient, project: Project, isDet
     } catch (e) {
       if (gen !== generation) return;
       const err = toEngineError(e);
-      next[id] = { key, status: { state: 'error', message: withFileNames(err.message, project.sources), ...(err.code === 'stopped' ? { stopped: true } : {}) } };
+      next[id] = { key, status: { state: 'error', message: withFileNames(withWrittenLine(project, node, err, cache), project.sources), ...(err.code === 'stopped' ? { stopped: true } : {}) } };
     }
     publish();
   }
