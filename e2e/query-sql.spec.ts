@@ -19,7 +19,7 @@ async function shopQuery(page: Page) {
 test('the SQL view: the design as SQL, edited SQL back into the design, and SQL the grid can’t show kept as written', async ({ page }) => {
   await shopQuery(page);
   const designer = page.getByTestId('query-designer');
-  const sql = designer.getByLabel('SQL', { exact: true });
+  const sql = page.getByRole('textbox', { name: 'SQL', exact: true });
 
   // The design as SQL.
   await designer.getByRole('tab', { name: 'SQL' }).click();
