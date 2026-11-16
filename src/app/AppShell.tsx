@@ -52,7 +52,7 @@ import { AppSwitcher } from '../powertools/AppSwitcher';
 import { Button, Menu, ResultsBar, StatusBadge, StatusStrip, Toolbar, useDisplayFormat, type NodeKind } from '../ui';
 import { ActivityControl } from './ActivityControl';
 import { FileSetInputs } from '../sources/FileSetInputs';
-import { ADD_AFTER_SELECTION, addFiles, addFileSet, addNodeAfterSelection, addSchemaTable, cancelWiring, chooseFiles as pickSourceFiles, addPastedText, groupSelection, layoutFlow, openSelected, pasteFromClipboard, searchAddStep, selectNeighbour, startWiring, viewSelected } from './actions';
+import { ADD_AFTER_SELECTION, addFiles, addFileSet, addNodeAfterSelection, addSchemaTable, addTableFromSql, cancelWiring, chooseFiles as pickSourceFiles, addPastedText, groupSelection, layoutFlow, openSelected, pasteFromClipboard, searchAddStep, selectNeighbour, startWiring, viewSelected } from './actions';
 import { useEngineStore, type EngineStatus } from './engine';
 import { ResultsPanel } from './ResultsPanel';
 import { Console } from '../console/Console';
@@ -372,6 +372,8 @@ export function AppShell() {
               { label: 'From database', icon: 'database', hint: 'A connection', shortcut: shortcutText('add-database'), group: 'Sources', onSelect: () => openConnectionDialog('add') },
               { label: 'Paste from clipboard', icon: 'paste', group: 'Sources', onSelect: () => void pasteFromClipboard() },
               { label: 'From template', icon: 'template', hint: 'Saved steps', group: 'Nodes', onSelect: openTemplates },
+              // A table made by a query: after the selected nodes, or standing alone with rows of its own.
+              { label: 'Table from SQL', icon: 'code', hint: 'CREATE TABLE', group: 'Nodes', onSelect: addTableFromSql },
               // Every table designed in the Schema view, as a node holding its rows (the selected node, if any, loads into it).
               ...schemaTables.map((t) => ({ label: t.name, icon: 'schema' as const, hint: t.schema === 'public' ? 'Schema table' : `Schema table in ${t.schema}`, group: 'Schema tables', onSelect: () => addSchemaTable(t.schema, t.name) })),
               // Nodes and steps go after the selected node, so with nothing selected they wait (principle 2).

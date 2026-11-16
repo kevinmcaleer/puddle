@@ -3,7 +3,7 @@ import { neighbour, type Direction } from '../canvas/navigate';
 import { suggestJoinKey, suggestLookupColumns } from '../compiler';
 import { useFlowStore } from '../flow/status';
 import { relatedKeys, withRelatedJoins } from '../relationships/joins';
-import { addNode, canConnect, canMakeGroup, connect, disconnect, freePort, groupOf, inputEdges, makeGroup, setGroupCollapsed, moveQueryTable, newId, nodeById, setJoinSpec, setLookupSpec, setSchemaCheck, setTableSpec, useProjectStore, type AddableNodeType, type ColumnSchema, type Port, type Project, type Source, type SourceFormat } from '../model';
+import { addNode, canConnect, canMakeGroup, connect, disconnect, freePort, groupOf, inputEdges, makeGroup, setGroupCollapsed, moveQueryTable, newId, nodeById, setJoinSpec, setLookupSpec, setSchemaCheck, setSqlQuery, setTableSpec, syncScriptTables, useProjectStore, type AddableNodeType, type ColumnSchema, type Port, type Project, type Source, type SourceFormat } from '../model';
 import { useEngineStore } from './engine';
 import { buildStep } from '../inspector/addStep';
 import { addStepAt } from '../quickfix/place';
@@ -182,6 +182,33 @@ export function addNodeAfterSelection(type: AddableNodeType, init?: (project: Pr
   if (!added) return;
   if (type === 'query') useSession.getState().openDesigner(added);
   else useSession.getState().select(added);
+}
+
+/** The query a new table from SQL starts with: every row of what is wired in, or a few typed rows when nothing is. */
+export const tableFromSqlQuery = (table: string, wired: boolean) =>
+  wired ? `CREATE OR REPLACE TABLE ${table} AS\nSELECT *\nFROM input1` : `CREATE OR REPLACE TABLE ${table} AS\nSELECT *\nFROM (VALUES (1, 'first'), (2, 'second')) AS t(id, name)`;
+
+/**
+ * A table made by a SQL query, from the canvas: a SQL node whose script creates it, and the table's own node after
+ * it. The selected nodes are wired in as input1, input2...; with nothing selected the query stands alone, making its
+ * rows itself, so the table can start a flow like a source.
+ */
+export function addTableFromSql() {
+  const { apply, history } = useProjectStore.getState();
+  const feeds = useSession.getState().selectedNodeIds.filter((id) => nodeById(history.present, id));
+  let added: string | undefined;
+  apply((p) => {
+    const next = addNode(p, 'sql', positionAfter(p, feeds), feeds);
+    added = next.nodes[next.nodes.length - 1]!.id;
+    const wired = inputEdges(next, added).length > 0;
+    // table1, or the first number no node is called by, so the table's node takes the table's name.
+    const used = new Set(next.nodes.map((n) => n.name.toLowerCase()));
+    let k = 1;
+    while (used.has(`table${k}`)) k++;
+    const table = `table${k}`;
+    return syncScriptTables(setSqlQuery(next, added, tableFromSqlQuery(table, wired)), added, [], [table]);
+  });
+  if (added) useSession.getState().select(added);
 }
 
 /** A Schema table node for one of the schema's tables, loaded from the selected node if there is one. */

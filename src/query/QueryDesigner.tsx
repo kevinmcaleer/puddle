@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState, type DragEvent, type KeyboardEvent as ReactKeyboardEvent, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent } from 'react';
 import { useSession } from '../app/session';
 import { cardKind } from '../canvas/kind';
-import { CRITERIA_OPS, crossJoinedTables, defaultNames, designSql, fieldTotal, queryProblems, querySqlProblem, readQuerySql, TOTALS, totalsProblems } from '../compiler';
+import { CRITERIA_OPS, crossJoinedTables, defaultNames, designSql, fieldTotal, isScript, queryProblems, readQuerySql, scriptTables, sqlProblem, TOTALS, totalsProblems } from '../compiler';
 import { useFlowStore, useNodeStatus } from '../flow/status';
 import { addRelatedTable } from '../relationships/joins';
 import {
@@ -19,6 +19,7 @@ import {
   setQueryDesign,
   setQuerySpec,
   setQuerySql,
+  syncScriptTables,
   updateQueryField,
   useProject,
   useProjectStore,
@@ -535,20 +536,41 @@ function SqlView({ node, tables, onDiscard }: { node: QueryNode; tables: Designe
   const kept = node.querySpec.sql;
   const designProblem = kept == null && known ? queryProblems(node.querySpec, queryTables)[0] : undefined;
   const shown = kept ?? (known && !designProblem ? designSql(node.querySpec, queryTables) : '');
-  const runProblem = kept != null ? querySqlProblem(kept, tables) : undefined;
-  const why = kept == null || runProblem ? undefined : known ? readQuerySql(kept, queryTables, node.querySpec) : { reason: 'its tables’ columns aren’t known yet' };
+  // Read with the project, so a script's tables and the files of the sources wired in count.
+  const project = useProject();
+  const runProblem = kept != null ? sqlProblem(project, node.id) : undefined;
+  const created = kept != null ? scriptTables(kept) : [];
+  const why =
+    kept == null || runProblem
+      ? undefined
+      : isScript(kept)
+        ? { reason: created.length ? `it is a script: ${created.length === 1 ? `the table ${created[0]} it creates has` : 'each table it creates has'} a node of its own on the canvas, and the query’s rows are its last statement’s` : 'it is a script of several statements' }
+        : known
+          ? readQuerySql(kept, queryTables, node.querySpec)
+          : { reason: 'its tables’ columns aren’t known yet' };
 
   const commit = (sql: string) => {
     if (sql.trim() === shown.trim()) return;
-    const read = known ? readQuerySql(sql, queryTables, node.querySpec) : undefined;
+    // An emptied box is no query to keep: any SQL kept goes, and the design runs (and is written here) again.
+    if (!sql.trim()) {
+      if (kept == null) return;
+      apply((p) => setQuerySql(p, node.id, undefined));
+      announce('The SQL is empty, so the query runs its design again');
+      return;
+    }
+    const script = isScript(sql);
+    const read = known && !script ? readQuerySql(sql, queryTables, node.querySpec) : undefined;
     if (read && 'spec' in read) {
       // Only the spacing changed: the design stays as it is.
       if (kept == null && designSql(read.spec, queryTables) === shown) return;
       apply((p) => setQueryDesign(p, node.id, read.spec));
       announce('The design now matches the SQL');
     } else {
-      apply((p) => setQuerySql(p, node.id, sql));
-      announce('The grid can’t show this SQL, so the query runs it as written');
+      // A table the SQL creates (CREATE TABLE name AS ...) gets a node of its own, wired from this Query.
+      const tablesNow = scriptTables(sql);
+      apply((p) => syncScriptTables(setQuerySql(p, node.id, sql), node.id, created, tablesNow));
+      const added = tablesNow.filter((t) => !created.some((c) => c.toLowerCase() === t.toLowerCase()));
+      announce(script && added.length ? `${added.join(', ')} ${added.length === 1 ? 'is now a table' : 'are now tables'} on the canvas` : 'The grid can’t show this SQL, so the query runs it as written');
     }
   };
 
@@ -597,7 +619,7 @@ function SqlView({ node, tables, onDiscard }: { node: QueryNode; tables: Designe
         onCommit={commit}
       />
       <p className="text-label text-ink-muted">
-        Edit the SQL, then press Ctrl+Enter or click away, and the design grid follows. Tables are read by their node’s name, or as input1, input2. SQL the grid can’t show, such as OFFSET or UNION, runs as written.
+        Edit the SQL, then press Ctrl+Enter or click away, and the design grid follows. Tables are read by their node’s name, or as input1, input2. SQL the grid can’t show, such as OFFSET or UNION, runs as written. CREATE TABLE name AS a query makes a table with a node of its own on the canvas.
       </p>
     </div>
   );

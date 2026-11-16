@@ -64,5 +64,13 @@ FROM log l LEFT JOIN users u ON upper(trim(u."User Name")) = upper(trim(l.user_n
 GROUP BY l.docid;
 ```
 
-The node's own rows are the last statement's. Once a script creates two or more tables, each gets a **Script table** node of its own, wired from the SQL node and named after it (here `log`, `users` and `docs`), which you can view, check with rules, join, and export like any other node. A table renamed in the script takes its node with it; a node you delete stays deleted until the script creates a new table, and the inspector's **Tables it creates** adds one back. Nothing a script creates outlives the query: each table is worked out when a node after it needs it, as every node is.
+The node's own rows are the last statement's. Each table a script creates, even its only one, gets a **Script table** node of its own, wired from the SQL node and named after it (here `log`, `users` and `docs`), which you can view, check with rules, join, and export like any other node. A table renamed in the script takes its node with it; a node you delete stays deleted until the script creates a new table, and the inspector's **Tables it creates** adds one back. Nothing a script creates outlives the query: each table is worked out when a node after it needs it, as every node is. The query after `AS` may be in brackets: `CREATE TABLE big AS (SELECT ...)`.
+
+### Creating a table from a query
+
+`CREATE TABLE name AS` a query makes a table on the canvas wherever you write SQL:
+
+- **Add › Table from SQL** adds a SQL node whose query creates a table, and the table's node after it. The selected nodes are wired in as `input1`, `input2`...; with nothing selected the query makes its rows itself, such as `SELECT * FROM (VALUES (1, 'first'), (2, 'second')) AS t(id, name)`, so the table can start a flow as a source does. A SQL node with nothing wired in runs any query that reads no input.
+- In the **SQL console** under the results, a `CREATE TABLE` query isn't answered in place: **Create table** (or Ctrl+Enter) adds a SQL node after the viewed node that runs it, and the table's node.
+- In a Query's **SQL view** (see {doc}`query-designer`), `CREATE TABLE` runs as written and the table's node is wired from the Query.
 

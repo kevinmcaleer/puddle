@@ -7,9 +7,11 @@ const tablesOf = (p: Project) => p.nodes.flatMap((n) => (n.type === 'scriptTable
 const wiredFromQ = (p: Project) => p.edges.filter((e) => e.from.nodeId === 'q').map((e) => p.nodes.find((n) => n.id === e.to.nodeId)?.name);
 
 describe('script table nodes', () => {
-  it('appear for every table once a script makes two or more, wired from the SQL node and stacked to its right', () => {
-    expect(syncScriptTables(base(), 'q', [], ['log'])).toEqual(base());
-    const p = syncScriptTables(base(), 'q', ['log'], ['log', 'users', 'docs']);
+  it('appear for every table a script newly makes, even its only one, wired from the SQL node and stacked to its right', () => {
+    const one = syncScriptTables(base(), 'q', [], ['log']);
+    expect(tablesOf(one)).toEqual([['log', 'log']]);
+    expect(wiredFromQ(one)).toEqual(['log']);
+    const p = syncScriptTables(one, 'q', ['log'], ['log', 'users', 'docs']);
     expect(tablesOf(p)).toEqual([
       ['log', 'log'],
       ['users', 'users'],
@@ -27,6 +29,12 @@ describe('script table nodes', () => {
       ['log', 'log'],
       ['docs', 'docs'],
     ]);
+  });
+
+  it('appear for the tables a Query’s SQL makes, and for no other kind of node', () => {
+    const p = flow({ nodes: [{ id: 'q', type: 'query' }, { id: 'j', type: 'transform' }] });
+    expect(tablesOf(syncScriptTables(p, 'q', [], ['big']))).toEqual([['big', 'big']]);
+    expect(syncScriptTables(p, 'j', [], ['big'])).toEqual(p);
   });
 
   it('follow a table renamed in the script, keeping a name given by hand', () => {
