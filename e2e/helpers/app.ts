@@ -233,3 +233,12 @@ export const pasteText = (page: Page, text: string) =>
     Object.defineProperty(event, 'clipboardData', { value: data });
     window.dispatchEvent(event);
   }, text);
+
+/** What a SQL editor (CodeMirror) holds, its lines joined: it is not an input, so it has no value to read. */
+export const sqlText = (editor: Locator) => editor.evaluate((el) => Array.from(el.querySelectorAll('.cm-line')).map((line) => line.textContent ?? '').join('\n'));
+
+/** Wait until a SQL editor holds this text, or text matching this pattern. */
+export async function expectSql(editor: Locator, expected: string | RegExp) {
+  if (typeof expected === 'string') await expect.poll(() => sqlText(editor)).toBe(expected);
+  else await expect.poll(() => sqlText(editor)).toMatch(expected);
+}

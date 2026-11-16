@@ -4,7 +4,7 @@ import { compileConsole, CONSOLE_ROW_LIMIT, consoleProblem, customSqlErrorLine, 
 import { isCancelled, tableColumns, tableRows, toEngineError } from '../engine';
 import { useNodeStatus } from '../flow/status';
 import { nodeById, type ColumnSchema, type Project } from '../model';
-import { ExpressionInput } from '../steps/ExpressionInput';
+import { SqlEditor } from '../steps/SqlEditor';
 import { announce, Banner, Button, columnKind, TypeTag } from '../ui';
 import { makeSqlNode } from './actions';
 import { DEFAULT_QUERY, useConsoleDraft } from './draft';
@@ -79,14 +79,25 @@ export function Console({ project }: { project: Project }) {
           className="min-w-0 flex-1"
           onKeyDownCapture={(e) => {
             asked.current = e.key === 'Enter' && (e.ctrlKey || e.metaKey);
-            // The editor commits only what has changed; a script it already handed over is created from here.
-            if (asked.current && script && (e.target as HTMLTextAreaElement).value === query) create(query);
           }}
           onBlurCapture={() => {
             asked.current = false;
           }}
         >
-          <ExpressionInput id="console-query" aria-label="Console query" rows={3} value={query} columns={columns} error={!!problem} placeholder={DEFAULT_QUERY} onCommit={(v) => void run(v)} />
+          <SqlEditor
+            id="console-query"
+            aria-label="Console query"
+            rows={3}
+            value={query}
+            columns={columns}
+            error={!!problem}
+            placeholder={DEFAULT_QUERY}
+            onCommit={(v) => void run(v)}
+            // The editor commits only what has changed; a script it already handed over is created from here.
+            onSubmit={(v) => {
+              if (script && v === query) create(query);
+            }}
+          />
           <p className="mt-1 text-label text-ink-muted">
             {viewed ? <>Reads the rows of <strong>{viewed.name}</strong> as <code>input</code>. Ctrl+Enter runs it; the answer shows up to {CONSOLE_ROW_LIMIT} rows and changes nothing. CREATE TABLE name AS a query adds the table to the canvas.</> : 'View a node to query its rows here.'}
           </p>

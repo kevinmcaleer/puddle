@@ -82,3 +82,22 @@
 .sql-table-found { color: var(--pass); font-weight: 600; text-decoration: underline; text-underline-offset: 3px; }
 .sql-table-missing { color: var(--fail); font-weight: 600; text-decoration: underline wavy var(--fail); text-decoration-skip-ink: none; text-underline-offset: 3px; }
 .sql-table-found.is-pointed { background: var(--pass-tint); border-radius: var(--radius-xs); }
+
+/* The SQL editor (src/steps/SqlEditor.tsx): CodeMirror inside the design system's input, in its colours. */
+.puddle-cm { --cm-line: 18px; height: auto; padding: 0; overflow: hidden; resize: vertical; min-height: calc(2 * var(--cm-line) + 2 * var(--space-1) + 2px); }
+.puddle-cm:focus-within { outline: 2px solid var(--brand); outline-offset: -1px; border-color: var(--brand); }
+.puddle-cm .cm-editor { height: 100%; background: transparent; color: var(--ink); }
+.puddle-cm .cm-editor.cm-focused { outline: none; }
+.puddle-cm .cm-scroller { font: inherit; line-height: var(--cm-line); overflow: auto; }
+.puddle-cm .cm-content { padding: var(--space-1) 0; caret-color: var(--ink); font-variant-ligatures: none; }
+.puddle-cm .cm-line { padding: 0 var(--space-2); }
+.puddle-cm .cm-placeholder { color: var(--ink-subtle); }
+.puddle-cm .cm-cursor { border-left-color: var(--ink); }
+.puddle-cm .cm-selectionBackground, .puddle-cm .cm-content ::selection { background: var(--brand-tint); }
+.puddle-cm .cm-tooltip { border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--surface-raised); color: var(--ink); box-shadow: var(--shadow-lift); font: inherit; }
+.puddle-cm .cm-tooltip-autocomplete ul li[aria-selected] { background: var(--surface-hover); color: var(--ink); }
+.puddle-cm .cm-completionDetail { color: var(--ink-muted); font-style: normal; }
+.sql-keyword { color: var(--brand); font-weight: 600; }
+.sql-string { color: var(--node-combine); }
+.sql-number, .sql-type { color: var(--node-source); }
+.sql-comment { color: var(--ink-muted); font-style: italic; }

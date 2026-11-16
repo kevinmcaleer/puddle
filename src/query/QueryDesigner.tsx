@@ -34,6 +34,7 @@ import {
 import { viewNode } from '../results/pin';
 import { CommitInput } from '../steps/CommitInput';
 import { ExpressionInput } from '../steps/ExpressionInput';
+import { SqlEditor } from '../steps/SqlEditor';
 import { announce, Banner, Button, columnKind, cx, Dialog, Field, Icon, Menu, NODE_KIND, Select, Switch, Tabs, TypeTag } from '../ui';
 import { designerTables, refKey, tableCandidates, useDesigner, type DesignerTable } from './tables';
 import './query.css';
@@ -609,8 +610,7 @@ function SqlView({ node, tables, onDiscard }: { node: QueryNode; tables: Designe
         </Banner>
       )}
       {!known && kept == null && <Banner tone="info">Reading the tables’ columns.</Banner>}
-      <ExpressionInput
-        key={shown}
+      <SqlEditor
         id="query-sql"
         aria-label="SQL"
         rows={12}

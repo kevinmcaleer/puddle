@@ -25,7 +25,7 @@ test('the page selects like an app: never the whole page, but fields and answers
   const query = page.getByLabel('Console query');
   await query.fill('SELECT customer_id FROM input ORDER BY 1 LIMIT 2');
   await query.press(`${mod}+a`);
-  expect(await query.evaluate((el: HTMLTextAreaElement) => el.value.slice(el.selectionStart, el.selectionEnd))).toBe('SELECT customer_id FROM input ORDER BY 1 LIMIT 2');
+  expect(await selected(page)).toBe('SELECT customer_id FROM input ORDER BY 1 LIMIT 2');
 
   // A console answer can be selected by dragging across it, and Ctrl+A there selects just the answer.
   await query.press('Control+Enter');

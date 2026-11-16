@@ -4,7 +4,7 @@ import { compile, customSqlErrorLine, isScript, scriptTables, splitScript, sqlIn
 import { useFlowStore, useNodeStatus } from '../flow/status';
 import { addScriptTableNodes, inputEdges, nodeById, outputEdges, renameNode, setSqlQuery, syncScriptTables, useProject, useProjectStore, type ColumnSchema, type Project, type SqlNode } from '../model';
 import { CommitInput } from '../steps/CommitInput';
-import { ExpressionInput } from '../steps/ExpressionInput';
+import { SqlEditor } from '../steps/SqlEditor';
 import { Banner, Button, Field, Section } from '../ui';
 
 /** How many file names the panel lists before "and N more". */
@@ -92,8 +92,8 @@ export function SqlPanel({ node }: { node: SqlNode }) {
       )}
       <Section title="Query">
         <div className="flex flex-col gap-2">
-          <ExpressionInput
-            key={node.sqlSpec.query}
+          <SqlEditor
+            key={node.id}
             id="sql-query"
             aria-label="SQL query"
             rows={10}

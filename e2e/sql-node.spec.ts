@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { addFiles, expectRows, fixture, node, openApp, saved } from './helpers/app';
+import { addFiles, expectRows, expectSql, fixture, node, openApp, saved } from './helpers/app';
 
 test('a console query is answered under the results, becomes a SQL node in one click, and refuses what it can’t allow', async ({ page }) => {
   await openApp(page);
@@ -41,7 +41,7 @@ test('a console query is answered under the results, becomes a SQL node in one c
   await page.getByRole('button', { name: 'Make a SQL node' }).click();
   await expect(node(page, 'SQL 1')).toHaveAttribute('data-status', 'ok', { timeout: 20_000 });
   await expect(page.getByTestId('inspector-sql')).toBeVisible();
-  await expect(page.getByLabel('SQL query')).toHaveValue('SELECT customer_id, count(*) AS orders FROM input GROUP BY 1');
+  await expectSql(page.getByLabel('SQL query'), 'SELECT customer_id, count(*) AS orders FROM input GROUP BY 1');
   await expect(page.getByTestId('sql-tables')).toContainText('shop-orders.csv');
   await expect(page.getByTestId('sql-tables')).toContainText('input1, input');
   await expect(page.getByTestId('results-title')).toHaveText('SQL 1');
