@@ -5,10 +5,11 @@ import { HighlightStyle, syntaxHighlighting } from '@codemirror/language';
 import { EditorState, Prec, StateEffect, StateField, Transaction } from '@codemirror/state';
 import { Decoration, EditorView, keymap, placeholder as placeholderText, tooltips, type DecorationSet } from '@codemirror/view';
 import { tags } from '@lezer/highlight';
-import { useEffect, useRef } from 'react';
+import { useContext, useEffect, useRef } from 'react';
 import type { ColumnSchema } from '../model';
 import { cx } from '../ui';
 import { UNDO_ATTRIBUTE } from '../ui/undo';
+import { DockedContext } from './dockContext';
 import { markedPieces, type TextMark } from './marks';
 import { keywordCase, upperKeywords } from './sqlKeywords';
 
@@ -69,6 +70,8 @@ export function SqlEditor({
   /** The mark under the pointer, else the one the caret is in while the editor has focus; undefined when neither. */
   onPoint?: (mark: TextMark | undefined) => void;
 }) {
+  // In the dock beside the rows the editor takes the dock's height; elsewhere it keeps its own, and can be dragged taller.
+  const fill = useContext(DockedContext);
   const host = useRef<HTMLDivElement>(null);
   const view = useRef<EditorView | null>(null);
   const latest = useRef<Latest>({ value, columns, onCommit, onSubmit, marks, onPoint });
@@ -217,5 +220,5 @@ export function SqlEditor({
     view.current?.dispatch({ effects: refreshMarks.of(null) });
   }, [marks]);
 
-  return <div ref={host} className={cx('ui-input is-mono puddle-cm', error && 'is-error')} style={{ height: `calc(${rows} * var(--cm-line) + 2 * var(--space-1) + 2px)` }} />;
+  return <div ref={host} className={cx('ui-input is-mono puddle-cm', fill && 'is-filling', error && 'is-error')} style={fill ? undefined : { height: `calc(${rows} * var(--cm-line) + 2 * var(--space-1) + 2px)` }} />;
 }

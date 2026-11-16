@@ -35,6 +35,8 @@ import { viewNode } from '../results/pin';
 import { CommitInput } from '../steps/CommitInput';
 import { ExpressionInput } from '../steps/ExpressionInput';
 import { SqlEditor } from '../steps/SqlEditor';
+import { DockedSql } from '../app/SqlDock';
+import { useSqlDocked } from '../app/sqlDockState';
 import { announce, Banner, Button, columnKind, cx, Dialog, Field, Icon, Menu, NODE_KIND, Select, Switch, Tabs, TypeTag } from '../ui';
 import { designerTables, refKey, tableCandidates, useDesigner, type DesignerTable } from './tables';
 import './query.css';
@@ -530,7 +532,7 @@ const sentence = (reason: string) => reason[0]!.toUpperCase() + reason.slice(1) 
  * The SQL view, as in Access: the design written as SQL. Edited SQL goes back into the design when the grid can show
  * it; otherwise the Query keeps the SQL and runs it as written, and says why, until the SQL is discarded.
  */
-function SqlView({ node, tables, onDiscard }: { node: QueryNode; tables: DesignerTable[]; onDiscard: () => void }) {
+function SqlView({ node, tables, beside, onDiscard }: { node: QueryNode; tables: DesignerTable[]; /** Drawn among the designer's notes, above the design, its editor beside the rows. */ beside?: boolean; onDiscard: () => void }) {
   const status = useNodeStatus(node.id);
   const known = tables.every((t) => t.columns);
   const queryTables = tables.map((t) => ({ port: t.port, label: t.label, columns: t.columns ?? [] }));
@@ -578,7 +580,7 @@ function SqlView({ node, tables, onDiscard }: { node: QueryNode; tables: Designe
   };
 
   return (
-    <div className="puddle-qd-sql" data-testid="query-sql-view">
+    <div className={beside ? 'flex flex-col gap-2' : 'puddle-qd-sql'} data-testid="query-sql-view">
       {why && 'reason' in why && (
         <div data-testid="query-sql-kept">
           <Banner
@@ -610,20 +612,22 @@ function SqlView({ node, tables, onDiscard }: { node: QueryNode; tables: Designe
         </Banner>
       )}
       {!known && kept == null && <Banner tone="info">Reading the tables’ columns.</Banner>}
-      <SqlEditor
-        id="query-sql"
-        aria-label="SQL"
-        rows={12}
-        value={shown}
-        columns={tables.flatMap((t) => t.columns ?? [])}
-        error={!!runProblem}
-        placeholder={`SELECT ...\nFROM ${tables[0]?.label ?? 'input1'}`}
-        onCommit={commit}
-        marks={marks}
-      />
-      <p className="text-label text-ink-muted">
-        Edit the SQL, then press Ctrl+Enter or click away, and the design grid follows. Tables are read by their node’s name, or as input1, input2. SQL the grid can’t show, such as OFFSET or UNION, runs as written. CREATE TABLE name AS a query makes a table with a node of its own on the canvas.
-      </p>
+      <DockedSql nodeId={node.id} note={<p className="text-label text-ink-muted" data-testid="sql-docked-note">The SQL is beside the rows, at the bottom of the screen.</p>}>
+        <SqlEditor
+          id="query-sql"
+          aria-label="SQL"
+          rows={12}
+          value={shown}
+          columns={tables.flatMap((t) => t.columns ?? [])}
+          error={!!runProblem}
+          placeholder={`SELECT ...\nFROM ${tables[0]?.label ?? 'input1'}`}
+          onCommit={commit}
+          marks={marks}
+        />
+        <p className="text-label text-ink-muted">
+          Edit the SQL, then press Ctrl+Enter or click away, and the design grid follows. Tables are read by their node’s name, or as input1, input2. SQL the grid can’t show, such as OFFSET or UNION, runs as written. CREATE TABLE name AS a query makes a table with a node of its own on the canvas.
+        </p>
+      </DockedSql>
     </div>
   );
 }
@@ -649,6 +653,12 @@ export function QueryDesigner({ node }: { node: QueryNode }) {
   const [chosen, setView] = useState<'design' | 'sql'>(kept ? 'sql' : 'design');
   // SQL the grid can't show is all there is to see until it's discarded.
   const view = kept ? 'sql' : chosen;
+  // The SQL view with its editor in the dock beside the rows, and a design the grid can show: both are on screen.
+  const beside = useSqlDocked(node.id) && view === 'sql' && !kept;
+  const discard = () => {
+    apply((p) => setQuerySql(p, node.id, undefined));
+    setView('design');
+  };
   const choose = (v: 'design' | 'sql') => {
     if (v === 'design' && keptDesign && 'spec' in keptDesign) apply((p) => setQueryDesign(p, node.id, keptDesign.spec));
     setView(v);
@@ -727,7 +737,7 @@ export function QueryDesigner({ node }: { node: QueryNode }) {
           }))}
         />
       </div>
-      {(error || (view === 'design' && (cross.length > 0 || problems.length > 0))) && (
+      {(error || beside || (view === 'design' && (cross.length > 0 || problems.length > 0))) && (
         <div className="puddle-qd-notes">
           {error && (
             <Banner tone="warn" action={<Button variant="ghost" size="sm" onClick={() => setError(null)}>Dismiss</Button>}>
@@ -749,6 +759,8 @@ export function QueryDesigner({ node }: { node: QueryNode }) {
               </Banner>
             </div>
           )}
+          {/* With the SQL beside the rows, the design it is written from stays in view above, each following the other. */}
+          {beside && <SqlView node={node} tables={tables} beside onDiscard={discard} />}
           {view === 'design' && cross.length > 0 && (
             <div data-testid="query-cross-join">
               <Banner tone="info">
@@ -758,20 +770,13 @@ export function QueryDesigner({ node }: { node: QueryNode }) {
           )}
         </div>
       )}
-      {view === 'design' ? (
+      {view === 'design' || beside ? (
         <>
           <TablePane node={node} tables={tables} />
           <QueryGrid node={node} tables={tables} />
         </>
       ) : (
-        <SqlView
-          node={node}
-          tables={tables}
-          onDiscard={() => {
-            apply((p) => setQuerySql(p, node.id, undefined));
-            setView('design');
-          }}
-        />
+        <SqlView node={node} tables={tables} onDiscard={discard} />
       )}
     </div>
   );

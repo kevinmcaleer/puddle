@@ -57,6 +57,7 @@ import { ADD_AFTER_SELECTION, addFiles, addFileSet, addNodeAfterSelection, addSc
 import { useEngineStore, type EngineStatus } from './engine';
 import { ResultsPanel } from './ResultsPanel';
 import { Console } from '../console/Console';
+import { SqlDockPane } from './SqlDock';
 import { ShortcutsDialog } from './ShortcutsDialog';
 import { openTemplates } from '../templates/actions';
 import { TemplateDialogs } from '../templates/TemplateDialogs';
@@ -469,11 +470,14 @@ export function AppShell() {
         </div>
 
         <ResultsPanel bar={<ResultsTitle />}>
-          <div className="flex h-full min-h-0 flex-col">
-            <div className="min-h-0 flex-1">
-              <ResultsTable project={viewProject} />
+          <div className="flex h-full min-h-0">
+            <SqlDockPane />
+            <div className="flex h-full min-h-0 min-w-0 flex-1 flex-col">
+              <div className="min-h-0 flex-1">
+                <ResultsTable project={viewProject} />
+              </div>
+              {consoleOpen && <Console project={viewProject} />}
             </div>
-            {consoleOpen && <Console project={viewProject} />}
           </div>
         </ResultsPanel>
 

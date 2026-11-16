@@ -29,7 +29,7 @@ As in Access, the designer turns the query into SQL and back again. Choose **SQL
 
 ![The SQL view: the same query as SQL, joined on customer_id with a criterion and a sort](_static/screenshots/query-sql-view.png)
 
-You can edit the SQL. Press Ctrl+Enter, or click away, and the design follows: tables, join lines, fields, names, sorting, criteria and totals all fill in from the SQL. Tables are read by their node's name (in double quotes when it has spaces or dots), or as input1, input2 by number. Each table can have a short name of its own, such as `FROM orders o`, and a column only needs its table when two tables have it.
+The SQL is shown beside the query's rows at the bottom of the screen, and the tables and grid stay in view above it, each following the other as you change either. You can edit the SQL. Press Ctrl+Enter, or click away, and the design follows: tables, join lines, fields, names, sorting, criteria and totals all fill in from the SQL. Tables are read by their node's name (in double quotes when it has spaces or dots), or as input1, input2 by number. Each table can have a short name of its own, such as `FROM orders o`, and a column only needs its table when two tables have it.
 
 The grid can show:
 

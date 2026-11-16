@@ -9,7 +9,7 @@ test('CREATE OR REPLACE TABLE in a Query’s SQL view makes a table with a node 
   await page.getByRole('menuitem', { name: /Query/ }).click();
   const designer = page.getByTestId('query-designer');
   await designer.getByRole('tab', { name: 'SQL' }).click();
-  const sql = designer.getByLabel('SQL', { exact: true });
+  const sql = page.getByRole('textbox', { name: 'SQL', exact: true });
   await sql.fill('CREATE OR REPLACE TABLE big_orders AS\nSELECT * FROM input1 WHERE total > 5');
   await sql.press('Control+Enter');
 
@@ -80,13 +80,13 @@ test('emptying a Query’s SQL view goes back to the design instead of saying th
   const designer = page.getByTestId('query-designer');
   await page.getByTestId('query-field-1-order_id').dblclick();
   await designer.getByRole('tab', { name: 'SQL' }).click();
-  const sql = designer.getByLabel('SQL', { exact: true });
+  const sql = page.getByRole('textbox', { name: 'SQL', exact: true });
   await expectSql(sql, /^SELECT /);
   const design = await sqlText(sql);
 
   // Clearing the design's SQL and clicking away keeps nothing, so there is nothing to refuse.
   await sql.fill('');
-  await designer.getByText('Edit the SQL, then press').click();
+  await page.getByText('Edit the SQL, then press').click();
   await expect(designer.getByText('This query can’t run')).toHaveCount(0);
   await expect(designer.getByRole('tab', { name: 'Design' })).toBeEnabled();
 
@@ -95,7 +95,7 @@ test('emptying a Query’s SQL view goes back to the design instead of saying th
   await sql.press('Control+Enter');
   await expect(designer.getByTestId('query-sql-kept')).toBeVisible();
   await sql.fill('');
-  await designer.getByText('Edit the SQL, then press').click();
+  await page.getByText('Edit the SQL, then press').click();
   await expect(designer.getByText('This query can’t run')).toHaveCount(0);
   await expect(designer.getByTestId('query-sql-kept')).toHaveCount(0);
   await expectSql(sql, design);

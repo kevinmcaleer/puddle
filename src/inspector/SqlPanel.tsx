@@ -4,6 +4,7 @@ import { compile, customSqlErrorLine, isScript, scriptTables, splitScript, sqlIn
 import { useFlowStore, useNodeStatus } from '../flow/status';
 import { addScriptTableNodes, inputEdges, nodeById, outputEdges, renameNode, setSqlQuery, syncScriptTables, useProject, useProjectStore, type ColumnSchema, type Project, type SqlNode } from '../model';
 import { CommitInput } from '../steps/CommitInput';
+import { DockedSql } from '../app/SqlDock';
 import { SqlEditor } from '../steps/SqlEditor';
 import { Banner, Button, Field, Section } from '../ui';
 
@@ -92,20 +93,22 @@ export function SqlPanel({ node }: { node: SqlNode }) {
       )}
       <Section title="Query">
         <div className="flex flex-col gap-2">
-          <SqlEditor
-            key={node.id}
-            id="sql-query"
-            aria-label="SQL query"
-            rows={10}
-            value={node.sqlSpec.query}
-            columns={columns}
-            error={!!problem}
-            placeholder={'SELECT region, sum(total) AS total\nFROM input1\nGROUP BY region'}
-            onCommit={commit}
-            marks={marks}
-            onPoint={(mark) => useSession.getState().pointAt(mark?.nodeId ?? null)}
-          />
-          <p className="text-label text-ink-muted">One DuckDB query over the tables above, or a script: CREATE TABLE name AS a query, as many as you like, each reading the tables before it. Each table gets a node of its own on the canvas; this node’s rows are the last statement’s. Ctrl+Enter applies it. It can’t read other nodes, or files not wired in. A table’s name is marked when it is one of these, and underlined in red when it isn’t; point at it to see its node on the canvas.</p>
+          <DockedSql nodeId={node.id} note={<p className="text-label text-ink-muted" data-testid="sql-docked-note">The query is beside the rows, at the bottom of the screen.</p>}>
+            <SqlEditor
+              key={node.id}
+              id="sql-query"
+              aria-label="SQL query"
+              rows={10}
+              value={node.sqlSpec.query}
+              columns={columns}
+              error={!!problem}
+              placeholder={'SELECT region, sum(total) AS total\nFROM input1\nGROUP BY region'}
+              onCommit={commit}
+              marks={marks}
+              onPoint={(mark) => useSession.getState().pointAt(mark?.nodeId ?? null)}
+            />
+            <p className="text-label text-ink-muted">One DuckDB query over the tables above, or a script: CREATE TABLE name AS a query, as many as you like, each reading the tables before it. Each table gets a node of its own on the canvas; this node’s rows are the last statement’s. Ctrl+Enter applies it. It can’t read other nodes, or files not wired in. A table’s name is marked when it is one of these, and underlined in red when it isn’t; point at it to see its node on the canvas.</p>
+          </DockedSql>
           {problem && (
             <Banner tone="fail" title={script ? 'This script can’t run' : 'This query can’t run'}>
               {problem[0]!.toUpperCase() + problem.slice(1)}.
