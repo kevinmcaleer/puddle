@@ -1,7 +1,7 @@
-import { useEffect, useLayoutEffect, useRef, useState, type DragEvent, type KeyboardEvent as ReactKeyboardEvent, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type DragEvent, type KeyboardEvent as ReactKeyboardEvent, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent } from 'react';
 import { useSession } from '../app/session';
 import { cardKind } from '../canvas/kind';
-import { CRITERIA_OPS, crossJoinedTables, defaultNames, designSql, fieldTotal, isScript, queryProblems, readQuerySql, scriptTables, sqlProblem, TOTALS, totalsProblems } from '../compiler';
+import { CRITERIA_OPS, crossJoinedTables, defaultNames, designSql, fieldTotal, isScript, queryProblems, readQuerySql, scriptTables, sqlProblem, sqlTableMarks, TOTALS, totalsProblems } from '../compiler';
 import { useFlowStore, useNodeStatus } from '../flow/status';
 import { addRelatedTable } from '../relationships/joins';
 import {
@@ -549,6 +549,8 @@ function SqlView({ node, tables, onDiscard }: { node: QueryNode; tables: Designe
           ? readQuerySql(kept, queryTables, node.querySpec)
           : { reason: 'its tables’ columns aren’t known yet' };
 
+  const marks = useCallback((text: string) => sqlTableMarks(project, node.id, text), [project, node.id]);
+
   const commit = (sql: string) => {
     if (sql.trim() === shown.trim()) return;
     // An emptied box is no query to keep: any SQL kept goes, and the design runs (and is written here) again.
@@ -617,6 +619,7 @@ function SqlView({ node, tables, onDiscard }: { node: QueryNode; tables: Designe
         error={!!runProblem}
         placeholder={`SELECT ...\nFROM ${tables[0]?.label ?? 'input1'}`}
         onCommit={commit}
+        marks={marks}
       />
       <p className="text-label text-ink-muted">
         Edit the SQL, then press Ctrl+Enter or click away, and the design grid follows. Tables are read by their node’s name, or as input1, input2. SQL the grid can’t show, such as OFFSET or UNION, runs as written. CREATE TABLE name AS a query makes a table with a node of its own on the canvas.

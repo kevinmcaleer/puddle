@@ -12,6 +12,8 @@ export {
   sqlNodeFiles,
   sqlProblem,
   writtenSql,
+  sqlTableMarks,
+  type SqlTableMark,
   compileLookupCheck,
   compilePivotValues,
   compileTransposeRows,
@@ -39,10 +41,10 @@ export { appendColumns, appendProblems, compileAppend, type AppendColumn, type A
 export { compileQuery, CRITERIA_OPS, criteriaClauses, criteriaPlace, criteriaRows, crossJoinedTables, defaultNames, fieldTerm, fieldTotal, joinPlan, QUERY_JOIN_TYPES, queryColumns, queryProblems, resultType, tableAlias, TOTALS, totalsProblems, type QueryColumn, type QueryJoinStep, type QueryProblem, type QueryTable } from './query';
 export { compileQuerySql, designSql, querySqlNames, querySqlProblem, readQuerySql, type QuerySqlReading } from './querySql';
 export { knownSchemas, SchemaBook } from './schemaBook';
-export { cleanCustomSql, customSqlProblem, INPUT_NAME, lexSql, SqlRefusal, type SqlToken, type SqlTokenKind } from './customSql';
+export { cleanCustomSql, customSqlProblem, INPUT_NAME, lexSql, SqlRefusal, sqlTableRefs, type SqlTableRef, type SqlToken, type SqlTokenKind } from './customSql';
 export { compileConsole, CONSOLE_ROW_LIMIT, consoleProblem } from './console';
 export { compileSqlNode, sqlInputNames, sqlNodeProblem, sqlTableNames, type SqlInput } from './sqlNode';
-export { compileScript, compileScriptOver, isScript, liftFileReads, readScript, readScriptOver, scriptTables, splitScript, type FileRead, type ScriptBinding, type ReadScript, type ScriptFile, type ScriptStatement } from './sqlScript';
+export { compileScript, compileScriptOver, isScript, liftFileReads, readScript, readScriptOver, scriptTableRefs, scriptTables, splitScript, type FileRead, type ScriptBinding, type ScriptTableRef, type ReadScript, type ScriptFile, type ScriptStatement } from './sqlScript';
 export { FILE_COLUMN, FILE_SET_FORMATS, fileSetFileName, fileSetMembers, fileSetNames, globMatches, globRegExp, isFileSetFormat, isGlob } from './fileSet';
 export { renameSqlColumns, sqlColumnRefs } from './columnRefs';
 export { describeType, typeFamily, typesFit } from './types';

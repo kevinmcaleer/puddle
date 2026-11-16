@@ -41,6 +41,8 @@ Wire more inputs into the spare numbered input on the node to append more.
 
 A SQL node runs DuckDB SQL you write over the nodes wired into it. Each input is readable as `input1`, `input2`... and by its node's name (in double quotes when the name has spaces or dots), and a lone input also as `input`. The SQL console under the results turns a query into a SQL node in one click.
 
+As you type, the editor marks each table the query names: underlined in the pass colour when it is an input or a table the script creates, and with a red wavy underline when nothing wired in is called that. Point at a marked name, or put the caret in it, and the node it means is outlined on the canvas. A Query's SQL view marks its tables the same way.
+
 ### Reading files by name
 
 A SQL node can read the files of the sources wired into it, by name or by a pattern, as DuckDB reads files: `read_parquet('*.parquet', union_by_name = true)`, `read_csv('users.csv')`, or `FROM 'users.parquet'` in place of a table. Wire in a file set (see {doc}`sources`) to read many files this way, or single file sources. A pattern matches only the files wired in; nothing else on your computer can be read, and the reader's options (`union_by_name`, `filename`, `header`, `delim` and the like) can only be plain values.

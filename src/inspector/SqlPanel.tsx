@@ -1,4 +1,6 @@
-import { compile, customSqlErrorLine, isScript, scriptTables, splitScript, sqlInputNames, sqlNodeFiles, sqlProblem } from '../compiler';
+import { useCallback } from 'react';
+import { useSession } from '../app/session';
+import { compile, customSqlErrorLine, isScript, scriptTables, splitScript, sqlInputNames, sqlNodeFiles, sqlProblem, sqlTableMarks } from '../compiler';
 import { useFlowStore, useNodeStatus } from '../flow/status';
 import { addScriptTableNodes, inputEdges, nodeById, outputEdges, renameNode, setSqlQuery, syncScriptTables, useProject, useProjectStore, type ColumnSchema, type Project, type SqlNode } from '../model';
 import { CommitInput } from '../steps/CommitInput';
@@ -49,6 +51,8 @@ export function SqlPanel({ node }: { node: SqlNode }) {
   });
   const nodeOf = (table: string) => tableNodes.find((n) => n.scriptTable.table.toLowerCase() === table.toLowerCase());
   const commit = (query: string) => apply((p) => syncScriptTables(setSqlQuery(p, node.id, query), node.id, tables, scriptTables(query)));
+  // Each table the query names, as it is typed: found (and which node it is) or not.
+  const marks = useCallback((text: string) => sqlTableMarks(project, node.id, text), [project, node.id]);
   const errorLine = status.state === 'error' && !problem ? errorLineOf(project, node, status.message) : undefined;
 
   return (
@@ -98,8 +102,10 @@ export function SqlPanel({ node }: { node: SqlNode }) {
             error={!!problem}
             placeholder={'SELECT region, sum(total) AS total\nFROM input1\nGROUP BY region'}
             onCommit={commit}
+            marks={marks}
+            onPoint={(mark) => useSession.getState().pointAt(mark?.nodeId ?? null)}
           />
-          <p className="text-label text-ink-muted">One DuckDB query over the tables above, or a script: CREATE TABLE name AS a query, as many as you like, each reading the tables before it. Each table gets a node of its own on the canvas; this node’s rows are the last statement’s. Ctrl+Enter applies it. It can’t read other nodes, or files not wired in.</p>
+          <p className="text-label text-ink-muted">One DuckDB query over the tables above, or a script: CREATE TABLE name AS a query, as many as you like, each reading the tables before it. Each table gets a node of its own on the canvas; this node’s rows are the last statement’s. Ctrl+Enter applies it. It can’t read other nodes, or files not wired in. A table’s name is marked when it is one of these, and underlined in red when it isn’t; point at it to see its node on the canvas.</p>
           {problem && (
             <Banner tone="fail" title={script ? 'This script can’t run' : 'This query can’t run'}>
               {problem[0]!.toUpperCase() + problem.slice(1)}.
