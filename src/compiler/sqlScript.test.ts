@@ -46,6 +46,17 @@ SELECT * FROM docs;`);
     expect(splitScript('CREATE TABLE t AS ()')).toEqual({ problem: 'write the query t is made from after AS' });
   });
 
+  // Regression: AS written before the name was read as the table, and the message said "give AS its rows with AS".
+  it('says the name goes before AS when AS is written first', () => {
+    expect(splitScript('create or replace table AS users \nSELECT *\nFROM input1 ')).toEqual({ problem: 'put the table’s name before AS: CREATE OR REPLACE TABLE users AS SELECT ...' });
+    expect(splitScript('CREATE TABLE AS "My table" FROM input1')).toEqual({ problem: 'put the table’s name before AS: CREATE TABLE "My table" AS FROM ...' });
+    expect(splitScript('CREATE TABLE AS users')).toEqual({ problem: 'put the table’s name before AS: CREATE TABLE users AS SELECT ...' });
+    expect(splitScript('CREATE TABLE AS SELECT 1')).toEqual({ problem: 'name the table before AS: CREATE TABLE name AS SELECT ...' });
+    expect(splitScript('CREATE TABLE AS')).toEqual({ problem: 'name the table before AS: CREATE TABLE name AS SELECT ...' });
+    // A table really called "as" has to be quoted, and still works.
+    expect(splitScript('CREATE TABLE "as" AS SELECT 1')).toEqual({ statements: [{ table: 'as', label: 'as', query: 'SELECT 1' }] });
+  });
+
   it('reads a query in brackets after AS as the query, and leaves brackets that only start it', () => {
     expect(splitScript('CREATE OR REPLACE TABLE t AS (SELECT (1) AS a FROM input1);')).toEqual({ statements: [{ table: 't', label: 't', query: 'SELECT (1) AS a FROM input1' }] });
     expect(splitScript('CREATE TABLE t AS (SELECT 1) UNION ALL (SELECT 2)')).toEqual({ statements: [{ table: 't', label: 't', query: '(SELECT 1) UNION ALL (SELECT 2)' }] });

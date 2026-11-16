@@ -76,6 +76,13 @@ function splitPlaced(sql: string): { statements: PlacedStatement[] } | { problem
     if (word('if') && words[k + 1]?.value === 'not' && words[k + 2]?.value === 'exists') k += 3;
     const name = words[k];
     if (!isName(name)) return { problem: 'name the table: CREATE TABLE name AS SELECT ...' };
+    // CREATE TABLE AS users SELECT ...: AS is a reserved word, never the table; the name comes before it.
+    if (name.kind === 'word' && name.value === 'as') {
+      const next = words[k + 1];
+      if (!isName(next) || (next.kind === 'word' && QUERY_WORDS.has(next.value))) return { problem: `name the table before AS: ${shown(words, 0, k)} name AS SELECT ...` };
+      const query = words[k + 2];
+      return { problem: `put the table’s name before AS: ${shown(words, 0, k)} ${next.text} AS ${query?.kind === 'word' && QUERY_WORDS.has(query.value) ? query.text : 'SELECT'} ...` };
+    }
     if (words[k + 1]?.text === '.') return { problem: `create ${name.text} without a schema or database: CREATE TABLE ${words[k + 2]?.text ?? 'name'} AS SELECT ...` };
     const as = words[k + 1];
     // CREATE TABLE users SELECT ...: the query is there, only the AS before it is missing.
