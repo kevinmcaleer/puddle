@@ -89,8 +89,35 @@ export function ReconnectBanner() {
   );
 }
 
+/**
+ * For a source whose file the browser kept from last time: reconnect it (and every other file waiting) with one
+ * permission click and no file dialog. Nothing where no handle waits for this source.
+ */
+export function ReconnectButton({ source }: { source: Source }) {
+  const waiting = useReconnect((s) => source.id in s.pending);
+  const busy = useReconnect((s) => s.busy);
+  if (!waiting) return null;
+  return (
+    <Button size="sm" variant="primary" icon="refresh" disabled={busy} onClick={() => void reconnectAll(connectHandle)}>
+      Reconnect
+    </Button>
+  );
+}
+
+/** The banners about files a reopened project needs again, for the views that aren't the canvas (which shows its own). */
+export function FileBanners() {
+  return (
+    <div className="mx-auto flex w-full max-w-[560px] flex-col gap-2 px-4 pt-2 empty:hidden" data-testid="file-banners">
+      <ReconnectBanner />
+      <FilesNotKeptBanner />
+    </div>
+  );
+}
+
 /** Why a detached source needs its file chosen: the reason reconnecting didn't work, or the usual explanation. */
 export function DetachedMessage({ source }: { source: Source }) {
   const reason = useReconnect((s) => s.reasons[source.id]);
+  const waiting = useReconnect((s) => source.id in s.pending);
+  if (!reason && waiting) return <>Puddle can open {source.file?.originalName ?? source.name} again once you allow it.</>;
   return <>{reason ?? detachedMessage(source)}</>;
 }

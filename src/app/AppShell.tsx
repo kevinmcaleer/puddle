@@ -4,6 +4,7 @@ import { Canvas } from '../canvas/Canvas';
 import { useFlowEvaluation } from '../flow/useFlowEvaluation';
 import { Inspector } from '../inspector/Inspector';
 import { nodeById, useProject, useProjectStore } from '../model';
+import { FileBanners } from '../sources/ReconnectBanner';
 import { openProjectDialog } from '../home/dialogs';
 import { exportProject, goHome, importProject } from '../persistence/workspace';
 import { QuickFixes } from '../quickfix/QuickFixes';
@@ -268,6 +269,8 @@ export function AppShell() {
   // The Schema view belongs to the project it was opened on.
   useEffect(() => () => useSession.getState().setSchemaOpen(false), [project.id]);
   const relationshipsOpen = useSession((s) => s.relationshipsOpen);
+  /** The view shown in place of the canvas, if one is open. */
+  const covering = schemaOpen ? <SchemaView /> : relationshipsOpen ? <Relationships /> : designing?.type === 'query' ? <QueryDesigner node={designing} /> : null;
   // The relationships view belongs to the project it was opened on.
   useEffect(() => () => useSession.getState().setRelationshipsOpen(false), [project.id]);
   const fileInput = useRef<HTMLInputElement>(null);
@@ -309,6 +312,7 @@ export function AppShell() {
     'add-output': onCanvas(() => addNodeAfterSelection('output')),
     layout: onCanvas(() => project.nodes.length > 0 && layoutFlow()),
     group: onCanvas(groupSelection),
+    rename: onCanvas(() => (session().selectedNodeIds.length === 1 ? session().askRename(session().selectedNodeIds[0]!) : false)),
     'focus-canvas': () => canvas.current?.focus(),
     'select-upstream': onCanvas(() => selectNeighbour('upstream')),
     'select-downstream': onCanvas(() => selectNeighbour('downstream')),
@@ -444,9 +448,17 @@ export function AppShell() {
         <div className={inspectorOpen ? 'grid min-h-0 grid-cols-[minmax(0,1fr)_var(--size-inspector)]' : 'grid min-h-0 grid-cols-[minmax(0,1fr)]'}>
           <main ref={canvas} tabIndex={-1} className="grid min-h-0 grid-rows-[auto_minmax(0,1fr)] focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-brand" aria-label="Canvas">
             <ViewSwitcher />
-            <div className="min-h-0">
-              {schemaOpen ? <SchemaView /> : relationshipsOpen ? <Relationships /> : designing?.type === 'query' ? <QueryDesigner node={designing} /> : <Canvas onAddSource={chooseFiles} onLayout={layoutFlow} />}
-            </div>
+            {covering ? (
+              // The canvas shows the banners about files to reconnect itself; the views that cover it show them above.
+              <div className="grid min-h-0 grid-rows-[auto_minmax(0,1fr)]">
+                <FileBanners />
+                <div className="min-h-0">{covering}</div>
+              </div>
+            ) : (
+              <div className="min-h-0">
+                <Canvas onAddSource={chooseFiles} onLayout={layoutFlow} />
+              </div>
+            )}
           </main>
 
           {inspectorOpen && (

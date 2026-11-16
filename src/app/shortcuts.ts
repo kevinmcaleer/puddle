@@ -46,6 +46,7 @@ export const SHORTCUTS = [
   { id: 'show-schema', area: 'Canvas', label: 'Show the Schema view', keys: [k('4')] },
   { id: 'layout', area: 'Canvas', label: 'Auto layout', keys: [k('l')] },
   { id: 'group', area: 'Canvas', label: 'Group the selected nodes', keys: [k('g')] },
+  { id: 'rename', area: 'Canvas', label: 'Rename the selected node', keys: [k('F2')] },
   { id: 'focus-canvas', area: 'Canvas', label: 'Focus the canvas', keys: [k('f')] },
   { id: 'select-upstream', area: 'Canvas', label: 'Select and view the node feeding this one', keys: [k('ArrowLeft')] },
   { id: 'select-downstream', area: 'Canvas', label: 'Select and view the node this one feeds', keys: [k('ArrowRight')] },

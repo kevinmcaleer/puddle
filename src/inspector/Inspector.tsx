@@ -4,7 +4,7 @@ import { NotesPanel } from '../notes/NotesPanel';
 import { inspectorTabs, shownTab } from './tabs';
 import { useNodeStatus } from '../flow/status';
 import { sourceFormatLabel } from '../canvas/formatLabel';
-import { nodeById, setParseOptions, setRunnerPath, useProject, useProjectStore, type GraphNode, type ProjectSettings as ProjectSettingsT, type Source, type SourceFormat } from '../model';
+import { nodeById, renameNode, setParseOptions, setRunnerPath, useProject, useProjectStore, type GraphNode, type ProjectSettings as ProjectSettingsT, type Source, type SourceFormat } from '../model';
 import { Banner, browserLocale, columnKind, DISPLAY_LOCALES, Field, formatDateText, formatNumberText, Icon, NODE_KIND, Section, Select, Switch, Tabs, TypeTag, useDisplay, useDisplayFormat, type DateDisplay } from '../ui';
 import { CommitInput } from '../steps/StepForm';
 import { AppendPanel } from './AppendPanel';
@@ -20,7 +20,8 @@ import { SqlPanel } from './SqlPanel';
 import { TablePanel } from './TablePanel';
 import { TransformPanel } from './TransformPanel';
 import { useAttachments } from '../sources/attachments';
-import { DetachedMessage } from '../sources/ReconnectBanner';
+import { useCanReconnect } from '../sources/handles';
+import { DetachedMessage, ReconnectButton } from '../sources/ReconnectBanner';
 import { ReattachButton } from '../sources/ReattachButton';
 import { UrlPanel } from '../sources/UrlPanel';
 import { isAccessSource } from '../sources/access';
@@ -74,11 +75,25 @@ function FormatField({ source }: { source: Source }) {
 /** A warning on a source whose file needs choosing again, or turned out different from the one it was built on. */
 function AttachmentBanner({ source }: { source: Source }) {
   const state = useAttachments((s) => s.sources[source.id] ?? 'detached');
+  const kept = useCanReconnect(source.id);
   if (state === 'attached') return null;
   return (
     <div className="px-4 pt-3" data-testid="attachment-banner" data-state={state}>
       {state === 'detached' ? (
-        <Banner tone="warn" title="File not connected" action={<ReattachButton source={source} />}>
+        <Banner
+          tone="warn"
+          title="File not connected"
+          action={
+            kept ? (
+              <div className="flex gap-2">
+                <ReconnectButton source={source} />
+                <ReattachButton source={source} variant="ghost" />
+              </div>
+            ) : (
+              <ReattachButton source={source} />
+            )
+          }
+        >
           <DetachedMessage source={source} />
         </Banner>
       ) : (
@@ -354,8 +369,13 @@ function NodeInspector({ node }: { node: GraphNode }) {
         <Icon name={kind.icon} />
         <div className="min-w-0">
           <div className="truncate text-body-strong text-ink" data-testid="inspector-name">{node.name}</div>
-          <div className="text-label text-ink-muted">{source ? `${kind.label} · ${sourceFormatLabel(source)}` : kind.label}</div>
+          <div className="text-label text-ink-muted">{source ? `${kind.label} · ${sourceFormatLabel(source)}${source.name !== node.name ? ` · ${source.name}` : ''}` : kind.label}</div>
         </div>
+      </div>
+      <div className="border-b border-line px-4 py-3">
+        <Field label="Node name" htmlFor="node-name">
+          <CommitInput key={node.name} id="node-name" value={node.name} onCommit={(v) => useProjectStore.getState().apply((p) => renameNode(p, node.id, v))} />
+        </Field>
       </div>
       {source && source.kind === 'file' && <AttachmentBanner source={source} />}
       {source && source.kind === 'files' && <FileSetPanel source={source} />}

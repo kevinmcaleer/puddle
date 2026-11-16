@@ -127,6 +127,37 @@ test('a reopened project reconnects all its files with one click and no file dia
   expect(dialogs).toBe(0);
 });
 
+test('a file kept from last time reconnects from the inspector, and the banner shows in the views that cover the canvas', async ({ page }) => {
+  let dialogs = 0;
+  page.on('filechooser', () => dialogs++);
+  await withFilePicker(page);
+  await writeFiles(page, ['customers.csv']);
+  await chooseFiles(page, ['customers.csv']);
+  await expect(node(page, 'customers.csv')).toHaveAttribute('data-status', 'ok');
+  await expect.poll(() => storedHandles(page)).toBe(1);
+  await expect.poll(() => savedSources(page)).toBe(1);
+
+  await reload(page);
+  await expect(node(page, 'customers.csv')).toHaveAttribute('data-status', 'detached');
+  await expect(node(page, 'customers.csv')).toContainText('File not connected. Reconnect it in the inspector.');
+
+  // The relationships view covers the canvas: the offer to reconnect shows there too.
+  await page.keyboard.press('2');
+  await expect(page.getByTestId('file-banners').getByRole('button', { name: 'Reconnect 1 file' })).toBeVisible();
+  await page.keyboard.press('1');
+
+  // In the inspector the source reconnects with a click, with choosing the file still on offer.
+  await selectNode(page, 'customers.csv');
+  const banner = page.getByTestId('attachment-banner');
+  await expect(banner).toContainText('Puddle can open customers.csv again once you allow it.');
+  await expect(banner.getByRole('button', { name: 'Choose file' })).toBeVisible();
+  await banner.getByRole('button', { name: 'Reconnect', exact: true }).click();
+  await expect(node(page, 'customers.csv')).toHaveAttribute('data-status', 'ok');
+  await expect(banner).toHaveCount(0);
+  await expect(page.getByTestId('results-table')).toHaveAttribute('data-rows', '4', { timeout: 20_000 });
+  expect(dialogs).toBe(0);
+});
+
 test('a refused permission or a moved file falls back to choosing the file, with the reason', async ({ page }) => {
   await withFilePicker(page);
   await writeFiles(page, ['customers.csv', 'dates.csv']);

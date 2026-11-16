@@ -1,5 +1,5 @@
 import type { Source } from '../model';
-import { compileAccessLoad, sourceFileName, sourceRelation, sourceTableName } from './sources';
+import { compileAccessLoad, sourceFileName, sourceRelation, sourceTableName, withFileNames } from './sources';
 
 const feed = (odata: NonNullable<NonNullable<Source['url']>['odata']>): Source => ({
   id: 'a',
@@ -184,5 +184,17 @@ describe('reading a table of a Word document', () => {
     expect(sourceFileName(pdf)).toMatch(/^src_w_[0-9a-f]{12}\.csv$/);
     expect(sourceFileName(pdf)).not.toBe(sourceFileName(word));
     expect(sourceRelation(pdf)).toBe(`read_csv('${sourceFileName(pdf)}', header = true, delim = ',', quote = '"', escape = '"', null_padding = true)`);
+  });
+});
+
+describe('withFileNames', () => {
+  // Regression: a node's error named the file as DuckDB knows it ("File 'src_s2b0n0l3b6_b56d42454fb5.parquet' too small").
+  it('names the user’s file, and the archive it is in, where DuckDB named its own', () => {
+    const plain: Source = { id: 'a', name: 'trips', kind: 'file', format: 'parquet', file: { originalName: 'trips.parquet', size: 1, lastModified: 0, headHash: 'h' }, parseOptions: {}, detectedSchema: [] };
+    const zipped: Source = { ...plain, id: 'b', name: 'orders.parquet', file: { ...plain.file!, originalName: 'shop.zip' }, archive: { kind: 'zip', entry: 'data/orders.parquet' } };
+    expect(sourceFileName(zipped)).toMatch(/^src_b_[0-9a-f]{12}\.parquet$/);
+    expect(withFileNames(`File '${sourceFileName(zipped)}' too small to be a Parquet file`, [plain, zipped])).toBe("File 'data/orders.parquet in shop.zip' too small to be a Parquet file");
+    expect(withFileNames(`No files found that match the pattern "${sourceFileName(plain)}"`, [plain, zipped])).toBe('No files found that match the pattern "trips.parquet"');
+    expect(withFileNames('Binder Error: no column a', [plain, zipped])).toBe('Binder Error: no column a');
   });
 });

@@ -45,6 +45,9 @@ interface SessionState {
   /** The node a table name under the pointer (or caret) in a SQL editor means, marked on the canvas while it is. */
   pointedNodeId: string | null;
   pointAt: (id: string | null) => void;
+  /** The node being renamed in the canvas's rename dialog. */
+  renamingNodeId: string | null;
+  askRename: (id: string | null) => void;
   select: (id: string | null) => void;
   toggleSelected: (id: string) => void;
   selectStep: (id: string | null) => void;
@@ -98,6 +101,8 @@ export const useSession = create<SessionState>((set) => ({
   revealIssues: null,
   connectorMenu: null,
   pointedNodeId: null,
+  renamingNodeId: null,
+  askRename: (renamingNodeId) => set({ renamingNodeId }),
   pointAt: (pointedNodeId) => set((s) => (s.pointedNodeId === pointedNodeId ? s : { pointedNodeId })),
   // Picking a node shows it in the inspector's Node tab.
   select: (id) => set((s) => ({ selectedNodeId: id, selectedNodeIds: id ? [id] : [], selectedStepId: null, inspectorTab: id ? 'node' : s.inspectorTab })),

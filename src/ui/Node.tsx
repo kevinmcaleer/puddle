@@ -34,6 +34,8 @@ export interface NodeCardProps {
   brokenInput?: boolean;
   /** A kept result's state, e.g. "5.1 MB kept" or "Kept · out of date", in the metric line. */
   kept?: { label: string; stale?: boolean };
+  /** Marks the card as a table, saying how it came to be: "SQL table", with a longer line shown on hover. */
+  tag?: { label: string; title: string };
   /** The node's note: a small marker in the header shows it on hover. */
   note?: string;
   style?: CSSProperties;
@@ -45,7 +47,7 @@ export interface NodeCardProps {
 
 /** The node card. The canvas wraps this in a React Flow custom node and swaps the ports for handles. */
 export function NodeCard({
-  kind = 'transform', name, detail, rows, cols, steps, rule, issues, onIssues, selected, viewed, pinned, comparing, error, dimmed, expanded, brokenInput, note, kept,
+  kind = 'transform', name, detail, rows, cols, steps, rule, issues, onIssues, selected, viewed, pinned, comparing, error, dimmed, expanded, brokenInput, note, kept, tag,
   style, className, onClick, renderPorts,
 }: NodeCardProps) {
   const display = useDisplayFormat();
@@ -65,6 +67,12 @@ export function NodeCard({
         : inputs.map((top, i) => (
             <span key={i} className={cx('ui-port ui-port--in', brokenInput && 'is-broken')} style={{ top, marginTop: 'calc(var(--size-handle) / -2)' }} />
           ))}
+      {tag && (
+        <span className="ui-node__tag" data-testid="node-table-tag" title={tag.title}>
+          <Icon name="table" size={12} />
+          {tag.label}
+        </span>
+      )}
       {(viewed || pinned || comparing) && (
         <span className="ui-node__eye" data-testid="node-pill">
           <Icon name={pinned ? 'pin' : comparing ? 'compare' : 'eye'} size={12} />

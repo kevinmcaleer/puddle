@@ -136,6 +136,15 @@ describe('reconnectAll', () => {
     expect(reasons.s2).toContain('b.csv isn’t where it was');
   });
 
+  it('keeps a file waiting when the permission prompt is closed without an answer, so the next click asks again', async () => {
+    const closed = fakeHandle('a.csv', { request: 'prompt' });
+    useReconnect.setState({ pending: { s1: closed.handle } });
+    const connect = vi.fn(() => Promise.resolve());
+    await reconnectAll(connect);
+    expect(connect).not.toHaveBeenCalled();
+    expect(useReconnect.getState()).toMatchObject({ pending: { s1: closed.handle }, reasons: {}, busy: false });
+  });
+
   it('keeps a file waiting when the browser wouldn’t ask without a fresh click', async () => {
     const later = fakeHandle('b.csv', { request: new DOMException('User activation is required to request permissions.', 'SecurityError') });
     useReconnect.setState({ pending: { s1: fakeHandle('a.csv').handle, s2: later.handle } });

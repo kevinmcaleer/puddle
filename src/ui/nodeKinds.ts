@@ -9,7 +9,7 @@ export const NODE_KIND: Record<NodeKind, { icon: IconName; label: string; inputs
   append: { icon: 'append', label: 'Append', inputs: 1 },
   query: { icon: 'query', label: 'Query', inputs: 1 },
   sql: { icon: 'code', label: 'SQL', inputs: 1 },
-  scriptTable: { icon: 'code', label: 'Script table', inputs: 1 },
+  scriptTable: { icon: 'table', label: 'Script table', inputs: 1 },
   table: { icon: 'schema', label: 'Schema table', inputs: 1 },
   check: { icon: 'check', label: 'Check', inputs: 1 },
   output: { icon: 'output', label: 'Output', inputs: 1, noOut: true },

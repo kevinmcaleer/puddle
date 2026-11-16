@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { compile, CompileError, compileCount, compileLoadCheck, describeFailure, SchemaCache, UnwiredError, upstreamKey } from '../compiler';
+import { compile, CompileError, compileCount, compileLoadCheck, describeFailure, SchemaCache, UnwiredError, upstreamKey, withFileNames } from '../compiler';
 import { EngineError, tableRows, toEngineError, type EngineClient } from '../engine';
 import { inputEdges, topoSort, type ColumnSchema, type GraphNode, type Port, type Project } from '../model';
 
@@ -188,7 +188,7 @@ export async function evaluateFlow(engine: EngineClient, project: Project, isDet
     } catch (e) {
       if (gen !== generation) return;
       const err = toEngineError(e);
-      next[id] = { key, status: { state: 'error', message: err.message, ...(err.code === 'stopped' ? { stopped: true } : {}) } };
+      next[id] = { key, status: { state: 'error', message: withFileNames(err.message, project.sources), ...(err.code === 'stopped' ? { stopped: true } : {}) } };
     }
     publish();
   }

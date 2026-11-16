@@ -98,6 +98,9 @@ interface ReconnectState {
 
 export const useReconnect = create<ReconnectState>(() => ({ pending: {}, reasons: {}, busy: false }));
 
+/** True when the browser kept this source's file from last time and it waits for the click that allows it. */
+export const useCanReconnect = (sourceId: string) => useReconnect((s) => sourceId in s.pending);
+
 /** A source is connected again (or chosen afresh): it no longer waits or carries a reason. */
 export function settleSource(sourceId: string) {
   const { pending, reasons } = useReconnect.getState();
@@ -167,6 +170,11 @@ export async function reconnectAll(connect: Connect): Promise<void> {
     try {
       state = handle.requestPermission ? await handle.requestPermission({ mode: 'read' }) : 'granted';
     } catch {
+      waiting[sourceId] = handle;
+      continue;
+    }
+    // The prompt closed without an answer: the file still waits, and the next click asks again.
+    if (state === 'prompt') {
       waiting[sourceId] = handle;
       continue;
     }

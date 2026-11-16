@@ -28,6 +28,12 @@ You can also add the next node from where you are looking: click a node's right-
 | Script table | One table a script creates with `CREATE TABLE name AS`, in a SQL node or a Query's SQL view, as a node of its own. | {doc}`combining` |
 | Output | Marks data that's ready, and exports it. | {doc}`exporting` |
 
+Nodes that are tables in their own right carry a tag on the top edge of their card, so they stand out from the nodes that work on them. **Imported table** marks a source: a file, a web address, a database table or pasted rows. **SQL table** marks a table a script created with `CREATE TABLE name AS`.
+
+## Renaming a node
+
+Give a node a name that says what it holds: select it and press F2, or right-click it and choose **Rename…**, or change **Node name** in the inspector. The name shows on the card and in the results, and it is the name SQL reads the node by, so a query that names the node needs the new name. A renamed source still says which file it reads in the inspector.
+
 ## Selecting, viewing and moving
 
 - Click a node to select it. Its settings show in the inspector and its data in the results; a **Viewing** tag marks the node whose data is shown.
@@ -41,7 +47,7 @@ You can also add the next node from where you are looking: click a node's right-
 
 ## Using the keyboard
 
-Arrow keys move between connected nodes and show each one in the results, as a click does (with the results pinned they only select, and V moves the pin to the selected node). Enter opens the selected node, T opens the Add menu to add a step after it, O adds an Output, and G groups the selected nodes. C starts wiring the selected node: move to another node and press Enter to wire or unwire them. 1, 2, 3 and 4 switch between the canvas, the relationships view, the query designer and the Schema view. **?** lists every shortcut (see {doc}`settings`).
+Arrow keys move between connected nodes and show each one in the results, as a click does (with the results pinned they only select, and V moves the pin to the selected node). Enter opens the selected node, F2 renames it, T opens the Add menu to add a step after it, O adds an Output, and G groups the selected nodes. C starts wiring the selected node: move to another node and press Enter to wire or unwire them. 1, 2, 3 and 4 switch between the canvas, the relationships view, the query designer and the Schema view. **?** lists every shortcut (see {doc}`settings`).
 
 ## Groups
 
