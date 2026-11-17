@@ -18,6 +18,8 @@ test.beforeEach(async ({ page }) => {
 
 test('the Numbers group is in the Add menu', async ({ page }) => {
   await page.getByRole('button', { name: 'Add', exact: true }).click();
+  // The step groups are folded under their headings: the Numbers heading opens its steps.
+  await page.getByRole('menuitem', { name: /^Numbers steps/ }).click();
   for (const title of ['Round', 'Absolute value', 'Bucket', 'Standardise', 'Convert units']) await expect(page.getByRole('menuitem', { name: new RegExp(`^${title}`) })).toBeVisible();
   await page.keyboard.press('Escape');
 });

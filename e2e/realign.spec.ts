@@ -18,6 +18,7 @@ test('a sheet whose rows shift a column part way down lists the skew as one issu
 
   // Realign rows is a step of its own on the Add menu, for a skew found by eye.
   await page.getByRole('button', { name: 'Add', exact: true }).click();
+  await page.getByLabel('Search steps and nodes').fill('Realign');
   await expect(page.getByRole('menuitem', { name: /^Realign rows/ })).toBeVisible();
   await page.keyboard.press('Escape');
 
