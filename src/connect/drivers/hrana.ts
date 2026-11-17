@@ -6,7 +6,7 @@
 import { sheetToIPC } from '../../excel/arrow';
 import type { SheetColumn } from '../../excel/types';
 import type { Catalog } from '../../model';
-import { duckType } from '../../sqlite/read';
+import { duckType, foreignKeysOf, withParentKeys } from '../../sqlite/read';
 import type { SqliteTableDetail, SqliteTableInfo } from '../../sqlite/types';
 import { statementProblem } from '../statement';
 import { ConnectorError, type CatalogDetail, type Connector, type ConnectorContext, type ReadRequest, type ReadResult, type TestOutcome } from '../types';
@@ -138,9 +138,10 @@ export async function listTables(run: (sql: string) => Promise<Rows>): Promise<S
     } catch {
       // A view over something missing can't be counted; it is listed all the same.
     }
-    out.push({ name, kind: type === 'view' ? 'view' : 'table', columns, rows });
+    const foreignKeys = type === 'view' ? [] : foreignKeysOf(await run(`PRAGMA foreign_key_list(${quote(name)})`));
+    out.push({ name, kind: type === 'view' ? 'view' : 'table', columns, rows, foreignKeys });
   }
-  return out;
+  return withParentKeys(out);
 }
 
 /** The tables in detail, from the PRAGMAs, as src/sqlite/read.ts describes a file. */
@@ -159,14 +160,8 @@ export async function describeTables(run: (sql: string) => Promise<Rows>): Promi
       const pk = Number(r[5]) > 0;
       return { name: String(r[1]), type: String(r[2] ?? ''), pk, unique: uniqueColumns.has(String(r[1])), notNull: r[3] === 1 || pk, increment: increment && pk && pkCount === 1, default: r[4] === null || r[4] === undefined ? undefined : String(r[4]) };
     });
-    const fks = new Map<number, { columns: string[]; refTable: string; refColumns: string[] }>();
-    for (const [id, , refTable, from, to] of (await run(`PRAGMA foreign_key_list(${quote(name)})`)) as [number, number, string, string, string | null][]) {
-      const fk = fks.get(id) ?? { columns: [], refTable, refColumns: [] };
-      fk.columns.push(from);
-      fk.refColumns.push(to ?? '');
-      fks.set(id, fk);
-    }
-    out.push({ name, kind: type === 'view' ? 'view' : 'table', columns, indexes: indexes.filter((i) => i.origin === 'c').map(({ name: n, columns: cols, unique }) => ({ name: n, columns: cols, unique })), foreignKeys: [...fks.values()], sql: type === 'view' ? (sql ?? undefined) : undefined });
+    const fks = foreignKeysOf(await run(`PRAGMA foreign_key_list(${quote(name)})`));
+    out.push({ name, kind: type === 'view' ? 'view' : 'table', columns, indexes: indexes.filter((i) => i.origin === 'c').map(({ name: n, columns: cols, unique }) => ({ name: n, columns: cols, unique })), foreignKeys: fks, sql: type === 'view' ? (sql ?? undefined) : undefined });
   }
   return out;
 }

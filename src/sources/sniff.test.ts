@@ -103,6 +103,8 @@ describe('binary signatures', () => {
     expect(archiveKindOf(bytes('a,b\n1,2'))).toBeUndefined();
     expect(() => file('photo.png', bytes([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0]))).toThrow('photo.png is a binary file, which Puddle doesn’t read. Add a CSV, TSV, JSON, NDJSON, Parquet, Arrow, spreadsheet (.xlsx, .xls, .ods, .numbers, .dbf), XML, YAML, TOML, INI, GeoJSON, Word (.docx), PDF or Access (.accdb, .mdb) file, or a .gz or .zip holding one.');
     expect(() => file('empty.dat', bytes(''))).toThrow(SourceError);
+    // A SQLite file reaches the sniff only where it can't be a connection (a file set): it says how to add it.
+    expect(() => file('History', bytes('SQLite format 3\0'))).toThrow('History is a SQLite database, which Puddle opens as a database rather than a file source. Add it on its own with Choose files, then pick its tables.');
   });
 });
 

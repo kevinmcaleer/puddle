@@ -7,7 +7,7 @@ import { addNode, canConnect, canMakeGroup, connect, disconnect, freePort, group
 import { useEngineStore } from './engine';
 import { buildStep } from '../inspector/addStep';
 import { addStepAt } from '../quickfix/place';
-import { addDatabaseFile, databaseDriverFor } from '../connections/addFile';
+import { addDatabaseFile, databaseDriverForFile } from '../connections/addFile';
 import { addClipboardSource, addFileSource } from '../sources/add';
 import { addFileSetSource, setFilesOf } from '../sources/fileSet';
 import { formatLabel } from '../canvas/formatLabel';
@@ -46,9 +46,11 @@ export function addFiles(files: Iterable<File | PickedFile>, at?: { x: number; y
     let i = 0;
     for (const item of files) {
       const { file, handle } = item instanceof File ? { file: item, handle: undefined } : item;
-      // A database file is a connection, not a source: its tables are picked next.
-      if (databaseDriverFor(file.name)) {
-        addDatabaseFile(file);
+      // A database file is a connection, not a source: its tables are picked next. Its name, or else its first
+      // bytes, say so.
+      const driver = await databaseDriverForFile(file);
+      if (driver) {
+        addDatabaseFile(file, driver);
         continue;
       }
       try {
