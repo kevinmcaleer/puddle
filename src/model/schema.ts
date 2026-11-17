@@ -487,6 +487,8 @@ export const EdgeZ = z.object({
   from: z.object({ nodeId: z.string().min(1) }),
   /** port: which input of the target the wire goes into (see inputPorts in graph.ts). */
   to: z.object({ nodeId: z.string().min(1), port: PortZ.default(0) }),
+  /** A wire Puddle made because a SQL node's query names the node it comes from; it goes when the query stops naming it. */
+  byName: z.boolean().optional(),
 });
 
 export const ProjectSettingsZ = z.object({

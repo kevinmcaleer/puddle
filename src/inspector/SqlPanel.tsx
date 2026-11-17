@@ -2,7 +2,7 @@ import { useCallback } from 'react';
 import { useSession } from '../app/session';
 import { isScript, scriptTables, splitScript, sqlInputNames, sqlNodeFiles, sqlProblem, sqlTableMarks } from '../compiler';
 import { useFlowStore, useNodeStatus } from '../flow/status';
-import { addScriptTableNodes, inputEdges, nodeById, outputEdges, renameNode, setSqlQuery, syncScriptTables, useProject, useProjectStore, type ColumnSchema, type Project, type SqlNode } from '../model';
+import { addScriptTableNodes, inputEdges, nodeById, outputEdges, renameNode, setSqlAndWires, syncScriptTables, useProject, useProjectStore, type ColumnSchema, type Project, type SqlNode } from '../model';
 import { CommitInput } from '../steps/CommitInput';
 import { DockedSql } from '../app/SqlDock';
 import { SqlEditor } from '../steps/SqlEditor';
@@ -41,7 +41,7 @@ export function SqlPanel({ node }: { node: SqlNode }) {
     return n?.type === 'scriptTable' ? [n] : [];
   });
   const nodeOf = (table: string) => tableNodes.find((n) => n.scriptTable.table.toLowerCase() === table.toLowerCase());
-  const commit = (query: string) => apply((p) => syncScriptTables(setSqlQuery(p, node.id, query), node.id, tables, scriptTables(query)));
+  const commit = (query: string) => apply((p) => syncScriptTables(setSqlAndWires(p, node.id, query), node.id, tables, scriptTables(query)));
   // Each table the query names, as it is typed: found (and which node it is) or not.
   const marks = useCallback((text: string) => sqlTableMarks(project, node.id, text), [project, node.id]);
 
@@ -64,7 +64,7 @@ export function SqlPanel({ node }: { node: SqlNode }) {
             ))}
           </ul>
         ) : (
-          <p className="text-ink-muted">Wire a node into it: the query reads each input as input1, input2, or by its node’s name. With nothing wired in, a query that reads no input still runs, such as CREATE TABLE sizes AS SELECT * FROM (VALUES ('S'), ('M')) AS t(size).</p>
+          <p className="text-ink-muted">Name a table of the project in the query and it is wired in for you, or wire a node in yourself: the query reads each input as input1, input2, or by its node’s name. With nothing wired in, a query that reads no input still runs, such as CREATE TABLE sizes AS SELECT * FROM (VALUES ('S'), ('M')) AS t(size).</p>
         )}
       </Section>
       {files.length > 0 && (
@@ -96,7 +96,7 @@ export function SqlPanel({ node }: { node: SqlNode }) {
               marks={marks}
               onPoint={(mark) => useSession.getState().pointAt(mark?.nodeId ?? null)}
             />
-            <p className="text-label text-ink-muted">One DuckDB query over the tables above, or a script: CREATE TABLE name AS a query, as many as you like, each reading the tables before it. Each table gets a node of its own on the canvas; this node’s rows are the last statement’s. Ctrl+Enter applies it. It can’t read other nodes, or files not wired in. A table’s name is marked when it is one of these, and underlined in red when it isn’t; point at it to see its node on the canvas.</p>
+            <p className="text-label text-ink-muted">One DuckDB query over the tables above, or a script: CREATE TABLE name AS a query, as many as you like, each reading the tables before it. Each table gets a node of its own on the canvas; this node’s rows are the last statement’s. Ctrl+Enter applies it. Name any table of the project and it is wired in for you. It can’t read files not wired in. A table’s name is marked when it is one of these, and underlined in red when it isn’t; point at it to see its node on the canvas.</p>
           </DockedSql>
           {problem && (
             <Banner tone="fail" title={script ? 'This script can’t run' : 'This query can’t run'}>
