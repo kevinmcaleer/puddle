@@ -26,6 +26,9 @@ import { useFlowStore } from '../flow/status';
 import { fileSetMembers, JOIN_TYPES, projectSchema, ruleRefs, scriptTables } from '../compiler';
 import { qualified } from '../schema';
 import {
+  canvasProject,
+  isQueryNode,
+  offCanvasIds,
   canGroup,
   canMakeGroup,
   canUngroup,
@@ -350,7 +353,9 @@ function useMinimapNeeded() {
 
 export function Canvas({ onAddSource, onLayout }: { onAddSource: () => void; onLayout: () => void }) {
   const minimapNeeded = useMinimapNeeded();
-  const project = useProject();
+  // The whole project, and the project as the canvas draws it: without the queries listed in the project panel only.
+  const whole = useProject();
+  const project = useMemo(() => canvasProject(whole), [whole]);
   const { apply, setView } = useProjectStore.getState();
   const selectedNodeIds = useSession((s) => s.selectedNodeIds);
   const notice = useSession((s) => s.notice);
@@ -371,7 +376,17 @@ export function Canvas({ onAddSource, onLayout }: { onAddSource: () => void; onL
   const rf = useReactFlow();
 
   const viewedId = project.view.viewedNodeId;
-  const activeIds = useMemo(() => (viewedId && project.nodes.some((n) => n.id === viewedId) ? upstreamIds(project, viewedId) : new Set<string>()), [project, viewedId]);
+  // Everything upstream of the viewed node, which may be a query that is off the canvas: its tables are still lit.
+  const activeIds = useMemo(() => (viewedId && whole.nodes.some((n) => n.id === viewedId) ? upstreamIds(whole, viewedId) : new Set<string>()), [whole, viewedId]);
+  // The queries off the canvas that read each node, for the mark on its card; and the nodes the selected one reads.
+  const readBy = useMemo(() => {
+    const off = offCanvasIds(whole);
+    const by = new Map<string, string[]>();
+    for (const e of whole.edges) if (off.has(e.to.nodeId) && isQueryNode(nodeById(whole, e.to.nodeId)!) && !by.get(e.from.nodeId)?.includes(e.to.nodeId)) by.set(e.from.nodeId, [...(by.get(e.from.nodeId) ?? []), e.to.nodeId]);
+    return by;
+  }, [whole]);
+  const inspectedId = useSession((s) => s.selectedNodeId);
+  const readBySelected = useMemo(() => new Set(inspectedId && !project.nodes.some((n) => n.id === inspectedId) ? whole.edges.filter((e) => e.to.nodeId === inspectedId).map((e) => e.from.nodeId) : []), [whole, project, inspectedId]);
 
   // Groups: a collapsed one hides its nodes behind one card; an open one draws a frame behind them.
   const [selectedGroup, setSelectedGroup] = useState<string | null>(null);
@@ -418,13 +433,13 @@ export function Canvas({ onAddSource, onLayout }: { onAddSource: () => void; onL
         measured: measured[n.id],
         selected: selectedNodeIds.includes(n.id),
         ariaLabel: nodeLabel(n, { detail: detailFor(n, project.sources, project.edges), status: statuses[n.id]?.status, viewed: n.id === viewedId }),
-        className: [n.id === connectFrom && 'is-wiring-from', n.id === pointedId && 'is-pointed'].filter(Boolean).join(' ') || undefined,
-        data: { node: n, viewed: n.id === viewedId, detail: detailFor(n, project.sources, project.edges), refIn: ends.to.has(n.id), refOut: ends.from.has(n.id) },
+        className: [n.id === connectFrom && 'is-wiring-from', (n.id === pointedId || readBySelected.has(n.id)) && 'is-pointed'].filter(Boolean).join(' ') || undefined,
+        data: { node: n, viewed: n.id === viewedId, detail: detailFor(n, project.sources, project.edges), refIn: ends.to.has(n.id), refOut: ends.from.has(n.id), readBy: readBy.get(n.id) },
       })),
       ...cards,
     ];
     // eslint-disable-next-line react-hooks/exhaustive-deps -- references are read from project.nodes
-  }, [project.nodes, project.sources, project.edges, project.groups, collapsedOf, dragging, measured, selectedNodeIds, selectedGroup, viewedId, statuses, connectFrom, pointedId],
+  }, [project.nodes, project.sources, project.edges, project.groups, collapsedOf, dragging, measured, selectedNodeIds, selectedGroup, viewedId, statuses, connectFrom, pointedId, readBy, readBySelected],
   );
 
   const edges: PuddleEdge[] = useMemo(

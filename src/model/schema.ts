@@ -504,6 +504,11 @@ export const ProjectSettingsZ = z.object({
   fixAllSuggestions: z.boolean().default(false),
   /** How Fix all tidies column names: the words as they are, trimmed, or snake_case. */
   columnNames: z.enum(['words', 'snake']).default('words'),
+  /**
+   * Queries that end a flow (a SQL or Query node whose rows feed nothing but outputs) are listed in the project panel
+   * and not drawn on the canvas, which then shows only how tables are made. New projects start with it on.
+   */
+  queriesInPanel: z.boolean().default(false),
   /** When the runner (puddle-run) runs this project's outputs, in cron syntax. Nothing runs until one is set. */
   schedule: z.string().optional(),
 });
@@ -600,7 +605,7 @@ export const ProjectZ = z.object({
   createdAt: z.string(),
   updatedAt: z.string(),
   notes: z.string().default(''),
-  settings: ProjectSettingsZ.default({ sampleThresholdRows: 5_000_000, locale: 'en-GB', defaultDateFormats: [], stepsAsNodes: true, fixAllSuggestions: false, columnNames: 'words' }),
+  settings: ProjectSettingsZ.default({ sampleThresholdRows: 5_000_000, locale: 'en-GB', defaultDateFormats: [], stepsAsNodes: true, fixAllSuggestions: false, columnNames: 'words', queriesInPanel: false }),
   connections: z.array(ConnectionZ).default([]),
   sources: z.array(SourceZ).default([]),
   nodes: z.array(NodeZ).default([]),

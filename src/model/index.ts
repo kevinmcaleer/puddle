@@ -6,6 +6,7 @@ export { newId } from './ids';
 export { createProject, parseProject } from './project';
 export { addStep, canGroup, canUngroup, groupNodes, moveStep, removeStep, renameNode, setNodeNotes, splitNode, toggleStep, ungroupNode, updateStep, type GroupCheck } from './steps';
 export { setSqlAndWires, syncNamedWires } from './namedWires';
+export { canvasProject, hasQueriesToMove, isQueryNode, offCanvasIds, projectOutline, readByQueries, setQueriesInPanel, type Outline, type OutlineRow } from './outline';
 export { addNode, addSource, moveNodes, nextNodeName, removeNodes, setCollapsed, setKeepResult, setParseOptions, setSourceFormat, setRunnerPath, setSqlQuery, setTableSpec, updateSource, syncScriptTables, addScriptTableNodes, setScriptTable, setFileSet, type AddableNodeType } from './edits';
 export { addBeforeJoin, addUnmatchedJoin, setJoinSpec, swapJoinInputs } from './join';
 export { setAppendSpec, swapAppendInputs } from './append';
