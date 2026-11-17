@@ -89,6 +89,19 @@ describe('suggested rules on fixtures', () => {
     expect(Object.values(await failuresOnceAdded(project, suggestions)).every((f) => f === 0)).toBe(true);
   });
 
+  // Regression: the sales sample's order_date ("2024-05-28", "24/01/2024", "16 Feb 2024") was suggested as "reads as a
+  // date" because profiling reads all three, and the rule failed once added because it reads only the first.
+  it('dates written several ways are not suggested as reading as a date, and what is suggested passes', async () => {
+    const mixed = src({ id: 'mixeddates', format: 'csv' });
+    await engine.registerText(sourceFileName(mixed), 'ref,when,iso\nA1,2024-05-28,2024-05-28\nA2,24/01/2024,2024-01-24\nA3,16 Feb 2024,2024-02-16\nA4,"April 28, 2024",2024-04-28\n');
+    const { project, suggestions } = await suggest(mixed, [step('t1', 'changeType', { columns: ['iso'], to: 'text' })]);
+    const keys = suggestions.map((s) => s.key);
+    expect(keys).not.toContain('readsAs:when');
+    // A column the rule can read is still suggested.
+    expect(keys).toContain('readsAs:iso');
+    expect(Object.values(await failuresOnceAdded(project, suggestions)).every((f) => f === 0)).toBe(true);
+  });
+
   it('confirms the approximate distinct count with an exact one before suggesting unique', async () => {
     const project = single(cust);
     const sql = compileSuggestionChecks(project, { nodeId: 'out' }, [{ column: 'id', distinct: true }]);
