@@ -3,7 +3,7 @@ import { neighbour, type Direction } from '../canvas/navigate';
 import { suggestJoinKey, suggestLookupColumns } from '../compiler';
 import { useFlowStore } from '../flow/status';
 import { relatedKeys, withRelatedJoins } from '../relationships/joins';
-import { addNode, canConnect, canMakeGroup, connect, disconnect, freePort, groupOf, inputEdges, makeGroup, setGroupCollapsed, moveQueryTable, newId, nodeById, setJoinSpec, setLookupSpec, setSchemaCheck, setSqlQuery, setTableSpec, syncScriptTables, useProjectStore, type AddableNodeType, type ColumnSchema, type Port, type Project, type Source, type SourceFormat } from '../model';
+import { addNode, canConnect, canMakeGroup, connect, disconnect, freePort, groupOf, inputEdges, makeGroup, setGroupCollapsed, moveQueryTable, newId, nodeById, setJoinSpec, setLookupSpec, setSchemaCheck, setSqlQuery, setTableSpec, syncScriptTables, useProjectStore, type AddableNodeType, type ColumnSchema, type GraphNode, type Port, type Project, type Source, type SourceFormat } from '../model';
 import { useEngineStore } from './engine';
 import { buildStep } from '../inspector/addStep';
 import { addStepAt } from '../quickfix/place';
@@ -134,14 +134,22 @@ const knownColumns = (nodeId: string) => {
   return status?.state === 'ok' ? status.columns : undefined;
 };
 
-/** Where a new node fed by these nodes goes: right of them (level with them), or right of everything when there are none, so new nodes never stack. */
+/**
+ * Where a new node fed by these nodes goes: right of them (level with them), or right of everything when there are
+ * none, so new nodes never stack. A node hidden in a closed group counts as being where the group's card is: that is
+ * what the canvas draws, and the nodes behind the card may reach far to its right.
+ */
 export function positionAfter(project: Project, feeds: string[]) {
-  const nodes = project.nodes;
-  const inputs = feeds.flatMap((id) => nodeById(project, id) ?? []);
+  const shown = (n: GraphNode) => {
+    const group = groupOf(project, n.id);
+    return group?.collapsed ? group.position : n.position;
+  };
+  const nodes = project.nodes.map(shown);
+  const inputs = feeds.flatMap((id) => nodeById(project, id) ?? []).map(shown);
   return inputs.length
-    ? { x: Math.max(...inputs.map((n) => n.position.x)) + 296, y: Math.round(inputs.reduce((y, n) => y + n.position.y, 0) / inputs.length) }
+    ? { x: Math.max(...inputs.map((p) => p.x)) + 296, y: Math.round(inputs.reduce((y, p) => y + p.y, 0) / inputs.length) }
     : nodes.length
-      ? { x: Math.max(...nodes.map((n) => n.position.x)) + 296, y: Math.min(...nodes.map((n) => n.position.y)) }
+      ? { x: Math.max(...nodes.map((p) => p.x)) + 296, y: Math.min(...nodes.map((p) => p.y)) }
       : { x: 80, y: 80 };
 }
 
@@ -182,6 +190,8 @@ export function addNodeAfterSelection(type: AddableNodeType, init?: (project: Pr
   if (!added) return;
   if (type === 'query') useSession.getState().openDesigner(added);
   else useSession.getState().select(added);
+  // What was just added is what the results show, as after a click (unless they are pinned).
+  viewNode(added);
 }
 
 /** The query a new table from SQL starts with: every row of what is wired in, or a few typed rows when nothing is. */
@@ -208,7 +218,9 @@ export function addTableFromSql() {
     const table = `table${k}`;
     return syncScriptTables(setSqlQuery(next, added, tableFromSqlQuery(table, wired)), added, [], [table]);
   });
-  if (added) useSession.getState().select(added);
+  if (!added) return;
+  useSession.getState().select(added);
+  viewNode(added);
 }
 
 /** A Schema table node for one of the schema's tables, loaded from the selected node if there is one. */

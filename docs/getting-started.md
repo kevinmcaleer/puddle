@@ -54,4 +54,6 @@ With the contact list sample open:
 3. With the same columns selected, choose **Case**, then **Title Case**. That is a second Transform, wired after the first.
 4. Click `name`, then Shift+click `signed_up` to select every column, and choose **Remove duplicates**.
 
+5. Choose **Export** at the right of the results bar. Puddle adds an Output node after the last step and downloads `contacts-clean.csv`.
+
 Every click added a step, each a node on the canvas, that you can see, change, turn off or delete in the inspector. Puddle had found the same problems itself: the **Issues** panel in the inspector lists them, and **Fix all** applies every fix in one go (see {doc}`analysing`). Carry on with {doc}`cleaning`.

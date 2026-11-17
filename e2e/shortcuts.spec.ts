@@ -211,8 +211,7 @@ test('R and I show and hide the results and the inspector', async ({ page }) => 
 test('E exports the viewed Output and Shift+E exports all', async ({ page }) => {
   await openApp(page);
   await addOrders(page);
-  await page.keyboard.press('e');
-  await expect(page.getByTestId('canvas-notice')).toContainText('View an Output node to export it.');
+  // (E on a node that isn't an Output adds one after it and exports: see export-here.spec.ts.)
   await page.keyboard.press('o');
   await expect(node(page, 'Output 1')).toHaveAttribute('data-status', 'ok');
   await page.keyboard.press('v');

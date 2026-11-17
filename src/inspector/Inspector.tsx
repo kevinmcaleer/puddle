@@ -1,3 +1,5 @@
+import { FixReceipt } from '../analysis/FixReceipt';
+import { fixReceipt } from '../analysis/receipt';
 import { useSession } from '../app/session';
 import { useTheme, type ThemePreference } from '../app/theme';
 import { NotesPanel } from '../notes/NotesPanel';
@@ -249,14 +251,21 @@ export function Inspector() {
   const asked = useSession((s) => s.inspectorTab);
   const setTab = useSession((s) => s.setInspectorTab);
   const node = selectedId ? nodeById(project, selectedId) : undefined;
-  const tab = shownTab(asked, !!node);
+  // After Fix all, its receipt stands in the Node tab until a node is picked or it is closed.
+  const receiptId = useSession((s) => s.receiptNodeId);
+  const receipt = receiptId && fixReceipt(project, receiptId) ? receiptId : null;
+  const tab = shownTab(asked, !!node || !!receipt);
   return (
     <div className="flex h-full min-h-0 flex-col">
       <div className="flex items-center border-b border-line px-4 py-2" data-testid="inspector-tabs">
-        <Tabs label="Inspector" items={inspectorTabs(!!node)} value={tab} onChange={(id) => setTab(id as typeof tab)} />
+        <Tabs label="Inspector" items={inspectorTabs(!!node || !!receipt)} value={tab} onChange={(id) => setTab(id as typeof tab)} />
       </div>
       {tab === 'notes' ? (
         <NotesPanel />
+      ) : tab === 'node' && receipt ? (
+        <div className="min-h-0 flex-1 overflow-auto">
+          <FixReceipt nodeId={receipt} />
+        </div>
       ) : tab === 'project' || !node ? (
         <div className="min-h-0 flex-1 overflow-auto" data-testid="inspector-project">
           <ProjectSettings />

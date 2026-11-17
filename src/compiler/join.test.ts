@@ -1,8 +1,8 @@
 import { flow, src, step } from '../../tests/helpers/projects';
 import { JOIN_KINDS, type ColumnSchema, type JoinSpec } from '../model';
-import { compile, compileJoinCheck, upstreamKey } from './compile';
+import { compile, compileJoinCheck, compileJoinTidyCheck, upstreamKey } from './compile';
 import { CompileError, PendingSchemaError, UnwiredError } from './errors';
-import { joinColumns, joinProblems, suggestJoinKey } from './join';
+import { joinColumns, joinProblems, KEY_TIDIES, suggestJoinKey, textKeys, tidiedCondition } from './join';
 import { SchemaBook } from './schemaBook';
 import { SchemaCache } from './schemaCache';
 
@@ -55,6 +55,24 @@ describe('join SQL', () => {
     const p = shop();
     expect(compileJoinCheck(p, 'j', { schemas: bookFor(p) })).toMatchSnapshot();
     expect(() => compileJoinCheck(p, 'o', { schemas: bookFor(p) })).toThrow(/isn’t a Join/);
+  });
+
+  it('counts what tidying the text keys would match, and has nothing to count when no key is text', () => {
+    const keys = [{ left: 'status', right: 'status' }, { left: 'customer_id', right: 'customer_id' }];
+    const p = shop({ keys });
+    expect(compileJoinTidyCheck(p, 'j', { schemas: bookFor(p) })).toMatchSnapshot();
+    const numbers = shop();
+    expect(compileJoinTidyCheck(numbers, 'j', { schemas: bookFor(numbers) })).toBeUndefined();
+    expect(() => compileJoinTidyCheck(p, 'o', { schemas: bookFor(p) })).toThrow(/isn’t a Join/);
+  });
+
+  it('tidies only the key pairs that are text on both sides', () => {
+    const s = spec({ keys: [{ left: 'customer_id', right: 'customer_id' }, { left: 'status', right: 'name' }, { left: 'status', right: 'customer_id' }] });
+    const text = textKeys(s, ORDERS, CUSTOMERS);
+    expect(text).toEqual([{ left: 'status', right: 'name' }]);
+    expect(tidiedCondition(s, text, KEY_TIDIES.trim)).toBe('"l"."customer_id" = "r"."customer_id" AND trim("l"."status") = trim("r"."name") AND "l"."status" = "r"."customer_id"');
+    expect(tidiedCondition(s, text, KEY_TIDIES.upper)).toContain('upper("l"."status") = upper("r"."name")');
+    expect(tidiedCondition(s, text, KEY_TIDIES.both)).toContain('upper(trim("l"."status")) = upper(trim("r"."name"))');
   });
 });
 

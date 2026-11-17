@@ -1,7 +1,7 @@
 import { freePort, hashValue, inputEdge, inputEdges, inputPorts, nodeById, topoSort, upstreamIds, type ColumnSchema, type GraphNode, type Port, type Project, type Rule } from '../model';
 import { appendProblems, compileAppend } from './append';
 import { CompileError, PendingSchemaError, UnwiredError } from './errors';
-import { compileJoin, joinCondition, joinProblems } from './join';
+import { compileJoin, joinCondition, joinProblems, KEY_TIDIES, textKeys, tidiedCondition } from './join';
 import { compileLookup, firstMatches, lookupCondition, lookupProblems } from './lookup';
 import { keptTable, knownKept, type KeptBook } from './keptBook';
 import { dateText, readDateFormat } from './dateRead';
@@ -663,6 +663,29 @@ export function compileJoinCheck(project: Project, nodeId: string, options: Comp
     `(SELECT count(*) FROM ${l} AS ${L} SEMI JOIN ${r} AS ${R} ON ${on}) AS matched_left`,
     `(SELECT count(*) FROM ${r} AS ${R} SEMI JOIN ${l} AS ${L} ON ${on}) AS matched_right`,
   ];
+  return `WITH ${ctes.join(',\n  ')}\nSELECT ${parts.join(', ')}`;
+}
+
+/**
+ * How many more rows of a Join would match with its text keys tidied, in one row: the left rows with a match
+ * (`trim_left`, `upper_left`, `both_left`) and the right rows with one (`trim_right`, …) when the keys are trimmed,
+ * put in one case, or both. Undefined when no key pair is text on both sides, so tidying can't change anything.
+ */
+export function compileJoinTidyCheck(project: Project, nodeId: string, options: CompileOptions = {}): string | undefined {
+  const book = options.schemas ?? knownSchemas;
+  const { node, ctes, out } = build(project, { nodeId }, book, { ...options, rebuild: true });
+  if (node.type !== 'join') throw new CompileError(`${node.name} isn’t a Join node.`, node.id);
+  const from = (port: 'left' | 'right') => inputEdge(project, nodeId, port)!.from.nodeId;
+  const columns = (port: 'left' | 'right') => book.get(upstreamKey(project, { nodeId: from(port) })) ?? [];
+  const text = textKeys(node.joinSpec, columns('left'), columns('right'));
+  if (!text.length) return undefined;
+  const [l, r] = [out.get(from('left'))!, out.get(from('right'))!];
+  const L = ident('l');
+  const R = ident('r');
+  const parts = Object.entries(KEY_TIDIES).flatMap(([name, tidy]) => {
+    const on = tidiedCondition(node.joinSpec, text, tidy, L, R);
+    return [`(SELECT count(*) FROM ${l} AS ${L} SEMI JOIN ${r} AS ${R} ON ${on}) AS ${name}_left`, `(SELECT count(*) FROM ${r} AS ${R} SEMI JOIN ${l} AS ${L} ON ${on}) AS ${name}_right`];
+  });
   return `WITH ${ctes.join(',\n  ')}\nSELECT ${parts.join(', ')}`;
 }
 
