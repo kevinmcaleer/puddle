@@ -1,5 +1,5 @@
 import { expect, test, type Download, type Page } from '@playwright/test';
-import { addStepWithT, fixture, node, openApp } from './helpers/app';
+import { addStepWithT, fixture, node, openApp, queriesOnCanvas } from './helpers/app';
 
 const focusedNode = (page: Page) => page.locator('.react-flow__node:focus');
 const textOf = async (file: Download) => Buffer.concat(await (await file.createReadStream()).toArray()).toString('utf8');
@@ -106,6 +106,7 @@ test('wires are drawn and taken away from the keyboard, and Tab moves between no
 
 test('the query designer joins tables and moves fields without dragging', async ({ page }) => {
   await openApp(page);
+  await queriesOnCanvas(page);
   await addWithA(page, 'shop-customers.csv');
   await addWithA(page, 'shop-orders.csv');
   await page.keyboard.press('ArrowUp');

@@ -22,4 +22,4 @@ export { fixedIssueKeys, ignoreIssue, recordAnalysis, unignoreIssue, type FoundI
 export { addConnection, connectionSources, nextConnectionName, removeConnection, updateConnection, updateConnectionSource } from './connections';
 export { exportNameAfter, logExport, outputAfter, setOutputFormat, setOutputSpec } from './exports';
 export { carryPin, viewWithout } from './view';
-export { canMakeGroup, chainAround, groupById, groupOf, joinGroupOf, groupPorts, makeGroup, moveGroup, nextGroupName, pruneGroups, renameGroup, setGroupCollapsed, ungroup, type GroupPorts } from './groups';
+export { bundleScript, canMakeGroup, chainAround, chainGroupName, groupById, groupOf, joinGroupOf, groupPorts, makeGroup, moveGroup, nextGroupName, pruneGroups, renameGroup, setGroupCollapsed, ungroup, type GroupPorts } from './groups';

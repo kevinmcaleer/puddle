@@ -38,6 +38,18 @@ export async function stackSteps(page: Page) {
   await expect(setting).toHaveAttribute('aria-checked', 'false');
 }
 
+/**
+ * Turn off the project setting that lists a query ending a flow in the project panel only, so every SQL and Query node
+ * is a card on the canvas: for tests of what those cards do there. e2e/project-panel.spec.ts covers the panel.
+ */
+export async function queriesOnCanvas(page: Page) {
+  await page.getByRole('tab', { name: 'Project' }).click();
+  const setting = page.getByRole('switch', { name: 'Keep queries in the project panel' });
+  await expect(setting).toHaveAttribute('aria-checked', 'true');
+  await setting.click();
+  await expect(setting).toHaveAttribute('aria-checked', 'false');
+}
+
 /** T opens the Add menu with its search focused; typing a step's title and Enter adds it as a node after the selected one. */
 export async function addStepWithT(page: Page, title: string, name = 'Transform 1') {
   await page.keyboard.press('t');

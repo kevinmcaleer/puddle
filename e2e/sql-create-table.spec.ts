@@ -1,8 +1,10 @@
 import { expect, test } from '@playwright/test';
-import { addFiles, expectRows, expectSql, fixture, node, openApp, selectNode, sqlText } from './helpers/app';
+import { addFiles, expectRows, expectSql, fixture, node, openApp, queriesOnCanvas, selectNode, sqlText } from './helpers/app';
 
 test('CREATE OR REPLACE TABLE in a Query’s SQL view makes a table with a node of its own on the canvas', async ({ page }) => {
   await openApp(page);
+  // On the canvas, a script's node and each table's node are cards of their own (in the panel's project they are one).
+  await queriesOnCanvas(page);
   await addFiles(page, [fixture('shop-orders.csv')]);
   await expect(node(page, 'shop-orders.csv')).toHaveAttribute('data-status', 'ok', { timeout: 20_000 });
   await page.getByRole('button', { name: 'Add', exact: true }).click();
@@ -30,6 +32,8 @@ test('CREATE OR REPLACE TABLE in a Query’s SQL view makes a table with a node 
 
 test('CREATE TABLE in the console adds a SQL node and the table’s node, only when asked', async ({ page }) => {
   await openApp(page);
+  // On the canvas, a script's node and each table's node are cards of their own (in the panel's project they are one).
+  await queriesOnCanvas(page);
   await addFiles(page, [fixture('shop-orders.csv')]);
   await expect(node(page, 'shop-orders.csv')).toHaveAttribute('data-status', 'ok', { timeout: 20_000 });
   await page.getByTestId('console-toggle').click();
@@ -53,6 +57,8 @@ test('CREATE TABLE in the console adds a SQL node and the table’s node, only w
 
 test('Add › Table from SQL makes a table on the canvas from a query, with nothing wired in', async ({ page }) => {
   await openApp(page);
+  // On the canvas, a script's node and each table's node are cards of their own (in the panel's project they are one).
+  await queriesOnCanvas(page);
   await page.getByRole('button', { name: 'Add', exact: true }).click();
   await page.getByRole('menuitem', { name: /Table from SQL/ }).click();
 
@@ -73,6 +79,8 @@ test('Add › Table from SQL makes a table on the canvas from a query, with noth
 
 test('emptying a Query’s SQL view goes back to the design instead of saying the empty query can’t run', async ({ page }) => {
   await openApp(page);
+  // On the canvas, a script's node and each table's node are cards of their own (in the panel's project they are one).
+  await queriesOnCanvas(page);
   await addFiles(page, [fixture('shop-orders.csv')]);
   await expect(node(page, 'shop-orders.csv')).toHaveAttribute('data-status', 'ok', { timeout: 20_000 });
   await page.getByRole('button', { name: 'Add', exact: true }).click();

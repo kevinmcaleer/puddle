@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { flow, src, step } from '../../tests/helpers/projects';
 import { removeNodes } from './edits';
-import { canMakeGroup, chainAround, groupOf, groupPorts, makeGroup, moveGroup, renameGroup, setGroupCollapsed, ungroup } from './groups';
+import { canMakeGroup, chainAround, chainGroupName, groupOf, groupPorts, makeGroup, moveGroup, renameGroup, setGroupCollapsed, ungroup } from './groups';
 import { parseProject } from './project';
 import type { Project } from './schema';
 import { groupNodes, splitNode, ungroupNode } from './steps';
@@ -177,5 +177,20 @@ describe('node groups', () => {
     const p = makeGroup(base(), ['a', 'b'], 'g1');
     const stale = { ...p, groups: [{ ...p.groups[0]!, nodeIds: ['a', 'gone'] }, { id: 'g2', name: 'Old', nodeIds: ['gone'], collapsed: true, position: { x: 0, y: 0 } }] };
     expect(parseProject(stale).groups).toEqual([{ ...p.groups[0]!, nodeIds: ['a'] }]);
+  });
+});
+
+describe('the name of a folded chain', () => {
+  it('says what the chain cleans, after the node it reads, and takes a number when that name is used', () => {
+    const p = base();
+    expect(chainGroupName(p, ['a'])).toBe('Clean in');
+    const folded = makeGroup(p, ['a', 'b'], 'g1', chainGroupName(p, ['a']));
+    expect(folded.groups[0]!.name).toBe('Clean in');
+    expect(chainGroupName(folded, ['a'])).toBe('Clean in 2');
+  });
+
+  it('is the next Group n for a chain that reads nothing', () => {
+    expect(chainGroupName(base(), ['in'])).toBe('Group 1');
+    expect(makeGroup(base(), ['a', 'b'], 'g1', '  ').groups[0]!.name).toBe('Group 1');
   });
 });

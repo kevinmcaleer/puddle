@@ -45,12 +45,12 @@ test('a chain of nodes grouped and saved as a template goes into another project
   // Group the chain gathers the line of Transforms; the group's menu saves their steps as a template.
   await node(page, 'Transform 1').click({ button: 'right' });
   await page.getByTestId('context-menu').getByRole('menuitem', { name: 'Group the chain' }).click();
-  const card = page.getByTestId('group-Group 1');
+  const card = page.getByTestId('group-Clean customers.csv');
   await expect(card).toBeVisible();
   await card.click({ button: 'right' });
   await page.getByTestId('context-menu').getByRole('menuitem', { name: 'Save as template…' }).click();
   const save = page.getByRole('dialog', { name: 'Save as template' });
-  await expect(save.getByLabel('Name', { exact: true })).toHaveValue('Group 1');
+  await expect(save.getByLabel('Name', { exact: true })).toHaveValue('Clean customers.csv');
   await expect(save.getByRole('switch', { name: /^Transform 1: Trimmed name/ })).toBeChecked();
   await expect(save.getByRole('switch', { name: /^Transform 2: Changed name to title case/ })).toBeChecked();
   await expect(save.getByTestId('template-expected')).toHaveText('Abcname');

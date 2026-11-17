@@ -31,6 +31,7 @@ import {
   offCanvasIds,
   canGroup,
   canMakeGroup,
+  chainGroupName,
   canUngroup,
   chainAround,
   groupById,
@@ -182,7 +183,7 @@ function GroupBar({ ids, onGrouped }: { ids: string[]; onGrouped: (groupId: stri
           Group
         </Button>
         {chainOk && (
-          <Button size="sm" variant="secondary" icon="group" title={`Group the ${chain.length} Transform nodes wired in a line through these`} onClick={() => onGrouped(groupSelected(chain))}>
+          <Button size="sm" variant="secondary" icon="group" title={`Group the ${chain.length} Transform nodes wired in a line through these`} onClick={() => onGrouped(groupSelected(chain, chainGroupName(project, chain)))}>
             Group the chain
           </Button>
         )}
@@ -242,7 +243,7 @@ function NodeMenu({ at, onClose, onRename, onGrouped }: { at: { x: number; y: nu
     if (check.ok || !group) items.push({ label: ids.length > 1 ? `Group ${ids.length} nodes` : 'Group', icon: 'group', shortcut: shortcutText('group'), disabled: !check.ok, onSelect: () => onGrouped(groupSelected(ids)) });
     // The run of Transforms wired one after another through this node, as one group.
     const chain = group ? [] : chainAround(project, at.flowId);
-    if (chain.length > 1) items.push({ label: 'Group the chain', icon: 'group', hint: `${chain.length} nodes`, onSelect: () => onGrouped(groupSelected(chain)) });
+    if (chain.length > 1) items.push({ label: 'Group the chain', icon: 'group', hint: `${chain.length} nodes`, onSelect: () => onGrouped(groupSelected(chain, chainGroupName(project, chain))) });
   }
   // Any node with rows can be landed in a table designed in the schema: a Schema table node wired from it checks them.
   const from = !groupId ? nodeById(project, at.flowId) : undefined;
@@ -307,16 +308,17 @@ function RenameNode() {
   const nodeId = useSession((s) => s.renamingNodeId);
   const node = useProjectStore((s) => (nodeId ? nodeById(s.history.present, nodeId) : undefined));
   if (!node) return null;
-  return <RenameNodeDialog key={node.id} nodeId={node.id} current={node.name} />;
+  // A query still called what it was made as ("SQL 3") is being named, not renamed.
+  return <RenameNodeDialog key={node.id} nodeId={node.id} current={node.name} naming={isQueryNode(node) && /^(SQL|Query) \d+$/.test(node.name)} />;
 }
 
-function RenameNodeDialog({ nodeId, current }: { nodeId: string; current: string }) {
+function RenameNodeDialog({ nodeId, current, naming }: { nodeId: string; current: string; naming: boolean }) {
   const [name, setName] = useState(current);
   const close = () => useSession.getState().askRename(null);
   return (
     <Dialog
-      title="Rename node"
-      confirm="Rename"
+      title={naming ? 'Name this query' : 'Rename node'}
+      confirm={naming ? 'Name it' : 'Rename'}
       confirmDisabled={!name.trim()}
       onClose={close}
       onConfirm={() => {
@@ -324,7 +326,7 @@ function RenameNodeDialog({ nodeId, current }: { nodeId: string; current: string
         close();
       }}
     >
-      <Field label="Name" htmlFor="rename-node-name" hint="Shown on the canvas and in the results. SQL that reads this node by name needs the new name.">
+      <Field label="Name" htmlFor="rename-node-name" hint={naming ? 'What it asks, such as Orders per customer. It is listed by this name, and other SQL can read it by it.' : 'Shown on the canvas and in the results. SQL that reads this node by name needs the new name.'}>
         <TextInput id="rename-node-name" data-autofocus value={name} onChange={(e) => setName(e.target.value)} />
       </Field>
     </Dialog>
@@ -332,9 +334,9 @@ function RenameNodeDialog({ nodeId, current }: { nodeId: string; current: string
 }
 
 /** Group the nodes (collapsed), clearing the node selection; returns the new group's id. */
-function groupSelected(ids: string[]): string {
+function groupSelected(ids: string[], name?: string): string {
   const id = newId('g');
-  useProjectStore.getState().apply((p) => makeGroup(p, ids, id));
+  useProjectStore.getState().apply((p) => makeGroup(p, ids, id, name));
   useSession.getState().select(null);
   return id;
 }
