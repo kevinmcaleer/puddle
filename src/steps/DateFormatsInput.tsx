@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { parseLocale } from '../compiler';
+import { formatFromWords, parseLocale } from '../compiler';
 import { describeFormat, orderOf, swapDayMonth, unreadValues, type Detection, type Order } from '../dates';
 import { Banner, Button, cx } from '../ui';
 import { CommitInput } from './CommitInput';
@@ -122,10 +122,10 @@ export function DateFormatsInput({
           {value.map((f, i) => (
             <li key={f} className="flex items-center gap-2">
               <span className="ui-metric w-4 text-right">{i + 1}</span>
-              <code className="ui-mono flex-1">{f}</code>
-              <span className="ui-metric">{describeFormat(f)}</span>
+              {/* The format in words; the code the engine reads is on hover. */}
+              <span className="ui-mono flex-1" title={f} data-format={f}>{describeFormat(f)}</span>
               {detection && <span className={cx('ui-metric', !rate(f) && 'text-warn')}>{rate(f) ? pct(rate(f)!.matched, rate(f)!.total) : `reads none of ${column}`}</span>}
-              <Button variant="ghost" size="sm" icon="cross" iconOnly aria-label={`Remove ${f}`} onClick={() => onChange(value.filter((x) => x !== f))} />
+              <Button variant="ghost" size="sm" icon="cross" iconOnly aria-label={`Remove ${describeFormat(f)}`} onClick={() => onChange(value.filter((x) => x !== f))} />
             </li>
           ))}
         </ol>
@@ -146,11 +146,12 @@ export function DateFormatsInput({
                 key={m.format}
                 type="button"
                 disabled={used}
-                aria-label={`Use ${m.format}, reads ${pct(m.matched, m.total)}`}
+                title={m.format}
+                aria-label={`Use ${describeFormat(m.format)}, reads ${pct(m.matched, m.total)}`}
                 className={cx('ui-chip justify-between font-mono', used && 'opacity-50')}
                 onClick={() => add(m.format)}
               >
-                <span>{m.format}</span>
+                <span>{describeFormat(m.format)}</span>
                 <span className="ui-metric">
                   {pct(m.matched, m.total)} · {m.example}
                 </span>
@@ -160,7 +161,8 @@ export function DateFormatsInput({
         </div>
       )}
 
-      <CommitInput key={value.join('|')} aria-label="Add a format" mono placeholder="%d %b %Y" value="" onCommit={(v) => v.trim() && add(v.trim())} />
+      {/* Typed in words (DD Mon YYYY) or as a code (%d %b %Y): both are taken. */}
+      <CommitInput key={value.join('|')} aria-label="Add a format" mono placeholder="DD Mon YYYY" value="" onCommit={(v) => v.trim() && add(formatFromWords(v))} />
     </div>
   );
 }

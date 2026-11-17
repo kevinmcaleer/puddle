@@ -56,6 +56,7 @@ export { describeFailure, FAILURE_COLUMN, LOAD_FAILURES, loadColumns, projectSch
 export { compileAccessLoad, dropTable, isLoadedTable, isRewritten, isStructured, readsCompressed, sourceFileName, sourceRelation, sourceTableName, withFileNames } from './sources';
 export { compileConnectionLoad, compileRelationPreview, compileStagingTable, compileTableCount, compileTableSelect, loadType } from './connectionLoad';
 export { dateText, dateType, isNumberDateFormat, NUMBER_DATE_FORMATS, readDateFormat, readDates } from './dateRead';
+export { formatFromWords, formatsFromWords, formatWords } from './dateWords';
 export { englishDateNames, isParseLocale, PARSE_LOCALE_IDS, PARSE_LOCALES, parseLocale, type ParseLocale, type ParseLocaleId } from './locales';
 export { bool, cteName, ident, list, num, stepFailure, str, strList } from './sql';
 export * from './steps';

@@ -49,7 +49,7 @@ test('split by delimiter and change type', async ({ page }) => {
   await settings(page).getByRole('button', { name: 'joined', exact: true }).click();
   await settings(page).getByLabel('New type').selectOption('date');
   await expect(steps(page).nth(1)).toHaveText(/Changed joined to date/);
-  await expect(cell(page, 2, 3)).toHaveText('null');
+  await expect(cell(page, 2, 3)).toHaveText('empty');
 });
 
 test('split by delimiter with Power Query’s options: left-most and into rows', async ({ page }) => {

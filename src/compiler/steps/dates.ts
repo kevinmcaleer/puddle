@@ -2,6 +2,7 @@
 // extract a part, add or subtract an interval, difference, truncate, format to text.
 import { z } from 'zod';
 import { dateText, hasTime, readDates } from '../dateRead';
+import { formatWords } from '../dateWords';
 import { PARSE_LOCALE_IDS } from '../locales';
 import { ident, list, num, str } from '../sql';
 import { defineStep } from './registry';
@@ -158,6 +159,6 @@ export const truncateDates = defineStep({
 export const formatDates = defineStep({
   type: 'formatDates',
   params: z.object({ columns: Columns, format: z.string().min(1, 'give a format') }),
-  label: (p) => `Formatted ${names(p.columns)} as ${p.format}`,
+  label: (p) => `Formatted ${names(p.columns)} as ${formatWords(p.format)}`,
   compile: (p, { input }) => replaceEach(input, p.columns, (c) => `strftime(${ident(c)}, ${str(p.format)})`),
 });

@@ -84,7 +84,7 @@ test('a parse dates step reads month names in its locale', async ({ page }) => {
   await onlyColumns(page, ['de_date'], ['de_number', 'us_number', 'de_date', 'de_short', 'fr_date', 'es_date']);
   await expect(formats(page).getByText('No format reads de_date')).toBeVisible();
   await settings(page).getByLabel('Locale').selectOption({ label: 'German (day first)' });
-  await formats(page).getByRole('button', { name: 'Use %d. %B %Y, reads 100%' }).click();
+  await formats(page).getByRole('button', { name: 'Use DD. Month YYYY, reads 100%' }).click();
   await expect(steps(page)).toHaveText([/Parsed de_date as dates/]);
   await expect(cell(page, 2, 0)).toHaveText('2026-12-31');
   await expect(cell(page, 2, 1)).toHaveText('2026-03-01');
@@ -98,24 +98,24 @@ test('dates that read either way follow the parse dates step’s locale', async 
   // Wait for the column's detection: its banner pushes the formats down, and a click as it lands (Firefox in CI) can
   // hit the banner's swap button instead of Remove.
   await expect(formats(page).getByText('Reading the day first')).toBeVisible();
-  await formats(page).getByRole('button', { name: 'Remove %d/%m/%Y' }).click();
+  await formats(page).getByRole('button', { name: 'Remove DD/MM/YYYY' }).click();
   // Without a locale the order is asked, as ever.
   await expect(formats(page).getByText('Day and month order is unclear')).toBeVisible();
 
   await settings(page).getByLabel('Locale').selectOption({ label: 'English (US) (month first)' });
-  await expect(formats(page).getByRole('list', { name: 'Formats tried' }).locator('code')).toHaveText(['%m/%d/%Y']);
+  await expect(formats(page).getByRole('list', { name: 'Formats tried' }).locator('[data-format]')).toHaveText(['MM/DD/YYYY']);
   await expect(formats(page).getByText('Reading the month first')).toBeVisible();
   await expect(formats(page).getByText(/this is the order English \(US\) uses/)).toBeVisible();
   await expect(cell(page, 3, 0)).toHaveText('2024-01-02');
 
   await settings(page).getByLabel('Locale').selectOption({ label: 'English (UK) (day first)' });
-  await expect(formats(page).getByRole('list', { name: 'Formats tried' }).locator('code')).toHaveText(['%d/%m/%Y']);
+  await expect(formats(page).getByRole('list', { name: 'Formats tried' }).locator('[data-format]')).toHaveText(['DD/MM/YYYY']);
   await expect(formats(page).getByText('Reading the day first')).toBeVisible();
   await expect(cell(page, 3, 0)).toHaveText('2024-02-01');
 
   // A hand-picked order still stands under the same locale.
   await formats(page).getByRole('button', { name: 'Read month first' }).click();
-  await expect(formats(page).getByRole('list', { name: 'Formats tried' }).locator('code')).toHaveText(['%m/%d/%Y']);
+  await expect(formats(page).getByRole('list', { name: 'Formats tried' }).locator('[data-format]')).toHaveText(['MM/DD/YYYY']);
   await expect(formats(page).getByText(/check this is the order the data uses/)).toBeVisible();
   await expect(cell(page, 3, 0)).toHaveText('2024-01-02');
 });

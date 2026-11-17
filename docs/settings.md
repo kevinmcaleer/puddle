@@ -10,7 +10,7 @@ Locale
 : How this project's data writes numbers, such as whether the decimal mark is a point (`1,234.50`) or a comma (`1.234,50`). New **Parse numbers** steps start with it.
 
 Date formats
-: The formats tried, in order, when text is read as a date, such as `%d/%m/%Y, %Y-%m-%d`.
+: The formats tried, in order, when text is read as a date, such as `DD/MM/YYYY, YYYY-MM-DD`. Formats are shown in words like these; the codes DuckDB uses (`%d/%m/%Y`) can be typed too.
 
 Add each step as a new node
 : On for a new project. Steps added from the Add menu or the results table (by the column menu or a quick fix) each go in a Transform node of their own, so every step shows on the canvas. Off, they stack into the Transform being viewed. See {doc}`cleaning`.

@@ -22,7 +22,17 @@ export type ExpectedKind = 'date' | 'number';
 type FieldKind =
   | { key: string; label: string; kind: 'columns'; hint?: string }
   | { key: string; label: string; kind: 'column'; hint?: string }
-  | { key: string; label: string; kind: 'text'; hint?: string; mono?: boolean; placeholder?: string }
+  | {
+      key: string;
+      label: string;
+      kind: 'text';
+      hint?: string;
+      mono?: boolean;
+      placeholder?: string;
+      /** How the stored value is shown in the field, and how what is typed is stored (a date format in words, kept as its code). */
+      show?: (stored: string) => string;
+      read?: (typed: string) => string;
+    }
   | { key: string; label: string; kind: 'number'; hint?: string; min?: number }
   | { key: string; label: string; kind: 'select'; hint?: string; options: { value: string; label: string }[] }
   | { key: string; label: string; kind: 'switch'; hint?: string }

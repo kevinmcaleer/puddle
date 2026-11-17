@@ -43,7 +43,7 @@ export function TableSampleView({ schema, table, nodeId }: { schema: DbmlSchema;
             <tr key={i}>
               {r.map((v, j) => (
                 <td key={j} className={v == null ? 'is-null' : undefined}>
-                  {v ?? 'null'}
+                  {v ?? 'empty'}
                 </td>
               ))}
             </tr>

@@ -125,7 +125,17 @@ function FieldInput({
     case 'column':
       return <ColumnsPicker id={id} single value={typeof value === 'string' && value ? [value] : []} columns={columns} onChange={(v) => onChange(v[0] ?? '')} />;
     case 'text':
-      return <CommitInput key={String(value ?? '')} id={id} mono={field.mono} placeholder={field.placeholder} error={!!error} value={String(value ?? '')} onCommit={onChange} />;
+      return (
+        <CommitInput
+          key={String(value ?? '')}
+          id={id}
+          mono={field.mono}
+          placeholder={field.placeholder}
+          error={!!error}
+          value={field.show ? field.show(String(value ?? '')) : String(value ?? '')}
+          onCommit={(v) => onChange(field.read ? field.read(v) : v)}
+        />
+      );
     case 'number':
       return (
         <CommitInput

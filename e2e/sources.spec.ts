@@ -83,7 +83,7 @@ test('treat-as-empty values come through as nulls', async ({ page }) => {
   const input = page.getByLabel('Treat as empty');
   await input.fill('N/A');
   await input.press('Enter');
-  await expect(cell(page, 1, 1)).toHaveText('null');
+  await expect(cell(page, 1, 1)).toHaveText('empty');
   await expect(cell(page, 1, 0)).toHaveText('Leeds');
 });
 

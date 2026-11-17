@@ -41,5 +41,5 @@ test('extract text between delimiters into a new column', async ({ page }) => {
   await expect(steps(page)).toHaveText([/Extracted text between @ and \. from email into host/]);
   await expect(page.getByTestId('results-table')).toHaveAttribute('data-columns', 'id,name,email,joined,host');
   await expect(cell(page, 4, 0)).toHaveText('example');
-  await expect(cell(page, 4, 2)).toHaveText('null');
+  await expect(cell(page, 4, 2)).toHaveText('empty');
 });

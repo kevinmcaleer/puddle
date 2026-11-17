@@ -23,7 +23,7 @@ test('in sample mode a kept result holds the sample, shows as up to date, and Ru
   await expect(page.getByTestId('sample-banner')).toContainText('Sample of 2 rows');
 
   await selectNode(page, 'customers.csv');
-  await page.getByRole('switch', { name: 'Keep result in memory' }).click();
+  await page.getByRole('switch', { name: 'Keep this result ready' }).click();
   // Built from the sampled copy the flow evaluates, so it counts as up to date rather than waiting forever.
   await expect(page.getByTestId('keep-memory')).toHaveAttribute('data-state', 'ready', { timeout: 20_000 });
   await expect(node(page, 'customers.csv').getByTestId('node-kept')).not.toHaveAttribute('data-stale', 'true');

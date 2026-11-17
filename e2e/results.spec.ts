@@ -42,6 +42,6 @@ test('nulls and numbers are shown the way DuckDB reads them', async ({ page }) =
   await expectRows(page, 20);
   // Glide mirrors visible cells into an accessible table; column 0 there is the row number.
   await expect(cell(page, 1, 6)).toHaveText('row 7');
-  await expect(cell(page, 2, 6)).toHaveText('null');
+  await expect(cell(page, 2, 6)).toHaveText('empty');
   await expect(cell(page, 2, 1)).toHaveText('3.0');
 });

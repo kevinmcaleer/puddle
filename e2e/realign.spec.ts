@@ -32,7 +32,7 @@ test('a sheet whose rows shift a column part way down lists the skew as one issu
     await page.mouse.wheel(0, 200);
     await expect(cell(page, 1, 17)).toBeAttached({ timeout: 1_000 });
   }).toPass({ timeout: 10_000 });
-  await expect(cell(page, 1, 17)).toHaveText('null');
+  await expect(cell(page, 1, 17)).toHaveText('empty');
   await expect(cell(page, 6, 17)).toHaveText(/^\d+(\.\d+)?$/);
   await expect(page.getByTestId('issues').getByTestId('issue-skewedRows:Customer:left')).toHaveCount(0, { timeout: 20_000 });
 });

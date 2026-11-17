@@ -175,7 +175,7 @@ test('tutorial: New York taxi trips', async ({ page }) => {
   await expect(node(page, 'Lookup 1')).toHaveAttribute('data-status', 'ok', SLOW);
   await expect(lookup.getByTestId('lookup-match')).toContainText('rows matched', SLOW);
   // Everything after it reads its result rather than running the lookup again.
-  await page.getByRole('switch', { name: 'Keep result in memory' }).click();
+  await page.getByRole('switch', { name: 'Keep this result ready' }).click();
   await expect(page.getByTestId('keep-memory')).toHaveAttribute('data-state', 'ready', SLOW);
   await expect(page.getByTestId('results-table')).toHaveAttribute('data-columns', /,Borough,Zone$/, SLOW);
   await shotPanel(page, 'tutorial-lookup', lookup);

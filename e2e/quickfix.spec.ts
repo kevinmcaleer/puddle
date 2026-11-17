@@ -81,7 +81,7 @@ test('parse numbers, parse dates, strip non-printing characters, empty to null a
   await selectColumns(page, 1);
   await fixes(page).getByRole('button', { name: 'Empty to null' }).click();
   await expect(steps(page).nth(3)).toHaveText(/Made empty text in name empty values/);
-  await expect(cell(page, 1, 3)).toHaveText('null');
+  await expect(cell(page, 1, 3)).toHaveText('empty');
 
   await selectColumns(page, 0, 1);
   await fixes(page).getByRole('button', { name: 'Remove duplicates' }).click();

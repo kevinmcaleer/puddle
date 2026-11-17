@@ -6,7 +6,7 @@ import { setKeepResult, useProjectStore, type GraphNode } from '../model';
 import { Banner, Button, formatBytes, Section, Switch } from '../ui';
 
 /**
- * "Keep result in memory": the node's output is held as a table, so previews downstream don't re-run
+ * "Keep this result ready": the node's output is held as a table, so previews downstream don't re-run
  * everything before it. Shows the memory it takes, and asks first when kept results already use a lot.
  */
 export function KeepPanel({ node }: { node: GraphNode }) {
@@ -30,13 +30,13 @@ export function KeepPanel({ node }: { node: GraphNode }) {
   return (
     <Section title="Keep result">
       <div className="flex flex-col gap-2" data-testid="keep-result">
-        <Switch id="keep-result" label="Keep result in memory" checked={on} onChange={toggle} />
+        <Switch id="keep-result" label="Keep this result ready" checked={on} onChange={toggle} />
         {view ? (
           <div className="ui-metric" data-testid="keep-memory" data-state={view.state}>
             {view.state === 'ready' ? `Uses ${formatBytes(view.bytes)}` : view.state === 'failed' ? `Couldn’t keep it: ${view.message}` : view.state === 'stopped' ? 'Stopped. Use Run again to build it.' : entry?.building ? 'Out of date. Rebuilding…' : 'Out of date. It rebuilds once this node runs.'}
           </div>
         ) : (
-          <p className="text-label text-ink-muted">Nodes after this one read its result instead of re-running everything before it.</p>
+          <p className="text-label text-ink-muted">Nodes after this one read its result instead of re-running everything before it. Worth turning on after a slow step. It is held in this tab’s memory.</p>
         )}
         {asking && limit != null && (
           <Banner

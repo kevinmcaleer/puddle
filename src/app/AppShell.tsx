@@ -79,7 +79,7 @@ function EngineBadge({ status }: { status: EngineStatus }) {
   const { bundle, version } = status.info;
   return (
     <span data-testid="engine-ready" data-bundle={bundle} title={`DuckDB ${version}, ${bundle} bundle`}>
-      DuckDB {version} · {bundle}
+      DuckDB {version}
     </span>
   );
 }

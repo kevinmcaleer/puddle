@@ -8,8 +8,8 @@ describe('result cells', () => {
     expect(resultCell(undefined, 'text', subtle).kind).toBe(GridCellKind.Loading);
   });
 
-  it('shows nulls as subtle italic "null" that copies as empty', () => {
-    expect(resultCell(null, 'integer', subtle)).toMatchObject({ kind: GridCellKind.Text, displayData: 'null', copyData: '', themeOverride: { textDark: 'grey', baseFontStyle: 'italic 12px' } });
+  it('shows nulls as subtle italic "empty" that copies as nothing', () => {
+    expect(resultCell(null, 'integer', subtle)).toMatchObject({ kind: GridCellKind.Text, displayData: 'empty', copyData: '', themeOverride: { textDark: 'grey', baseFontStyle: 'italic 12px' } });
   });
 
   it('right-aligns numbers only, and never allows editing', () => {
@@ -27,6 +27,6 @@ describe('result cells in a display locale', () => {
     expect(resultCell('1234.5', 'decimal', subtle, de)).toMatchObject({ data: '1234.5', displayData: '1.234,5', copyData: '1234.5' });
     expect(resultCell('2026-12-31', 'date', subtle, de)).toMatchObject({ data: '2026-12-31', displayData: '31.12.2026', copyData: '2026-12-31' });
     expect(resultCell('1234', 'text', subtle, de)).toMatchObject({ displayData: '1234' });
-    expect(resultCell(null, 'decimal', subtle, de)).toMatchObject({ displayData: 'null', copyData: '' });
+    expect(resultCell(null, 'decimal', subtle, de)).toMatchObject({ displayData: 'empty', copyData: '' });
   });
 });

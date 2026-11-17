@@ -31,7 +31,7 @@ test('round to places and up, leaving empty values empty', async ({ page }) => {
   await commit(page, 'Decimal places', '2');
   await expect(steps(page)).toHaveText([/Rounded price to 2 decimal places/]);
   await expect(cell(page, 2, 1)).toHaveText('2.68');
-  await expect(cell(page, 2, 2)).toHaveText('null');
+  await expect(cell(page, 2, 2)).toHaveText('empty');
 
   await settings(page).getByLabel('Round', { exact: true }).selectOption('up');
   await commit(page, 'Decimal places', '1');

@@ -29,7 +29,7 @@ import { DetachedMessage, ReconnectButton } from '../sources/ReconnectBanner';
 import { ReattachButton } from '../sources/ReattachButton';
 import { UrlPanel } from '../sources/UrlPanel';
 import { isAccessSource } from '../sources/access';
-import { isStructured } from '../compiler';
+import { formatsFromWords, formatWords, isStructured } from '../compiler';
 import { AccessPanel } from '../sources/AccessPanel';
 import { ArchivePanel, ArrowProblemBanner } from '../sources/ArchivePanel';
 import { isArchiveSource } from '../sources/archive';
@@ -40,7 +40,7 @@ import { isExcelSource } from '../sources/excel';
 import { ExcelPanel } from '../sources/ExcelPanel';
 import { isXmlSource } from '../sources/xml';
 import { XmlPanel } from '../sources/XmlPanel';
-import { hasParseOptions, LOCALES, parseNullStrings } from './options';
+import { hasParseOptions, LOCALES } from './options';
 import { changeSourceFormat } from '../sources/add';
 import { CsvOptions } from '../sources/CsvOptions';
 import { FixedWidthOptions, LogOptions, PipesOptions, StructuredOptions } from '../sources/TextPanels';
@@ -141,13 +141,13 @@ function ProjectSettings() {
         <Field label="Locale" htmlFor="set-locale" hint="How this project’s data writes numbers. New parse numbers steps start with it.">
           <Select id="set-locale" options={LOCALES} value={settings.locale} onChange={(e) => set({ locale: e.target.value })} />
         </Field>
-        <Field label="Date formats" htmlFor="set-dates" hint="Tried in order when text is read as a date, separated by commas.">
+        <Field label="Date formats" htmlFor="set-dates" hint="Tried in order when text is read as a date, separated by commas. Codes such as %d/%m/%Y are taken too.">
           <CommitInput
             key={settings.defaultDateFormats.join(',')}
             id="set-dates"
-            value={settings.defaultDateFormats.join(', ')}
-            placeholder="%d/%m/%Y, %Y-%m-%d"
-            onCommit={(v) => set({ defaultDateFormats: parseNullStrings(v) })}
+            value={settings.defaultDateFormats.map(formatWords).join(', ')}
+            placeholder="DD/MM/YYYY, YYYY-MM-DD"
+            onCommit={(v) => set({ defaultDateFormats: formatsFromWords(v) })}
           />
         </Field>
         <Field hint="Steps added from the Add menu and the results table (quick fixes and the column menu) each go in a new Transform node, so every step shows on the canvas. Off, they stack into the Transform being viewed.">

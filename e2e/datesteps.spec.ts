@@ -23,13 +23,13 @@ test('format dates as text with a live example, then parse them back', async ({ 
   await expect(settings(page).getByText('Friday 1 March 2024 at 14:05:09 becomes 01/03/2024')).toBeVisible();
   await commit(page, 'Format', '%d %B %Y');
   await expect(settings(page).getByText('becomes 01 March 2024')).toBeVisible();
-  await expect(steps(page)).toHaveText([/Formatted start as %d %B %Y/]);
+  await expect(steps(page)).toHaveText([/Formatted start as DD Month YYYY/]);
   await expect(cell(page, 1, 0)).toHaveText('31 January 2024');
-  await expect(cell(page, 1, 2)).toHaveText('null');
+  await expect(cell(page, 1, 2)).toHaveText('empty');
 
   // Parse dates finds the same format on the text and reads it back.
   await addStep(page, 'Parse dates');
-  await expect(page.getByTestId('date-formats').getByRole('list', { name: 'Formats tried' }).locator('code')).toHaveText(['%d %B %Y']);
+  await expect(page.getByTestId('date-formats').getByRole('list', { name: 'Formats tried' }).locator('[data-format]')).toHaveText(['DD Month YYYY']);
   await expect(steps(page)).toHaveText([/Formatted start/, /Parsed start as dates/]);
   await expect(cell(page, 1, 0)).toHaveText('2024-01-31');
   await expect(cell(page, 1, 3)).toHaveText('2024-12-30');
@@ -63,7 +63,7 @@ test('extract a part, add time and truncate, with text columns pointed at parse 
   await settings(page).getByLabel('To the start of the', { exact: true }).selectOption('quarter');
   await expect(steps(page).nth(2)).toHaveText(/Truncated start to the quarter/);
   await expect(cell(page, 1, 0)).toHaveText('2024-01-01');
-  await expect(cell(page, 1, 2)).toHaveText('null');
+  await expect(cell(page, 1, 2)).toHaveText('empty');
 });
 
 test('time between two dates in a chosen unit', async ({ page }) => {
@@ -75,5 +75,5 @@ test('time between two dates in a chosen unit', async ({ page }) => {
   await expect(steps(page)).toHaveText([/Added hours from start to stamp as gap/]);
   await expect(cell(page, 6, 0)).toHaveText('9');
   await expect(cell(page, 6, 1)).toHaveText('71');
-  await expect(cell(page, 6, 2)).toHaveText('null');
+  await expect(cell(page, 6, 2)).toHaveText('empty');
 });

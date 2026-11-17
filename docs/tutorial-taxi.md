@@ -92,7 +92,7 @@ The Transform node now shows how many trips survived: 2,715,718 of 2,964,624, ab
 
 A lookup keeps every trip exactly once, and says how many found their zone: here, all of them.
 
-Turn on **Keep result in memory** for the Lookup node. Everything after it then reads the looked-up trips straight from DuckDB's memory instead of reading, filtering and matching three million rows again at each change. The node says how much memory that takes, about 650 MB here.
+Turn on **Keep this result ready** for the Lookup node. Everything after it then reads the looked-up trips straight from DuckDB's memory instead of reading, filtering and matching three million rows again at each change. The node says how much memory that takes, about 650 MB here.
 
 ![The Lookup settings: PULocationID matched to LocationID, Borough and Zone brought across, and the match rate](_static/screenshots/tutorial-lookup.png)
 
