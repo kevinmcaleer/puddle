@@ -60,7 +60,12 @@ export function IssuesPanel({ node }: { node: GraphNode }) {
             ))}
           {entry?.state === 'ok' && fixed.length > 0 && (
             <div className="flex flex-col gap-1 pt-2" data-testid="issues-fixed">
-              <span className="text-label text-ink-muted">{fixed.length === 1 ? 'Fixed by a step after this node' : 'Fixed by the steps after this node'}</span>
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-label text-ink-muted">{fixed.length === 1 ? 'Fixed by a step after this node' : 'Fixed by the steps after this node'}</span>
+                <Button size="sm" variant="ghost" onClick={() => useSession.getState().showReceipt(node.id)}>
+                  What was fixed
+                </Button>
+              </div>
               <ul className="flex flex-col gap-1">
                 {fixed.map((issue) => (
                   <li key={issue.key} className="flex items-baseline justify-between gap-2 text-label" data-testid={`fixed-${issue.key}`}>

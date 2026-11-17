@@ -37,6 +37,9 @@ test('Fix all clears a source’s issues as a Fixes group in one undo step, and 
   await dialog.getByRole('button', { name: 'Apply 5 fixes' }).click();
   await expectRows(page, 4);
   await expect(page.getByTestId('strip-issues')).toHaveAttribute('data-count', '2', { timeout: 20_000 });
+  // The receipt stands in the inspector, and says what is left; from there the source's list shows them.
+  await expect(page.getByTestId('receipt-open')).toContainText('2 issues are left to look at.');
+  await page.getByTestId('receipt-open').getByRole('button', { name: 'Show them' }).click();
   await expect(page.getByTestId('issues').getByTestId('issue-edgeSpaces:name')).toBeVisible();
   await expect(page.getByTestId('issues').getByTestId('issue-edgeSpaces:city')).toBeVisible();
   await expect(page.getByRole('button', { name: 'Fix 2 issues' }).first()).toBeVisible();

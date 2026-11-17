@@ -45,6 +45,9 @@ interface SessionState {
   /** The node a table name under the pointer (or caret) in a SQL editor means, marked on the canvas while it is. */
   pointedNodeId: string | null;
   pointAt: (id: string | null) => void;
+  /** The node whose Fix all receipt shows in the inspector's place, until a node is picked or it is closed. */
+  receiptNodeId: string | null;
+  showReceipt: (id: string | null) => void;
   /** The node being renamed in the canvas's rename dialog. */
   renamingNodeId: string | null;
   askRename: (id: string | null) => void;
@@ -101,21 +104,23 @@ export const useSession = create<SessionState>((set) => ({
   revealIssues: null,
   connectorMenu: null,
   pointedNodeId: null,
+  receiptNodeId: null,
+  showReceipt: (receiptNodeId) => set(receiptNodeId ? { receiptNodeId, inspectorOpen: true, inspectorTab: 'node', browsingConnectionId: null } : { receiptNodeId }),
   renamingNodeId: null,
   askRename: (renamingNodeId) => set({ renamingNodeId }),
   pointAt: (pointedNodeId) => set((s) => (s.pointedNodeId === pointedNodeId ? s : { pointedNodeId })),
   // Picking a node shows it in the inspector's Node tab.
-  select: (id) => set((s) => ({ selectedNodeId: id, selectedNodeIds: id ? [id] : [], selectedStepId: null, inspectorTab: id ? 'node' : s.inspectorTab })),
+  select: (id) => set((s) => ({ selectedNodeId: id, selectedNodeIds: id ? [id] : [], selectedStepId: null, inspectorTab: id ? 'node' : s.inspectorTab, receiptNodeId: null })),
   toggleSelected: (id) =>
     set((s) => {
       const has = s.selectedNodeIds.includes(id);
       const ids = has ? s.selectedNodeIds.filter((x) => x !== id) : [...s.selectedNodeIds, id];
-      return { selectedNodeIds: ids, selectedNodeId: has ? (ids.at(-1) ?? null) : id, selectedStepId: null };
+      return { selectedNodeIds: ids, selectedNodeId: has ? (ids.at(-1) ?? null) : id, selectedStepId: null, receiptNodeId: null };
     }),
   selectStep: (selectedStepId) => set({ selectedStepId }),
   setSelectedColumns: (selectedColumns) => set({ selectedColumns }),
   notify: (notice) => set({ notice }),
-  setInspectorTab: (inspectorTab) => set({ inspectorTab, inspectorOpen: true, browsingConnectionId: null }),
+  setInspectorTab: (inspectorTab) => set({ inspectorTab, inspectorOpen: true, browsingConnectionId: null, receiptNodeId: null }),
   openDesigner: (designerNodeId) =>
     set((s) => (designerNodeId ? { designerNodeId, schemaOpen: false, relationshipsOpen: false, selectedNodeId: designerNodeId, selectedNodeIds: [designerNodeId], selectedStepId: null, inspectorTab: 'node' } : { designerNodeId: null, selectedNodeIds: s.selectedNodeIds })),
   setSchemaOpen: (schemaOpen) => set(schemaOpen ? { schemaOpen, relationshipsOpen: false, designerNodeId: null } : { schemaOpen }),
@@ -127,7 +132,7 @@ export const useSession = create<SessionState>((set) => ({
   setShortcutsOpen: (shortcutsOpen) => set({ shortcutsOpen }),
   requestAddStep: () => set({ addStepPending: true, inspectorOpen: true, inspectorTab: 'node', browsingConnectionId: null }),
   showIssues: (id) =>
-    set((s) => ({ selectedNodeId: id, selectedNodeIds: [id], selectedStepId: s.selectedNodeId === id ? s.selectedStepId : null, inspectorTab: 'node', inspectorOpen: true, browsingConnectionId: null, revealIssues: id })),
+    set((s) => ({ selectedNodeId: id, selectedNodeIds: [id], selectedStepId: s.selectedNodeId === id ? s.selectedStepId : null, inspectorTab: 'node', inspectorOpen: true, browsingConnectionId: null, revealIssues: id, receiptNodeId: null })),
   clearRevealIssues: () => set({ revealIssues: null }),
   clearAddStep: () => set({ addStepPending: false }),
   requestAddMenu: () => set({ addMenuPending: true }),

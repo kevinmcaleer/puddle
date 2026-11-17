@@ -24,16 +24,17 @@ export function unignoreIssue(project: Project, nodeId: string, key: string): Pr
 }
 
 /** An issue as analysis found it, without the examples: nothing from the data is kept with the project. */
-export type FoundIssue = Omit<RecordedIssue, 'fixed' | 'fixedBy'>;
+export type FoundIssue = Omit<RecordedIssue, 'fixed' | 'fixedBy' | 'fixedByRead'>;
 
 /**
  * Keep what analysis found in a node's output, for the quality report: every issue, with the ones Fix all is fixing
  * now marked. An issue fixed by an earlier Fix all stays fixed, since the fix sits after the node and the issue is
  * still in its output.
  */
-export function recordAnalysis(project: Project, nodeId: string, found: FoundIssue[], fixedKeys: string[], at: string, rows: number, fixedBy: Record<string, string[]> = {}): Project {
+export function recordAnalysis(project: Project, nodeId: string, found: FoundIssue[], fixedKeys: string[], at: string, rows: number, fixedBy: Record<string, string[]> = {}, byRead: string[] = []): Project {
   const previous = nodeById(project, nodeId)?.analysis;
   const wasFixed = new Map(previous?.issues.filter((i) => i.fixed).map((i) => [i.key, i.fixedBy]));
+  const wasRead = new Set(previous?.issues.filter((i) => i.fixedByRead).map((i) => i.key));
   const analysis: AnalysisRecord = {
     at,
     rows,
@@ -41,7 +42,8 @@ export function recordAnalysis(project: Project, nodeId: string, found: FoundIss
       const fixed = fixedKeys.includes(i.key) || wasFixed.has(i.key);
       // The steps fixing it now, or the ones that fixed it before.
       const by = fixedKeys.includes(i.key) ? fixedBy[i.key] : wasFixed.get(i.key);
-      return { ...i, ...(fixed ? { fixed: true } : {}), ...(fixed && by?.length ? { fixedBy: by } : {}) };
+      const read = fixedKeys.includes(i.key) ? byRead.includes(i.key) : wasRead.has(i.key);
+      return { ...i, ...(fixed ? { fixed: true } : {}), ...(fixed && by?.length ? { fixedBy: by } : {}), ...(fixed && read ? { fixedByRead: true } : {}) };
     }),
   };
   return { ...project, nodes: project.nodes.map((n) => (n.id === nodeId ? { ...n, analysis } : n)) };

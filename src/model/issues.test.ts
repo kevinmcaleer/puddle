@@ -70,6 +70,13 @@ describe('the kept analysis', () => {
       expect(later.nodes[0]!.analysis!.issues.map((i) => i.fixedBy)).toEqual([['dedupe'], ['trim'], undefined]);
     });
 
+    it('are marked as fixed by how the source is read, and stay so through a later Fix all', () => {
+      const read = recordAnalysis(fixing, 't', found, ['duplicateRows', 'edgeSpaces:name'], '2026-10-21T09:00:00.000Z', 5, { 'edgeSpaces:name': ['trim'] }, ['duplicateRows']);
+      expect(read.nodes[0]!.analysis!.issues.map((i) => i.fixedByRead)).toEqual([true, undefined, undefined]);
+      const later = recordAnalysis(read, 't', found, [], '2026-10-21T10:00:00.000Z', 5);
+      expect(later.nodes[0]!.analysis!.issues.map((i) => i.fixedByRead)).toEqual([true, undefined, undefined]);
+    });
+
     it('are not counted when only marked fixed, with no steps named (a read option, or a project saved before)', () => {
       const marked = recordAnalysis(fixing, 't', found, ['edgeSpaces:name'], '2026-10-21T09:00:00.000Z', 5);
       expect(fixedIssueKeys(marked, 't').size).toBe(0);

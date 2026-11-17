@@ -31,14 +31,18 @@ export interface Planned {
   readOptions: ParseOptions;
   /** For each issue fixed by steps, by issue key: the ids of its steps. */
   fixedBy: Record<string, string[]>;
+  /** The issues fixed by the read options, by issue key. */
+  byRead: string[];
 }
 
 /** The steps that fix these issues, in order, each over every column its issues name, and the read options to set. */
 export async function planFixes(issues: Issue[], ctx: FixContext): Promise<Planned> {
   const groups = new Map<string, { fix: StepFix; columns: string[]; order: number; issues: string[] }>();
   let readOptions: ParseOptions = {};
+  const byRead: string[] = [];
   for (const issue of issues) {
     if (isReadOptionsFix(issue.fix)) {
+      byRead.push(issue.key);
       // Values to read as empty add up across columns; any other option is set outright.
       const nullStrings = [...new Set([...(readOptions.nullStrings ?? []), ...(issue.fix.readOptions.nullStrings ?? [])])];
       readOptions = { ...readOptions, ...issue.fix.readOptions, ...(nullStrings.length ? { nullStrings } : {}) };
@@ -69,7 +73,7 @@ export async function planFixes(issues: Issue[], ctx: FixContext): Promise<Plann
     steps.push(relabel({ ...step, params: { ...step.params, ...(columns.length && 'columns' in step.params ? { columns } : {}), ...extra } }));
     for (const key of fixes) (fixedBy[key] ??= []).push(step.id);
   }
-  return { steps, readOptions, fixedBy };
+  return { steps, readOptions, fixedBy, byRead };
 }
 
 /** Which issues Fix all applies without being asked: every `fix`, and the suggestions too when the project says so. */

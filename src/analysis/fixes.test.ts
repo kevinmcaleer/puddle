@@ -100,13 +100,13 @@ describe('planning fixes', () => {
 
   it('skips issues with nothing to apply', async () => {
     const none = issue('mixedCase', 'name', undefined, 'info');
-    expect(await planFixes([none], { available, locale: 'en-GB' })).toEqual({ steps: [], readOptions: {}, fixedBy: {} });
+    expect(await planFixes([none], { available, locale: 'en-GB' })).toEqual({ steps: [], readOptions: {}, fixedBy: {}, byRead: [] });
   });
 
   it('gathers read-option fixes apart from the steps, later ones over earlier', async () => {
     const top: Issue = { key: 'bannerRows', kind: 'bannerRows', count: 3, examples: [], severity: 'fix', fix: { readOptions: { skip: 3 }, label: 'Skip 3 lines at the top' } };
     const bottom: Issue = { key: 'footerRows', kind: 'footerRows', count: 1, examples: [], severity: 'fix', fix: { readOptions: { skipBottom: 1 }, label: 'Skip 1 row at the bottom' } };
-    expect(await planFixes([top, bottom, issues[1]!], { available, locale: 'en-GB' })).toMatchObject({ readOptions: { skip: 3, skipBottom: 1 }, steps: [{ type: 'trimWhitespace' }] });
+    expect(await planFixes([top, bottom, issues[1]!], { available, locale: 'en-GB' })).toMatchObject({ readOptions: { skip: 3, skipBottom: 1 }, steps: [{ type: 'trimWhitespace' }], byRead: ['bannerRows', 'footerRows'] });
     expect(fixGroup(top)).toBe('Read options');
     expect(fixLabel(top)).toBe('Skip 3 lines at the top');
     expect(fixLabel(issues[1]!)).toBe('Trim whitespace');

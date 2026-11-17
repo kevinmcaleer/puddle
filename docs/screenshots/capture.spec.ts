@@ -135,6 +135,7 @@ test('analysing a file', async ({ page }) => {
   await expect(page.getByTestId('results-table')).toHaveAttribute('aria-label', /^Results of Transform \d+/, { timeout: 30_000 });
   await page.getByRole('button', { name: 'Auto layout' }).click();
   await shot(page, 'analysing-fixed');
+  await shotPanel(page, 'analysing-receipt', page.getByTestId('fix-receipt'));
 });
 
 /** Each fix opens a new node, whose table may still be loading: click name and city until they are the selection. */
