@@ -20,11 +20,11 @@ function useWindowHeight() {
  * dragged its height follows the flow (see resultsHeight): only its message on an empty project, most of the window
  * while the flow is small, and a fixed share once it has grown.
  */
-export function ResultsPanel({ bar, nodes, children }: { bar: ReactNode; nodes: number; children: ReactNode }) {
+export function ResultsPanel({ bar, flow, children }: { bar: ReactNode; flow: 'empty' | 'small' | 'grown'; children: ReactNode }) {
   const [dragged, setDragged] = useState<number | null>(null);
   const windowHeight = useWindowHeight();
-  const height = resultsHeight({ nodes, dragged, windowHeight });
-  const short = nodes === 0 && dragged == null;
+  const height = resultsHeight({ flow, dragged, windowHeight });
+  const short = flow === 'empty' && dragged == null;
   const collapsed = !useSession((s) => s.resultsOpen);
   const setCollapsed = (c: boolean) => useSession.getState().setResultsOpen(!c);
   const drag = useRef<{ y: number; h: number } | null>(null);

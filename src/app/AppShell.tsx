@@ -55,7 +55,7 @@ import { FileSetInputs } from '../sources/FileSetInputs';
 import { ADD_AFTER_SELECTION, addFiles, addFileSet, addNodeAfterSelection, addSchemaTable, addTableFromSql, cancelWiring, chooseFiles as pickSourceFiles, addPastedText, groupSelection, layoutFlow, openSelected, pasteFromClipboard, searchAddStep, selectNeighbour, startWiring, viewSelected } from './actions';
 import { useEngineStore, type EngineStatus } from './engine';
 import { ResultsPanel } from './ResultsPanel';
-import { SMALL_FLOW } from './resultsHeight';
+import { isSmallFlow } from './resultsHeight';
 import { Console } from '../console/Console';
 import { SqlDockPane } from './SqlDock';
 import { ShortcutsDialog } from './ShortcutsDialog';
@@ -344,6 +344,10 @@ export function AppShell() {
   // Nodes and steps go after the selected node, so with nothing selected the Add menu leaves them out (principle 2).
   const after = afterSelection(ADD_AFTER_SELECTION, hasSelection);
 
+  // The results take most of the window while the canvas shows a small flow; the other views, and the SQL console on
+  // an empty project, need their usual room.
+  const resultsFlow = !project.nodes.length && !consoleOpen ? 'empty' : !covering && isSmallFlow(project.nodes) ? 'small' : 'grown';
+
   return (
     <ReactFlowProvider>
       <div className="grid h-full min-w-[960px] grid-rows-[auto_auto_minmax(0,1fr)_auto_auto] bg-surface-panel text-body text-ink">
@@ -476,7 +480,7 @@ export function AppShell() {
           )}
         </div>
 
-        <ResultsPanel bar={<ResultsTitle />} nodes={consoleOpen && !project.nodes.length ? SMALL_FLOW + 1 : project.nodes.length}>
+        <ResultsPanel bar={<ResultsTitle />} flow={resultsFlow}>
           <div className="flex h-full min-h-0">
             <SqlDockPane />
             <div className="flex h-full min-h-0 min-w-0 flex-1 flex-col">
