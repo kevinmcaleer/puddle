@@ -1,36 +1,47 @@
-import { useCallback, useRef, useState, type KeyboardEvent, type PointerEvent, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type KeyboardEvent, type PointerEvent, type ReactNode } from 'react';
 import { Button } from '../ui';
 import { useSession } from './session';
 import { withShortcut } from './shortcuts';
+import { clampResults, resultsHeight } from './resultsHeight';
 
-const MIN = 120;
-const DEFAULT = 280;
+/** The window's height, kept up to date as it is resized. */
+function useWindowHeight() {
+  const [h, setH] = useState(() => window.innerHeight);
+  useEffect(() => {
+    const on = () => setH(window.innerHeight);
+    window.addEventListener('resize', on);
+    return () => window.removeEventListener('resize', on);
+  }, []);
+  return h;
+}
 
 /**
- * The results table dock: resizable from its top edge (drag or arrow keys) and collapsible (R). While there is nothing
- * to show (`short`: an empty project) it is only as tall as its message, so the canvas's welcome has the room.
+ * The results table dock: resizable from its top edge (drag or arrow keys) and collapsible (R). Until the divider is
+ * dragged its height follows the flow (see resultsHeight): only its message on an empty project, most of the window
+ * while the flow is small, and a fixed share once it has grown.
  */
-export function ResultsPanel({ bar, short = false, children }: { bar: ReactNode; short?: boolean; children: ReactNode }) {
-  const [height, setHeight] = useState(DEFAULT);
+export function ResultsPanel({ bar, nodes, children }: { bar: ReactNode; nodes: number; children: ReactNode }) {
+  const [dragged, setDragged] = useState<number | null>(null);
+  const windowHeight = useWindowHeight();
+  const height = resultsHeight({ nodes, dragged, windowHeight });
+  const short = nodes === 0 && dragged == null;
   const collapsed = !useSession((s) => s.resultsOpen);
   const setCollapsed = (c: boolean) => useSession.getState().setResultsOpen(!c);
   const drag = useRef<{ y: number; h: number } | null>(null);
-
-  const clamp = useCallback((h: number) => Math.max(MIN, Math.min(h, window.innerHeight * 0.75)), []);
 
   const onPointerDown = (e: PointerEvent<HTMLDivElement>) => {
     e.currentTarget.setPointerCapture(e.pointerId);
     drag.current = { y: e.clientY, h: height };
   };
   const onPointerMove = (e: PointerEvent<HTMLDivElement>) => {
-    if (drag.current) setHeight(clamp(drag.current.h + drag.current.y - e.clientY));
+    if (drag.current) setDragged(clampResults(drag.current.h + drag.current.y - e.clientY, windowHeight));
   };
   const onPointerUp = () => {
     drag.current = null;
   };
   const onKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
-    if (e.key === 'ArrowUp') setHeight((h) => clamp(h + 24));
-    if (e.key === 'ArrowDown') setHeight((h) => clamp(h - 24));
+    if (e.key === 'ArrowUp') setDragged(clampResults(height + 24, windowHeight));
+    if (e.key === 'ArrowDown') setDragged(clampResults(height - 24, windowHeight));
   };
 
   return (
@@ -64,7 +75,7 @@ export function ResultsPanel({ bar, short = false, children }: { bar: ReactNode;
         />
       </div>
       {!collapsed && (
-        <div className="min-h-0 overflow-hidden" style={{ height: short ? MIN : height }} data-short={short}>
+        <div className="min-h-0 overflow-hidden" style={{ height }} data-short={short}>
           {children}
         </div>
       )}

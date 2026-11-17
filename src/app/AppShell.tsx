@@ -55,6 +55,7 @@ import { FileSetInputs } from '../sources/FileSetInputs';
 import { ADD_AFTER_SELECTION, addFiles, addFileSet, addNodeAfterSelection, addSchemaTable, addTableFromSql, cancelWiring, chooseFiles as pickSourceFiles, addPastedText, groupSelection, layoutFlow, openSelected, pasteFromClipboard, searchAddStep, selectNeighbour, startWiring, viewSelected } from './actions';
 import { useEngineStore, type EngineStatus } from './engine';
 import { ResultsPanel } from './ResultsPanel';
+import { SMALL_FLOW } from './resultsHeight';
 import { Console } from '../console/Console';
 import { SqlDockPane } from './SqlDock';
 import { ShortcutsDialog } from './ShortcutsDialog';
@@ -475,7 +476,7 @@ export function AppShell() {
           )}
         </div>
 
-        <ResultsPanel bar={<ResultsTitle />} short={project.nodes.length === 0 && !consoleOpen}>
+        <ResultsPanel bar={<ResultsTitle />} nodes={consoleOpen && !project.nodes.length ? SMALL_FLOW + 1 : project.nodes.length}>
           <div className="flex h-full min-h-0">
             <SqlDockPane />
             <div className="flex h-full min-h-0 min-w-0 flex-1 flex-col">

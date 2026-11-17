@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { addFiles, fixture, node, openApp, openInspector, openProjectTab } from './helpers/app';
+import { addFiles, addStepNode, fixture, node, openApp, openInspector, openProjectTab, selectNode } from './helpers/app';
 
 test('the empty shell renders with every docked region', async ({ page }) => {
   await page.goto('/');
@@ -99,4 +99,33 @@ test('the results panel collapses and expands', async ({ page }) => {
   await expect(panel).toHaveAttribute('data-collapsed', 'true');
   await page.getByRole('button', { name: 'Show results' }).click();
   await expect(panel).toHaveAttribute('data-collapsed', 'false');
+});
+
+// #294: with one node on the canvas, the canvas took the top half of the window and the table showed eight rows.
+test.describe('at 1440 by 900', () => {
+  test.use({ viewport: { width: 1440, height: 900 } });
+
+  test('the data gets most of the window while the flow is small, and a divider set by hand is kept', async ({ page }) => {
+    await openApp(page);
+    await addFiles(page, [fixture('customers.csv')]);
+    const height = async () => (await page.getByTestId('results-panel').boundingBox())!.height;
+    await expect.poll(height).toBeGreaterThan(450);
+    // The canvas still has room for the node.
+    await expect(node(page, 'customers.csv')).toBeInViewport({ ratio: 1 });
+
+    // A flow that has grown shares the window as before.
+    await selectNode(page, 'customers.csv');
+    for (const [step, name] of [['Trim whitespace', 'Transform 1'], ['Remove blank rows', 'Transform 2'], ['Remove duplicates', 'Transform 3']] as const) await addStepNode(page, step, name);
+    await expect.poll(height).toBeLessThan(450);
+
+    // Dragged (here with the keyboard), the divider stays where it was put, even when the flow is small again.
+    const divider = page.getByRole('separator', { name: 'Resize results' });
+    await divider.focus();
+    const before = await height();
+    await page.keyboard.press('ArrowUp');
+    await expect.poll(height).toBe(before + 24);
+    for (let i = 0; i < 3; i++) await page.getByRole('button', { name: 'Undo' }).click();
+    await expect(node(page, 'Transform 1')).toHaveCount(0);
+    await expect.poll(height).toBe(before + 24);
+  });
 });
