@@ -5,18 +5,19 @@ import { addFiles, fixture, node, openApp, selectNode } from './helpers/app';
 // canvas area, one click or key apart, while the inspector and results stay where they are.
 test('the view switcher moves between the canvas, relationships, the query designer and the schema', async ({ page }) => {
   await openApp(page);
+  const views = page.getByTestId('view-switcher').getByRole('tab');
+  // #295: an empty project shows only the canvas; a view's tab comes once the project has something for it.
+  await expect(views).toHaveText(['Canvas']);
   await addFiles(page, [fixture('shop-customers.csv'), fixture('shop-orders.csv')]);
   await expect(node(page, 'shop-orders.csv')).toHaveAttribute('data-status', 'ok');
-  const views = page.getByTestId('view-switcher').getByRole('tab');
-  await expect(views).toHaveText(['Canvas', 'Relationships', 'Designer', 'Schema']);
-  await expect(views.nth(2)).toBeDisabled();
+  await expect(views).toHaveText(['Canvas', 'Relationships']);
 
   await selectNode(page, 'shop-customers.csv');
   await selectNode(page, 'shop-orders.csv', ['Shift']);
   await page.getByRole('button', { name: 'Add', exact: true }).click();
   await page.getByRole('menuitem', { name: /Query/ }).click();
   await expect(page.getByTestId('query-designer')).toBeVisible();
-  await expect(views.nth(2)).toHaveText('Designer: Query 1');
+  await expect(views).toHaveText(['Canvas', 'Relationships', 'Query designer: Query 1']);
   await expect(views.nth(2)).toHaveAttribute('aria-selected', 'true');
 
   // Back to the canvas by its tab: the inspector still shows the Query node.
@@ -36,4 +37,13 @@ test('the view switcher moves between the canvas, relationships, the query desig
   await expect(page.getByTestId('schema-view')).toBeVisible();
   await page.keyboard.press('1');
   await expect(page.getByTestId('canvas')).toBeVisible();
+  // The schema is still empty, so its tab goes with it; the project menu opens it, and Relationships, at any time.
+  await expect(views).toHaveText(['Canvas', 'Relationships', 'Query designer: Query 1']);
+  await page.getByTestId('project-menu').click();
+  await page.getByRole('menuitem', { name: 'Schema' }).click();
+  await expect(page.getByTestId('schema-view')).toBeVisible();
+  await expect(views.nth(3)).toHaveText('Schema');
+  await page.getByTestId('project-menu').click();
+  await page.getByRole('menuitem', { name: 'Relationships' }).click();
+  await expect(page.getByTestId('relationships')).toBeVisible();
 });
