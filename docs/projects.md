@@ -4,7 +4,7 @@ A project is your flow: its sources (how to read them, not their data), nodes an
 
 ## The projects list
 
-The **Puddle** wordmark at the left of the toolbar, or **All projects** in the project menu (click the project's name), opens the home screen: your projects, newest first, with the samples and the library (your templates and the recipes) below. **New project** starts an empty one, and each project's **...** menu renames, duplicates or deletes it. Undo on this screen brings back a project deleted by mistake (see [Undo and redo](#undo-and-redo)).
+The **Puddle** wordmark at the left of the toolbar, or **All projects** in the project menu (click the project's name), opens the home screen: your projects, newest first, with the samples and the library (your templates and the recipes) below. **New project** starts an empty one, called "Untitled project" until you add its first source: it is then named after that source (`sales.csv` makes "sales", or "sales 2" if you already have a "sales"), and undoing the source takes the name back. A project you have named yourself is never renamed. Each project's **...** menu renames, duplicates or deletes it. Undo on this screen brings back a project deleted by mistake (see [Undo and redo](#undo-and-redo)).
 
 The grid button before the wordmark, **Switch app**, on the home screen and in a project, goes to the other apps of Kev's Power Tools, such as Mermaid Factory, or to **All tools** on kevspowertools.com. Puddle is ticked; an app marked **Coming soon** is listed but not open yet. The list comes from kevspowertools.com the first time you open the menu, and Puddle keeps its own copy for when that site cannot be reached. Nothing about your projects or data is sent.
 

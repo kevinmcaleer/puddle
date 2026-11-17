@@ -60,6 +60,16 @@ test('pasted data is stored in the project and comes back connected', async ({ p
   await expect(cell(page, 0, 1)).toHaveText('B2');
 });
 
+// #289: every project was "Untitled project", so the projects list said nothing about what was in each.
+test('a new project is named after its first file, in the header and the projects list', async ({ page }) => {
+  await openApp(page);
+  await expect(page.getByTestId('project-name')).toHaveText('Untitled project');
+  await addFiles(page, [fixture('customers.csv'), fixture('orders.tsv')]);
+  await expect(page.getByTestId('project-name')).toHaveText('customers');
+  await projectMenu(page, 'All projects');
+  await expect(page.getByTestId('project-customers')).toContainText('2 sources');
+});
+
 test('projects can be created, renamed, duplicated and deleted from the home screen', async ({ page }) => {
   await openApp(page);
   // A first project with something in it, so it is saved.

@@ -3,6 +3,7 @@ import { canRedo, canUndo, checkpoint, initHistory, pushHistory, redo, undo, typ
 import { createProject } from './project';
 import { carryFacts } from './facts';
 import { carryPin } from './view';
+import { nameAfterFirstSource } from './projectName';
 import type { Project, ProjectView } from './schema';
 
 export interface ProjectState {
@@ -47,6 +48,12 @@ const keep = (h: History<Project>, from: Project): History<Project> => {
   return pinned === logged.present ? logged : { ...logged, present: pinned };
 };
 
+/** The names the workspace's other projects have, so a project named after its first source doesn't share one. */
+let takenProjectNames: () => readonly string[] = () => [];
+export const setTakenProjectNames = (names: () => readonly string[]) => {
+  takenProjectNames = names;
+};
+
 /** The open batch: the project before its first edit, and how deeply batches are nested. */
 let batching: { before: Project; depth: number } | null = null;
 
@@ -54,8 +61,10 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
   history: initHistory(createProject()),
   apply: (edit) =>
     set(({ history }) => {
-      const next = edit(history.present);
-      if (next === history.present) return {};
+      const edited = edit(history.present);
+      if (edited === history.present) return {};
+      // The first source names an untitled project, in the same undo step.
+      const next = nameAfterFirstSource(history.present, edited, takenProjectNames());
       // Inside a batch, edits gather in place; the batch records them as one step when it ends.
       if (batching) return { history: { ...history, present: next } };
       return { history: pushHistory(history, { ...next, updatedAt: new Date().toISOString() }) };
