@@ -2,6 +2,7 @@
 import { inputEdges, nodeById, outputEdges } from './graph';
 import { joinGroupOf } from './groups';
 import { newId } from './ids';
+import { renameInSql } from './renameSql';
 import type { GraphNode, Project, Step, TransformNode } from './schema';
 
 const transform = (project: Project, nodeId: string): TransformNode | undefined => {
@@ -65,10 +66,11 @@ export const toggleStep = (project: Project, nodeId: string, stepId: string): Pr
   return step ? updateStep(project, nodeId, stepId, { enabled: !step.enabled }) : project;
 };
 
+/** Give a node a new name. SQL that reads the node by its old name is rewritten to go on reading it (see renameInSql). */
 export function renameNode(project: Project, nodeId: string, name: string): Project {
   const trimmed = name.trim();
   if (!trimmed) return project;
-  return { ...project, nodes: project.nodes.map((n) => (n.id === nodeId ? { ...n, name: trimmed } : n)) };
+  return renameInSql(project, { ...project, nodes: project.nodes.map((n) => (n.id === nodeId ? { ...n, name: trimmed } : n)) }, nodeId);
 }
 
 export function setNodeNotes(project: Project, nodeId: string, notes: string): Project {
