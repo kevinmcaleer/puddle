@@ -14,6 +14,13 @@ exports[`join SQL > counts inputs, output and matches for the multiplication war
 SELECT (SELECT count(*) FROM "n_o") AS left_rows, (SELECT count(*) FROM "n_c") AS right_rows, (SELECT count(*) FROM "n_j") AS "rows", (SELECT count(*) FROM "n_o" AS "l" INNER JOIN "n_c" AS "r" ON "l"."customer_id" = "r"."customer_id") AS pairs, (SELECT count(*) FROM "n_o" AS "l" SEMI JOIN "n_c" AS "r" ON "l"."customer_id" = "r"."customer_id") AS matched_left, (SELECT count(*) FROM "n_c" AS "r" SEMI JOIN "n_o" AS "l" ON "l"."customer_id" = "r"."customer_id") AS matched_right"
 `;
 
+exports[`join SQL > counts what tidying the text keys would match, and has nothing to count when no key is text 1`] = `
+"WITH "n_o" AS (SELECT * FROM read_csv('src_orders.csv', null_padding = true)),
+  "n_c" AS (SELECT * FROM read_csv('src_customers.csv', null_padding = true)),
+  "n_j" AS (SELECT "l"."order_id", "l"."customer_id", "l"."status", "r"."name" FROM "n_o" AS "l" LEFT JOIN "n_c" AS "r" ON "l"."status" = "r"."status" AND "l"."customer_id" = "r"."customer_id")
+SELECT (SELECT count(*) FROM "n_o" AS "l" SEMI JOIN "n_c" AS "r" ON trim("l"."status") = trim("r"."status") AND "l"."customer_id" = "r"."customer_id") AS trim_left, (SELECT count(*) FROM "n_c" AS "r" SEMI JOIN "n_o" AS "l" ON trim("l"."status") = trim("r"."status") AND "l"."customer_id" = "r"."customer_id") AS trim_right, (SELECT count(*) FROM "n_o" AS "l" SEMI JOIN "n_c" AS "r" ON upper("l"."status") = upper("r"."status") AND "l"."customer_id" = "r"."customer_id") AS upper_left, (SELECT count(*) FROM "n_c" AS "r" SEMI JOIN "n_o" AS "l" ON upper("l"."status") = upper("r"."status") AND "l"."customer_id" = "r"."customer_id") AS upper_right, (SELECT count(*) FROM "n_o" AS "l" SEMI JOIN "n_c" AS "r" ON upper(trim("l"."status")) = upper(trim("r"."status")) AND "l"."customer_id" = "r"."customer_id") AS both_left, (SELECT count(*) FROM "n_c" AS "r" SEMI JOIN "n_o" AS "l" ON upper(trim("l"."status")) = upper(trim("r"."status")) AND "l"."customer_id" = "r"."customer_id") AS both_right"
+`;
+
 exports[`join SQL > full join over both inputs’ CTEs 1`] = `
 "WITH "n_o" AS (SELECT * FROM read_csv('src_orders.csv', null_padding = true)),
   "n_c" AS (SELECT * FROM read_csv('src_customers.csv', null_padding = true)),

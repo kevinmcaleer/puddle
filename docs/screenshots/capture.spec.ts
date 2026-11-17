@@ -332,6 +332,7 @@ test('combining data', async ({ page }) => {
   await page.getByRole('button', { name: 'Auto layout' }).click();
   await selectNode(page, 'Join 1');
   await expectRows(page, 6);
+  await expect(page.getByTestId('join-match')).toBeVisible();
   await shot(page, 'combine-join');
   await shotPanel(page, 'combine-join-settings', page.getByTestId('inspector-join'));
 });

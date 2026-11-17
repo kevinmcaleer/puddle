@@ -97,6 +97,36 @@ export function joinColumns(spec: JoinSpec, left: ColumnSchema[], right: ColumnS
 /** The ON condition: every key pair equal. */
 export const joinCondition = (spec: JoinSpec, l = L, r = R) => spec.keys.map((k) => `${l}.${ident(k.left)} = ${r}.${ident(k.right)}`).join(' AND ');
 
+/** Tidying a text key before it is compared: spaces trimmed off its ends, one case throughout, or both. */
+export interface KeyTidy {
+  trim: boolean;
+  upper: boolean;
+}
+
+/** The ways to tidy a key, the least change first. */
+export const KEY_TIDIES = { trim: { trim: true, upper: false }, upper: { trim: false, upper: true }, both: { trim: true, upper: true } } as const satisfies Record<string, KeyTidy>;
+
+/** The key pairs that are text on both sides, the only ones trimming or a change of case can help. */
+export const textKeys = (spec: JoinSpec, left: ColumnSchema[], right: ColumnSchema[]) =>
+  spec.keys.filter((k) => {
+    const [l, r] = [left.find((c) => c.name === k.left), right.find((c) => c.name === k.right)];
+    return !!l && !!r && family(l.type) === 'text' && family(r.type) === 'text';
+  });
+
+/** The ON condition with the text key pairs tidied on both sides before they are compared. */
+export function tidiedCondition(spec: JoinSpec, text: JoinSpec['keys'], tidy: KeyTidy, l = L, r = R): string {
+  const wrap = (e: string) => {
+    const trimmed = tidy.trim ? `trim(${e})` : e;
+    return tidy.upper ? `upper(${trimmed})` : trimmed;
+  };
+  return spec.keys
+    .map((k) => {
+      const [a, b] = [`${l}.${ident(k.left)}`, `${r}.${ident(k.right)}`];
+      return text.includes(k) ? `${wrap(a)} = ${wrap(b)}` : `${a} = ${b}`;
+    })
+    .join(' AND ');
+}
+
 /** One join as a SELECT over the two input relations. Assumes joinProblems found nothing. */
 export function compileJoin(spec: JoinSpec, inputs: { left: string; right: string }, left: ColumnSchema[], right: ColumnSchema[]): string {
   const columns = joinColumns(spec, left, right).map((c) => c.sql);

@@ -6,7 +6,7 @@ export { newId } from './ids';
 export { createProject, parseProject } from './project';
 export { addStep, canGroup, canUngroup, groupNodes, moveStep, removeStep, renameNode, setNodeNotes, splitNode, toggleStep, ungroupNode, updateStep, type GroupCheck } from './steps';
 export { addNode, addSource, moveNodes, nextNodeName, removeNodes, setCollapsed, setKeepResult, setParseOptions, setSourceFormat, setRunnerPath, setSqlQuery, setTableSpec, updateSource, syncScriptTables, addScriptTableNodes, setScriptTable, setFileSet, type AddableNodeType } from './edits';
-export { setJoinSpec, swapJoinInputs } from './join';
+export { addBeforeJoin, addUnmatchedJoin, setJoinSpec, swapJoinInputs } from './join';
 export { setAppendSpec, swapAppendInputs } from './append';
 export { setLookupSpec, swapLookupInputs } from './lookup';
 export { addQueryField, addQueryJoin, addQueryOrRow, addQueryTable, criteriaCell, moveQueryField, moveQueryTable, removeQueryField, removeQueryJoin, removeQueryOrRow, removeQueryTable, setQueryCriteria, setQueryDesign, setQueryJoinKind, setQuerySpec, setQuerySql, updateQueryField } from './query';

@@ -6,6 +6,7 @@ export {
   compileDateDetection,
   compileDisplayPage,
   compileJoinCheck,
+  compileJoinTidyCheck,
   compileKeyCheck,
   compileLoadCheck,
   schemaDdlKey,
@@ -34,7 +35,7 @@ export {
   type Target,
 } from './compile';
 export { CompileError, PendingSchemaError, UnwiredError } from './errors';
-export { compileJoin, JOIN_TYPES, joinColumns, joinProblems, keepsRightColumns, suggestJoinKey, type JoinColumn, type JoinProblem } from './join';
+export { compileJoin, JOIN_TYPES, joinColumns, joinProblems, keepsRightColumns, KEY_TIDIES, suggestJoinKey, textKeys, type JoinColumn, type JoinProblem, type KeyTidy } from './join';
 export { compileLookup, lookupColumns, suggestLookupColumns, lookupProblems, type LookupColumn, type LookupProblem } from './lookup';
 export { KeptBook, keptTable, keptTableName, knownKept, type KeptTable } from './keptBook';
 export { appendColumns, appendProblems, compileAppend, type AppendColumn, type AppendInput, type AppendProblem } from './append';
