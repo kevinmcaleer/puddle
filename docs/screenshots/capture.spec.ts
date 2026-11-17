@@ -433,7 +433,7 @@ test('relationships', async ({ page }) => {
   await shot(page, 'relationships');
   // The Schema view documents the same tables, the Join as a query, and the relationships between them.
   await projectMenu(page, 'Schema');
-  await expect(page.getByTestId('schema-canvas-counts')).toHaveText('3 from the canvas');
+  await expect(page.getByTestId('schema-canvas-counts')).toHaveText('3 tables, 2 refs from the canvas');
   await page.getByRole('button', { name: 'Hide inspector' }).click();
   await page.getByRole('button', { name: 'Hide results' }).click();
   await page.getByRole('button', { name: 'Auto-arrange' }).click();
