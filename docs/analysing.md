@@ -2,6 +2,8 @@
 
 Every source, and any node you look at, is analysed in the background once it has run: Puddle reads its first rows, looks for the problems messy files usually have, and lists what it finds on the **Issues** panel in the inspector. On a source it is the first thing under the node's name, above the name field and the read options. Each issue comes with the fix Puddle would apply, and **Fix all** applies them in one go, as steps you can see, change and undo.
 
+When a source has problems that Fix all would fix, the results say so above its rows: **7 problems found in sales.csv**, with **Fix all** beside it and **Show me**, which selects the source and opens its Issues list. The headline goes once the problems are fixed. Dismiss it (the cross) and it stays away for that source; its issues stay on the Issues list.
+
 ![The CRM export sample selected, with its issues listed in the inspector and Fix all above them](_static/screenshots/analysing-issues.png)
 
 The source's node on the canvas shows how many issues it has, so a file that needs work stands out before you open it. The count takes in every issue, suggestions and notes too; click it, on the node or in the status bar, to jump to the Issues panel and see each one. Analysis reads the first two hundred thousand rows of a node, which is enough to find what is wrong without slowing a large file down; the panel says so when it looked at a sample.

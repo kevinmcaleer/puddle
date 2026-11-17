@@ -304,6 +304,8 @@ const NodeBase = {
   dismissedSuggestions: z.array(z.string()).optional(),
   /** Issues found by analysis and ignored for this node, by issue key (kind and column), so they stay ignored. */
   ignoredIssues: z.array(z.string()).optional(),
+  /** The findings headline over this node's rows was dismissed, so it stays away. Optional: no format change. */
+  findingsDismissed: z.boolean().optional(),
   /** The issues analysis last found here and which Fix all fixed; ignored ones are in `ignoredIssues`. */
   analysis: AnalysisRecordZ.optional(),
   /** Materialise as a table for reuse (Phase 2). */

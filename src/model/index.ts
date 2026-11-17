@@ -19,7 +19,7 @@ export { DEFAULT_PROJECT_NAME, freeProjectName, nameAfterFirstSource, sourceProj
 export { placeStep, placeStepAt, type Placed, type StepTarget } from './quickfix';
 export { FIXES_GROUP_NAME, placeFixes, type PlacedFixes } from './fixes';
 export { addRule, dismissSuggestion, removeRule, updateRule } from './rules';
-export { fixedIssueKeys, ignoreIssue, recordAnalysis, unignoreIssue, type FoundIssue } from './issues';
+export { dismissFindings, fixedIssueKeys, ignoreIssue, recordAnalysis, unignoreIssue, type FoundIssue } from './issues';
 export { addConnection, connectionSources, nextConnectionName, removeConnection, updateConnection, updateConnectionSource } from './connections';
 export { exportNameAfter, logExport, outputAfter, setOutputFormat, setOutputSpec } from './exports';
 export { carryPin, viewWithout } from './view';

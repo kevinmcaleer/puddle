@@ -18,7 +18,7 @@ You can leave the tour at any point with **Skip**, and pick it up again later fr
 
 ## Samples
 
-The empty canvas lists eight deliberately messy datasets, and so does the projects screen. Choosing one opens it as a new project. Each comes with a project note saying what is wrong with the data and where to start, and the Issues panel lists what Puddle found (see {doc}`analysing`).
+The empty canvas lists eight deliberately messy datasets, and so does the projects screen. Choosing one opens it as a new project. Each comes with a project note saying what is wrong with the data and where to start, and the Issues panel lists what Puddle found (see {doc}`analysing`). The first thing you see is what Puddle found: a headline above the rows, such as **7 problems found in sales.csv**, with **Fix all** and **Show me**.
 
 ![The samples on the empty canvas](_static/screenshots/start-samples.png)
 

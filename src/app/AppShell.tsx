@@ -11,7 +11,7 @@ import { QuickFixes } from '../quickfix/QuickFixes';
 import { showFailing } from '../rules';
 import { useKeptTotal } from '../flow/kept';
 import { nodeIssues, useAnalysisEntry, useAnalysisEvaluation } from '../analysis';
-import { FixAll } from '../analysis/FixAll';
+import { BarFixAll, FindingsHeadline } from '../analysis/FindingsHeadline';
 import { ruleTally, useRuleStore } from '../flow/rules';
 import { sampledUpstream, useSample, useViewProject } from '../flow/sample';
 import { SampleBanner } from '../results/SampleBanner';
@@ -157,6 +157,7 @@ function ResultsTitle() {
     >
       <PinOffer />
       <SampleBanner />
+      {!failing && step == null && <FindingsHeadline node={node} />}
       {node.type === 'output' && !failing && <ExportBlockedBanner node={node} className="px-3 pb-2" />}
       {failing ? (
         <div className="px-3 pb-2">
@@ -167,8 +168,9 @@ function ResultsTitle() {
       ) : (
         <div className="flex items-start gap-2">
           <QuickFixes />
+          {/* The headline, while it shows, carries Fix all. */}
           <div className="ml-auto px-3 pb-2 empty:hidden">
-            <FixAll node={node} />
+            <BarFixAll node={node} headlineShown={step == null} />
           </div>
         </div>
       )}
