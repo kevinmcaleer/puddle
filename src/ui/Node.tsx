@@ -40,6 +40,8 @@ export interface NodeCardProps {
   tag?: { label: string; title: string };
   /** The node's note: a small marker in the header shows it on hover. */
   note?: string;
+  /** What the node is for, in the user's words: shown under the heading (the canvas passes its editable line). */
+  description?: ReactNode;
   style?: CSSProperties;
   className?: string;
   onClick?: MouseEventHandler<HTMLDivElement>;
@@ -49,7 +51,7 @@ export interface NodeCardProps {
 
 /** The node card. The canvas wraps this in a React Flow custom node and swaps the ports for handles. */
 export function NodeCard({
-  kind = 'transform', name, detail, rows, cols, steps, rule, issues, fixed, onIssues, selected, viewed, pinned, comparing, error, dimmed, expanded, brokenInput, note, kept, tag,
+  kind = 'transform', name, detail, rows, cols, steps, rule, issues, fixed, onIssues, selected, viewed, pinned, comparing, error, dimmed, expanded, brokenInput, note, description, kept, tag,
   style, className, onClick, renderPorts,
 }: NodeCardProps) {
   const display = useDisplayFormat();
@@ -93,6 +95,7 @@ export function NodeCard({
           </span>
         )}
       </div>
+      {description && <div className="ui-node__description">{description}</div>}
       {error && (
         <div className="ui-node__error">
           <Icon name="cross" size={14} />

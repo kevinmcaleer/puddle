@@ -227,6 +227,7 @@ export const SourceZ = z.object({
 export const StepOriginZ = z.object({
   nodeId: z.string().min(1),
   name: z.string(),
+  description: z.string().optional(),
   notes: z.string().optional(),
   position: z.object({ x: z.number(), y: z.number() }),
   collapsed: z.boolean().optional(),
@@ -290,6 +291,11 @@ export const AnalysisRecordZ = z.object({ at: z.string(), rows: z.number(), issu
 const NodeBase = {
   id: z.string().min(1),
   name: z.string(),
+  /**
+   * What the node is for, in the user's words ("combine into a single list"): one short line shown on its card.
+   * Optional, so projects saved before descriptions existed load as they are (no format change). See model/describe.ts.
+   */
+  description: z.string().optional(),
   notes: z.string().optional(),
   position: PositionZ.default({ x: 0, y: 0 }),
   collapsed: z.boolean().optional(),
@@ -557,6 +563,8 @@ export const NodeGroupZ = z.object({
   collapsed: z.boolean().default(true),
   /** Where the collapsed card sits. */
   position: PositionZ.default({ x: 0, y: 0 }),
+  /** What the group's nodes do together, in the user's words ("touchless rate per month"); see model/describe.ts. */
+  description: z.string().optional(),
 });
 
 /**

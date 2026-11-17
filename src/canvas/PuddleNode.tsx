@@ -8,7 +8,7 @@ import { keptLabel, keptView, useKeptEntry } from '../flow/kept';
 import { nodeIssues, useAnalysisEntry } from '../analysis';
 import { summarise, useRuleStore } from '../flow/rules';
 import { useNodeStatus } from '../flow/status';
-import { hasNumberedInputs, inputPorts, useProject, type GraphNode } from '../model';
+import { hasNumberedInputs, inputPorts, setNodeDescription, useProject, useProjectStore, type GraphNode } from '../model';
 import { useAttachments } from '../sources/attachments';
 import { isAccessSource, useAccessReads } from '../sources/access';
 import { connectionNeedsMessage, connectionOf, isConnectionSource, useConnectionReads } from '../sources/connection';
@@ -20,6 +20,7 @@ import { isXmlSource, useXmlReads } from '../sources/xml';
 import { urlProblem, useUrlFetches } from '../sources/url';
 import { NodeCard } from '../ui';
 import { viewNode } from '../results/pin';
+import { Description } from './Description';
 import { cardHeading, cardKind, tableTag } from './kind';
 import { portBroken, portName, portsHeight, portTop } from './ports';
 
@@ -104,6 +105,7 @@ export function PuddleNode({ data, selected }: NodeProps<PuddleFlowNode>) {
         dimmed={status.state === 'blocked' || (status.state === 'detached' && fetching)}
         brokenInput={status.state === 'error'}
         note={node.notes?.trim() || undefined}
+        description={<Description flowId={node.id} name={node.name} text={node.description} onSave={(text) => useProjectStore.getState().apply((p) => setNodeDescription(p, node.id, text))} />}
         tag={tableTag(node)}
         kept={kept ? { label: keptLabel(kept), stale: kept.state !== 'ready' } : undefined}
         style={ports.length > 2 ? { minHeight: portsHeight(ports.length) } : undefined}

@@ -7,6 +7,7 @@ import { CommitInput } from '../steps/CommitInput';
 import { DockedSql } from '../app/SqlDock';
 import { SqlEditor } from '../steps/SqlEditor';
 import { Banner, Button, Field, Section } from '../ui';
+import { NodeDescription } from './NodeDescription';
 
 /** How many file names the panel lists before "and N more". */
 const LISTED = 6;
@@ -51,6 +52,7 @@ export function SqlPanel({ node }: { node: SqlNode }) {
         <Field label="Node name" htmlFor="node-name">
           <CommitInput key={node.name} id="node-name" value={node.name} onCommit={(v) => apply((p) => renameNode(p, node.id, v))} />
         </Field>
+        <NodeDescription node={node} />
       </div>
       <Section title="Tables" count={inputs.length}>
         {inputs.length ? (

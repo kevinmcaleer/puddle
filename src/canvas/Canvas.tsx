@@ -92,15 +92,17 @@ const NODE_SIZE = { width: 232, height: 96 };
 /** Room round an open group's nodes, and above them for its name. */
 const FRAME_PAD = 24;
 const FRAME_HEAD = 32;
+/** More room above an open group's nodes for its description, shown on one line there (or being written). */
+const FRAME_DESCRIPTION = 28;
 
 /** Where an open group's frame goes: round its nodes, as they are drawn now. */
-function frameBox(group: NodeGroup, at: (id: string) => { x: number; y: number } | undefined, size: (id: string) => { width: number; height: number }) {
+function frameBox(group: NodeGroup, at: (id: string) => { x: number; y: number } | undefined, size: (id: string) => { width: number; height: number }, described = !!group.description) {
   const boxes = group.nodeIds.flatMap((id) => {
     const p = at(id);
     return p ? [{ ...p, ...size(id) }] : [];
   });
   const x = Math.min(...boxes.map((b) => b.x)) - FRAME_PAD;
-  const y = Math.min(...boxes.map((b) => b.y)) - FRAME_PAD - FRAME_HEAD;
+  const y = Math.min(...boxes.map((b) => b.y)) - FRAME_PAD - FRAME_HEAD - (described ? FRAME_DESCRIPTION : 0);
   const right = Math.max(...boxes.map((b) => b.x + b.width)) + FRAME_PAD;
   const bottom = Math.max(...boxes.map((b) => b.y + b.height)) + FRAME_PAD;
   return { x, y, width: right - x, height: bottom - y };
@@ -236,6 +238,9 @@ function NodeMenu({ at, onClose, onRename, onGrouped }: { at: { x: number; y: nu
   const items: MenuItem[] = [];
   if (!groupId) {
     items.push({ label: 'Rename…', shortcut: shortcutText('rename'), onSelect: () => useSession.getState().askRename(at.flowId) });
+    // What the node is for, written in place under its heading (Description.tsx).
+    const described = !!nodeById(project, at.flowId)?.description;
+    items.push({ label: described ? 'Edit description' : 'Add description', onSelect: () => useSession.getState().askDescribe(at.flowId) });
     // Right-clicking a node outside the selection acts on that node alone, as in a file manager.
     const ids = selected.includes(at.flowId) ? selected : [at.flowId];
     const check = canMakeGroup(project, ids);
@@ -256,6 +261,7 @@ function NodeMenu({ at, onClose, onRename, onGrouped }: { at: { x: number; y: nu
         ? { label: `Open ${group.name}`, group: 'Group', onSelect: () => apply((p) => setGroupCollapsed(p, group.id, false)) }
         : { label: `Close ${group.name}`, group: 'Group', onSelect: () => apply((p) => setGroupCollapsed(p, group.id, true)) },
       { label: 'Rename group…', group: 'Group', onSelect: () => onRename(group.id) },
+      { label: group.description ? 'Edit group description' : 'Add group description', group: 'Group', onSelect: () => useSession.getState().askDescribe(groupCardId(group.id)) },
       { label: 'Ungroup', group: 'Group', icon: 'ungroup', onSelect: () => apply((p) => ungroup(p, group.id)) },
     );
     // A group Fix all made (or any group holding its steps) leads back to the receipt of what it fixed.
@@ -363,6 +369,7 @@ export function Canvas({ onAddSource, onLayout }: { onAddSource: () => void; onL
   const notice = useSession((s) => s.notice);
   const connectFrom = useSession((s) => s.connectFrom);
   const pointedId = useSession((s) => s.pointedNodeId);
+  const describing = useSession((s) => s.describing);
   const statuses = useFlowStore((s) => s.nodes);
   const [dragging, setDragging] = useState<Record<string, { x: number; y: number }>>({});
   // Each node's size as React Flow measured it. The nodes below are rebuilt on every change to the flow, and a node
@@ -406,7 +413,7 @@ export function Canvas({ onAddSource, onLayout }: { onAddSource: () => void; onL
     const frames = project.groups
       .filter((g) => !g.collapsed)
       .map((g): GroupFrameFlowNode => {
-        const box = frameBox(g, at, size);
+        const box = frameBox(g, at, size, !!g.description || describing === groupCardId(g.id));
         return { id: groupFrameId(g.id), type: 'frame', position: { x: box.x, y: box.y }, measured: measured[groupFrameId(g.id)], zIndex: -1, selectable: false, draggable: false, deletable: false, focusable: false, data: { group: g, width: box.width, height: box.height } };
       });
     const cards = project.groups
@@ -441,7 +448,7 @@ export function Canvas({ onAddSource, onLayout }: { onAddSource: () => void; onL
       ...cards,
     ];
     // eslint-disable-next-line react-hooks/exhaustive-deps -- references are read from project.nodes
-  }, [project.nodes, project.sources, project.edges, project.groups, collapsedOf, dragging, measured, selectedNodeIds, selectedGroup, viewedId, statuses, connectFrom, pointedId, readBy, readBySelected],
+  }, [project.nodes, project.sources, project.edges, project.groups, collapsedOf, dragging, measured, selectedNodeIds, selectedGroup, viewedId, statuses, connectFrom, pointedId, readBy, readBySelected, describing],
   );
 
   const edges: PuddleEdge[] = useMemo(

@@ -3,6 +3,8 @@ import { canvasProject, moveGroup, moveNodes, type Project } from '../model';
 
 const NODE_W = 232;
 const NODE_H = 96;
+/** The most a description adds under a card's heading: two lines (see Description.tsx). */
+export const DESCRIPTION_H = 36;
 
 /**
  * Lay the flow out left to right (sources on the left, outputs on the right) as one undoable edit. A collapsed group
@@ -18,12 +20,17 @@ export function autoLayout(whole: Project): Project {
   const cardOf = new Map<string, string>();
   for (const group of project.groups) if (group.collapsed) for (const id of group.nodeIds) cardOf.set(id, `group:${group.id}`);
   const key = (id: string) => cardOf.get(id) ?? id;
-  for (const n of project.nodes) g.setNode(key(n.id), { width: NODE_W, height: NODE_H });
+  // A described card is taller by its description, so the cards round it keep their gap.
+  const heights = new Map<string, number>();
+  for (const n of project.nodes) heights.set(n.id, NODE_H + (n.description ? DESCRIPTION_H : 0));
+  for (const group of project.groups) if (group.collapsed) heights.set(`group:${group.id}`, NODE_H + (group.description ? DESCRIPTION_H : 0));
+  const height = (id: string) => heights.get(id) ?? NODE_H;
+  for (const n of project.nodes) g.setNode(key(n.id), { width: NODE_W, height: height(key(n.id)) });
   for (const e of project.edges) if (key(e.from.nodeId) !== key(e.to.nodeId)) g.setEdge(key(e.from.nodeId), key(e.to.nodeId));
   dagre.layout(g);
   const place = (id: string) => {
     const { x, y } = g.node(id);
-    return { x: Math.round(x - NODE_W / 2), y: Math.round(y - NODE_H / 2) };
+    return { x: Math.round(x - NODE_W / 2), y: Math.round(y - height(id) / 2) };
   };
   const positions: Record<string, { x: number; y: number }> = {};
   for (const n of project.nodes) if (!cardOf.has(n.id)) positions[n.id] = place(n.id);

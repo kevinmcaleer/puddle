@@ -9,6 +9,7 @@ import { viewNode } from '../results/pin';
 import { newStep, relabel } from '../steps';
 import { CommitInput } from '../steps/CommitInput';
 import { Banner, Button, Field, fullCount, Section, Select } from '../ui';
+import { NodeDescription } from './NodeDescription';
 
 const apply = (edit: Parameters<ReturnType<typeof useProjectStore.getState>['apply']>[0]) => useProjectStore.getState().apply(edit);
 const NONE: ColumnSchema[] = [];
@@ -185,6 +186,7 @@ export function JoinPanel({ node }: { node: JoinNode }) {
         <Field label="Node name" htmlFor="node-name">
           <CommitInput key={node.name} id="node-name" value={node.name} onCommit={(v) => apply((p) => renameNode(p, node.id, v))} />
         </Field>
+        <NodeDescription node={node} />
       </div>
       <Section
         title="Inputs"

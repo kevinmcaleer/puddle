@@ -102,3 +102,11 @@
 .sql-string { color: var(--node-combine); }
 .sql-number, .sql-type { color: var(--node-source); }
 .sql-comment { color: var(--ink-muted); font-style: italic; }
+
+/* A node's or group's description under its heading (NodeCard's `description`, canvas/Description.tsx). */
+.ui-node__description:empty {
+  display: none;
+}
+.ui-node__description {
+  padding: 0 var(--space-3) var(--space-1);
+}

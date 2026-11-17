@@ -1,6 +1,6 @@
 # Projects
 
-A project is your flow: its sources (how to read them, not their data), nodes, steps, rules, notes and settings. Puddle saves it in your browser as you work, so there's no save button.
+A project is your flow: its sources (how to read them, not their data), nodes and groups with their descriptions, steps, rules, notes and settings. Puddle saves it in your browser as you work, so there's no save button.
 
 ## The projects list
 
@@ -18,7 +18,7 @@ The project menu also renames the open project, saves and opens project files, a
 
 Every change you make can be undone: **Undo** and **Redo** in the toolbar, or Ctrl+Z to undo and Ctrl+Shift+Z or Ctrl+Y to redo (Cmd on a Mac). Hold the keys to step back through several changes.
 
-- **In a project**, undo covers everything you change: adding sources and nodes, wiring, moving and grouping nodes, steps and their settings, read options, rules, the query designer, notes, renaming, and the column mapping for a recipe. One action is one undo step, so several files chosen or dropped together come off with one undo. The keys work from the canvas and from a field you've just changed, such as a drop-down or a switch; in a text box you're still typing in, they undo the typing first.
+- **In a project**, undo covers everything you change: adding sources and nodes, wiring, moving and grouping nodes, steps and their settings, read options, rules, the query designer, notes, descriptions, renaming, and the column mapping for a recipe. One action is one undo step, so several files chosen or dropped together come off with one undo. The keys work from the canvas and from a field you've just changed, such as a drop-down or a switch; in a text box you're still typing in, they undo the typing first.
 - **On the projects screen**, undo brings back a deleted project (with its saved file access and its sync), and undoes renaming or duplicating one.
 - **In the templates library**, the undo and redo buttons beside **Open template file** (or the keys) undo adding, importing, renaming and deleting templates.
 

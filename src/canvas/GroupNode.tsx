@@ -1,9 +1,10 @@
 import { Handle, Position, useUpdateNodeInternals, type Node, type NodeProps } from '@xyflow/react';
 import { useEffect } from 'react';
-import { setGroupCollapsed, useProjectStore, type GroupPorts, type NodeGroup } from '../model';
+import { setGroupCollapsed, setGroupDescription, useProjectStore, type GroupPorts, type NodeGroup } from '../model';
 import { viewNode } from '../results/pin';
 import { Button, cx, Icon } from '../ui';
-import { inHandle, outHandle } from './groupIds';
+import { Description } from './Description';
+import { groupCardId, inHandle, outHandle } from './groupIds';
 
 export type GroupNodeData = {
   group: NodeGroup;
@@ -19,6 +20,11 @@ export type GroupFlowNode = Node<GroupNodeData, 'group'>;
 
 export type GroupFrameData = { group: NodeGroup; width: number; height: number };
 export type GroupFrameFlowNode = Node<GroupFrameData, 'frame'>;
+
+const describe = (groupId: string) => (text: string) => useProjectStore.getState().apply((p) => setGroupDescription(p, groupId, text));
+
+/** A group's description, on its card or its open frame: one line edited in either, by the group's card id. */
+const GroupDescription = ({ group }: { group: NodeGroup }) => <Description flowId={groupCardId(group.id)} name={group.name} text={group.description} onSave={describe(group.id)} />;
 
 const open = (groupId: string) => useProjectStore.getState().apply((p) => setGroupCollapsed(p, groupId, false));
 
@@ -64,6 +70,9 @@ export function GroupNode({ id, data, selected }: NodeProps<GroupFlowNode>) {
           </div>
         </div>
         <Button variant="ghost" size="sm" iconOnly icon="chevron-down" className="nodrag" aria-label={`Open ${group.name}`} title="Open the group" onClick={() => open(group.id)} />
+      </div>
+      <div className="ui-node__description">
+        <GroupDescription group={group} />
       </div>
       <div className="puddle-group__ports">
         {Array.from({ length: rows }, (_, i) => {
@@ -117,6 +126,9 @@ export function GroupFrame({ data }: NodeProps<GroupFrameFlowNode>) {
           title="Close the group"
           onClick={() => useProjectStore.getState().apply((p) => setGroupCollapsed(p, group.id, true))}
         />
+      </div>
+      <div className="puddle-group-frame__description">
+        <GroupDescription group={group} />
       </div>
     </div>
   );

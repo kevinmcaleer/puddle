@@ -229,10 +229,25 @@ test('groups', async ({ page }) => {
   await expect(node(page, 'Transform 1')).toHaveAttribute('data-status', 'ok');
   await page.keyboard.press('o');
   await expect(node(page, 'Output 1')).toHaveAttribute('data-status', 'ok');
+  // Each node and the group say what they are for, in the user's words.
+  await node(page, 'Transform 1').click({ button: 'right' });
+  await page.getByTestId('context-menu').getByRole('menuitem', { name: 'Add description' }).click();
+  await page.getByLabel('Description of Transform 1').fill('names arrive padded');
+  await shot(page, 'canvas-describe', node(page, 'Transform 1'), { pad: 24 });
+  await page.keyboard.press('Enter');
+  await expect(node(page, 'Transform 1').getByTestId('description')).toBeVisible();
+  await node(page, 'Output 1').click({ button: 'right' });
+  await page.getByTestId('context-menu').getByRole('menuitem', { name: 'Add description' }).click();
+  await page.getByLabel('Description of Output 1').fill('the mailing list for the newsletter');
+  await page.keyboard.press('Enter');
   await selectNode(page, 'contacts.csv');
   await node(page, 'Transform 1').click({ modifiers: ['Shift'] });
   await page.keyboard.press('g');
   await expect(page.getByTestId('group-Group 1')).toBeVisible();
+  await page.getByTestId('group-Group 1').click({ button: 'right' });
+  await page.getByTestId('context-menu').getByRole('menuitem', { name: 'Add group description' }).click();
+  await page.getByLabel('Description of Group 1').fill('tidy the contact list');
+  await page.keyboard.press('Enter');
   await page.getByRole('button', { name: 'Auto layout' }).click();
   await shot(page, 'groups-card');
   await page.getByTestId('group-Group 1').dblclick();

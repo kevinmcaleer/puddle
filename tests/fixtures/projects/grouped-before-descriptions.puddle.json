@@ -1,0 +1,55 @@
+{
+  "id": "pGroupedFixture",
+  "name": "Grouped (before descriptions)",
+  "formatVersion": 3,
+  "createdAt": "2026-11-16T09:00:00.000Z",
+  "updatedAt": "2026-11-16T09:00:00.000Z",
+  "notes": "A format 3 project saved before nodes and groups had descriptions: two transforms in a group, with node notes.",
+  "settings": {
+    "sampleThresholdRows": 5000000,
+    "locale": "en-GB",
+    "defaultDateFormats": [],
+    "stepsAsNodes": true,
+    "fixAllSuggestions": false,
+    "columnNames": "words"
+  },
+  "connections": [],
+  "sources": [
+    {
+      "id": "sTickets",
+      "name": "tickets.csv",
+      "kind": "clipboard",
+      "clipboard": { "text": "id,name\n1, Ann \n2,Bob" },
+      "format": "csv",
+      "parseOptions": {},
+      "detectedSchema": []
+    }
+  ],
+  "nodes": [
+    { "id": "nIn", "type": "source", "sourceId": "sTickets", "name": "tickets.csv", "position": { "x": 0, "y": 0 }, "rules": [] },
+    {
+      "id": "nTrim",
+      "type": "transform",
+      "name": "Transform 1",
+      "notes": "Names arrive padded.",
+      "position": { "x": 296, "y": 0 },
+      "rules": [],
+      "steps": [{ "id": "st1", "type": "trimWhitespace", "label": "Trim whitespace", "enabled": true, "params": { "columns": ["name"] } }]
+    },
+    {
+      "id": "nUpper",
+      "type": "transform",
+      "name": "Transform 2",
+      "position": { "x": 592, "y": 0 },
+      "rules": [],
+      "steps": [{ "id": "st2", "type": "changeCase", "label": "Upper case", "enabled": true, "params": { "columns": ["name"], "mode": "upper" } }]
+    },
+    { "id": "nOut", "type": "output", "name": "Output", "position": { "x": 888, "y": 0 }, "rules": [], "outputSpec": { "format": "csv", "options": {} } }
+  ],
+  "edges": [
+    { "id": "e1", "from": { "nodeId": "nIn" }, "to": { "nodeId": "nTrim", "port": 0 } },
+    { "id": "e2", "from": { "nodeId": "nTrim" }, "to": { "nodeId": "nUpper", "port": 0 } },
+    { "id": "e3", "from": { "nodeId": "nUpper" }, "to": { "nodeId": "nOut", "port": 0 } }
+  ],
+  "groups": [{ "id": "gClean", "name": "Group 1", "nodeIds": ["nTrim", "nUpper"], "collapsed": true, "position": { "x": 296, "y": 0 } }]
+}
