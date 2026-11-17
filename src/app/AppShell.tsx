@@ -68,7 +68,7 @@ import { PROVIDER_IDS, PROVIDERS, useSync } from '../sync';
 import { openSyncDialog } from '../sync/dialogs';
 import { SyncConflictBanner } from '../sync/SyncDialogs';
 import { inspectorShown, useSession } from './session';
-import { afterSelection, nodeItems, stepItems } from './addMenu';
+import { afterSelection } from './addMenu';
 import { showView } from './views';
 import { ProjectPanel } from './ProjectPanel';
 import { ViewSwitcher } from './ViewSwitcher';
@@ -340,6 +340,9 @@ export function AppShell() {
   };
   useShortcuts(actions, (text) => void addPastedText(text));
 
+  // Nodes and steps go after the selected node, so with nothing selected the Add menu leaves them out (principle 2).
+  const after = afterSelection(ADD_AFTER_SELECTION, hasSelection);
+
   return (
     <ReactFlowProvider>
       <div className="grid h-full min-w-[960px] grid-rows-[auto_auto_minmax(0,1fr)_auto_auto] bg-surface-panel text-body text-ink">
@@ -373,7 +376,7 @@ export function AppShell() {
               if (!next) session().clearAddMenu();
             }}
             items={[
-              { label: 'Choose files', icon: 'source', hint: 'CSV, TSV, JSON, Parquet', shortcut: shortcutText('add-source'), group: 'Sources', onSelect: chooseFiles },
+              { label: 'Choose files', icon: 'source', hint: 'Any data file', shortcut: shortcutText('add-source'), group: 'Sources', onSelect: chooseFiles },
               { label: 'Files as one table', icon: 'source', hint: 'Many files', group: 'Sources', onSelect: () => setInput.current?.click() },
               { label: 'Folder as one table', icon: 'source', hint: 'Its files', group: 'Sources', onSelect: () => folderInput.current?.click() },
               { label: 'From URL', icon: 'link', hint: 'https address', group: 'Sources', onSelect: () => openUrlDialog() },
@@ -386,13 +389,10 @@ export function AppShell() {
               { label: 'Table from SQL', icon: 'code', hint: 'CREATE TABLE', group: 'Nodes', onSelect: addTableFromSql },
               // Every table designed in the Schema view, as a node holding its rows (the selected node, if any, loads into it).
               ...schemaTables.map((t) => ({ label: t.name, icon: 'schema' as const, hint: t.schema === 'public' ? 'Schema table' : `Schema table in ${t.schema}`, group: 'Schema tables', onSelect: () => addSchemaTable(t.schema, t.name) })),
-              // Nodes and steps go after the selected node, so with nothing selected they wait (principle 2).
-              ...afterSelection([
-                ...nodeItems(ADD_AFTER_SELECTION),
-                // Every step, each making a node of its own after the selected node (T opens the menu with its search focused).
-                ...stepItems(ADD_AFTER_SELECTION),
-              ], hasSelection),
+              ...after.items,
             ]}
+            collapsed={after.collapsed}
+            note={after.note}
           />
           <Button variant="ghost" icon="undo" iconOnly aria-label="Undo" title={withShortcut('Undo', 'undo')} disabled={!canUndo} onClick={undo} />
           <Button variant="ghost" icon="redo" iconOnly aria-label="Redo" title={withShortcut('Redo', 'redo')} disabled={!canRedo} onClick={redo} />

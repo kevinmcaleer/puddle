@@ -24,6 +24,8 @@ export const fixtureText = (name: string) => readFileSync(fixture(name), 'utf8')
  */
 export async function addStepNode(page: Page, title: string, name = 'Transform 1') {
   await page.getByRole('button', { name: 'Add', exact: true }).click();
+  // The steps are folded under their group headings: the search finds one in any group.
+  await page.getByLabel('Search steps and nodes').fill(title);
   await page.getByRole('menuitem', { name: new RegExp(`^${title}`) }).click();
   await expect(node(page, name)).toBeVisible();
   await expect(page.getByLabel('Node name')).toHaveValue(name);

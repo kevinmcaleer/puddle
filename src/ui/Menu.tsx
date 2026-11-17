@@ -36,6 +36,8 @@ export function Menu({
   className,
   search,
   scroll,
+  collapsed,
+  note,
   open: controlled,
   onOpenChange,
 }: {
@@ -51,6 +53,10 @@ export function Menu({
   search?: string;
   /** A long menu: its items scroll within the window's height instead of running off the screen. */
   scroll?: boolean;
+  /** Groups that start folded under their headings: a heading opens its group. A search looks inside all of them. */
+  collapsed?: string[];
+  /** A line under the items, e.g. why some things are not offered yet. */
+  note?: string;
   /** Open or closed from outside (e.g. a keyboard shortcut opens it); `onOpenChange` hears every change. */
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
@@ -156,8 +162,14 @@ export function Menu({
           )}
           {search && !shown.length && <div className="px-3 py-1 text-ink-muted">No matches</div>}
           <div role="menu" aria-label={typeof label === 'string' ? label : undefined} className={scroll ? 'max-h-[60vh] overflow-y-auto' : undefined}>
-            <MenuEntries items={shown} headingId={headingId} onPick={pick} />
+            {/* While searching every match shows, whichever group it is in. */}
+            <MenuEntries items={shown} headingId={headingId} onPick={pick} collapsed={q ? undefined : collapsed} />
           </div>
+          {note && (
+            <p className="mt-1 max-w-[280px] border-t border-line px-3 pb-1 pt-2 text-label text-ink-muted" data-testid="menu-note">
+              {note}
+            </p>
+          )}
         </div>
       )}
     </div>
@@ -165,7 +177,9 @@ export function Menu({
 }
 
 /** A menu's items, gathered under their group headings. Shared by the menu button and the context menu. */
-export function MenuEntries({ items, headingId, onPick: pick }: { items: MenuItem[]; headingId: string; onPick: (item: MenuItem) => void }) {
+export function MenuEntries({ items, headingId, onPick: pick, collapsed }: { items: MenuItem[]; headingId: string; onPick: (item: MenuItem) => void; collapsed?: string[] }) {
+  // The folded groups that have been opened, by name.
+  const [opened, setOpened] = useState<string[]>([]);
   return (
     <>
       {groupItems(items).map(({ group, items: members }, g) => {
@@ -192,6 +206,26 @@ export function MenuEntries({ items, headingId, onPick: pick }: { items: MenuIte
         );
         if (!group) return buttons;
         const id = `${headingId}-${g}`;
+        if (collapsed?.includes(group)) {
+          const open = opened.includes(group);
+          return (
+            <div key={group} role="group" aria-labelledby={id} className={g > 0 ? 'mt-1 border-t border-line pt-1' : undefined}>
+              <button
+                id={id}
+                type="button"
+                role="menuitem"
+                aria-expanded={open}
+                className={ITEM_CLASS}
+                onClick={() => setOpened(open ? opened.filter((x) => x !== group) : [...opened, group])}
+              >
+                <span className="ui-eyebrow flex-1">{group}</span>
+                <span className="text-ink-subtle">{members.length}</span>
+                <Icon name={open ? 'chevron-down' : 'chevron-right'} size={14} />
+              </button>
+              {open && buttons}
+            </div>
+          );
+        }
         return (
           <div key={group} role="group" aria-labelledby={id} className={g > 0 ? 'mt-1 border-t border-line pt-1' : undefined}>
             <div id={id} className="ui-eyebrow px-3 pb-1 pt-2">

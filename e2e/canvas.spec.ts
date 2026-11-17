@@ -80,12 +80,14 @@ test('dragging a wire connects nodes, and a wire that would make a loop is refus
   await openApp(page);
   await addFiles(page, [fixture('customers.csv')]);
   await expect(page.getByTestId('inspector-source')).toBeVisible();
-  // With nothing selected the Add menu's nodes and steps wait, saying why, so nothing lands unwired (principle 2).
+  // With nothing selected the Add menu leaves its nodes and steps out, saying why, so nothing lands unwired (principle 2).
   await page.getByTestId('canvas').click({ position: { x: 20, y: 20 } });
   await expect(page.getByTestId('inspector-source')).toHaveCount(0);
   await page.getByRole('button', { name: 'Add', exact: true }).click();
-  await expect(page.getByRole('menuitem', { name: /^Remove blank rows/ })).toBeDisabled();
-  await expect(page.getByRole('menuitem', { name: /^Output/ })).toContainText('Select a node first');
+  await expect(page.getByRole('menuitem', { name: /^Choose files/ })).toBeVisible();
+  await expect(page.getByRole('menuitem', { name: /^Remove blank rows/ })).toHaveCount(0);
+  await expect(page.getByRole('menuitem', { name: /^Output/ })).toHaveCount(0);
+  await expect(page.getByTestId('menu-note')).toHaveText('Select a node to add a step or another node after it.');
   await page.keyboard.press('Escape');
   // A Transform added after the source, then unwired, to drag a wire into.
   await selectNode(page, 'customers.csv');
