@@ -16,7 +16,7 @@ import { ruleTally, useRuleStore } from '../flow/rules';
 import { sampledUpstream, useSample, useViewProject } from '../flow/sample';
 import { SampleBanner } from '../results/SampleBanner';
 import { describeProfile } from '../results/profile';
-import { exportAll, ExportBlockedBanner, ExportButton, exportViewed } from '../export';
+import { exportAll, ExportBlockedBanner, ExportButton, ExportHereButton, exportViewed } from '../export';
 import { QueryDesigner } from '../query/QueryDesigner';
 import { SchemaView } from '../schema/SchemaView';
 import { Relationships } from '../relationships/Relationships';
@@ -149,6 +149,8 @@ function ResultsTitle() {
           />
           {pin}
           {node.type === 'output' && !failing && <ExportButton node={node} formats />}
+          {/* Not at a step part way through a Transform: an export is of the node's rows, which aren't the ones shown there. */}
+          {node.type !== 'output' && !failing && (step == null || (node.type === 'transform' && step === node.steps.length - 1)) && <ExportHereButton node={node} />}
         </>
       }
     >

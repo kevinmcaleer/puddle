@@ -62,7 +62,7 @@ export const SHORTCUTS = [
   { id: 'move-query-column', area: 'Canvas', label: 'Move the focused grid column left or right', keys: [k('ArrowLeft', { alt: true }), k('ArrowRight', { alt: true })], handledBy: 'query designer' },
 
   { id: 'view', area: 'Results', label: 'View the selected node (with the results pinned, move the pin to it)', keys: [k('v')] },
-  { id: 'export', area: 'Results', label: 'Export the viewed Output', keys: [k('e')] },
+  { id: 'export', area: 'Results', label: 'Export the viewed rows', keys: [k('e')] },
   { id: 'export-all', area: 'Results', label: 'Export all', keys: [k('e', { shift: true })] },
   { id: 'toggle-results', area: 'Results', label: 'Show or hide the results', keys: [k('r')] },
   { id: 'pin', area: 'Results', label: 'Pin or unpin the results', keys: [k('p')] },

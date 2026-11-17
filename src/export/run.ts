@@ -1,5 +1,6 @@
 // Running an export: check the quality gate, have DuckDB write the file, hand it over and log it.
 import { create } from 'zustand';
+import { positionAfter } from '../app/actions';
 import { useEngineStore } from '../app/engine';
 import { useSession } from '../app/session';
 import { tableToIPC } from 'apache-arrow';
@@ -12,7 +13,8 @@ import { describeBlock, exportGate, type Gate } from '../flow/gate';
 import { checkRules, useRuleStore, type RuleResult } from '../flow/rules';
 import { currentSample, sampledUpstream, type Sample } from '../flow/sample';
 import { schemaCacheFor, useFlowStore } from '../flow/status';
-import { logExport, newId, nodeById, setOutputFormat, topoSort, upstreamIds, useProjectStore, type ExportLogEntry, type OutputNode, type Project } from '../model';
+import { addNode, exportNameAfter, logExport, newId, nodeById, outputAfter, setOutputFormat, setOutputSpec, topoSort, upstreamIds, useProjectStore, type ExportLogEntry, type OutputNode, type Project } from '../model';
+import { viewNode } from '../results/pin';
 import { copyText, reserveClipboard, saveBlob, type ClipboardSlot } from './deliver';
 
 const STOPPED = stoppedError().message;
@@ -201,13 +203,50 @@ export async function exportAs(nodeId: string, format: ExportFormat): Promise<vo
   return exportNode(nodeId);
 }
 
-/** Export the Output node the results table shows (the E shortcut); a blocked one stays blocked. */
+/**
+ * The Output node that exports a node's rows, made if need be: the node itself when it is an Output, else the Output
+ * wired straight after it, else a new one after it, named after the data (see exportNameAfter). With `format`, the
+ * Output is switched to it. All one undo step. The Output is selected and, unless the results are pinned, viewed.
+ */
+export function outputFor(nodeId: string, format?: ExportFormat): string | undefined {
+  const { apply, history } = useProjectStore.getState();
+  const node = nodeById(history.present, nodeId);
+  if (!node) return undefined;
+  let id = node.type === 'output' ? node.id : outputAfter(history.present, nodeId)?.id;
+  apply((p) => {
+    let next = p;
+    if (!id) {
+      next = addNode(p, 'output', positionAfter(p, [nodeId]), nodeId);
+      id = next.nodes[next.nodes.length - 1]!.id;
+      const fileName = exportNameAfter(p, nodeId);
+      if (fileName) next = setOutputSpec(next, id, { fileName });
+    }
+    return format ? setOutputFormat(next, id, format) : next;
+  });
+  if (!id) return undefined;
+  if (id !== nodeId) {
+    useSession.getState().select(id);
+    viewNode(id);
+  }
+  return id;
+}
+
+/** Export a node's rows from where they are being looked at: through its Output, added after it when there is none. */
+export async function exportFrom(nodeId: string, format?: ExportFormat): Promise<void> {
+  const project = useProjectStore.getState().history.present;
+  const node = nodeById(project, nodeId);
+  if (!node) return;
+  if (useFlowStore.getState().nodes[nodeId]?.status.state !== 'ok') return useSession.getState().notify({ tone: 'warn', text: `${node.name} can’t run yet, so there’s nothing to export.` });
+  const id = outputFor(nodeId, format);
+  if (id) return exportNode(id);
+}
+
+/** Export what the results table shows (the E shortcut), through an Output after it; a blocked one stays blocked. */
 export async function exportViewed(): Promise<void> {
   const project = useProjectStore.getState().history.present;
   const node = project.view.viewedNodeId ? nodeById(project, project.view.viewedNodeId) : undefined;
-  if (node?.type !== 'output') return useSession.getState().notify({ tone: 'info', text: 'View an Output node to export it.' });
-  if (useFlowStore.getState().nodes[node.id]?.status.state !== 'ok') return useSession.getState().notify({ tone: 'warn', text: `${node.name} can’t run yet, so there’s nothing to export.` });
-  return exportNode(node.id);
+  if (!node) return useSession.getState().notify({ tone: 'info', text: 'View a node to export its rows.' });
+  return exportFrom(node.id);
 }
 
 /** Export every Output node that can run and isn't blocked; blocked ones are named, never overridden. */

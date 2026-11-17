@@ -1,6 +1,8 @@
 # Exporting
 
-An Output node marks data that's ready. Select the node it should follow and choose **Output** from **Add** (or press O). Its export button sits in the results bar, and its settings in the inspector.
+**Export**, at the right of the results bar, exports the rows you are looking at, whichever node they belong to (E does the same). The first time, it adds an Output node after that node and exports through it; after that it uses the Output that is there. The arrow beside it picks another file type. The file is named after the data: a flow that reads `sales.csv` exports `sales-clean.csv`.
+
+An Output node marks data that's ready, and holds the export's settings. You can add one yourself: select the node it should follow and choose **Output** from **Add** (or press O). On an Output, the button says what it exports (**Export CSV**), and its settings are in the inspector.
 
 The button exports in the node's format, CSV to begin with. To export as Parquet, Excel, JSON or anything else, open the menu beside it (the arrow next to **Export CSV**) and pick a format: the node switches to that format and exports straight away, and the button then says, for example, **Export Parquet**. You can also change the **Format** in the inspector.
 
