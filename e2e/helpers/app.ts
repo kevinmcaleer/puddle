@@ -52,6 +52,13 @@ export async function openAdvancedSettings(page: Page) {
   if ((await advanced.getAttribute('aria-expanded')) !== 'true') await advanced.click();
 }
 
+/** Unfold the selected source's read options, which stay folded while the file reads cleanly. */
+export async function openReadOptions(page: Page) {
+  const toggle = page.getByTestId('read-options-toggle');
+  if ((await toggle.getAttribute('aria-expanded')) !== 'true') await toggle.click();
+  await expect(page.locator('#read-options')).toBeVisible();
+}
+
 /** Turn off the project setting that gives each new step a node of its own, so steps stack into the viewed Transform. */
 export async function stackSteps(page: Page) {
   await openProjectTab(page);

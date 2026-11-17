@@ -6,6 +6,8 @@ import { useTheme, type ThemePreference } from '../app/theme';
 import { NotesPanel } from '../notes/NotesPanel';
 import { inspectorTabs, shownTab } from './tabs';
 import { useNodeStatus } from '../flow/status';
+import { nodeIssues, useAnalysisEntry } from '../analysis';
+import { readOptionsOpen } from './readOptions';
 import { sourceFormatLabel } from '../canvas/formatLabel';
 import { nodeById, renameNode, setParseOptions, setRunnerPath, useProject, useProjectStore, type GraphNode, type ProjectSettings as ProjectSettingsT, type Source, type SourceFormat } from '../model';
 import { Button, Banner, browserLocale, columnKind, DISPLAY_LOCALES, Field, formatDateText, formatNumberText, Icon, NODE_KIND, Section, Select, Switch, Tabs, TypeTag, useDisplay, useDisplayFormat, type DateDisplay } from '../ui';
@@ -49,11 +51,30 @@ import { FORMAT_OPTIONS } from '../sources/formats';
 import { FileSetPanel } from '../sources/FileSetPanel';
 import { ScriptTablePanel } from './ScriptTablePanel';
 
-function SourceOptions({ source }: { source: Source }) {
+function SourceOptions({ source, node }: { source: Source; node: GraphNode }) {
   const apply = useProjectStore((s) => s.apply);
+  const status = useNodeStatus(node.id);
+  const entry = useAnalysisEntry(node.id);
+  const { open: issues } = nodeIssues(useProject(), node, entry);
+  // Opened or closed by hand for this source: kept while the inspector shows it.
+  const [choice, setChoice] = useState<boolean | null>(null);
+  const state = status.state === 'ok' ? 'ok' : status.state === 'error' ? 'error' : 'other';
+  const open = readOptionsOpen({ state, issues }, choice);
   return (
-    <Section title="Read options">
-      <div className="flex flex-col gap-3">
+    <Section
+      title="Read options"
+      action={
+        <Button variant="ghost" size="sm" aria-expanded={open} aria-controls="read-options" data-testid="read-options-toggle" onClick={() => setChoice(!open)}>
+          {open ? 'Hide' : 'Show'}
+        </Button>
+      }
+    >
+      {!open && (
+        <p className="text-label text-ink-muted" data-testid="read-options-summary">
+          Read as {sourceFormatLabel(source)}. Show the options to change how the file is read.
+        </p>
+      )}
+      <div id="read-options" className={open ? 'flex flex-col gap-3' : 'hidden'}>
         {/* A file set's format is its files' kind: other files are another set. */}
         {source.kind !== 'files' && <FormatField source={source} />}
         {(source.format === 'csv' || source.format === 'tsv') && <CsvOptions format={source.format} options={source.parseOptions} onChange={(o) => apply((p) => setParseOptions(p, source.id, o))} />}
@@ -399,6 +420,8 @@ function NodeInspector({ node }: { node: GraphNode }) {
           <div className="text-label text-ink-muted">{source ? `${kind.label} · ${sourceFormatLabel(source)}${source.name !== node.name ? ` · ${source.name}` : ''}` : kind.label}</div>
         </div>
       </div>
+      {/* What is wrong with the data comes first: it is what a source is opened for. */}
+      {node.type === 'source' && <IssuesPanel node={node} />}
       <div className="flex flex-col gap-2 border-b border-line px-4 py-3">
         <Field label="Node name" htmlFor="node-name">
           <CommitInput key={node.name} id="node-name" value={node.name} onCommit={(v) => useProjectStore.getState().apply((p) => renameNode(p, node.id, v))} />
@@ -414,10 +437,9 @@ function NodeInspector({ node }: { node: GraphNode }) {
       {source && isXmlSource(source) && <XmlPanel source={source} />}
       {source && isAccessSource(source) && <AccessPanel source={source} />}
       {source && isConnectionSource(source) && <ConnectionPanel key={source.id} source={source} />}
-      {source && hasParseOptions(source) && <SourceOptions source={source} />}
+      {source && hasParseOptions(source) && <SourceOptions key={source.id} source={source} node={node} />}
       {source && source.kind === 'file' && <RunnerPath source={source} />}
       {node.type === 'output' && <OutputPanel node={node} />}
-      {node.type === 'source' && <IssuesPanel node={node} />}
       {node.type === 'source' && <KeepPanel key={node.id} node={node} />}
       <Columns nodeId={node.id} />
       <RulesPanel node={node} />

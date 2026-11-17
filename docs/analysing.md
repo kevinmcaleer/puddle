@@ -1,6 +1,6 @@
 # Analysing a file
 
-Every source, and any node you look at, is analysed in the background once it has run: Puddle reads its first rows, looks for the problems messy files usually have, and lists what it finds on the **Issues** panel in the inspector. Each issue comes with the fix Puddle would apply, and **Fix all** applies them in one go, as steps you can see, change and undo.
+Every source, and any node you look at, is analysed in the background once it has run: Puddle reads its first rows, looks for the problems messy files usually have, and lists what it finds on the **Issues** panel in the inspector. On a source it is the first thing under the node's name, above the name field and the read options. Each issue comes with the fix Puddle would apply, and **Fix all** applies them in one go, as steps you can see, change and undo.
 
 ![The CRM export sample selected, with its issues listed in the inspector and Fix all above them](_static/screenshots/analysing-issues.png)
 

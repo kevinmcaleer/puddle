@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { addFiles, columnsOf, expectRows, fixture, openApp } from './helpers/app';
+import { addFiles, columnsOf, expectRows, fixture, openApp, openReadOptions } from './helpers/app';
 
 test('a fixed-width file opens with its boundaries found; moving one changes the columns, and Fix all types the balances', async ({ page }) => {
   await openApp(page);
@@ -13,6 +13,7 @@ test('a fixed-width file opens with its boundaries found; moving one changes the
   await expect(page.getByTestId('rewrite-size')).toHaveText('30 rows, 6 columns');
 
   // A marker removed with the keyboard merges two columns; one nudged right moves the cut.
+  await openReadOptions(page);
   await ruler.getByRole('button', { name: 'Boundary at 30' }).focus();
   await page.keyboard.press('Delete');
   await expect(ruler).toHaveAttribute('data-boundaries', '8,43,54,64');
