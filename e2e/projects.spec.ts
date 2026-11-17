@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { addFiles, addStepNode, cell, expectRows, fixture, node, openApp, pasteText, saved, selectNode } from './helpers/app';
+import { addFiles, addStepNode, cell, expectRows, fixture, node, openApp, openProjectTab, pasteText, saved, selectNode } from './helpers/app';
 
 const projectMenu = async (page: Page, item: string) => {
   await page.getByTestId('project-menu').click();
@@ -155,9 +155,11 @@ test('a project from a newer Puddle is refused with a reason', async ({ page }) 
 
 test('project settings are saved with the project', async ({ page }) => {
   await openApp(page);
+  await openProjectTab(page);
   await page.getByLabel('Locale').selectOption({ label: 'German' });
   await expect.poll(async () => (await saved(page))?.settings.locale).toBe('de-DE');
   await page.reload();
+  await openProjectTab(page);
   await expect(page.getByLabel('Locale')).toHaveValue('de-DE');
 });
 

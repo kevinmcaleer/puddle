@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { addFiles, cell, expectRows, fixture, node, openApp, stackSteps } from './helpers/app';
+import { addFiles, cell, expectRows, fixture, node, openApp, stackSteps, openProjectTab } from './helpers/app';
 
 const steps = (page: Page) => page.getByRole('listbox', { name: 'Applied steps' }).getByRole('option');
 const menu = (page: Page) => page.getByTestId('context-menu');
@@ -44,7 +44,7 @@ test('the column menu replaces values, removes matching rows, and follows the pr
   await expectRows(page, 3);
 
   // Back to each step as a node, the next one goes in a Transform of its own after this one.
-  await page.getByRole('tab', { name: 'Project' }).click();
+  await openProjectTab(page);
   await page.getByRole('switch', { name: 'Add each step as a new node' }).click();
   await expect(page.getByRole('switch', { name: 'Add each step as a new node' })).toHaveAttribute('aria-checked', 'true');
   await rightClick(page, 1);

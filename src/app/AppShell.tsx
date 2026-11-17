@@ -68,7 +68,7 @@ import { useShortcuts } from './useShortcuts';
 import { PROVIDER_IDS, PROVIDERS, useSync } from '../sync';
 import { openSyncDialog } from '../sync/dialogs';
 import { SyncConflictBanner } from '../sync/SyncDialogs';
-import { useSession } from './session';
+import { inspectorShown, useSession } from './session';
 import { afterSelection, nodeItems, stepItems } from './addMenu';
 import { showView } from './views';
 import { ProjectPanel } from './ProjectPanel';
@@ -262,7 +262,7 @@ export function AppShell() {
   const { undo, redo } = useProjectStore();
   const canUndo = useProjectStore((s) => s.history.past.length > 0);
   const canRedo = useProjectStore((s) => s.history.future.length > 0);
-  const inspectorOpen = useSession((s) => s.inspectorOpen);
+  const inspectorOpen = inspectorShown(useSession((s) => s.inspectorOpen), project.nodes.length);
   // The project panel shows itself once a query is listed in it only; after that it is as the person left it.
   const outlineChoice = useSession((s) => s.outlineOpen);
   const outlineOpen = outlineChoice ?? offCanvasIds(project).size > 0;
@@ -312,7 +312,7 @@ export function AppShell() {
     help: () => session().setShortcutsOpen(true),
     undo,
     redo,
-    'toggle-inspector': () => session().setInspectorOpen(!session().inspectorOpen),
+    'toggle-inspector': () => session().setInspectorOpen(!inspectorShown(session().inspectorOpen, useProjectStore.getState().history.present.nodes.length)),
     'add-source': chooseFiles,
     'add-database': () => openConnectionDialog('add'),
     'add-transform': onCanvas(() => session().requestAddMenu()),

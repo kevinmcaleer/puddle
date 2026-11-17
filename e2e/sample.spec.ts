@@ -1,10 +1,11 @@
 import { expect, test, type Page } from '@playwright/test';
 import { readFileSync } from 'node:fs';
-import { addFiles, expectRows, fixture, node, openApp, selectNode } from './helpers/app';
+import { addFiles, expectRows, fixture, node, openApp, selectNode, openAdvancedSettings } from './helpers/app';
 
 /** Set the project's "Sample above" threshold (shown when no node is selected). */
 async function setThreshold(page: Page, rows: number) {
   await page.getByTestId('canvas').click({ position: { x: 600, y: 40 } });
+  await openAdvancedSettings(page);
   const input = page.getByLabel('Sample above');
   await input.fill(String(rows));
   await input.press('Enter');

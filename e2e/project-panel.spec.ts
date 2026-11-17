@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { addFiles, addStepNode, fixture, node, openApp, selectNode } from './helpers/app';
+import { addFiles, addStepNode, fixture, node, openApp, selectNode, openProjectTab } from './helpers/app';
 
 test('queries are listed in the project panel, read tables by name, and stay off the canvas', async ({ page }) => {
   await openApp(page);
@@ -45,7 +45,7 @@ test('queries are listed in the project panel, read tables by name, and stay off
   await expect(row).toHaveAttribute('aria-current', 'true');
 
   // The project setting puts queries back on the canvas, wired as any node.
-  await page.getByRole('tab', { name: 'Project' }).click();
+  await openProjectTab(page);
   await page.getByRole('switch', { name: 'Keep queries in the project panel' }).click();
   await expect(node(page, 'Orders per customer')).toBeVisible();
   await expect(page.locator('.react-flow__edge')).toHaveCount(2);

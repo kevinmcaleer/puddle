@@ -2,12 +2,9 @@
 
 ## Project settings
 
-The inspector's **Project** tab holds the project's settings. They're saved with the project.
+The inspector's **Project** tab holds the project's settings. They're saved with the project. A new, empty project starts with the inspector closed, so the first screen is the canvas alone; it opens once the project has a node, or from the button at the right of the toolbar (I). Opened or closed by hand, it stays as you left it.
 
 ![The project settings and display settings in the inspector](_static/screenshots/settings-project.png)
-
-Sample above
-: The row count above which Puddle previews on a sample of each large source (see {doc}`sources`). Exports always use everything.
 
 Locale
 : How this project's data writes numbers, such as whether the decimal mark is a point (`1,234.50`) or a comma (`1.234,50`). New **Parse numbers** steps start with it.
@@ -23,6 +20,11 @@ Keep queries in the project panel
 
 Column names
 : How **Fix all** tidies untidy column names: the words as they are (spaces trimmed, hidden characters out) or snake_case (`order_date`). Off by default: the words stay as they are.
+
+Two settings that most projects never change are folded under **Advanced**:
+
+Sample above
+: The row count above which Puddle previews on a sample of each large source (see {doc}`sources`). Exports always use everything.
 
 Run on a schedule
 : When `puddle-run` should run this project, in cron syntax (`0 3 * * *` is 03:00 every day). Only used by a runner that has the project file; the browser never runs anything on its own. See {doc}`self-hosting`.

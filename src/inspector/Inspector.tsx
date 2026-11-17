@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { FixReceipt } from '../analysis/FixReceipt';
 import { fixReceipt } from '../analysis/receipt';
 import { useSession } from '../app/session';
@@ -7,7 +8,7 @@ import { inspectorTabs, shownTab } from './tabs';
 import { useNodeStatus } from '../flow/status';
 import { sourceFormatLabel } from '../canvas/formatLabel';
 import { nodeById, renameNode, setParseOptions, setRunnerPath, useProject, useProjectStore, type GraphNode, type ProjectSettings as ProjectSettingsT, type Source, type SourceFormat } from '../model';
-import { Banner, browserLocale, columnKind, DISPLAY_LOCALES, Field, formatDateText, formatNumberText, Icon, NODE_KIND, Section, Select, Switch, Tabs, TypeTag, useDisplay, useDisplayFormat, type DateDisplay } from '../ui';
+import { Button, Banner, browserLocale, columnKind, DISPLAY_LOCALES, Field, formatDateText, formatNumberText, Icon, NODE_KIND, Section, Select, Switch, Tabs, TypeTag, useDisplay, useDisplayFormat, type DateDisplay } from '../ui';
 import { CommitInput } from '../steps/StepForm';
 import { AppendPanel } from './AppendPanel';
 import { JoinPanel } from './JoinPanel';
@@ -127,25 +128,16 @@ function Columns({ nodeId }: { nodeId: string }) {
   );
 }
 
-/** Settings for the whole project: when to sample, and how dates and numbers are read and shown. */
+/** Settings for the whole project: how dates and numbers are read and shown, and under Advanced when to sample and the runner's schedule. */
 function ProjectSettings() {
   const settings = useProject().settings;
   const apply = useProjectStore((s) => s.apply);
   const set = (patch: Partial<ProjectSettingsT>) => apply((p) => ({ ...p, settings: { ...p.settings, ...patch } }));
+  // When to sample and the runner's schedule are for someone who already knows they need them: folded away until asked for.
+  const [advanced, setAdvanced] = useState(false);
   return (
     <Section title="Project settings">
       <div className="flex flex-col gap-3" data-testid="project-settings">
-        <Field label="Sample above" htmlFor="set-sample" hint="Rows. Larger results are previewed from a sample.">
-          <CommitInput
-            key={settings.sampleThresholdRows}
-            id="set-sample"
-            value={String(settings.sampleThresholdRows)}
-            onCommit={(v) => {
-              const n = Number(v.replace(/[,\s_]/g, ''));
-              if (Number.isInteger(n) && n > 0) set({ sampleThresholdRows: n });
-            }}
-          />
-        </Field>
         <Field label="Locale" htmlFor="set-locale" hint="How this project’s data writes numbers. New parse numbers steps start with it.">
           <Select id="set-locale" options={LOCALES} value={settings.locale} onChange={(e) => set({ locale: e.target.value })} />
         </Field>
@@ -170,9 +162,31 @@ function ProjectSettings() {
         <Field label="Column names" htmlFor="set-column-names" hint="How Fix all tidies untidy column names: the words as they are, trimmed, or snake_case.">
           <Select id="set-column-names" options={COLUMN_NAME_MODES} value={settings.columnNames} onChange={(e) => set({ columnNames: e.target.value as ProjectSettingsT['columnNames'] })} />
         </Field>
-        <Field label="Run on a schedule" htmlFor="set-schedule" hint="Cron syntax for puddle-run on your own machine, e.g. 0 3 * * * for 03:00 every day. Empty: never.">
-          <CommitInput key={settings.schedule ?? ''} id="set-schedule" value={settings.schedule ?? ''} placeholder="0 3 * * *" onCommit={(v) => set({ schedule: v.trim() || undefined })} />
-        </Field>
+        <div className="flex flex-col gap-3 border-t border-line pt-3">
+          <div>
+            <Button variant="ghost" size="sm" icon={advanced ? 'chevron-down' : 'chevron-right'} aria-expanded={advanced} aria-controls="project-advanced" onClick={() => setAdvanced(!advanced)}>
+              Advanced
+            </Button>
+          </div>
+          {advanced && (
+            <div id="project-advanced" className="flex flex-col gap-3" data-testid="project-advanced">
+                <Field label="Sample above" htmlFor="set-sample" hint="Rows. Larger results are previewed from a sample.">
+                  <CommitInput
+                    key={settings.sampleThresholdRows}
+                    id="set-sample"
+                    value={String(settings.sampleThresholdRows)}
+                    onCommit={(v) => {
+                      const n = Number(v.replace(/[,\s_]/g, ''));
+                      if (Number.isInteger(n) && n > 0) set({ sampleThresholdRows: n });
+                    }}
+                  />
+                </Field>
+                <Field label="Run on a schedule" htmlFor="set-schedule" hint="Cron syntax for puddle-run on your own machine, e.g. 0 3 * * * for 03:00 every day. Empty: never.">
+                  <CommitInput key={settings.schedule ?? ''} id="set-schedule" value={settings.schedule ?? ''} placeholder="0 3 * * *" onCommit={(v) => set({ schedule: v.trim() || undefined })} />
+                </Field>
+            </div>
+          )}
+        </div>
       </div>
     </Section>
   );

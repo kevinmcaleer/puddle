@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { addFiles, fixture, node, openApp, selectNode } from './helpers/app';
+import { addFiles, fixture, node, openApp, selectNode, openAdvancedSettings } from './helpers/app';
 
 type Engine = { query(sql: string): Promise<{ table: { toArray(): Array<{ toJSON(): Record<string, unknown> }> } }> };
 
@@ -15,6 +15,7 @@ const keptRows = (page: Page) =>
 test('in sample mode a kept result holds the sample, shows as up to date, and Run on full data rebuilds it', async ({ page }) => {
   await openApp(page);
   await page.getByTestId('canvas').click({ position: { x: 600, y: 40 } });
+  await openAdvancedSettings(page);
   await page.getByLabel('Sample above').fill('2');
   await page.getByLabel('Sample above').press('Enter');
   await addFiles(page, [fixture('customers.csv')]);

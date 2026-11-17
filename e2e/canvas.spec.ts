@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { addFiles, addStepNode, dragWire, fixture, node, openApp, selectNode } from './helpers/app';
+import { addFiles, addStepNode, dragWire, fixture, node, openApp, selectNode, openProjectTab } from './helpers/app';
 
 test('nodes are added after the selection, wired, and laid out', async ({ page }) => {
   await openApp(page);
@@ -69,7 +69,7 @@ test('the minimap appears only once a node runs off the visible canvas, and the 
 
   // With a node selected the inspector shows it; the Project tab is a click away and back.
   await expect(page.getByTestId('inspector-transform')).toBeVisible();
-  await page.getByRole('tab', { name: 'Project' }).click();
+  await openProjectTab(page);
   await expect(page.getByTestId('project-settings')).toBeVisible();
   await expect(page.getByTestId('display-settings')).toBeVisible();
   await page.getByRole('tab', { name: 'Node' }).click();

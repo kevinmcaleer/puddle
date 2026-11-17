@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { addFiles, fixture, node, openApp, selectNode } from './helpers/app';
+import { addFiles, fixture, node, openApp, openInspector, selectNode } from './helpers/app';
 
 /** The open project's notes as IndexedDB holds them right now (autosave runs a moment after each change). */
 const savedNotes = (page: Page) =>
@@ -39,6 +39,7 @@ const notesBox = (page: Page) => page.getByLabel('Project notes', { exact: true 
 
 test('project notes are written in Markdown, render safely, undo as one step and survive reload, export and import', async ({ page, browser }) => {
   await openApp(page);
+  await openInspector(page);
   await page.getByRole('tab', { name: 'Notes' }).click();
   await expect(page.getByTestId('inspector').getByTestId('notes-panel')).toBeVisible();
 
@@ -80,6 +81,7 @@ test('project notes are written in Markdown, render safely, undo as one step and
   await expect.poll(() => savedNotes(page)).toBe(NOTES);
   await page.reload();
   await expect(page.getByTestId('engine-ready')).toBeVisible({ timeout: 45_000 });
+  await openInspector(page);
   await page.getByRole('tab', { name: 'Notes' }).click();
   await expect(page.getByTestId('notes-preview').getByRole('heading', { name: 'Monthly orders' })).toBeVisible();
 
@@ -94,6 +96,7 @@ test('project notes are written in Markdown, render safely, undo as one step and
   await other.getByTestId('import-input').setInputFiles(path);
   // The panel opens on Preview only for a project that already has notes, so wait for the import to open first.
   await expect.poll(() => openNotes(other)).toBe(NOTES);
+  await openInspector(other);
   await other.getByRole('tab', { name: 'Notes' }).click();
   await expect(other.getByTestId('notes-preview')).toContainText('<script>window.__hacked = true</script>');
   await other.getByRole('tab', { name: 'Write' }).click();

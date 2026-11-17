@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { addFiles, addStep, addStepNode, addStepWithT, cell, expectRows, fixture, fixtureText, node, selectNode } from '../../e2e/helpers/app';
+import { addFiles, addStep, addStepNode, addStepWithT, cell, expectRows, fixture, fixtureText, node, selectNode, openProjectTab } from '../../e2e/helpers/app';
 import { annotate, openSample, projectMenu, selectColumnsAt, settings, shot, shotClip, shotPanel, start, steps } from './helpers';
 
 // Each test captures the pictures for one page of the docs. Pictures are named <page>-<what>.png.
@@ -521,7 +521,7 @@ test('sync, settings and help', async ({ page }) => {
   await page.keyboard.press('Escape');
 
   // The inspector's Project tab holds the project's settings.
-  await page.getByRole('tab', { name: 'Project' }).click();
+  await openProjectTab(page);
   await shotPanel(page, 'settings-project', page.getByTestId('inspector'), { height: 1200 });
 
   await page.getByTestId('help-menu').click();

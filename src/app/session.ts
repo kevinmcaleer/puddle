@@ -25,8 +25,8 @@ interface SessionState {
   /** The project panel beside the canvas: shown, hidden, or (null) left to show itself once a query is listed in it only. */
   outlineOpen: boolean | null;
   setOutlineOpen: (open: boolean) => void;
-  /** The right-hand dock (the inspector) is showing. */
-  inspectorOpen: boolean;
+  /** The right-hand dock (the inspector) is showing; null until it is opened or closed by hand or asked for, when it shows once the project has a node (see inspectorShown). */
+  inspectorOpen: boolean | null;
   /** The database browser pane shows this connection in the inspector's place; null shows the inspector. */
   browsingConnectionId: string | null;
   /** The results dock is showing its table. */
@@ -89,6 +89,12 @@ interface SessionState {
   openConnectorMenu: (menu: SessionState['connectorMenu']) => void;
 }
 
+/**
+ * Whether the inspector shows: as it was last opened or closed, and until then only once the project has a node, so an
+ * empty project starts with the canvas and nothing about settings beside it.
+ */
+export const inspectorShown = (choice: boolean | null, nodeCount: number): boolean => choice ?? nodeCount > 0;
+
 export const useSession = create<SessionState>((set) => ({
   selectedNodeId: null,
   selectedNodeIds: [],
@@ -99,7 +105,7 @@ export const useSession = create<SessionState>((set) => ({
   designerNodeId: null,
   schemaOpen: false,
   relationshipsOpen: false,
-  inspectorOpen: true,
+  inspectorOpen: null,
   outlineOpen: null,
   setOutlineOpen: (outlineOpen) => set({ outlineOpen }),
   browsingConnectionId: null,
