@@ -11,7 +11,7 @@ import { tableRows, toEngineError, type EngineClient } from '../engine';
 import { useViewProject } from '../flow/sample';
 import { useFlowStore } from '../flow/status';
 import { useExcelReads } from '../sources/excel';
-import { nodeById, useProject, type ColumnSchema, type GraphNode, type Project } from '../model';
+import { fixedIssueKeys, nodeById, useProject, type ColumnSchema, type GraphNode, type Project } from '../model';
 import { ANALYSIS_ROWS, analyseWith, type NodeAnalysis } from './analyse';
 import { findIssues } from './columns';
 import { sortIssues, type Issue } from './issues';
@@ -125,6 +125,17 @@ export function issuesOf(node: GraphNode, entry: AnalysisEntry | undefined): Iss
   if (!entry || entry.state !== 'ok') return NONE;
   const { columns, profile, facts } = entry.analysis;
   return sortIssues(findIssues(columns, profile, facts, node.ignoredIssues), columns.map((c) => c.name));
+}
+
+/**
+ * A node's issues in two lists: the ones still open, and the ones steps after the node are fixing (see
+ * fixedIssueKeys). Badges and Fix all count the open ones, so a fixed file doesn't go on warning.
+ */
+export function nodeIssues(project: Project, node: GraphNode, entry: AnalysisEntry | undefined): { open: Issue[]; fixed: Issue[] } {
+  const all = issuesOf(node, entry);
+  const fixed = fixedIssueKeys(project, node.id);
+  if (!fixed.size || !all.length) return { open: all, fixed: NONE };
+  return { open: all.filter((i) => !fixed.has(i.key)), fixed: all.filter((i) => fixed.has(i.key)) };
 }
 
 export function useIssues(node: GraphNode): Issue[] {

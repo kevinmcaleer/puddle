@@ -6,12 +6,14 @@ import { SplitButton, type CheckItem } from '../ui';
 import { applyFixes } from './apply';
 import { defaultTicked, fixAllLabel, fixGroup, fixLabel } from './fixes';
 import { issueLabel, type Issue } from './issues';
-import { useAnalysisEntry, issuesOf } from './state';
+import { nodeIssues, useAnalysisEntry } from './state';
 
 export function FixAll({ node, align = 'end' }: { node: GraphNode; align?: 'start' | 'end' }) {
   const entry = useAnalysisEntry(node.id);
-  const suggestions = useProject().settings.fixAllSuggestions;
-  const found = issuesOf(node, entry);
+  const project = useProject();
+  const suggestions = project.settings.fixAllSuggestions;
+  // Issues that steps after the node already fix aren't offered again.
+  const found = nodeIssues(project, node, entry).open;
   const fixable = found.filter((i) => i.fix);
   // The user's ticks, kept while the same issues are listed; a new set of issues starts from the defaults again.
   const [ticks, setTicks] = useState<{ of: string; keys: string[] } | null>(null);

@@ -19,6 +19,10 @@ In the inspector:
 
 ![The Join settings in the inspector](_static/screenshots/combine-join-settings.png)
 
+Once the join has run, the inspector says how each side matched ("28 of 60 left rows matched (47%)"), and how many rows found no match and what becomes of them: left out of an inner join, kept with empty columns in a left join. **Show them** adds an anti join beside this one, on the same inputs and keys, that holds just those rows.
+
+Keys often fail to match over a stray space or a difference in case: `C004 ` beside `C004`, `c017` beside `C017`. When trimming the text keys, putting them in capitals, or both would match more rows, Puddle says how many more, and **Tidy the keys** adds a Transform with those steps on each wire into the join. Only the join reads the tidied keys; anything else the inputs feed is unchanged, and the steps can be edited or removed like any others.
+
 When a key repeats on the right, a left row matches more than once and the join has more rows than its left input. Puddle says so ("5 rows on the left became 6 rows"), because it's usually a sign of a duplicate you didn't expect.
 
 ## Lookup

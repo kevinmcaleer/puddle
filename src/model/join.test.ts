@@ -3,7 +3,7 @@ import { flow, src, step } from '../../tests/helpers/projects';
 import { addNode } from './edits';
 import { canConnect, connect, freePort, GraphError, inputPorts, parsePort, topoSort } from './graph';
 import { initHistory, pushHistory, redo, undo } from './history';
-import { setJoinSpec, swapJoinInputs } from './join';
+import { addBeforeJoin, addUnmatchedJoin, setJoinSpec, swapJoinInputs } from './join';
 import { parseProject } from './project';
 import { placeStep } from './quickfix';
 import { groupNodes, ungroupNode } from './steps';
@@ -174,5 +174,75 @@ describe('grouping around a join', () => {
     const back = ungroupNode(g, 't1');
     const sorted = (x: Project) => [...x.edges].sort((a, b) => (a.id < b.id ? -1 : 1));
     expect(sorted(back)).toEqual(sorted(p));
+  });
+});
+
+describe('steps before a join, and its unmatched rows', () => {
+  const joined = (kind: JoinNode['joinSpec']['kind'] = 'left') =>
+    flow({
+      sources: [src({ id: 'a', format: 'csv' }), src({ id: 'b', format: 'csv' })],
+      nodes: [
+        { id: 'sa', type: 'source', sourceId: 'a' },
+        { id: 'sb', type: 'source', sourceId: 'b' },
+        { id: 'j', type: 'join', joinSpec: { kind, keys: [{ left: 'id', right: 'code' }] } },
+        { id: 'out', type: 'output' },
+        { id: 'other', type: 'output' },
+      ],
+      wires: [['sa', 'j', 'left'], ['sb', 'j', 'right'], ['j', 'out'], ['sa', 'other']],
+    });
+  const from = (p: Project, to: string, port: 'left' | 'right' | 0) => p.edges.find((e) => e.to.nodeId === to && e.to.port === port)?.from.nodeId;
+  const at = (p: Project, id: string) => p.nodes.find((n) => n.id === id)!.position;
+
+  it('puts a Transform on each wire into the join, leaving what else the inputs feed alone', () => {
+    const p = joined();
+    const next = addBeforeJoin(p, 'j', { left: [step('t', 'trimWhitespace', { columns: ['id'] })], right: [step('u', 'trimWhitespace', { columns: ['code'] }), step('v', 'changeCase', { columns: ['code'], mode: 'upper' })] }, { left: 'tl', right: 'tr' });
+    expect(from(next, 'j', 'left')).toBe('tl');
+    expect(from(next, 'j', 'right')).toBe('tr');
+    expect(from(next, 'tl', 0)).toBe('sa');
+    expect(from(next, 'tr', 0)).toBe('sb');
+    expect(from(next, 'other', 0)).toBe('sa');
+    const steps = (id: string) => (next.nodes.find((n) => n.id === id) as { steps: { id: string }[] }).steps.map((s) => s.id);
+    expect(steps('tl')).toEqual(['t']);
+    expect(steps('tr')).toEqual(['u', 'v']);
+    // The new nodes stand where the join stood, level with their inputs; the join and what follows move along.
+    expect(at(next, 'tl')).toEqual({ x: at(p, 'j').x, y: at(p, 'sa').y });
+    expect(at(next, 'tr')).toEqual({ x: at(p, 'j').x, y: at(p, 'sb').y });
+    expect(at(next, 'j').x).toBe(at(p, 'j').x + 296);
+    expect(at(next, 'out').x).toBe(at(p, 'out').x + 296);
+    expect(at(next, 'other')).toEqual(at(p, 'other'));
+    expect(() => parseProject(JSON.parse(JSON.stringify(next)))).not.toThrow();
+  });
+
+  it('skips a side with no steps, and changes nothing when there are none at all', () => {
+    const p = joined();
+    const next = addBeforeJoin(p, 'j', { right: [step('u', 'trimWhitespace', { columns: ['code'] })] }, { right: 'tr' });
+    expect(from(next, 'j', 'left')).toBe('sa');
+    expect(from(next, 'j', 'right')).toBe('tr');
+    expect(addBeforeJoin(p, 'j', {})).toBe(p);
+    expect(addBeforeJoin(p, 'out', { left: [step('t', 'trimWhitespace', { columns: ['id'] })] })).toBe(p);
+  });
+
+  it('adds an anti join on the same inputs and keys, named after the join', () => {
+    const p = joined('inner');
+    const next = addUnmatchedJoin(p, 'j', 'u');
+    const u = next.nodes.find((n) => n.id === 'u') as JoinNode;
+    expect(u.name).toBe(`${joinOf(p).name} unmatched`);
+    expect(u.joinSpec).toMatchObject({ kind: 'anti', keys: [{ left: 'id', right: 'code' }] });
+    expect([from(next, 'u', 'left'), from(next, 'u', 'right')]).toEqual(['sa', 'sb']);
+    expect(u.position).toEqual({ x: at(p, 'j').x, y: at(p, 'j').y + 160 });
+    expect((addUnmatchedJoin(next, 'j', 'u2').nodes.find((n) => n.id === 'u2') as JoinNode).name).toBe(`${joinOf(p).name} unmatched 2`);
+  });
+
+  it('turns the inputs round for a right join, whose kept rows are the right ones', () => {
+    const next = addUnmatchedJoin(joined('right'), 'j', 'u');
+    const u = next.nodes.find((n) => n.id === 'u') as JoinNode;
+    expect(u.joinSpec).toMatchObject({ kind: 'anti', keys: [{ left: 'code', right: 'id' }] });
+    expect([from(next, 'u', 'left'), from(next, 'u', 'right')]).toEqual(['sb', 'sa']);
+  });
+
+  it('adds nothing while an input is missing', () => {
+    const p = joined();
+    const unwired = { ...p, edges: p.edges.filter((e) => e.to.port !== 'right') };
+    expect(addUnmatchedJoin(unwired, 'j')).toBe(unwired);
   });
 });

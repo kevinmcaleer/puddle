@@ -4,6 +4,7 @@ import { join } from 'node:path';
 import { compile, compileCount, sourceFileName } from '../../src/compiler';
 import { EngineClient, tableRows } from '../../src/engine/client';
 import { createNodeBackend } from '../helpers/nodeBackend';
+import { renameNode } from '../../src/model';
 import { flow, src } from '../helpers/projects';
 
 const customers = src({ id: 'shop-customers', format: 'csv' });
@@ -42,5 +43,16 @@ describe('a SQL node', () => {
   it('counts like any other node', async () => {
     const n = tableRows((await engine.query(compileCount(project('SELECT * FROM input2'), { nodeId: 'q' }))).table)[0]!.n;
     expect(Number(n)).toBeGreaterThan(0);
+  });
+
+  // Regression (#270): renaming a node left SQL reading it by its old name, which then had no such table.
+  it('goes on running, with the same rows, when a node it reads by name is renamed', async () => {
+    const before = project('SELECT c.customer_id, o.total FROM c JOIN o ON o.customer_id = c.customer_id WHERE o.total > 0 ORDER BY 1, 2');
+    const after = renameNode(renameNode(before, 'o', 'Shop orders'), 'c', 'customers');
+    const sql = after.nodes.find((n) => n.id === 'q');
+    expect(sql?.type === 'sql' && sql.sqlSpec.query).toBe('SELECT customers.customer_id, "Shop orders".total FROM customers JOIN "Shop orders" ON "Shop orders".customer_id = customers.customer_id WHERE "Shop orders".total > 0 ORDER BY 1, 2');
+    const rows = async (p: typeof before) => tableRows((await engine.query(compile(p, { nodeId: 'q' }).sql)).table);
+    expect(await rows(after)).toEqual(await rows(before));
+    expect((await rows(after)).length).toBeGreaterThan(0);
   });
 });

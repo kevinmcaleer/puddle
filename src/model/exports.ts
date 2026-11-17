@@ -1,4 +1,5 @@
 // The export log: what was exported from which Output node, and any failing rules it went past.
+import { nodeById, outputEdges, upstreamIds } from './graph';
 import { newId } from './ids';
 import { EXPORT_LOG_LIMIT, type ExportLogEntry, type OutputNode, type Project } from './schema';
 
@@ -19,4 +20,30 @@ export function setOutputFormat(project: Project, nodeId: string, format: Output
   const node = project.nodes.find((n) => n.id === nodeId);
   if (node?.type !== 'output' || node.outputSpec.format === format) return project;
   return setOutputSpec(project, nodeId, { format, options: {} });
+}
+
+/** The Output node wired straight after a node, if it has one: where an export of that node's rows goes. */
+export function outputAfter(project: Project, nodeId: string): OutputNode | undefined {
+  for (const e of outputEdges(project, nodeId)) {
+    const to = nodeById(project, e.to.nodeId);
+    if (to?.type === 'output') return to;
+  }
+  return undefined;
+}
+
+/**
+ * A file name (no extension) for an export of a node's rows, after the data rather than the Output node: a flow that
+ * reads one source, sales.csv, exports sales-clean, and the source itself exports as sales. Undefined when the rows
+ * come from several sources or none, where the Output's own name says more.
+ */
+export function exportNameAfter(project: Project, nodeId: string): string | undefined {
+  const node = nodeById(project, nodeId);
+  if (!node) return undefined;
+  const sources = [...new Set([nodeId, ...upstreamIds(project, nodeId)])].flatMap((id) => nodeById(project, id) ?? []).flatMap((n) => (n.type === 'source' ? [n] : []));
+  if (sources.length !== 1) return undefined;
+  const name = (project.sources.find((s) => s.id === sources[0]!.sourceId)?.name ?? sources[0]!.name).trim();
+  // "sales.2024.csv" keeps its inner dot; a name that is all extension (".csv") is left whole.
+  const base = name.replace(/(?<=.)\.[A-Za-z0-9]{1,8}$/, '').trim();
+  if (!base) return undefined;
+  return node.type === 'source' ? base : `${base}-clean`;
 }

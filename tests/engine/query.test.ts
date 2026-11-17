@@ -380,6 +380,45 @@ describe('pivot columns', () => {
     ]);
   });
 
+  // Regression: values were turned into text in the browser (8.0 as "8", a date as milliseconds), which never equals
+  // DuckDB's own CAST(... AS VARCHAR) that the columns compare with, so every cell came out empty.
+  it('pivots a number field on the values as DuckDB writes them, in number order, with every cell filled', async () => {
+    let p = shop('inner', [[0, 'name', { sort: 'asc' }], [1, 'total', { total: 'pivot' }], [1, 'order_id', { total: 'count' }]]);
+    p = setQuerySpec(p, 'q', { totals: true });
+    const values = await readPivotValues(engine, p, 'q', 'f1');
+    expect(values).toEqual(['1.0', '3.25', '8.0', '12.5']);
+    const { columns, rows } = await run(updateQueryField(p, 'q', 'f1', { pivotValues: values }));
+    expect(columns).toEqual(['name', '1.0', '3.25', '8.0', '12.5']);
+    expect(rows).toEqual([
+      ['Ada', '0', '1', '0', '1'],
+      ['Barbara', '1', '0', '0', '0'],
+      ['Barbara L', '1', '0', '0', '0'],
+      ['Grace', '0', '0', '1', '0'],
+    ]);
+  });
+
+  it('pivots a date field on dates as DuckDB writes them', async () => {
+    const visits = src({ id: 'visits', format: 'csv', name: 'visits.csv' });
+    await engine.registerBuffer(sourceFileName(visits), new TextEncoder().encode('who,day\nAda,2024-01-15\nAda,2024-02-01\nGrace,2024-01-15\n'));
+    let p = flow({ sources: [visits], nodes: [{ id: 'v', type: 'source', sourceId: 'visits' }, { id: 'q', type: 'query' }, { id: 'out', type: 'output' }], wires: [['q', 'out']] });
+    p = addQueryTable(p, 'q', 'v');
+    p = addQueryField(p, 'q', { port: 0, column: 'who' }, undefined, 'f0');
+    p = updateQueryField(p, 'q', 'f0', { sort: 'asc' });
+    p = addQueryField(p, 'q', { port: 0, column: 'day' }, undefined, 'f1');
+    p = updateQueryField(p, 'q', 'f1', { total: 'pivot' });
+    p = addQueryField(p, 'q', { port: 0, column: 'who' }, undefined, 'f2');
+    p = updateQueryField(p, 'q', 'f2', { total: 'count' });
+    p = setQuerySpec(p, 'q', { totals: true });
+    const values = await readPivotValues(engine, p, 'q', 'f1');
+    expect(values).toEqual(['2024-01-15', '2024-02-01']);
+    const { columns, rows } = await run(updateQueryField(p, 'q', 'f1', { pivotValues: values }));
+    expect(columns).toEqual(['who', '2024-01-15', '2024-02-01']);
+    expect(rows).toEqual([
+      ['Ada', '1', '1'],
+      ['Grace', '1', '0'],
+    ]);
+  });
+
   it('keeps the columns it was given: a value no row has is an empty column, and one left out is left out', async () => {
     const { columns, rows } = await run(pivoted(['shipped', 'returned']));
     expect(columns).toEqual(['name', 'shipped', 'returned']);

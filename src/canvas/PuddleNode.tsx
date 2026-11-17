@@ -5,7 +5,7 @@ import { upstreamKey } from '../compiler';
 import { useViewProject } from '../flow/sample';
 import { exportGate } from '../flow/gate';
 import { keptLabel, keptView, useKeptEntry } from '../flow/kept';
-import { issuesOf, useAnalysisEntry } from '../analysis';
+import { nodeIssues, useAnalysisEntry } from '../analysis';
 import { summarise, useRuleStore } from '../flow/rules';
 import { useNodeStatus } from '../flow/status';
 import { hasNumberedInputs, inputPorts, setNodeDescription, useProject, useProjectStore, type GraphNode } from '../model';
@@ -48,7 +48,8 @@ export function PuddleNode({ data, selected }: NodeProps<PuddleFlowNode>) {
   useEffect(() => updateInternals(node.id), [updateInternals, node.id, ports.length, data.refIn, data.refOut]);
   const allResults = useRuleStore((s) => s.nodes);
   const analysis = useAnalysisEntry(node.id);
-  const issues = ok && analysis?.state === 'ok' ? issuesOf(node, analysis).length : undefined;
+  const found = ok && analysis?.state === 'ok' ? nodeIssues(project, node, analysis) : undefined;
+  const issues = found?.open.length;
   const own = ok ? summarise(node.rules, allResults[node.id]?.results) : undefined;
   // An Output node shows when a failing rule upstream blocks its export, even with no rules of its own.
   const blocked = ok && node.type === 'output' && exportGate(project, node.id, allResults).state === 'blocked';
@@ -93,6 +94,7 @@ export function PuddleNode({ data, selected }: NodeProps<PuddleFlowNode>) {
         cols={ok?.columns.length}
         rule={rule}
         issues={issues}
+        fixed={found?.fixed.length}
         onIssues={() => useSession.getState().showIssues(node.id)}
         selected={selected}
         viewed={viewed}

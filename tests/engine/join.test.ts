@@ -4,9 +4,9 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { compileDisplayPage, sourceFileName } from '../../src/compiler';
 import { EngineClient, tableRows } from '../../src/engine/client';
-import { checkJoin, multiplied } from '../../src/flow/join';
+import { checkJoin, checkJoinTidy, joinCure, multiplied, sideMatch } from '../../src/flow/join';
 import { evaluateFlow, invalidateCaches, schemaCacheFor, useFlowStore } from '../../src/flow/status';
-import { canGroup, connect, groupNodes, removeNodes, swapJoinInputs, ungroupNode, type JoinSpec, type Project } from '../../src/model';
+import { addBeforeJoin, addUnmatchedJoin, JOIN_KINDS, canGroup, connect, groupNodes, removeNodes, swapJoinInputs, ungroupNode, type JoinSpec, type Project } from '../../src/model';
 import { createNodeBackend } from '../helpers/nodeBackend';
 import { flow, src, step } from '../helpers/projects';
 
@@ -212,5 +212,58 @@ describe('grouping and undo around a join', () => {
     expect(states()).toMatchObject({ j: 'unwired' });
     const back = connect({ ...gone, nodes: [...gone.nodes, p.nodes[0]!], sources: p.sources }, { id: 'x', from: { nodeId: 'o' }, to: { nodeId: 'j', port: 'left' } });
     expect(await run(back)).toEqual(expected);
+  });
+});
+
+// The Orders and customers sample: 60 orders, 20 customers, ids that differ by a trailing space or by case.
+describe('rows that found no match (the orders and customers sample)', () => {
+  const sampleOrders = src({ id: 'sample-orders', format: 'csv' });
+  const sampleCustomers = src({ id: 'sample-customers', format: 'csv' });
+  beforeAll(async () => {
+    for (const [s, file] of [[sampleOrders, 'orders.csv'], [sampleCustomers, 'customers.csv']] as const)
+      await engine.registerBuffer(sourceFileName(s), new Uint8Array(readFileSync(join(__dirname, '../../public/samples', file))));
+  });
+  const sample = (kind: JoinSpec['kind']): Project =>
+    flow({
+      sources: [sampleOrders, sampleCustomers],
+      nodes: [
+        { id: 'o', type: 'source', sourceId: 'sample-orders' },
+        { id: 'c', type: 'source', sourceId: 'sample-customers' },
+        { id: 'j', type: 'join', joinSpec: { kind, keys: [{ left: 'customer_id', right: 'customer_id' }] } },
+        { id: 'out', type: 'output' },
+      ],
+      wires: [['o', 'j', 'left'], ['c', 'j', 'right'], ['j', 'out']],
+    });
+  const trimUpper = (id: string) => [step(`${id}t`, 'trimWhitespace', { columns: ['customer_id'] }), step(`${id}u`, 'changeCase', { columns: ['customer_id'], mode: 'upper' })];
+
+  it.each(JOIN_KINDS)('%s join: counts each side’s matches and what tidying the keys would match', async (kind) => {
+    const p = sample(kind);
+    const counts = await checkJoin(engine, p, 'j');
+    expect(sideMatch(counts, 'left')).toEqual({ rows: 60, matched: 28, unmatched: 32 });
+    expect(sideMatch(counts, 'right')).toEqual({ rows: 20, matched: 13, unmatched: 7 });
+    const tidy = (await checkJoinTidy(engine, p, 'j'))!;
+    expect(tidy).toEqual({ trim: { left: 48, right: 18 }, upper: { left: 38, right: 16 }, both: { left: 58, right: 18 } });
+    // A right join is about the customers, which trimming alone matches as well as trimming and capitals.
+    expect(joinCure(kind, counts, tidy)).toEqual(kind === 'right' ? { tidy: { trim: true, upper: false }, gained: 5 } : { tidy: { trim: true, upper: true }, gained: 30 });
+  });
+
+  it('has no tidy to count when the keys aren’t text', async () => {
+    expect(await checkJoinTidy(engine, shop({ kind: 'left' }), 'j')).toBeUndefined();
+  });
+
+  it('the cure as steps before the join matches the rows the check counted', async () => {
+    const tidied = addBeforeJoin(sample('left'), 'j', { left: trimUpper('l'), right: trimUpper('r') });
+    const counts = await checkJoin(engine, tidied, 'j');
+    expect(sideMatch(counts, 'left')).toEqual({ rows: 60, matched: 58, unmatched: 2 });
+    expect(await checkJoinTidy(engine, tidied, 'j').then((t) => joinCure('left', counts, t!))).toBeUndefined();
+  });
+
+  it('the unmatched join holds exactly the rows that found no match', async () => {
+    const p = addUnmatchedJoin(sample('inner'), 'j', 'u');
+    const { columns, rows } = await run(p, 'u');
+    expect(columns).toEqual(['order_id', 'customer_id', 'product', 'quantity']);
+    expect(rows).toHaveLength(32);
+    const right = addUnmatchedJoin(sample('right'), 'j', 'u');
+    expect((await run(right, 'u')).rows).toHaveLength(7);
   });
 });

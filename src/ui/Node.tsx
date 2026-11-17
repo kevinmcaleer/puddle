@@ -21,6 +21,8 @@ export interface NodeCardProps {
   rule?: { status: Status; label: string };
   /** Issues analysis found in the node's data, shown as a small badge. */
   issues?: number;
+  /** Issues that steps after this node are fixing. With none open, the badge says so instead of warning. */
+  fixed?: number;
   /** Shows the issues listed, from a click on the issues badge; the click still reaches the card. */
   onIssues?: () => void;
   selected?: boolean;
@@ -49,7 +51,7 @@ export interface NodeCardProps {
 
 /** The node card. The canvas wraps this in a React Flow custom node and swaps the ports for handles. */
 export function NodeCard({
-  kind = 'transform', name, detail, rows, cols, steps, rule, issues, onIssues, selected, viewed, pinned, comparing, error, dimmed, expanded, brokenInput, note, description, kept, tag,
+  kind = 'transform', name, detail, rows, cols, steps, rule, issues, fixed, onIssues, selected, viewed, pinned, comparing, error, dimmed, expanded, brokenInput, note, description, kept, tag,
   style, className, onClick, renderPorts,
 }: NodeCardProps) {
   const display = useDisplayFormat();
@@ -100,7 +102,7 @@ export function NodeCard({
           <span>{error}</span>
         </div>
       )}
-      {(rows != null || rule || kept || issues) && (
+      {(rows != null || rule || kept || issues || fixed) && (
         <div className="ui-node__meta">
           <span className="ui-metric">
             {rows != null && `${abbreviate(rows, display)} rows`}
@@ -121,6 +123,16 @@ export function NodeCard({
                   </button>
                 ) : (
                   <StatusBadge status="warn">{issues} {issues === 1 ? 'issue' : 'issues'}</StatusBadge>
+                )}
+              </span>
+            ) : fixed ? (
+              <span data-testid="node-fixed">
+                {onIssues ? (
+                  <button type="button" className="ui-badge-button nodrag" title="Show what was fixed" onClick={onIssues}>
+                    <StatusBadge status="pass">{fixed} fixed</StatusBadge>
+                  </button>
+                ) : (
+                  <StatusBadge status="pass">{fixed} fixed</StatusBadge>
                 )}
               </span>
             ) : null}

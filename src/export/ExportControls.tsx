@@ -3,10 +3,10 @@ import { useEngineStore } from '../app/engine';
 import { describeBlock } from '../flow/gate';
 import { useExportGate } from '../flow/rules';
 import { useNodeStatus } from '../flow/status';
-import { useProject, type OutputNode } from '../model';
+import { outputAfter, useProject, type GraphNode, type OutputNode } from '../model';
 import { Banner, Button, formatDuration, Menu } from '../ui';
 import { exportChoices, exportLabel } from './labels';
-import { exportAs, exportNode, useExporting } from './run';
+import { exportAs, exportFrom, exportNode, useExporting } from './run';
 
 /** Milliseconds since `since`, ticking while it is set. */
 function useElapsed(since: number | undefined): number {
@@ -58,6 +58,32 @@ export function ExportButton({ node, size = 'sm', formats = false }: { node: Out
         </Button>
       )}
     </>
+  );
+}
+
+/**
+ * Export, on a node that isn't an Output: the rows being looked at leave through an Output node after it, which the
+ * click adds when there is none (see exportFrom). The menu beside it picks the file type. So the way out of Puddle is
+ * on screen wherever the data is, without knowing that Output nodes exist.
+ */
+export function ExportHereButton({ node, size = 'sm' }: { node: GraphNode; size?: 'sm' | 'md' }) {
+  const project = useProject();
+  const status = useNodeStatus(node.id);
+  const output = outputAfter(project, node.id);
+  const busy = useExporting((s) => (output ? s.nodes[output.id] != null : false));
+  const disabled = busy || status.state !== 'ok';
+  const title = output ? `Exports through ${output.name}, the Output after this node` : 'Adds an Output after this node and exports it';
+  return (
+    <span className="inline-flex items-center gap-1" data-testid="export-here">
+      <Button size={size} variant="secondary" icon="export" disabled={disabled} title={title} onClick={() => void exportFrom(node.id)}>
+        {busy ? 'Exporting' : 'Export'}
+      </Button>
+      <Menu
+        label={<span className="sr-only">Export as</span>}
+        button={{ size, variant: 'secondary', icon: 'chevron-down', iconOnly: true, 'aria-label': 'Export as', title: 'Export as another file type', disabled, ...{ 'data-testid': 'export-formats' } }}
+        items={exportChoices(output).map((c) => ({ label: c.label, hint: c.hint, checked: c.checked, onSelect: () => void exportFrom(node.id, c.format) }))}
+      />
+    </span>
   );
 }
 

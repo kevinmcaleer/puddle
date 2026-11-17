@@ -20,6 +20,7 @@ import { connectorItems } from '../app/addMenu';
 import { openTemplateDialog } from '../templates/actions';
 import { droppedFiles } from '../sources/handles';
 import { FilesNotKeptBanner, ReconnectBanner } from '../sources/ReconnectBanner';
+import { receiptNodeOf } from '../analysis/receipt';
 import { useSession } from '../app/session';
 import { useFlowStore } from '../flow/status';
 import { fileSetMembers, JOIN_TYPES, projectSchema, ruleRefs, scriptTables } from '../compiler';
@@ -259,6 +260,9 @@ function NodeMenu({ at, onClose, onRename, onGrouped }: { at: { x: number; y: nu
       { label: group.description ? 'Edit group description' : 'Add group description', group: 'Group', onSelect: () => useSession.getState().askDescribe(groupCardId(group.id)) },
       { label: 'Ungroup', group: 'Group', icon: 'ungroup', onSelect: () => apply((p) => ungroup(p, group.id)) },
     );
+    // A group Fix all made (or any group holding its steps) leads back to the receipt of what it fixed.
+    const fixedNode = receiptNodeOf(project, group.nodeIds);
+    if (fixedNode) items.push({ label: 'What this fixed', group: 'Group', onSelect: () => useSession.getState().showReceipt(fixedNode) });
     // A group that is a line of Transforms can run as one node and come apart again; its steps make a template.
     const merge = canGroup(project, group.nodeIds);
     const only = group.nodeIds.length === 1 ? nodeById(project, group.nodeIds[0]!) : undefined;

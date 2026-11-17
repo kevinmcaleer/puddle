@@ -31,6 +31,9 @@ test('a likely misspelling is listed with its fix; ticked in Choose fixes and ap
   await dialog.getByRole('button', { name: /^Apply \d+ fixes$/ }).click();
   await expectRows(page, 40);
   await expect(page.getByText('Fixes', { exact: true })).toBeVisible();
+  // The receipt names the misspelling among what was fixed; put away, the inspector shows the result's own issues.
+  await expect(page.getByTestId('fix-receipt')).toContainText('Manchestr in City, probably Manchester');
+  await page.getByTestId('fix-receipt').getByRole('button', { name: 'Done' }).click();
   // The result is viewed: no misspelling left, the balance a number.
   await expect(page.getByTestId('issues').getByTestId('issue-nearDuplicate:City:Manchestr')).toHaveCount(0, { timeout: 20_000 });
   await expect(page.getByTestId('issues')).toHaveAttribute('data-state', 'ok');

@@ -135,6 +135,7 @@ test('analysing a file', async ({ page }) => {
   await expect(page.getByTestId('results-table')).toHaveAttribute('aria-label', /^Results of Transform \d+/, { timeout: 30_000 });
   await page.getByRole('button', { name: 'Auto layout' }).click();
   await shot(page, 'analysing-fixed');
+  await shotPanel(page, 'analysing-receipt', page.getByTestId('fix-receipt'));
 });
 
 /** Each fix opens a new node, whose table may still be loading: click name and city until they are the selection. */
@@ -347,6 +348,7 @@ test('combining data', async ({ page }) => {
   await page.getByRole('button', { name: 'Auto layout' }).click();
   await selectNode(page, 'Join 1');
   await expectRows(page, 6);
+  await expect(page.getByTestId('join-match')).toBeVisible();
   await shot(page, 'combine-join');
   await shotPanel(page, 'combine-join-settings', page.getByTestId('inspector-join'));
 });

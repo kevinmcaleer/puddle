@@ -6,7 +6,7 @@ The canvas is where your flow lives. Tabs above it switch to the {doc}`relations
 
 ## Kinds of node
 
-**Add** in the toolbar adds a source, a node after the selected one, or a step, which goes in a Transform node of its own after the selected node. New nodes always arrive wired, so with nothing selected the nodes and steps wait, marked **Select a node first**; sources can be added at any time.
+**Add** in the toolbar adds a source, a node after the selected one, or a step, which goes in a Transform node of its own after the selected node. A node you add is selected and shown in the results straight away (unless the results are pinned). New nodes always arrive wired, so with nothing selected the nodes and steps wait, marked **Select a node first**; sources can be added at any time.
 
 ![The Add menu: sources, then the nodes From template, Join, Append, Lookup, Query and Output, then every step](_static/screenshots/canvas-add-node-menu.png)
 
@@ -32,7 +32,7 @@ Nodes that are tables in their own right carry a tag on the top edge of their ca
 
 ## Renaming a node
 
-Give a node a name that says what it holds: select it and press F2, or right-click it and choose **Rename…**, or change **Node name** in the inspector. The name shows on the card and in the results, and it is the name SQL reads the node by, so a query that names the node needs the new name. A renamed source still says which file it reads in the inspector.
+Give a node a name that says what it holds: select it and press F2, or right-click it and choose **Rename…**, or change **Node name** in the inspector. The name shows on the card and in the results, and it is the name SQL reads the node by: a SQL node or a Query's SQL that reads the node by its old name is rewritten to read it by the new one, as part of the same change, so one undo puts both back. Where the query already uses the new name for something else, it is rewritten to the node's numbered name (`input1`) instead. A renamed source still says which file it reads in the inspector.
 
 ## Describing what a node is for
 
