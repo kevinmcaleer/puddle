@@ -65,7 +65,8 @@ import { shortcutText, withShortcut } from '../app/shortcuts';
 import { anyNodeOffscreen } from './minimap';
 import { viewNode } from '../results/pin';
 import { hostOf } from '../sources/url';
-import { openSamplesDialog } from '../samples/samplesDialog';
+import { SamplePicker } from '../samples/SamplePicker';
+import { welcomeFormats } from '../sources/formats';
 import { TourOffer } from '../tour/TourOffer';
 import { CANVAS_ARIA, nodeLabel, wireLabel } from './a11y';
 import { formatLabel, sourceFormatLabel } from './formatLabel';
@@ -657,17 +658,19 @@ export function Canvas({ onAddSource, onLayout }: { onAddSource: () => void; onL
       </ReactFlow>
 
       {project.nodes.length === 0 && (
-        <div className="pointer-events-none absolute inset-0 grid place-items-center">
-          <div className="pointer-events-auto flex max-w-[420px] flex-col items-center gap-3 text-center">
-            <h2 className="font-display text-title text-ink">Start with a source</h2>
-            <p className="text-ink-muted">
-              Add a CSV, TSV, JSON or Parquet file, drop one here, or paste from the clipboard. Nothing leaves your browser. Projects save the steps, not the data.
-            </p>
-            <div className="flex gap-2">
+        <div className="pointer-events-none absolute inset-0 overflow-auto p-4" data-testid="welcome">
+          <div className="pointer-events-auto mx-auto flex min-h-full max-w-[920px] flex-wrap content-center items-start justify-center gap-4">
+            <div className={`puddle-welcome__drop flex w-[400px] max-w-full flex-col items-center gap-3 rounded-md p-4 text-center ${dropping ? 'is-dropping' : ''}`}>
+              <h2 className="font-display text-title text-ink">Drop a messy file here</h2>
+              <p className="text-ink-muted">
+                {welcomeFormats()}. Or paste rows from the clipboard. Nothing leaves your browser. Projects save the steps, not the data.
+              </p>
               <Button variant="primary" icon="plus" onClick={onAddSource}>Add source</Button>
-              <Button variant="secondary" icon="eye" onClick={() => openSamplesDialog()}>Try a sample</Button>
+              <TourOffer />
             </div>
-            <TourOffer />
+            <div className="w-[440px] max-w-full rounded-md border border-line bg-surface-panel" data-testid="welcome-samples">
+              <SamplePicker title="Or start from a sample" compact />
+            </div>
           </div>
         </div>
       )}

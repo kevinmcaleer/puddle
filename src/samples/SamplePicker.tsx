@@ -1,8 +1,7 @@
 import { useState } from 'react';
-import { Dialog, Section, StatusBadge } from '../ui';
+import { Section, StatusBadge } from '../ui';
 import { SAMPLES, type Sample } from './catalog';
 import { openSampleOrSay } from './open';
-import { openSamplesDialog, useSamplesDialog } from './samplesDialog';
 
 /** Each card's cover blocks, in the brand cover's colours, turned round so no two samples look alike. */
 const BLOCKS = ['fill-brand', 'fill-accent', 'fill-brand-tint', 'fill-accent-tint', 'fill-ink'];
@@ -27,7 +26,7 @@ function SampleCover({ index }: { index: number }) {
   );
 }
 
-function SampleCard({ sample, index, busy, onOpen }: { sample: Sample; index: number; busy: boolean; onOpen: (s: Sample) => void }) {
+function SampleCard({ sample, index, busy, compact, onOpen }: { sample: Sample; index: number; busy: boolean; compact: boolean; onOpen: (s: Sample) => void }) {
   return (
     <button
       type="button"
@@ -36,11 +35,11 @@ function SampleCard({ sample, index, busy, onOpen }: { sample: Sample; index: nu
       disabled={busy}
       onClick={() => onOpen(sample)}
     >
-      <SampleCover index={index} />
+      {!compact && <SampleCover index={index} />}
       <span className="flex flex-col gap-1 p-3">
         <span className="flex items-center justify-between gap-2">
           <span className="text-body-strong">{sample.title}</span>
-          <StatusBadge>Sample</StatusBadge>
+          {!compact && <StatusBadge>Sample</StatusBadge>}
         </span>
         <span className="text-label text-ink-muted">{sample.blurb}</span>
       </span>
@@ -48,37 +47,27 @@ function SampleCard({ sample, index, busy, onOpen }: { sample: Sample; index: nu
   );
 }
 
-/** The sample cards: one click opens a sample as a new project. Shared by the home screen and the empty canvas. */
-export function SamplePicker({ title = 'Try a sample', onOpened }: { title?: string; onOpened?: () => void }) {
+/**
+ * The sample cards: one click opens a sample as a new project. Shared by the home screen and the empty canvas, where
+ * they are compact (no cover) so all of them fit beside the drop zone.
+ */
+export function SamplePicker({ title = 'Try a sample', compact = false }: { title?: string; compact?: boolean }) {
   const [busy, setBusy] = useState(false);
   const open = async (sample: Sample) => {
     setBusy(true);
-    onOpened?.();
     await openSampleOrSay(sample);
     setBusy(false);
   };
   return (
     <Section title={title}>
-      <p className="text-label text-ink-muted">Small, deliberately messy datasets that ship with Puddle, each with a note on what’s wrong. They work offline too.</p>
+      {!compact && <p className="text-label text-ink-muted">Small, deliberately messy datasets that ship with Puddle, each with a note on what’s wrong. They work offline too.</p>}
       <div className="grid grid-cols-2 gap-3" role="list" aria-label="Samples">
         {SAMPLES.map((s, i) => (
           <div key={s.id} role="listitem" className="flex">
-            <SampleCard sample={s} index={i} busy={busy} onOpen={(x) => void open(x)} />
+            <SampleCard sample={s} index={i} busy={busy} compact={compact} onOpen={(x) => void open(x)} />
           </div>
         ))}
       </div>
     </Section>
-  );
-}
-
-/** The sample picker as a dialog, from the empty canvas. */
-export function SamplesDialog() {
-  const open = useSamplesDialog((s) => s.open);
-  if (!open) return null;
-  const close = () => openSamplesDialog(false);
-  return (
-    <Dialog title="Try a sample" onClose={close} className="w-[640px] max-w-full">
-      <SamplePicker title="Samples" onOpened={close} />
-    </Dialog>
   );
 }

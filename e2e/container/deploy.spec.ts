@@ -112,8 +112,7 @@ test('after the first visit the samples open offline, from the service worker’
   await context.setOffline(true);
   await page.reload();
   await expect(page.getByTestId('engine-ready')).toBeVisible({ timeout: 45_000 });
-  await page.getByRole('button', { name: 'Try a sample' }).click();
-  await page.getByRole('dialog', { name: 'Try a sample' }).getByTestId('sample-sales').click();
+  await page.getByTestId('welcome-samples').getByTestId('sample-sales').click();
   await expect(node(page, 'sales.csv')).toHaveAttribute('data-status', 'ok', { timeout: 20_000 });
   await expectRows(page, 72);
 });

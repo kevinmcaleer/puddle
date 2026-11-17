@@ -38,7 +38,7 @@ test('don’t show again keeps the offer away after a reload', async ({ page }) 
   expect(await progress(page)).toMatchObject({ offered: true, finished: false });
   await page.reload();
   await expect(page.getByTestId('engine-ready')).toBeVisible({ timeout: 45_000 });
-  await expect(page.getByRole('heading', { name: 'Start with a source' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Drop a messy file here' })).toBeVisible();
   await expect(offer(page)).toHaveCount(0);
 });
 

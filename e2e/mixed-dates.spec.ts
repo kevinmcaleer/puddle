@@ -7,8 +7,7 @@ const formats = (page: Page) => page.getByTestId('date-formats');
 
 test('parse dates reads a column written in several formats, the day first because its values say so', async ({ page }) => {
   await openApp(page);
-  await page.getByRole('button', { name: 'Try a sample' }).click();
-  await page.getByRole('dialog', { name: 'Try a sample' }).getByTestId('sample-sales').click();
+  await page.getByTestId('welcome-samples').getByTestId('sample-sales').click();
   await expect(node(page, 'sales.csv')).toHaveAttribute('data-status', 'ok', { timeout: 20_000 });
   await expectRows(page, 72);
 

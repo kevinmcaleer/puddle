@@ -32,7 +32,6 @@ import { useSchemaTableSync } from '../schemaTables/state';
 import { LOAD_FAILURES, projectSchema } from '../compiler';
 import { useRewrittenSources } from '../sources/rewrite';
 import { useXmlSources } from '../sources/xml';
-import { SamplesDialog } from '../samples/SamplePicker';
 import { openUserGuide, startTaxiTutorial } from '../samples/open';
 import { Tour } from '../tour/Tour';
 import { TOUR_STOPS } from '../tour/stops';
@@ -476,7 +475,7 @@ export function AppShell() {
           )}
         </div>
 
-        <ResultsPanel bar={<ResultsTitle />}>
+        <ResultsPanel bar={<ResultsTitle />} short={project.nodes.length === 0 && !consoleOpen}>
           <div className="flex h-full min-h-0">
             <SqlDockPane />
             <div className="flex h-full min-h-0 min-w-0 flex-1 flex-col">
@@ -496,7 +495,6 @@ export function AppShell() {
       <ODataDialog />
       <ConnectionDialog />
       <DocumentSchemaDialog />
-      <SamplesDialog />
       <ShortcutsDialog />
       <TemplateDialogs />
       <RecipeDialogs />

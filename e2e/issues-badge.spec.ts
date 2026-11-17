@@ -3,8 +3,7 @@ import { node, openApp, openProjectTab } from './helpers/app';
 
 test('the issues badge lists every issue it counts, and Fix all counts out of the same number', async ({ page }) => {
   await openApp(page);
-  await page.getByRole('button', { name: 'Try a sample' }).click();
-  await page.getByRole('dialog', { name: 'Try a sample' }).getByTestId('sample-crm').click();
+  await page.getByTestId('welcome-samples').getByTestId('sample-crm').click();
   const badge = node(page, 'messy.txt').getByTestId('node-issues');
   await expect(badge).toHaveText(/^\d+ issues$/, { timeout: 20_000 });
   const total = Number((await badge.textContent())!.split(' ')[0]);

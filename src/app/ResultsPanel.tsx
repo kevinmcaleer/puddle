@@ -6,8 +6,11 @@ import { withShortcut } from './shortcuts';
 const MIN = 120;
 const DEFAULT = 280;
 
-/** The results table dock: resizable from its top edge (drag or arrow keys) and collapsible (R). */
-export function ResultsPanel({ bar, children }: { bar: ReactNode; children: ReactNode }) {
+/**
+ * The results table dock: resizable from its top edge (drag or arrow keys) and collapsible (R). While there is nothing
+ * to show (`short`: an empty project) it is only as tall as its message, so the canvas's welcome has the room.
+ */
+export function ResultsPanel({ bar, short = false, children }: { bar: ReactNode; short?: boolean; children: ReactNode }) {
   const [height, setHeight] = useState(DEFAULT);
   const collapsed = !useSession((s) => s.resultsOpen);
   const setCollapsed = (c: boolean) => useSession.getState().setResultsOpen(!c);
@@ -32,7 +35,7 @@ export function ResultsPanel({ bar, children }: { bar: ReactNode; children: Reac
 
   return (
     <section className="flex flex-col border-t border-line bg-surface-panel" aria-label="Results" data-testid="results-panel" data-collapsed={collapsed}>
-      {!collapsed && (
+      {!collapsed && !short && (
         <div
           role="separator"
           aria-orientation="horizontal"
@@ -61,7 +64,7 @@ export function ResultsPanel({ bar, children }: { bar: ReactNode; children: Reac
         />
       </div>
       {!collapsed && (
-        <div className="min-h-0 overflow-hidden" style={{ height }}>
+        <div className="min-h-0 overflow-hidden" style={{ height: short ? MIN : height }} data-short={short}>
           {children}
         </div>
       )}

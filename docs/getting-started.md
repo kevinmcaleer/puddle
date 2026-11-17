@@ -4,9 +4,9 @@
 
 Puddle is a web page. Open it in Chrome or Edge for the best experience (Firefox and Safari work too, but can't remember your files between visits). The first time it opens it starts DuckDB, which takes a moment; the status strip at the bottom right shows the DuckDB version once it's ready.
 
-A new visit opens an empty project with two ways in: **Add source** for your own files, and **Try a sample** for a small messy dataset that ships with Puddle.
+A new visit opens an empty project with two ways in. Drop a file on the canvas (or press **Add source**): Puddle reads Excel, CSV, JSON, Parquet, Access and most other data files (see {doc}`sources`). Or choose one of the samples beside it, small messy datasets that ship with Puddle.
 
-![An empty project, with Add source, Try a sample and the offer of a tour](_static/screenshots/start-empty.png)
+![An empty project: a place to drop a file, the samples and the offer of a tour](_static/screenshots/start-empty.png)
 
 ## The guided tour
 
@@ -18,9 +18,9 @@ You can leave the tour at any point with **Skip**, and pick it up again later fr
 
 ## Samples
 
-**Try a sample** opens one of eight deliberately messy datasets as a new project. Each comes with a project note saying what is wrong with the data and where to start, and the Issues panel lists what Puddle found (see {doc}`analysing`).
+The empty canvas lists eight deliberately messy datasets, and so does the projects screen. Choosing one opens it as a new project. Each comes with a project note saying what is wrong with the data and where to start, and the Issues panel lists what Puddle found (see {doc}`analysing`).
 
-![The Try a sample dialog listing the samples](_static/screenshots/start-samples.png)
+![The samples on the empty canvas](_static/screenshots/start-samples.png)
 
 | Sample | What's wrong with it |
 | --- | --- |

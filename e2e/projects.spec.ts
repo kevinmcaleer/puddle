@@ -92,7 +92,7 @@ test('projects can be created, renamed, duplicated and deleted from the home scr
   // A new project opens empty; going home lists both once it has content.
   await page.getByRole('button', { name: 'New project' }).click();
   await expect(page.getByTestId('project-name')).toHaveText('Untitled project');
-  await expect(page.getByRole('heading', { name: 'Start with a source' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Drop a messy file here' })).toBeVisible();
   await projectMenu(page, 'All projects');
   await page.getByTestId('project-Customers').getByRole('button').first().click();
   await expect(page.getByTestId('project-name')).toHaveText('Customers');

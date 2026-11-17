@@ -15,9 +15,8 @@ test('getting started', async ({ page }) => {
 
 test('samples and the screen', async ({ page }) => {
   await start(page);
-  await page.getByRole('button', { name: 'Try a sample' }).click();
-  await shot(page, 'start-samples', page.getByRole('dialog', { name: 'Try a sample' }));
-  await page.getByRole('dialog', { name: 'Try a sample' }).getByTestId('sample-contacts').click();
+  await shot(page, 'start-samples', page.getByTestId('welcome-samples'));
+  await page.getByTestId('welcome-samples').getByTestId('sample-contacts').click();
   await expect(node(page, 'contacts.csv')).toHaveAttribute('data-status', 'ok', { timeout: 20_000 });
   await expectRows(page, 53);
   await shot(page, 'start-sample-open');

@@ -29,10 +29,8 @@ for (const theme of ['light', 'dark'] as const) {
       await openApp(page);
       await expectAccessible(page, 'the empty canvas');
 
-      await page.getByRole('button', { name: 'Try a sample' }).click();
-      await expect(page.getByRole('dialog', { name: 'Try a sample' })).toBeVisible();
-      await expectAccessible(page, 'the samples dialog');
-      await page.keyboard.press('Escape');
+      // The samples are cards on the empty canvas, checked with it above.
+      await expect(page.getByTestId('welcome-samples').getByRole('listitem')).toHaveCount(8);
 
       await page.getByRole('button', { name: 'Add', exact: true }).click();
       await page.getByRole('menuitem', { name: /From URL/ }).click();
