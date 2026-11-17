@@ -1,9 +1,10 @@
 import { expect, test, type Page } from '@playwright/test';
-import { addFiles, cell, expectRows, fixture, node, openApp, selectNode } from './helpers/app';
+import { addFiles, cell, expectRows, fixture, node, openApp, queriesOnCanvas, selectNode } from './helpers/app';
 
 /** Customers and orders on the canvas, selected in that order, then Add node › Query: the designer opens on them. */
 async function queryShop(page: Page) {
   await openApp(page);
+  await queriesOnCanvas(page);
   await addFiles(page, [fixture('shop-customers.csv'), fixture('shop-orders.csv')]);
   await expect(node(page, 'shop-customers.csv')).toHaveAttribute('data-status', 'ok');
   await expect(node(page, 'shop-orders.csv')).toHaveAttribute('data-status', 'ok');

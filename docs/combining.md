@@ -43,7 +43,7 @@ Wire more inputs into the spare numbered input on the node to append more.
 
 ## SQL
 
-A SQL node runs DuckDB SQL you write over the nodes wired into it. Each input is readable as `input1`, `input2`... and by its node's name (in double quotes when the name has spaces or dots), and a lone input also as `input`. The SQL console under the results turns a query into a SQL node in one click.
+A SQL node runs DuckDB SQL you write. It reads any node of the project by its name (in double quotes when the name has spaces or dots): naming a node in the query wires it in for you, and the wire goes when the query stops naming it. A node wired in by hand is also readable as `input1`, `input2`..., and a lone input as `input`. Where two nodes share a name, or the node is fed by this one, wire it in yourself. The SQL console under the results turns a query into a SQL node in one click.
 
 While the SQL node's rows are the ones shown in the results, its query is edited beside them at the bottom of the screen, so the query and its answer are read together; drag the line between them to give either more room. With the results hidden, or pinned to another node, the query is in the inspector instead.
 

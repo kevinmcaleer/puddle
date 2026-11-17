@@ -46,3 +46,7 @@
 .puddle-canvas .react-flow__node-frame { pointer-events: none !important; }
 .puddle-group-frame { border: 1px dashed var(--line-strong); border-radius: var(--radius-lg); background: var(--surface-sunken); }
 .puddle-group-frame__head { pointer-events: auto; display: inline-flex; align-items: center; gap: var(--space-2); max-width: 100%; padding: var(--space-1) var(--space-2) var(--space-1) var(--space-3); font-size: 12px; font-weight: 600; color: var(--ink-muted); }
+
+/* Under a table's card: how many queries listed in the project panel read it (see ReadBy in PuddleNode.tsx). */
+.puddle-canvas .puddle-read-by { position: absolute; top: calc(100% + var(--space-1)); left: var(--space-2); padding: 0 var(--space-2); border: 1px solid var(--line); border-radius: var(--radius-full); background: var(--surface-raised); color: var(--ink-muted); font: 500 11px/16px var(--font-ui); cursor: pointer; white-space: nowrap; }
+.puddle-canvas .puddle-read-by:hover { background: var(--surface-hover); color: var(--ink); }

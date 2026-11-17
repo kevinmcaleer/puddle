@@ -19,11 +19,12 @@ import { isRewrittenText } from '../sources/text';
 import { isXmlSource, useXmlReads } from '../sources/xml';
 import { urlProblem, useUrlFetches } from '../sources/url';
 import { NodeCard } from '../ui';
+import { viewNode } from '../results/pin';
 import { cardHeading, cardKind, tableTag } from './kind';
 import { portBroken, portName, portsHeight, portTop } from './ports';
 
 /** `refIn` and `refOut`: a rule's dashed reference ends or starts here (see RefEdge). */
-export type PuddleNodeData = { node: GraphNode; viewed: boolean; label?: ReactNode; detail?: string; refIn?: boolean; refOut?: boolean };
+export type PuddleNodeData = { node: GraphNode; viewed: boolean; label?: ReactNode; detail?: string; refIn?: boolean; refOut?: boolean; /** The queries listed in the project panel, off the canvas, that read this node. */ readBy?: string[] };
 export type PuddleFlowNode = Node<PuddleNodeData, 'puddle'>;
 
 /** A graph node on the canvas: the design system's NodeCard with React Flow handles where its ports sit. */
@@ -132,7 +133,30 @@ export function PuddleNode({ data, selected }: NodeProps<PuddleFlowNode>) {
           </>
         )}
       />
+      {data.readBy?.length ? <ReadBy ids={data.readBy} /> : null}
     </div>
+  );
+}
+
+/**
+ * The mark under a table's card for the queries that read it from the project panel: no wire is drawn to a query that
+ * is off the canvas, so this says the table is read, and a click goes to the first of them.
+ */
+function ReadBy({ ids }: { ids: string[] }) {
+  return (
+    <button
+      type="button"
+      className="puddle-read-by nodrag"
+      data-testid="read-by"
+      title="Show the first of them"
+      onClick={(e) => {
+        e.stopPropagation();
+        useSession.getState().select(ids[0]!);
+        viewNode(ids[0]!);
+      }}
+    >
+      Read by {ids.length} {ids.length === 1 ? 'query' : 'queries'}
+    </button>
   );
 }
 

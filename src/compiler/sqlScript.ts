@@ -222,6 +222,15 @@ function readerByName(name: string): { fn: string; options: string[] } | undefin
 }
 
 /** A file read lifted out of a query: the CTE it becomes and the call that reads the files. */
+/**
+ * The table names a query or script reads that it does not create itself, in lower case and in order, each once: the
+ * inputs (input1, a node's name) and any other name, which may be a table of the project to wire in by name.
+ */
+export function sqlReads(sql: string): string[] {
+  const names = scriptTableRefs(sql, []).filter((r) => r.kind === 'unknown').map((r) => r.name);
+  return names.filter((n, i) => names.findIndex((x) => x.toLowerCase() === n.toLowerCase()) === i);
+}
+
 export interface FileRead {
   cte: string;
   relation: string;

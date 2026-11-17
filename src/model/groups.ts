@@ -29,12 +29,48 @@ export function nextGroupName(project: Project): string {
 }
 
 /** Gather the nodes into a new group, collapsed, its card where the top-left node was. */
-export function makeGroup(project: Project, ids: string[], id = newId('g')): Project {
+export function makeGroup(project: Project, ids: string[], id = newId('g'), name?: string): Project {
   if (!canMakeGroup(project, ids).ok) return project;
   const nodes = [...new Set(ids)].flatMap((nid) => nodeById(project, nid) ?? []);
   const position = { x: Math.min(...nodes.map((n) => n.position.x)), y: Math.min(...nodes.map((n) => n.position.y)) };
-  const group: NodeGroup = { id, name: nextGroupName(project), nodeIds: nodes.map((n) => n.id), collapsed: true, position };
+  const group: NodeGroup = { id, name: name?.trim() || nextGroupName(project), nodeIds: nodes.map((n) => n.id), collapsed: true, position };
   return { ...project, groups: [...project.groups, group] };
+}
+
+/** `name`, or `name 2`, `name 3`... when a group is already called that. */
+function freeGroupName(project: Project, name: string): string {
+  const taken = new Set(project.groups.map((g) => g.name.toLowerCase()));
+  for (let i = 1; ; i++) {
+    const candidate = i === 1 ? name : `${name} ${i}`;
+    if (!taken.has(candidate.toLowerCase())) return candidate;
+  }
+}
+
+/**
+ * What a chain of steps folded into one card is called: "Clean log", after the node the chain reads, so the card
+ * says what it is for where "Group 3" would not. Without a node before it, the next "Group n".
+ */
+export function chainGroupName(project: Project, chain: string[]): string {
+  const first = chain[0] ? inputEdges(project, chain[0])[0] : undefined;
+  const from = first ? nodeById(project, first.from.nodeId) : undefined;
+  return from ? freeGroupName(project, `Clean ${from.name}`) : nextGroupName(project);
+}
+
+/**
+ * A script and the tables it creates as one card: with `queriesInPanel`, the node that runs the script and its script
+ * table nodes are gathered into a collapsed group named after the node, whose card lists each table as a result.
+ * Tables added later join it. A node already in some other group is left where it is.
+ */
+export function bundleScript(project: Project, scriptNodeId: string): Project {
+  const script = nodeById(project, scriptNodeId);
+  if (!project.settings.queriesInPanel || !script) return project;
+  const tables = outputEdges(project, scriptNodeId).flatMap((e) => (nodeById(project, e.to.nodeId)?.type === 'scriptTable' ? [e.to.nodeId] : []));
+  const loose = tables.filter((id) => !groupOf(project, id));
+  if (!loose.length) return project;
+  const own = groupOf(project, scriptNodeId);
+  // After the tables already there, in the order the script makes them.
+  if (own) return { ...project, groups: project.groups.map((g) => (g.id === own.id ? { ...g, nodeIds: [...g.nodeIds, ...loose] } : g)) };
+  return makeGroup(project, [scriptNodeId, ...loose], newId('g'), freeGroupName(project, script.name));
 }
 
 /**

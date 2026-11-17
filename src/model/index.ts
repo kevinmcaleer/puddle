@@ -5,6 +5,8 @@ export { hashString, hashValue, stableStringify } from './hash';
 export { newId } from './ids';
 export { createProject, parseProject } from './project';
 export { addStep, canGroup, canUngroup, groupNodes, moveStep, removeStep, renameNode, setNodeNotes, splitNode, toggleStep, ungroupNode, updateStep, type GroupCheck } from './steps';
+export { setSqlAndWires, syncNamedWires } from './namedWires';
+export { canvasProject, hasQueriesToMove, isQueryNode, offCanvasIds, projectOutline, readByQueries, setQueriesInPanel, type Outline, type OutlineRow } from './outline';
 export { addNode, addSource, moveNodes, nextNodeName, removeNodes, setCollapsed, setKeepResult, setParseOptions, setSourceFormat, setRunnerPath, setSqlQuery, setTableSpec, updateSource, syncScriptTables, addScriptTableNodes, setScriptTable, setFileSet, type AddableNodeType } from './edits';
 export { addBeforeJoin, addUnmatchedJoin, setJoinSpec, swapJoinInputs } from './join';
 export { setAppendSpec, swapAppendInputs } from './append';
@@ -20,4 +22,4 @@ export { fixedIssueKeys, ignoreIssue, recordAnalysis, unignoreIssue, type FoundI
 export { addConnection, connectionSources, nextConnectionName, removeConnection, updateConnection, updateConnectionSource } from './connections';
 export { exportNameAfter, logExport, outputAfter, setOutputFormat, setOutputSpec } from './exports';
 export { carryPin, viewWithout } from './view';
-export { canMakeGroup, chainAround, groupById, groupOf, joinGroupOf, groupPorts, makeGroup, moveGroup, nextGroupName, pruneGroups, renameGroup, setGroupCollapsed, ungroup, type GroupPorts } from './groups';
+export { bundleScript, canMakeGroup, chainAround, chainGroupName, groupById, groupOf, joinGroupOf, groupPorts, makeGroup, moveGroup, nextGroupName, pruneGroups, renameGroup, setGroupCollapsed, ungroup, type GroupPorts } from './groups';

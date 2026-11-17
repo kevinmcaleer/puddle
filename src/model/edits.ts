@@ -1,5 +1,6 @@
 // Pure project edits used by the canvas, sources and inspector. Each returns a new project.
 import { freePort, hasOutput, nodeById, removeNode } from './graph';
+import { bundleScript } from './groups';
 import { newId } from './ids';
 import { viewWithout } from './view';
 import { DEFAULT_APPEND_SPEC, DEFAULT_JOIN_SPEC, DEFAULT_LOOKUP_SPEC, DEFAULT_QUERY_SPEC, DEFAULT_SQL_SPEC, type FileSet, type GraphNode, type NodeType, type ParseOptions, type Project, type Source, type TableSpec } from './schema';
@@ -201,7 +202,8 @@ export function addScriptTableNodes(project: Project, sqlNodeId: string, tables:
     const node: GraphNode = { id, type: 'scriptTable', name: freeName(next, table), position: { x: sql.position.x + 296, y: below + i * 120 }, rules: [], scriptTable: { table } };
     next = { ...next, nodes: [...next.nodes, node], edges: [...next.edges, { id: newId('e'), from: { nodeId: sqlNodeId }, to: { nodeId: id, port: 0 } }] };
   });
-  return next;
+  // New tables join the script's card (one card for a script and what it makes) where the project keeps the canvas tidy.
+  return wanted.length ? bundleScript(next, sqlNodeId) : next;
 }
 
 /** Point a script table node at another of its script's tables, taking the table's name if it still had the old one's. */

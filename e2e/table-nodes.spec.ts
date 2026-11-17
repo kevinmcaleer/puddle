@@ -1,8 +1,10 @@
 import { expect, test } from '@playwright/test';
-import { addFiles, fixture, node, openApp, selectNode } from './helpers/app';
+import { addFiles, fixture, node, openApp, queriesOnCanvas, selectNode } from './helpers/app';
 
 test('the canvas tags imported tables and tables created with SQL', async ({ page }) => {
   await openApp(page);
+  // On the canvas, a script's node and each table's node are cards of their own (in the panel's project they are one).
+  await queriesOnCanvas(page);
   await addFiles(page, [fixture('shop-orders.csv')]);
   await expect(node(page, 'shop-orders.csv')).toHaveAttribute('data-status', 'ok', { timeout: 20_000 });
   await expect(node(page, 'shop-orders.csv').getByTestId('node-table-tag')).toHaveText('Imported table');

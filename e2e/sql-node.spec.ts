@@ -1,8 +1,9 @@
 import { expect, test } from '@playwright/test';
-import { addFiles, expectRows, expectSql, fixture, node, openApp, saved } from './helpers/app';
+import { addFiles, expectRows, expectSql, fixture, node, openApp, queriesOnCanvas, saved } from './helpers/app';
 
 test('a console query is answered under the results, becomes a SQL node in one click, and refuses what it can’t allow', async ({ page }) => {
   await openApp(page);
+  await queriesOnCanvas(page);
   await addFiles(page, [fixture('shop-orders.csv')]);
   await expect(node(page, 'shop-orders.csv')).toHaveAttribute('data-status', 'ok', { timeout: 20_000 });
 
