@@ -182,6 +182,8 @@ export function addNodeAfterSelection(type: AddableNodeType, init?: (project: Pr
   if (!added) return;
   if (type === 'query') useSession.getState().openDesigner(added);
   else useSession.getState().select(added);
+  // What was just added is what the results show, as after a click (unless they are pinned).
+  viewNode(added);
 }
 
 /** The query a new table from SQL starts with: every row of what is wired in, or a few typed rows when nothing is. */
@@ -208,7 +210,9 @@ export function addTableFromSql() {
     const table = `table${k}`;
     return syncScriptTables(setSqlQuery(next, added, tableFromSqlQuery(table, wired)), added, [], [table]);
   });
-  if (added) useSession.getState().select(added);
+  if (!added) return;
+  useSession.getState().select(added);
+  viewNode(added);
 }
 
 /** A Schema table node for one of the schema's tables, loaded from the selected node if there is one. */

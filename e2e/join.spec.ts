@@ -82,6 +82,15 @@ test('joining two sources: wired left and right, matched on a shared key, with e
   await expect(page.getByTestId('inspector-columns').locator('.ui-col').first()).toHaveText('customer_id');
 });
 
+// Regression (#269): the join was selected, but the results went on showing the node viewed before it.
+test('a join added from the selection bar is what the results show', async ({ page }) => {
+  await joinShop(page, 'selection bar');
+  await expect(page.getByTestId('results-title')).toHaveText('Join 1');
+  await expect(page.getByTestId('inspector-join')).toBeVisible();
+  // Five orders, one of them matching a customer listed twice.
+  await expectRows(page, 6);
+});
+
 test('hovering a wire into a join shows the columns going into that input', async ({ page }) => {
   await joinShop(page, 'selection bar');
   await expect(page.getByTestId('wire-shop-orders.csv->Join 1')).toHaveAttribute('data-port', 'left');
