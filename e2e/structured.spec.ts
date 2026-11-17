@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { addFiles, columnsOf, expectRows, fixture, node, openApp } from './helpers/app';
+import { addFiles, columnsOf, expectRows, fixture, node, openApp, openReadOptions } from './helpers/app';
 
 test('a YAML file opens to its list of records, the Records picker switches to the whole document, and a GeoJSON file reads its features', async ({ page }) => {
   await openApp(page);
@@ -9,6 +9,7 @@ test('a YAML file opens to its list of records, the Records picker switches to t
   expect(await columnsOf(page, 'servers.yaml')).toEqual(['name', 'ip', 'cores', 'tags', 'added', 'owner.team', 'owner.email']);
   await expectRows(page, 3);
   await expect(page.getByLabel('Records').locator('option')).toHaveText(['servers (3 records)', 'The whole document, as one row']);
+  await openReadOptions(page);
   await page.getByLabel('Records').selectOption('.');
   await expectRows(page, 1);
   expect(await columnsOf(page, 'servers.yaml')).toEqual(['region', 'servers']);

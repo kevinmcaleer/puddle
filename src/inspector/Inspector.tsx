@@ -59,7 +59,7 @@ function SourceOptions({ source, node }: { source: Source; node: GraphNode }) {
   // Opened or closed by hand for this source: kept while the inspector shows it.
   const [choice, setChoice] = useState<boolean | null>(null);
   const state = status.state === 'ok' ? 'ok' : status.state === 'error' ? 'error' : 'other';
-  const open = readOptionsOpen({ state, issues }, choice);
+  const open = readOptionsOpen({ state, issues, format: source.format }, choice);
   return (
     <Section
       title="Read options"
