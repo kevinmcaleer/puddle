@@ -18,6 +18,9 @@ Date formats
 Add each step as a new node
 : On for a new project. Steps added from the Add menu or the results table (by the column menu or a quick fix) each go in a Transform node of their own, so every step shows on the canvas. Off, they stack into the Transform being viewed. See {doc}`cleaning`.
 
+Keep queries in the project panel
+: On for a new project. A query that ends a flow (a SQL or Query node whose rows feed nothing but outputs) is listed in the project panel and not drawn on the canvas, which then shows only how tables are made. Off, every query is a node on the canvas. See {doc}`canvas`.
+
 Column names
 : How **Fix all** tidies untidy column names: the words as they are (spaces trimmed, hidden characters out) or snake_case (`order_date`). Off by default: the words stay as they are.
 

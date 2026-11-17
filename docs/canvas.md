@@ -24,7 +24,7 @@ You can also add the next node from where you are looking: click a node's right-
 | Lookup | Brings columns across from a second input, keeping every row of the first. | {doc}`combining` |
 | Query | Designs a query over several tables with a grid, in the style of Access. | {doc}`query-designer` |
 | Schema table | A table designed in the Schema view, as a real DuckDB table holding its records and any rows wired into it, checked against its keys, types and checks. | {doc}`schema` |
-| SQL | A DuckDB query you write over any nodes wired into it, readable as `input1`, `input2`... or by their names; or a script of `CREATE TABLE` statements. It can read the files of the sources wired into it by name. | {doc}`combining` |
+| SQL | A DuckDB query you write over the tables it names (any node of the project, by its name) or the nodes wired into it (`input1`, `input2`...); or a script of `CREATE TABLE` statements. It can read the files of the sources wired into it by name. | {doc}`combining` |
 | Script table | One table a script creates with `CREATE TABLE name AS`, in a SQL node or a Query's SQL view, as a node of its own. | {doc}`combining` |
 | Output | Marks data that's ready, and exports it. | {doc}`exporting` |
 
@@ -49,9 +49,27 @@ Give a node a name that says what it holds: select it and press F2, or right-cli
 
 Arrow keys move between connected nodes and show each one in the results, as a click does (with the results pinned they only select, and V moves the pin to the selected node). Enter opens the selected node, F2 renames it, T opens the Add menu to add a step after it, O adds an Output, and G groups the selected nodes. C starts wiring the selected node: move to another node and press Enter to wire or unwire them. 1, 2, 3 and 4 switch between the canvas, the relationships view, the query designer and the Schema view. **?** lists every shortcut (see {doc}`settings`).
 
+## The project panel
+
+The project panel lists the project beside the canvas, as a database's navigation pane does: its **Tables** (sources, tables made with SQL or designed in the schema, joins, and the end of each run of cleaning steps), its **Queries** (SQL nodes and Query nodes that ask something of those tables) and its **Outputs**. Click a row to select its node and see its rows; right-click it to rename or delete it. A query row says which tables it reads.
+
+The panel shows itself the first time a query is listed in it. The button at the left of the view tabs shows it at any other time, and the button at its top hides it.
+
+![The project panel listing two tables and a query that reads both, with the canvas showing only the two tables](_static/screenshots/canvas-project-panel.png)
+
+In a new project a query that ends a flow is in the panel only, not on the canvas. The canvas then shows how the tables are made, and the panel shows what is asked of them:
+
+- **New query** (the plus beside Queries) makes a query that reads the selected table and asks you to name it.
+- A query reads any table of the project by naming it in its SQL. Nothing is wired by hand: Puddle wires the table in when the query names it, and lets go again when it no longer does.
+- A table read by such queries says so under its card (**Read by 2 queries**); click that to go to the first of them. Selecting a query marks the tables it reads.
+- A query whose rows feed more steps is part of how a table is made, so it is drawn on the canvas like any node. Add a step after a query and it appears there.
+- A script that creates tables stays on the canvas, as one card: the SQL node and its tables are gathered into a group named after the node. Open the group to work on them.
+
+A project made before the panel keeps its queries on the canvas. **Move queries to the panel**, under Queries, changes that, and the project setting **Keep queries in the project panel** switches it either way (see {doc}`settings`).
+
 ## Groups
 
-A group gathers nodes together and can hide them behind a single card, as node groups do in Blender. It is the one way to bundle nodes: a group can be closed to a card, saved as a template, or merged into one node. Select two or more nodes (Shift+click adds to the selection), then press G or choose **Group** on the selection bar. You can also right-click a selected node and choose **Group**, or **Group the chain** to gather the whole line of Transforms wired one after another through it, which is the usual way to bundle a run of cleaning steps.
+A group gathers nodes together and can hide them behind a single card, as node groups do in Blender. It is the one way to bundle nodes: a group can be closed to a card, saved as a template, or merged into one node. Select two or more nodes (Shift+click adds to the selection), then press G or choose **Group** on the selection bar. You can also right-click a selected node and choose **Group**, or **Group the chain** to gather the whole line of Transforms wired one after another through it, which is the usual way to bundle a run of cleaning steps. A chain grouped this way is named after what it cleans, such as **Clean contacts.csv**.
 
 A closed group is one card. It has a socket on the left for each wire coming in from outside the group, and one on the right for each result going out, named after the node it comes from. Click a result's name to see its data in the results. Drag from a result's socket to wire it into another node.
 
