@@ -137,6 +137,7 @@ export const archiveKindOf = (head: Uint8Array): ArchiveKind | undefined => {
 export function refusal(name: string, other: OtherFormat): SourceError {
   if (other === 'bzip2' || other === 'zstd') return new SourceError(`${name} is ${OTHER_NAMES[other]}, which Puddle doesn’t open. Unpack it and add the file inside, or pack it as gzip or zip.`);
   if (other === 'gzip' || other === 'zip') return new SourceError(`${name} is ${OTHER_NAMES[other]}, which Puddle opens from a chosen file: unpack it and add the file inside, or choose the archive itself.`);
+  if (other === 'sqlite') return new SourceError(`${name} is ${OTHER_NAMES[other]}, which Puddle opens as a database rather than a file source. Add it on its own with Choose files, then pick its tables.`);
   if (other === 'doc') return new SourceError(`${name} is ${OTHER_NAMES[other]}, which Puddle doesn’t read. Open it in Word and save it as a .docx file, then add that.`);
   return new SourceError(`${name} is ${OTHER_NAMES[other]}, which Puddle doesn’t read. ${READS}`);
 }

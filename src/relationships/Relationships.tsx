@@ -174,7 +174,7 @@ function RelationshipPane({ tables, relationships, unique, selected, onSelect }:
 
   const drawn = lines.flatMap((l) => {
     const r = relationships.find((x) => x.key === l.key);
-    return r ? [{ ...l, r, check: r.via.every((v) => v.kind === 'rule' || v.kind === 'schema') }] : [];
+    return r ? [{ ...l, r, check: r.via.every((v) => v.kind === 'rule' || v.kind === 'schema' || v.kind === 'database' || v.kind === 'guess') }] : [];
   });
   const mark = (c: 'one' | 'many' | undefined) => (c === 'one' ? '1' : c === 'many' ? '∞' : '');
 
@@ -285,7 +285,7 @@ function RelationshipPane({ tables, relationships, unique, selected, onSelect }:
   );
 }
 
-const VIA_ICON = { join: 'join', lookup: 'join', query: 'query', rule: 'check', schema: 'schema' } as const;
+const VIA_ICON = { join: 'join', lookup: 'join', query: 'query', rule: 'check', schema: 'schema', database: 'database', guess: 'schema' } as const;
 
 /** Open the node that states a relationship: a Query in its designer, anything else selected in the inspector. */
 function openVia(project: Project, nodeId: string) {

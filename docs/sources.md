@@ -250,10 +250,10 @@ When you open the project again, choose the archive once and every file read fro
 Database files are read in your browser; nothing is uploaded. A database file chosen from **Add › Choose files** (or dropped on the canvas) becomes a connection named after the file, and its table picker opens at once:
 
 SQLite
-: A `.sqlite` or `.db` file (a LibSQL file is one too). Choose the file in the connection form.
+: A `.sqlite`, `.sqlite3`, `.db`, `.db3`, `.s3db`, `.sl3`, `.gpkg` (GeoPackage) or `.mbtiles` file (a LibSQL file is one too). A SQLite file with any other name, such as a browser's `History` file or an app's `.data` file, is known by its first bytes and opened the same way. Choose the file in the connection form.
 
 DuckDB
-: A `.duckdb` file, attached read-only, so its own types and views are read as they are.
+: A `.duckdb` or `.ddb` file, attached read-only, so its own types and views are read as they are. A DuckDB file with another name is known by its first bytes too.
 
 Once the connection is saved, **Read from** lists the database's tables and views with their columns and sizes. Tick the ones to read, or write a query in the database's own SQL, and set how many rows to read at most (empty reads them all). Each table and the query become a source on the canvas, read through the connection with the types the database declares.
 

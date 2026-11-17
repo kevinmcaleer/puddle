@@ -62,12 +62,14 @@ describe('SQLite connection sources', () => {
       ['order_totals', 'view', 3, 3],
     ]);
     expect(catalog.tables[0]!.columns).toEqual([
-      { name: 'id', type: 'BIGINT', nullable: false },
+      { name: 'id', type: 'BIGINT', nullable: false, key: true },
       { name: 'name', type: 'VARCHAR', nullable: false },
       { name: 'email', type: 'VARCHAR', nullable: true },
       { name: 'signed_up', type: 'VARCHAR', nullable: true },
       { name: 'active', type: 'BOOLEAN', nullable: true },
     ]);
+    // Its foreign keys too, so the Relationships view draws them without documenting the file.
+    expect(catalog.tables.map((t) => t.foreignKeys)).toEqual([[], [{ columns: ['customer_id'], refTable: 'customers', refColumns: ['id'] }], []]);
     // The catalogue is kept on the connection, so the picker and the runner have it without connecting.
     expect(project().connections[0]!.catalog).toEqual(catalog);
     expect(project().connections[0]!.catalogAt).toBeDefined();

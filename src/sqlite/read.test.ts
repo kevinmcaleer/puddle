@@ -1,7 +1,8 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { tableFromIPC } from 'apache-arrow';
-import { duckType, isSqlite, listTables, openDatabase, readRows } from './read';
+import { catalogTable } from '../connect/drivers/sqlite';
+import { duckType, isSqlite, listTables, openDatabase, readRows, sqlJs } from './read';
 import { SqliteService } from './service';
 
 const shop = () => new Uint8Array(readFileSync(join(__dirname, '../../tests/fixtures/db/shop.sqlite')));
@@ -28,6 +29,31 @@ describe('SQLite files', () => {
       { name: 'signed_up', type: 'DATE', pk: false, notNull: false },
       { name: 'active', type: 'BOOLEAN', pk: false, notNull: false },
     ]);
+    db.close();
+  });
+
+  it('lists each table’s foreign keys, for the Relationships view, and keeps them and the keys in the catalogue', async () => {
+    const db = await openDatabase(shop());
+    const tables = listTables(db);
+    expect(tables.map((t) => t.foreignKeys)).toEqual([[], [{ columns: ['customer_id'], refTable: 'customers', refColumns: ['id'] }], []]);
+    const catalog = tables.map(catalogTable);
+    expect(catalog[1]!.foreignKeys).toEqual([{ columns: ['customer_id'], refTable: 'customers', refColumns: ['id'] }]);
+    expect(catalog[0]!.columns[0]).toEqual({ name: 'id', type: 'BIGINT', nullable: false, key: true });
+    expect(catalog[0]!.columns[1]).not.toHaveProperty('key');
+    db.close();
+  });
+
+  it('gives a reference that names no column its parent’s primary key, and keeps a two-column key in order', async () => {
+    const db = new (await sqlJs()).Database();
+    db.run(`CREATE TABLE regions (country TEXT, code TEXT, PRIMARY KEY (country, code));
+      CREATE TABLE stores (sku INTEGER PRIMARY KEY, country TEXT, region TEXT, FOREIGN KEY (country, region) REFERENCES regions);
+      CREATE TABLE sales (id INTEGER PRIMARY KEY, store INTEGER REFERENCES stores, missing INTEGER REFERENCES nowhere);`);
+    const fks = Object.fromEntries(listTables(db).map((t) => [t.name, t.foreignKeys]));
+    expect(fks.stores).toEqual([{ columns: ['country', 'region'], refTable: 'regions', refColumns: ['country', 'code'] }]);
+    expect(fks.sales).toEqual(expect.arrayContaining([
+      { columns: ['store'], refTable: 'stores', refColumns: ['sku'] },
+      { columns: ['missing'], refTable: 'nowhere', refColumns: [''] },
+    ]));
     db.close();
   });
 

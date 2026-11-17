@@ -14,6 +14,8 @@ export interface SqliteTableInfo {
   kind: 'table' | 'view';
   columns: { name: string; type: string; pk: boolean; notNull: boolean }[];
   rows: number;
+  /** Its foreign keys, a reference without columns given the parent's primary key. */
+  foreignKeys?: { columns: string[]; refTable: string; refColumns: string[] }[];
 }
 
 /** A table or view in detail, for documenting the schema: keys, indexes, foreign keys, defaults, and a view's SQL. */

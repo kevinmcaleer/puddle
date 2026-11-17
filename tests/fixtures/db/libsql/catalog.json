@@ -13,7 +13,8 @@
           {
             "name": "id",
             "type": "BIGINT",
-            "nullable": false
+            "nullable": false,
+            "key": true
           },
           {
             "name": "name",
@@ -35,7 +36,8 @@
             "type": "BOOLEAN",
             "nullable": true
           }
-        ]
+        ],
+        "foreignKeys": []
       },
       {
         "name": "orders",
@@ -45,7 +47,8 @@
           {
             "name": "id",
             "type": "BIGINT",
-            "nullable": false
+            "nullable": false,
+            "key": true
           },
           {
             "name": "customer_id",
@@ -77,6 +80,17 @@
             "type": "VARCHAR",
             "nullable": true
           }
+        ],
+        "foreignKeys": [
+          {
+            "columns": [
+              "customer_id"
+            ],
+            "refTable": "customers",
+            "refColumns": [
+              "id"
+            ]
+          }
         ]
       },
       {
@@ -99,7 +113,8 @@
             "type": "VARCHAR",
             "nullable": true
           }
-        ]
+        ],
+        "foreignKeys": []
       }
     ]
   },
