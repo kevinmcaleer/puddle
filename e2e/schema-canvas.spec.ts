@@ -19,7 +19,7 @@ test('a relationship drawn once shows in the Schema view with the canvas’s tab
   await page.getByTestId('project-menu').click();
   await page.getByRole('menuitem', { name: 'Schema' }).click();
   const schema = page.getByTestId('schema-view');
-  await expect(schema.getByTestId('schema-canvas-counts')).toHaveText('2 from the canvas');
+  await expect(schema.getByTestId('schema-canvas-counts')).toHaveText('2 tables, 1 ref from the canvas');
   await expect(schema.getByTestId('schema-group-Canvas tables')).toBeVisible();
   await expect(schema.getByTestId('schema-col-shop-orders.csv-customer_id')).toBeVisible();
   await expect(schema.getByTestId('schema-table-shop-customers.csv')).toContainText('name');

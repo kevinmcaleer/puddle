@@ -69,3 +69,24 @@ describe('renaming a node that SQL reads by name', () => {
     expect(sqlOf(before, 'q')).toBe('SELECT * FROM "sales.csv"');
   });
 });
+
+describe('renaming a node the DBML documents by name', () => {
+  const dbml = 'Table "youtube.yml" {\n  published date\n}\n\nTable courses {\n  date_published date\n}\n\nRef: courses.date_published <> "youtube.yml".published\n';
+  const named = (text: string, positions = {}) => {
+    const p = project('SELECT 1');
+    return { ...p, nodes: p.nodes.map((n) => (n.id === 'a' ? { ...n, name: 'youtube.yml' } : n)), schema: { ...p.schema, dbml: text, positions } };
+  };
+
+  // Regression: renaming the node left the DBML table under its old name, so the node's refs no longer reached it.
+  it('renames the table and its refs, keeping its place on the diagram', () => {
+    const p = renameNode(named(dbml, { 'table:public.youtube.yml': { x: 10, y: 20 } }), 'a', 'youtube');
+    expect(p.schema.dbml).toBe(dbml.replaceAll('"youtube.yml"', 'youtube'));
+    expect(p.schema.positions).toEqual({ 'table:public.youtube': { x: 10, y: 20 } });
+  });
+
+  it('leaves the DBML alone when the new name is a table already, or no table has the old name', () => {
+    const taken = `${dbml}\nTable youtube {\n  id int\n}\n`;
+    expect(renameNode(named(taken), 'a', 'youtube').schema.dbml).toBe(taken);
+    expect(renameNode(named(dbml), 'b', 'clients').schema.dbml).toBe(dbml);
+  });
+});

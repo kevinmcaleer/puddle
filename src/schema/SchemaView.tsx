@@ -171,7 +171,13 @@ export function SchemaView() {
         </span>
         {canvas && (
           <span className="ui-metric" data-testid="schema-canvas-counts">
-            {canvas.schema.tables.length} from the canvas
+            {[
+              canvas.schema.tables.length && `${canvas.schema.tables.length} ${canvas.schema.tables.length === 1 ? 'table' : 'tables'}`,
+              canvas.schema.refs.length && `${canvas.schema.refs.length} ${canvas.schema.refs.length === 1 ? 'ref' : 'refs'}`,
+            ]
+              .filter(Boolean)
+              .join(', ')}{' '}
+            from the canvas
           </span>
         )}
         <Switch
