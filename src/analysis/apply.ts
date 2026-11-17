@@ -14,14 +14,14 @@ import type { Issue } from './issues';
 export async function applyFixes(node: GraphNode, issues: Issue[], analysis: NodeAnalysis, now = new Date()) {
   const engine = useEngineStore.getState().engine;
   const project = useProjectStore.getState().history.present;
-  const { steps, readOptions } = await planFixes(issues, {
+  const { steps, readOptions, fixedBy } = await planFixes(issues, {
     available: analysis.columns,
     locale: project.settings.locale,
     detectDates: engine ? (column) => detectDateFormats(engine, project, { nodeId: node.id }, column).catch(() => undefined) : undefined,
   });
   const { apply, batch, setView } = useProjectStore.getState();
   const placed = batch(() => {
-    apply((p) => recordAnalysis(p, node.id, foundIssues(analysis), issues.map((i) => i.key), now.toISOString(), analysis.facts.rows));
+    apply((p) => recordAnalysis(p, node.id, foundIssues(analysis), issues.map((i) => i.key), now.toISOString(), analysis.facts.rows, fixedBy));
     // Read options first: a banner skipped at the top changes what the steps see.
     if (node.type === 'source' && Object.keys(readOptions).length) {
       apply((p) => {

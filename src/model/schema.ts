@@ -273,6 +273,8 @@ export const RecordedIssueZ = z.object({
   label: z.string(),
   count: z.number(),
   fixed: z.boolean().optional(),
+  /** The steps Fix all added for this issue, by id. While they are all there and on, the issue is fixed, not open. */
+  fixedBy: z.array(z.string()).optional(),
 });
 
 /** What analysis last found in a node's output, kept when Fix all ran or an issue was ignored, so the quality report can say what was found and what became of it. */

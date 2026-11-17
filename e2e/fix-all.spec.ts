@@ -13,6 +13,13 @@ test('Fix all clears a source’s issues as a Fixes group in one undo step, and 
   await expect(page.getByTestId('strip-issues')).toHaveAttribute('data-count', '0', { timeout: 20_000 });
   await expect(page.getByText('Fixes', { exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: /^Fix \d+ (of \d+ )?issues?$/ })).toHaveCount(0);
+  // Regression (#272): the source went on warning of the issues its Fixes group had fixed, and offered to fix them again.
+  await expect(node(page, 'messy.csv').getByTestId('node-issues')).toHaveCount(0);
+  await expect(node(page, 'messy.csv').getByTestId('node-fixed')).toHaveText('7 fixed');
+  await node(page, 'messy.csv').getByRole('button', { name: '7 fixed' }).click();
+  await expect(page.getByTestId('issues-fixed').locator('[data-testid^="fixed-"]')).toHaveCount(7);
+  await expect(page.getByTestId('issues-none')).toHaveText('Nothing left to fix.');
+  await expect(page.getByRole('button', { name: /^Fix \d+ (of \d+ )?issues?$/ })).toHaveCount(0);
 
   // One undo step takes the whole lot back.
   await page.getByRole('button', { name: 'Undo' }).click();

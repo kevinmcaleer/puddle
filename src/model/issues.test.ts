@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { flow } from '../../tests/helpers/projects';
-import { ignoreIssue, recordAnalysis, unignoreIssue } from './issues';
+import { flow, step } from '../../tests/helpers/projects';
+import { fixedIssueKeys, ignoreIssue, recordAnalysis, unignoreIssue } from './issues';
+import { removeStep, toggleStep } from './steps';
 
 const project = flow({ nodes: [{ id: 't', type: 'transform' }] });
 
@@ -39,5 +40,39 @@ describe('the kept analysis', () => {
     p = recordAnalysis(p, 't', found.slice(0, 2), ['duplicateRows'], '2026-10-21T10:00:00.000Z', 5);
     expect(p.nodes[0]!.analysis).toMatchObject({ at: '2026-10-21T10:00:00.000Z', issues: [{ key: 'duplicateRows', fixed: true }, { key: 'edgeSpaces:name', fixed: true }] });
     expect(p.nodes[0]!.analysis!.issues).toHaveLength(2);
+  });
+
+  // Regression (#272): a source went on warning of issues that the steps after it had fixed.
+  describe('issues fixed by steps', () => {
+    const fixing = flow({
+      nodes: [
+        { id: 't', type: 'transform' },
+        { id: 'fix', type: 'transform', steps: [step('trim', 'trimWhitespace', { columns: ['name'] }), step('dedupe', 'duplicateRows', { columns: [], keep: 'first' })] },
+      ],
+      wires: [['t', 'fix']],
+    });
+    const fixed = recordAnalysis(fixing, 't', found, ['edgeSpaces:name', 'duplicateRows'], '2026-10-21T09:00:00.000Z', 5, { 'edgeSpaces:name': ['trim'], duplicateRows: ['dedupe'] });
+
+    it('are kept with the steps that fix them, and count as fixed while those steps are there and on', () => {
+      expect(fixed.nodes[0]!.analysis!.issues.map((i) => i.fixedBy)).toEqual([['dedupe'], ['trim'], undefined]);
+      expect([...fixedIssueKeys(fixed, 't')].sort()).toEqual(['duplicateRows', 'edgeSpaces:name']);
+      expect(fixedIssueKeys(fixed, 'fix').size).toBe(0);
+    });
+
+    it('are open again when a fix’s step is deleted or turned off', () => {
+      expect([...fixedIssueKeys(removeStep(fixed, 'fix', 'trim'), 't')]).toEqual(['duplicateRows']);
+      expect([...fixedIssueKeys(toggleStep(fixed, 'fix', 'dedupe'), 't')]).toEqual(['edgeSpaces:name']);
+      expect([...fixedIssueKeys(toggleStep(toggleStep(fixed, 'fix', 'dedupe'), 'fix', 'dedupe'), 't')].sort()).toEqual(['duplicateRows', 'edgeSpaces:name']);
+    });
+
+    it('keep their steps through a later Fix all or an ignore', () => {
+      const later = recordAnalysis(fixed, 't', found, [], '2026-10-21T10:00:00.000Z', 5);
+      expect(later.nodes[0]!.analysis!.issues.map((i) => i.fixedBy)).toEqual([['dedupe'], ['trim'], undefined]);
+    });
+
+    it('are not counted when only marked fixed, with no steps named (a read option, or a project saved before)', () => {
+      const marked = recordAnalysis(fixing, 't', found, ['edgeSpaces:name'], '2026-10-21T09:00:00.000Z', 5);
+      expect(fixedIssueKeys(marked, 't').size).toBe(0);
+    });
   });
 });

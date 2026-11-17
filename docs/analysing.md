@@ -58,6 +58,8 @@ The fixes land in two places:
 
 ![The canvas after Fix all on the CRM export: the Fixes group of Transforms after the source](_static/screenshots/analysing-fixed.png)
 
+Once its issues are fixed, the node you fixed stops warning: its badge reads **6 fixed** in place of **6 issues**, and its Issues panel lists each one as **Fixed**, with the step that fixes it, under **Fixed by the steps after this node**. Delete or turn off one of those steps and its issue is open again.
+
 The whole of Fix all is one change: Ctrl+Z undoes it. Each step is an ordinary step, so you can open the **Fixes** group, change a step's settings, turn one off or delete it, as {doc}`cleaning` describes. Fix all looks at the data where you are, so after one pass the node at the end of the group is analysed in turn, and what is left (a number column now clean enough to parse, say) is a second **Fix all** away.
 
 ## Ignoring an issue

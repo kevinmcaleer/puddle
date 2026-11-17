@@ -10,7 +10,7 @@ import { exportProject, goHome, importProject } from '../persistence/workspace';
 import { QuickFixes } from '../quickfix/QuickFixes';
 import { showFailing } from '../rules';
 import { useKeptTotal } from '../flow/kept';
-import { issuesOf, useAnalysisEntry, useAnalysisEvaluation } from '../analysis';
+import { nodeIssues, useAnalysisEntry, useAnalysisEvaluation } from '../analysis';
 import { FixAll } from '../analysis/FixAll';
 import { ruleTally, useRuleStore } from '../flow/rules';
 import { sampledUpstream, useSample, useViewProject } from '../flow/sample';
@@ -237,7 +237,7 @@ function Strip() {
   const p = one ? profile?.[one] : undefined;
   const sampled = sampledUpstream(project, node.id, sample).length > 0;
   const rules = ruleTally(node.rules, results);
-  const issues = analysis?.state === 'ok' ? issuesOf(node, analysis).length : undefined;
+  const issues = analysis?.state === 'ok' ? nodeIssues(project, node, analysis).open.length : undefined;
   const detail = (
     <>
       {rules && sampled && <span data-testid="rules-on-sample">Rules checked on the sample</span>}

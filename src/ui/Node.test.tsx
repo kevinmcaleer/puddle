@@ -63,4 +63,18 @@ describe('NodeCard issues badge', () => {
     expect(onIssues).toHaveBeenCalledTimes(1);
     expect(onClick).toHaveBeenCalledTimes(1);
   });
+
+  it('says how many issues are fixed, in place of the warning, when none are open', () => {
+    const onIssues = vi.fn();
+    render(<NodeCard kind="source" name="a" rows={5} issues={0} fixed={6} onIssues={onIssues} />);
+    expect(screen.queryByTestId('node-issues')).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: '6 fixed' }));
+    expect(onIssues).toHaveBeenCalledTimes(1);
+  });
+
+  it('goes on warning while any issue is open', () => {
+    render(<NodeCard kind="source" name="a" rows={5} issues={1} fixed={6} />);
+    expect(screen.getByTestId('node-issues').textContent).toBe('1 issue');
+    expect(screen.queryByTestId('node-fixed')).toBeNull();
+  });
 });

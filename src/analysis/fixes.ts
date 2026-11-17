@@ -29,11 +29,13 @@ export interface Planned {
   steps: Step[];
   /** Read options to set on the source first (a banner skipped at the top), merged over the ones it has. */
   readOptions: ParseOptions;
+  /** For each issue fixed by steps, by issue key: the ids of its steps. */
+  fixedBy: Record<string, string[]>;
 }
 
 /** The steps that fix these issues, in order, each over every column its issues name, and the read options to set. */
 export async function planFixes(issues: Issue[], ctx: FixContext): Promise<Planned> {
-  const groups = new Map<string, { fix: StepFix; columns: string[]; order: number }>();
+  const groups = new Map<string, { fix: StepFix; columns: string[]; order: number; issues: string[] }>();
   let readOptions: ParseOptions = {};
   for (const issue of issues) {
     if (isReadOptionsFix(issue.fix)) {
@@ -45,14 +47,16 @@ export async function planFixes(issues: Issue[], ctx: FixContext): Promise<Plann
     steps.forEach((fix, k) => {
       const key = groupKey(fix);
       // A fix of several steps keeps them together, in its order, where its first step falls.
-      const g = groups.get(key) ?? { fix, columns: [], order: ORDER.indexOf(steps[0]!.type) + k / 100 };
+      const g = groups.get(key) ?? { fix, columns: [], order: ORDER.indexOf(steps[0]!.type) + k / 100, issues: [] };
+      g.issues.push(issue.key);
       if (issue.column != null && !g.columns.includes(issue.column)) g.columns.push(issue.column);
       groups.set(key, g);
     });
   }
   const sorted = [...groups.values()].sort((a, b) => a.order - b.order);
   const steps: Step[] = [];
-  for (const { fix, columns } of sorted) {
+  const fixedBy: Record<string, string[]> = {};
+  for (const { fix, columns, issues: fixes } of sorted) {
     const { type, params = {} } = fix;
     let extra: Record<string, unknown> = { ...params };
     if (type === 'parseDates' && !params.formats) {
@@ -63,8 +67,9 @@ export async function planFixes(issues: Issue[], ctx: FixContext): Promise<Plann
     const step = newStep(type, { selected: columns, available: ctx.available, decimal: decimalFor(ctx.locale), locale: ctx.locale });
     // The issues' columns, for a step that works on columns; a step that names its own (Rename, Split) keeps its settings.
     steps.push(relabel({ ...step, params: { ...step.params, ...(columns.length && 'columns' in step.params ? { columns } : {}), ...extra } }));
+    for (const key of fixes) (fixedBy[key] ??= []).push(step.id);
   }
-  return { steps, readOptions };
+  return { steps, readOptions, fixedBy };
 }
 
 /** Which issues Fix all applies without being asked: every `fix`, and the suggestions too when the project says so. */

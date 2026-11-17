@@ -26,6 +26,18 @@ const issues: Issue[] = [
 ];
 
 describe('planning fixes', () => {
+  it('says which steps fix each issue, so an issue is open again when its step goes', async () => {
+    const { steps, fixedBy } = await planFixes(issues, { available, locale: 'en-GB' });
+    const typeOf = (id: string) => steps.find((s) => s.id === id)!.type;
+    expect(Object.keys(fixedBy).sort()).toEqual(issues.map((i) => i.key).sort());
+    // Two columns with spaces share one Trim step.
+    expect(fixedBy[issueKey('edgeSpaces', 'name')]).toEqual(fixedBy[issueKey('edgeSpaces', 'city')]);
+    expect(fixedBy[issueKey('edgeSpaces', 'name')]!.map(typeOf)).toEqual(['trimWhitespace']);
+    // Title case and upper case are different steps.
+    expect(fixedBy[issueKey('mixedCase', 'city')]).not.toEqual(fixedBy[issueKey('mixedCase', 'name')]);
+    expect(fixedBy[issueKey('duplicateRows', undefined)]!.map(typeOf)).toEqual(['duplicateRows']);
+  });
+
   it('makes one step per fix type over every column it applies to, hidden characters first and duplicates last', async () => {
     const { steps } = await planFixes(issues, { available, locale: 'en-GB' });
     expect(steps.map((s) => [s.type, s.params.columns])).toEqual([
@@ -88,7 +100,7 @@ describe('planning fixes', () => {
 
   it('skips issues with nothing to apply', async () => {
     const none = issue('mixedCase', 'name', undefined, 'info');
-    expect(await planFixes([none], { available, locale: 'en-GB' })).toEqual({ steps: [], readOptions: {} });
+    expect(await planFixes([none], { available, locale: 'en-GB' })).toEqual({ steps: [], readOptions: {}, fixedBy: {} });
   });
 
   it('gathers read-option fixes apart from the steps, later ones over earlier', async () => {
