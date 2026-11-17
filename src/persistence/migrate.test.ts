@@ -75,7 +75,8 @@ describe('project files', () => {
     const p = readProjectFile(fixture('v1.puddle.json'));
     expect(p.formatVersion).toBe(FORMAT_VERSION);
     // Format 1 files always carried stepsAsNodes: false, the old default, so it is dropped for the new one.
-    expect(p.settings).toEqual({ sampleThresholdRows: 1_000_000, locale: 'en-GB', defaultDateFormats: ['%d/%m/%Y'], stepsAsNodes: true, fixAllSuggestions: false, columnNames: 'words' });
+    // A project saved before the project panel keeps its queries on the canvas until asked to move them.
+    expect(p.settings).toEqual({ sampleThresholdRows: 1_000_000, locale: 'en-GB', defaultDateFormats: ['%d/%m/%Y'], stepsAsNodes: true, fixAllSuggestions: false, columnNames: 'words', queriesInPanel: false });
     expect(p.nodes.map((n) => n.id)).toEqual(['nCust', 'nPaste', 'nOut']);
   });
 

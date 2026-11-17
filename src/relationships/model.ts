@@ -5,6 +5,7 @@ import { cardKind } from '../canvas/kind';
 import { foreignKey, projectSchema, uniqueKeys } from '../compiler';
 import { inputEdge, inputEdges, nodeById, type ColumnSchema, type GraphNode, type Port, type Project } from '../model';
 import type { NodeKind } from '../ui';
+import { databasePairs } from './database';
 
 /** One end of a relationship: a column of a node's output. */
 export interface End {
@@ -15,8 +16,12 @@ export interface End {
 /** Where the project states a relationship: a node that combines on it, or a rule on `nodeId` that checks it. */
 export interface Via {
   nodeId: string;
-  /** `schema`: a ref of the project's DBML, between two Schema table nodes. */
-  kind: 'join' | 'lookup' | 'query' | 'rule' | 'schema';
+  /**
+   * `schema`: a ref of the project's DBML, between two Schema table nodes. `database`: a foreign key a connection's
+   * database declares, between the sources reading its tables. `guess`: column names that match, in a database that
+   * declares no foreign keys.
+   */
+  kind: 'join' | 'lookup' | 'query' | 'rule' | 'schema' | 'database' | 'guess';
   ruleId?: string;
   /** The node's name, or the rule's label. */
   label: string;
@@ -107,6 +112,9 @@ function statedPairs(project: Project): Array<{ from: End; to: End; via: Via }> 
           fk.child.columns.forEach((c, i) => pair(child.id, c, parent.id, fk.parent.columns[i] ?? c, { nodeId: child.id, kind: 'schema', label: ref.name ? `Ref ${ref.name}` : 'Ref in the schema' }));
     }
   }
+  // What the databases themselves say about the tables read from them.
+  for (const p of databasePairs(project))
+    pair(p.from.nodeId, p.from.column, p.to.nodeId, p.to.column, { nodeId: p.from.nodeId, kind: p.kind, label: p.kind === 'database' ? `Foreign key in ${p.connection.name}` : 'Guessed from the column names' });
   return pairs;
 }
 

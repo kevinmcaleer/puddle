@@ -11,7 +11,13 @@ const need = (ctx: ConnectorContext) => {
 };
 
 /** A SQLite table as the catalogue lists it. */
-export const catalogTable = (t: SqliteTableInfo): CatalogTable => ({ name: t.name, kind: t.kind, rows: t.rows, columns: t.columns.map((c) => ({ name: c.name, type: duckType(c.type).sqlType, nullable: !c.notNull && !c.pk })) });
+export const catalogTable = (t: SqliteTableInfo): CatalogTable => ({
+  name: t.name,
+  kind: t.kind,
+  rows: t.rows,
+  columns: t.columns.map((c) => ({ name: c.name, type: duckType(c.type).sqlType, nullable: !c.notNull && !c.pk, ...(c.pk ? { key: true } : {}) })),
+  ...(t.foreignKeys ? { foreignKeys: t.foreignKeys } : {}),
+});
 
 export function sqliteConnector(id: 'sqlite' | 'libsql', client: () => SqliteClient = sqliteClient): Connector {
   return {

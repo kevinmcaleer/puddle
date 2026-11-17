@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { expect, test, type Page } from '@playwright/test';
 import { addFiles, cell, expectRows, fixture, node, openApp, saved, selectNode } from './helpers/app';
 
@@ -217,6 +218,29 @@ test('documenting a SQLite file writes its tables into the Schema view as a grou
   await rel.getByRole('button', { name: 'Back to canvas' }).click();
   await projectMenu(page, 'Databases');
   await expect(page.getByRole('dialog', { name: 'Databases' }).getByTestId('connection-shop')).toContainText('documented');
+});
+
+// A SQLite file named without a database extension (a browser's History, an app's .data file) is known by its header,
+// and the foreign keys the file declares are drawn in the Relationships view as soon as both tables are read.
+test('a SQLite file with no extension opens as a database, and its foreign key is drawn between the tables added from it', async ({ page }) => {
+  await openApp(page);
+  await addFiles(page, [{ name: 'History', mimeType: 'application/octet-stream', buffer: readFileSync(fixture('db/shop.sqlite')) }]);
+  const picker = page.getByRole('dialog', { name: 'Read from History' });
+  await expect(picker.getByTestId('table-picker')).toContainText('customers', { timeout: 20_000 });
+  await picker.getByRole('checkbox', { name: 'customers' }).check();
+  await picker.getByRole('checkbox', { name: 'orders' }).check();
+  await picker.getByRole('button', { name: 'Add 2 sources' }).click();
+  await expect(node(page, 'orders')).toHaveAttribute('data-status', 'ok', { timeout: 20_000 });
+  await expect(node(page, 'customers')).toHaveAttribute('data-status', 'ok', { timeout: 20_000 });
+
+  await projectMenu(page, /Relationships/);
+  const rel = page.getByTestId('relationships');
+  await expect(rel.getByTestId('relationship-line')).toHaveCount(1);
+  const row = rel.getByTestId('relationship');
+  await expect(row).toContainText('orders.customer_id');
+  await expect(row).toContainText('customers.id');
+  await expect(row).toContainText('Foreign key in History');
+  await expect(row.getByTestId('relationship-cardinality')).toHaveText('many to one', { timeout: 20_000 });
 });
 
 test('a SQLite file on this computer is read through puddle-connect: found at localhost, tested, and a table read', async ({ page }) => {

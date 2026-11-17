@@ -22,6 +22,9 @@ interface SessionState {
   schemaOpen: boolean;
   /** The relationships view fills the canvas area, in place of the canvas. */
   relationshipsOpen: boolean;
+  /** The project panel beside the canvas: shown, hidden, or (null) left to show itself once a query is listed in it only. */
+  outlineOpen: boolean | null;
+  setOutlineOpen: (open: boolean) => void;
   /** The right-hand dock (the inspector) is showing. */
   inspectorOpen: boolean;
   /** The database browser pane shows this connection in the inspector's place; null shows the inspector. */
@@ -97,6 +100,8 @@ export const useSession = create<SessionState>((set) => ({
   schemaOpen: false,
   relationshipsOpen: false,
   inspectorOpen: true,
+  outlineOpen: null,
+  setOutlineOpen: (outlineOpen) => set({ outlineOpen }),
   browsingConnectionId: null,
   resultsOpen: true,
   consoleOpen: false,

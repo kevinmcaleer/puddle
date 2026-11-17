@@ -1,8 +1,9 @@
 import { expect, test } from '@playwright/test';
-import { addFiles, expectRows, expectSql, fixture, node, openApp, selectNode } from './helpers/app';
+import { addFiles, expectRows, expectSql, fixture, node, openApp, queriesOnCanvas, selectNode } from './helpers/app';
 
 test('a node’s SQL is edited beside its rows at the bottom of the screen, for a SQL node and for a Query', async ({ page }) => {
   await openApp(page);
+  await queriesOnCanvas(page);
   await addFiles(page, [fixture('shop-orders.csv')]);
   await expect(node(page, 'shop-orders.csv')).toHaveAttribute('data-status', 'ok', { timeout: 20_000 });
   await page.getByRole('button', { name: 'Add', exact: true }).click();

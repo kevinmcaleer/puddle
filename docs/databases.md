@@ -59,7 +59,7 @@ A connection source's inspector shows its table or query and the row limit; chan
 
 The result lands in the {doc}`schema` view as a table group named after the connection, beside your own tables and notes, which stay as they are; foreign keys become refs, enums become enums, and a view is a note holding its SQL. A database that keeps no catalogue of columns (MongoDB, DynamoDB, Redis, SurrealDB) is inferred from a sample of its records instead, and the group's note says from how many. Documenting again replaces what the group held and shows what changed since the last time, and each documenting saves a version labelled with the connection and the day.
 
-A source that reads a documented table is checked against it: its primary key, foreign keys and not nulls become rules in the source's inspector, and the {doc}`relationships` view draws the documented refs between sources read from the same database, each marked **Ref in the schema**.
+A source that reads a documented table is checked against it: its primary key, foreign keys and not nulls become rules in the source's inspector, and the {doc}`relationships` view draws the documented refs between sources read from the same database, each marked **Ref in the schema**. A SQLite file's foreign keys are drawn there even before it is documented, and for a file that declares none Puddle guesses them from the column names.
 
 ## Project › Databases
 

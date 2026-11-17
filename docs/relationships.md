@@ -11,6 +11,10 @@ Puddle draws the relationships the project already states:
 - the keys of each Join and Lookup node,
 - the join lines of each Query node,
 - each "Exists in another node" rule, and each "Is one of" rule that takes its values from another node. These are drawn dashed: they check the data, they don't combine it.
+- the foreign keys a SQLite or LibSQL database declares, between the sources that read its tables, each marked **Foreign key in** and the connection's name. Add two tables of the file (orders and customers, say) and the line between them is drawn as soon as both are read; nothing needs documenting first.
+- for a SQLite database that declares no foreign keys, the ones its column names suggest, marked **Guessed from the column names**: a column named after another table and its key (`customer_id`, `CustomerID` or `customers_id` for `customers.id`), or named the same as another table's key when that key is more than plain `id` (`product_code` for `products.product_code`). A guess is only a suggestion; when it is right, drag the column onto its match to keep it as a rule.
+
+Lines from a database are drawn dashed too, since the database states them rather than a node of the project.
 
 Every source is drawn as a table. A key read from a Transform node is drawn on the source it comes from, as long as the column keeps its name on the way; a column a step made stays on the node that made it. The list below the tables names each relationship and where it's stated: click a name to open that node, or a Query's designer.
 

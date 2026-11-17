@@ -27,6 +27,31 @@ export async function openDatabase(data: Uint8Array, locateFile?: (file: string)
 
 const quote = (name: string) => `"${name.replaceAll('"', '""')}"`;
 
+/** The foreign keys from `PRAGMA foreign_key_list` rows (id, seq, table, from, to): one per id, its columns in order. */
+export function foreignKeysOf(rows: unknown[][]): { columns: string[]; refTable: string; refColumns: string[] }[] {
+  const fks = new Map<number, { columns: string[]; refTable: string; refColumns: string[] }>();
+  for (const r of rows as [number, number, string, string, string | null][]) {
+    const [id, , refTable, from, to] = r;
+    const fk = fks.get(id) ?? { columns: [], refTable, refColumns: [] };
+    fk.columns.push(from);
+    // A reference without a column names the parent's primary key.
+    fk.refColumns.push(to ?? '');
+    fks.set(id, fk);
+  }
+  return [...fks.values()];
+}
+
+/** Give a reference that names no columns its parent's primary key, as SQLite reads it; a parent without one stays as it is. */
+export function withParentKeys(tables: SqliteTableInfo[]): SqliteTableInfo[] {
+  const keyOf = new Map(tables.map((t) => [t.name.toLowerCase(), t.columns.filter((c) => c.pk).map((c) => c.name)]));
+  for (const t of tables)
+    for (const fk of t.foreignKeys ?? []) {
+      const key = keyOf.get(fk.refTable.toLowerCase()) ?? [];
+      fk.refColumns = fk.refColumns.map((c, i) => c || key[i] || '');
+    }
+  return tables;
+}
+
 /** The database's tables and views (not SQLite's own), with their declared columns and row counts. */
 export function listTables(db: Database): SqliteTableInfo[] {
   const out: SqliteTableInfo[] = [];
@@ -41,12 +66,13 @@ export function listTables(db: Database): SqliteTableInfo[] {
       } catch {
         // A view over something missing can't be counted; it is listed all the same.
       }
-      out.push({ name, kind: type === 'view' ? 'view' : 'table', columns, rows });
+      const foreignKeys = type === 'view' ? [] : foreignKeysOf(db.exec(`PRAGMA foreign_key_list(${quote(name)})`)[0]?.values ?? []);
+      out.push({ name, kind: type === 'view' ? 'view' : 'table', columns, rows, foreignKeys });
     }
   } finally {
     stmt.free();
   }
-  return out;
+  return withParentKeys(out);
 }
 
 /**
@@ -81,21 +107,13 @@ export function describeTables(db: Database): SqliteTableDetail[] {
         default: r[4] === null || r[4] === undefined ? undefined : String(r[4]),
       };
     });
-    const fks = new Map<number, { columns: string[]; refTable: string; refColumns: string[] }>();
-    for (const r of rows(`PRAGMA foreign_key_list(${quote(name)})`) as [number, number, string, string, string | null][]) {
-      const [id, , refTable, from, to] = r;
-      const fk = fks.get(id) ?? { columns: [], refTable, refColumns: [] };
-      fk.columns.push(from);
-      // A reference without a column names the parent's primary key.
-      fk.refColumns.push(to ?? '');
-      fks.set(id, fk);
-    }
+    const fks = foreignKeysOf(rows(`PRAGMA foreign_key_list(${quote(name)})`));
     out.push({
       name,
       kind: type === 'view' ? 'view' : 'table',
       columns,
       indexes: indexes.filter((i) => i.origin === 'c').map(({ name: indexName, columns: cols, unique }) => ({ name: indexName, columns: cols, unique })),
-      foreignKeys: [...fks.values()],
+      foreignKeys: fks,
       sql: type === 'view' ? (sql ?? undefined) : undefined,
     });
   }

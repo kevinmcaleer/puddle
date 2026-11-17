@@ -26,8 +26,12 @@ import { useFlowStore } from '../flow/status';
 import { fileSetMembers, JOIN_TYPES, projectSchema, ruleRefs, scriptTables } from '../compiler';
 import { qualified } from '../schema';
 import {
+  canvasProject,
+  isQueryNode,
+  offCanvasIds,
   canGroup,
   canMakeGroup,
+  chainGroupName,
   canUngroup,
   chainAround,
   groupById,
@@ -181,7 +185,7 @@ function GroupBar({ ids, onGrouped }: { ids: string[]; onGrouped: (groupId: stri
           Group
         </Button>
         {chainOk && (
-          <Button size="sm" variant="secondary" icon="group" title={`Group the ${chain.length} Transform nodes wired in a line through these`} onClick={() => onGrouped(groupSelected(chain))}>
+          <Button size="sm" variant="secondary" icon="group" title={`Group the ${chain.length} Transform nodes wired in a line through these`} onClick={() => onGrouped(groupSelected(chain, chainGroupName(project, chain)))}>
             Group the chain
           </Button>
         )}
@@ -244,7 +248,7 @@ function NodeMenu({ at, onClose, onRename, onGrouped }: { at: { x: number; y: nu
     if (check.ok || !group) items.push({ label: ids.length > 1 ? `Group ${ids.length} nodes` : 'Group', icon: 'group', shortcut: shortcutText('group'), disabled: !check.ok, onSelect: () => onGrouped(groupSelected(ids)) });
     // The run of Transforms wired one after another through this node, as one group.
     const chain = group ? [] : chainAround(project, at.flowId);
-    if (chain.length > 1) items.push({ label: 'Group the chain', icon: 'group', hint: `${chain.length} nodes`, onSelect: () => onGrouped(groupSelected(chain)) });
+    if (chain.length > 1) items.push({ label: 'Group the chain', icon: 'group', hint: `${chain.length} nodes`, onSelect: () => onGrouped(groupSelected(chain, chainGroupName(project, chain))) });
   }
   // Any node with rows can be landed in a table designed in the schema: a Schema table node wired from it checks them.
   const from = !groupId ? nodeById(project, at.flowId) : undefined;
@@ -310,16 +314,17 @@ function RenameNode() {
   const nodeId = useSession((s) => s.renamingNodeId);
   const node = useProjectStore((s) => (nodeId ? nodeById(s.history.present, nodeId) : undefined));
   if (!node) return null;
-  return <RenameNodeDialog key={node.id} nodeId={node.id} current={node.name} />;
+  // A query still called what it was made as ("SQL 3") is being named, not renamed.
+  return <RenameNodeDialog key={node.id} nodeId={node.id} current={node.name} naming={isQueryNode(node) && /^(SQL|Query) \d+$/.test(node.name)} />;
 }
 
-function RenameNodeDialog({ nodeId, current }: { nodeId: string; current: string }) {
+function RenameNodeDialog({ nodeId, current, naming }: { nodeId: string; current: string; naming: boolean }) {
   const [name, setName] = useState(current);
   const close = () => useSession.getState().askRename(null);
   return (
     <Dialog
-      title="Rename node"
-      confirm="Rename"
+      title={naming ? 'Name this query' : 'Rename node'}
+      confirm={naming ? 'Name it' : 'Rename'}
       confirmDisabled={!name.trim()}
       onClose={close}
       onConfirm={() => {
@@ -327,7 +332,7 @@ function RenameNodeDialog({ nodeId, current }: { nodeId: string; current: string
         close();
       }}
     >
-      <Field label="Name" htmlFor="rename-node-name" hint="Shown on the canvas and in the results. SQL that reads this node by name needs the new name.">
+      <Field label="Name" htmlFor="rename-node-name" hint={naming ? 'What it asks, such as Orders per customer. It is listed by this name, and other SQL can read it by it.' : 'Shown on the canvas and in the results. SQL that reads this node by name needs the new name.'}>
         <TextInput id="rename-node-name" data-autofocus value={name} onChange={(e) => setName(e.target.value)} />
       </Field>
     </Dialog>
@@ -335,9 +340,9 @@ function RenameNodeDialog({ nodeId, current }: { nodeId: string; current: string
 }
 
 /** Group the nodes (collapsed), clearing the node selection; returns the new group's id. */
-function groupSelected(ids: string[]): string {
+function groupSelected(ids: string[], name?: string): string {
   const id = newId('g');
-  useProjectStore.getState().apply((p) => makeGroup(p, ids, id));
+  useProjectStore.getState().apply((p) => makeGroup(p, ids, id, name));
   useSession.getState().select(null);
   return id;
 }
@@ -356,7 +361,9 @@ function useMinimapNeeded() {
 
 export function Canvas({ onAddSource, onLayout }: { onAddSource: () => void; onLayout: () => void }) {
   const minimapNeeded = useMinimapNeeded();
-  const project = useProject();
+  // The whole project, and the project as the canvas draws it: without the queries listed in the project panel only.
+  const whole = useProject();
+  const project = useMemo(() => canvasProject(whole), [whole]);
   const { apply, setView } = useProjectStore.getState();
   const selectedNodeIds = useSession((s) => s.selectedNodeIds);
   const notice = useSession((s) => s.notice);
@@ -378,7 +385,17 @@ export function Canvas({ onAddSource, onLayout }: { onAddSource: () => void; onL
   const rf = useReactFlow();
 
   const viewedId = project.view.viewedNodeId;
-  const activeIds = useMemo(() => (viewedId && project.nodes.some((n) => n.id === viewedId) ? upstreamIds(project, viewedId) : new Set<string>()), [project, viewedId]);
+  // Everything upstream of the viewed node, which may be a query that is off the canvas: its tables are still lit.
+  const activeIds = useMemo(() => (viewedId && whole.nodes.some((n) => n.id === viewedId) ? upstreamIds(whole, viewedId) : new Set<string>()), [whole, viewedId]);
+  // The queries off the canvas that read each node, for the mark on its card; and the nodes the selected one reads.
+  const readBy = useMemo(() => {
+    const off = offCanvasIds(whole);
+    const by = new Map<string, string[]>();
+    for (const e of whole.edges) if (off.has(e.to.nodeId) && isQueryNode(nodeById(whole, e.to.nodeId)!) && !by.get(e.from.nodeId)?.includes(e.to.nodeId)) by.set(e.from.nodeId, [...(by.get(e.from.nodeId) ?? []), e.to.nodeId]);
+    return by;
+  }, [whole]);
+  const inspectedId = useSession((s) => s.selectedNodeId);
+  const readBySelected = useMemo(() => new Set(inspectedId && !project.nodes.some((n) => n.id === inspectedId) ? whole.edges.filter((e) => e.to.nodeId === inspectedId).map((e) => e.from.nodeId) : []), [whole, project, inspectedId]);
 
   // Groups: a collapsed one hides its nodes behind one card; an open one draws a frame behind them.
   const [selectedGroup, setSelectedGroup] = useState<string | null>(null);
@@ -425,13 +442,13 @@ export function Canvas({ onAddSource, onLayout }: { onAddSource: () => void; onL
         measured: measured[n.id],
         selected: selectedNodeIds.includes(n.id),
         ariaLabel: nodeLabel(n, { detail: detailFor(n, project.sources, project.edges), status: statuses[n.id]?.status, viewed: n.id === viewedId }),
-        className: [n.id === connectFrom && 'is-wiring-from', n.id === pointedId && 'is-pointed'].filter(Boolean).join(' ') || undefined,
-        data: { node: n, viewed: n.id === viewedId, detail: detailFor(n, project.sources, project.edges), refIn: ends.to.has(n.id), refOut: ends.from.has(n.id) },
+        className: [n.id === connectFrom && 'is-wiring-from', (n.id === pointedId || readBySelected.has(n.id)) && 'is-pointed'].filter(Boolean).join(' ') || undefined,
+        data: { node: n, viewed: n.id === viewedId, detail: detailFor(n, project.sources, project.edges), refIn: ends.to.has(n.id), refOut: ends.from.has(n.id), readBy: readBy.get(n.id) },
       })),
       ...cards,
     ];
     // eslint-disable-next-line react-hooks/exhaustive-deps -- references are read from project.nodes
-  }, [project.nodes, project.sources, project.edges, project.groups, collapsedOf, dragging, measured, selectedNodeIds, selectedGroup, viewedId, statuses, connectFrom, pointedId, describing],
+  }, [project.nodes, project.sources, project.edges, project.groups, collapsedOf, dragging, measured, selectedNodeIds, selectedGroup, viewedId, statuses, connectFrom, pointedId, readBy, readBySelected, describing],
   );
 
   const edges: PuddleEdge[] = useMemo(

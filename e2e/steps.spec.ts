@@ -100,7 +100,7 @@ test('a group of nodes in a line merges into one node and splits back; a node sp
   // Group the chain, from a node's menu, takes the whole line of Transforms; merged, they run as one node.
   await node(page, 'Transform 1').click({ button: 'right' });
   await page.getByTestId('context-menu').getByRole('menuitem', { name: 'Group the chain' }).click();
-  const card = page.getByTestId('group-Group 1');
+  const card = page.getByTestId('group-Clean customers.csv');
   await expect(card).toBeVisible();
   await card.click({ button: 'right' });
   await page.getByTestId('context-menu').getByRole('menuitem', { name: 'Merge into one node' }).click();

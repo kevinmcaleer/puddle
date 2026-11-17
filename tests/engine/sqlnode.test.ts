@@ -4,7 +4,7 @@ import { join } from 'node:path';
 import { compile, compileCount, sourceFileName } from '../../src/compiler';
 import { EngineClient, tableRows } from '../../src/engine/client';
 import { createNodeBackend } from '../helpers/nodeBackend';
-import { renameNode } from '../../src/model';
+import { renameNode, setSqlAndWires } from '../../src/model';
 import { flow, src } from '../helpers/projects';
 
 const customers = src({ id: 'shop-customers', format: 'csv' });
@@ -54,5 +54,20 @@ describe('a SQL node', () => {
     const rows = async (p: typeof before) => tableRows((await engine.query(compile(p, { nodeId: 'q' }).sql)).table);
     expect(await rows(after)).toEqual(await rows(before));
     expect((await rows(after)).length).toBeGreaterThan(0);
+  });
+});
+
+describe('a SQL node that names tables it is not wired to', () => {
+  it('is wired to them when its query is set, and returns the same rows as the hand-wired query', async () => {
+    const loose = { ...project(''), edges: [] };
+    const sql = 'SELECT c.customer_id, count(*) AS orders FROM c JOIN o USING (customer_id) GROUP BY 1 ORDER BY 1';
+    const named = setSqlAndWires(loose, 'q', sql);
+    expect(named.edges.map((e) => [e.from.nodeId, e.byName])).toEqual([
+      ['c', true],
+      ['o', true],
+    ]);
+    const rows = tableRows((await engine.query(compile(named, { nodeId: 'q' }).sql)).table);
+    expect(rows).toEqual(tableRows((await engine.query(compile(project(sql), { nodeId: 'q' }).sql)).table));
+    expect(rows.length).toBeGreaterThan(0);
   });
 });

@@ -338,6 +338,23 @@ async function combine(page: Page, files: string[], item: RegExp, made: string) 
   if (made !== 'designer') await expect(node(page, made)).toHaveAttribute('data-status', 'ok');
 }
 
+test('the project panel', async ({ page }) => {
+  await start(page);
+  await combine(page, ['shop-orders.csv', 'shop-customers.csv'], /Join/, 'selection');
+  await selectNode(page, 'shop-orders.csv');
+  await page.getByTestId('outline-toggle').click();
+  await page.getByTestId('project-panel').getByRole('button', { name: 'New query' }).click();
+  const naming = page.getByRole('dialog', { name: 'Name this query' });
+  await naming.getByLabel('Name').fill('Orders per customer');
+  await naming.getByRole('button', { name: 'Name it' }).click();
+  const query = page.getByLabel('SQL query');
+  await query.fill('SELECT c.customer_id, count(*) AS orders\nFROM "shop-orders.csv" o\nJOIN "shop-customers.csv" c USING (customer_id)\nGROUP BY 1');
+  await query.press('Control+Enter');
+  await expect(page.getByTestId('outline-Orders per customer')).toContainText('reads shop-orders.csv, shop-customers.csv');
+  await expect(page.getByTestId('outline-Orders per customer')).toHaveAttribute('data-status', 'ok');
+  await shot(page, 'canvas-project-panel');
+});
+
 test('combining data', async ({ page }) => {
   await start(page);
   await combine(page, ['shop-orders.csv', 'shop-customers.csv'], /Join/, 'selection');
@@ -468,8 +485,8 @@ test('projects, templates and recipes', async ({ page }) => {
   await addStepNode(page, 'Change case', 'Transform 2');
   await node(page, 'Transform 1').click({ button: 'right' });
   await page.getByTestId('context-menu').getByRole('menuitem', { name: 'Group the chain' }).click();
-  await expect(page.getByTestId('group-Group 1')).toBeVisible();
-  await page.getByTestId('group-Group 1').click({ button: 'right' });
+  await expect(page.getByTestId('group-Clean contacts.csv')).toBeVisible();
+  await page.getByTestId('group-Clean contacts.csv').click({ button: 'right' });
   await shot(page, 'groups-menu', page.getByTestId('context-menu'));
   await page.getByTestId('context-menu').getByRole('menuitem', { name: 'Save as template…' }).click();
   const save = page.getByRole('dialog', { name: 'Save as template' });

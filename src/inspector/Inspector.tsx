@@ -161,6 +161,9 @@ function ProjectSettings() {
         <Field hint="Steps added from the Add menu and the results table (quick fixes and the column menu) each go in a new Transform node, so every step shows on the canvas. Off, they stack into the Transform being viewed.">
           <Switch label="Add each step as a new node" checked={settings.stepsAsNodes} onChange={(on) => set({ stepsAsNodes: on })} />
         </Field>
+        <Field hint="Queries that end a flow are listed in the project panel beside the canvas and not drawn on it, so the canvas shows only how tables are made. Off, every query is a node on the canvas.">
+          <Switch label="Keep queries in the project panel" checked={settings.queriesInPanel} onChange={(on) => set({ queriesInPanel: on })} />
+        </Field>
         <Field hint="Fix all also applies the fixes analysis only suggests, such as reading text as numbers when most of it is numbers. Off, those stay unticked until chosen from the list.">
           <Switch label="Fix all applies suggestions" checked={settings.fixAllSuggestions} onChange={(on) => set({ fixAllSuggestions: on })} />
         </Field>

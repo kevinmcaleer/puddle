@@ -1,5 +1,5 @@
 import dagre from '@dagrejs/dagre';
-import { moveGroup, moveNodes, type Project } from '../model';
+import { canvasProject, moveGroup, moveNodes, type Project } from '../model';
 
 const NODE_W = 232;
 const NODE_H = 96;
@@ -10,8 +10,10 @@ export const DESCRIPTION_H = 36;
  * Lay the flow out left to right (sources on the left, outputs on the right) as one undoable edit. A collapsed group
  * is laid out as the one card it is drawn as, and its nodes move with it.
  */
-export function autoLayout(project: Project): Project {
-  if (!project.nodes.length) return project;
+export function autoLayout(whole: Project): Project {
+  // Queries listed in the project panel only are not on the canvas: they take no room and keep their places.
+  const project = canvasProject(whole);
+  if (!project.nodes.length) return whole;
   const g = new dagre.graphlib.Graph();
   g.setGraph({ rankdir: 'LR', nodesep: 32, ranksep: 72, marginx: 40, marginy: 40 });
   g.setDefaultEdgeLabel(() => ({}));
@@ -32,7 +34,7 @@ export function autoLayout(project: Project): Project {
   };
   const positions: Record<string, { x: number; y: number }> = {};
   for (const n of project.nodes) if (!cardOf.has(n.id)) positions[n.id] = place(n.id);
-  let laid = moveNodes(project, positions);
+  let laid = moveNodes(whole, positions);
   for (const group of project.groups) if (group.collapsed) laid = moveGroup(laid, group.id, place(`group:${group.id}`));
   return laid;
 }

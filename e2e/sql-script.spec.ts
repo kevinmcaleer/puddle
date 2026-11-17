@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { expectRows, fixture, node, openApp, selectNode } from './helpers/app';
+import { expectRows, fixture, node, openApp, queriesOnCanvas, selectNode } from './helpers/app';
 
 // Kev's script, on CSV: the file set's files read by pattern and by name, then tables reading the tables before them.
 const SCRIPT = `CREATE OR REPLACE TABLE log AS
@@ -20,6 +20,8 @@ GROUP BY l.docid`;
 
 test('several files become one source, and a SQL script over them makes a node for each table it creates', async ({ page }) => {
   await openApp(page);
+  // On the canvas, a script's node and each table's node are cards of their own (in the panel's project they are one).
+  await queriesOnCanvas(page);
 
   // Files chosen together are one source, read as one table with their columns lined up by name.
   const chooser = page.waitForEvent('filechooser');
@@ -62,6 +64,8 @@ test('several files become one source, and a SQL script over them makes a node f
 
 test('a script DuckDB refuses says why in plain words, with the line of the script', async ({ page }) => {
   await openApp(page);
+  // On the canvas, a script's node and each table's node are cards of their own (in the panel's project they are one).
+  await queriesOnCanvas(page);
   const chooser = page.waitForEvent('filechooser');
   await page.getByRole('button', { name: 'Add', exact: true }).click();
   await page.getByRole('menuitem', { name: /Files as one table/ }).click();

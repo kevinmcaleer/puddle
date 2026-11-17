@@ -1,9 +1,10 @@
 import { expect, test } from '@playwright/test';
-import { addFiles, expectRows, expectSql, fixture, node, openApp, selectNode } from './helpers/app';
+import { addFiles, expectRows, expectSql, fixture, node, openApp, queriesOnCanvas, selectNode } from './helpers/app';
 
 // Regression (#270): renaming a node left the SQL that read it by name with no such table.
 test('renaming a node rewrites the SQL that reads it by name, and one undo puts both back', async ({ page }) => {
   await openApp(page);
+  await queriesOnCanvas(page);
   await addFiles(page, [fixture('shop-orders.csv')]);
   await expect(node(page, 'shop-orders.csv')).toHaveAttribute('data-status', 'ok');
   await selectNode(page, 'shop-orders.csv');

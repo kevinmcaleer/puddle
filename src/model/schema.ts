@@ -65,7 +65,10 @@ export const ConnectionViaZ = z.enum(['browser', 'local', 'pi']);
 /** What a driver signs in with: a password, a token, a private key, an OAuth sign-in in the browser, AWS keys, or nothing. */
 export const ConnectionAuthZ = z.enum(['password', 'token', 'keypair', 'key', 'oauth', 'aws', 'none']);
 
-export const CatalogColumnZ = z.object({ name: z.string(), type: z.string(), nullable: z.boolean().optional() });
+/** `key`: part of the table's primary key, where the driver says. */
+export const CatalogColumnZ = z.object({ name: z.string(), type: z.string(), nullable: z.boolean().optional(), key: z.boolean().optional() });
+/** A foreign key the database declares: these columns of the table refer to `refColumns` of `refTable`. */
+export const CatalogForeignKeyZ = z.object({ columns: z.array(z.string()), refSchema: z.string().optional(), refTable: z.string(), refColumns: z.array(z.string()) });
 export const CatalogTableZ = z.object({
   schema: z.string().optional(),
   name: z.string(),
@@ -73,6 +76,8 @@ export const CatalogTableZ = z.object({
   columns: z.array(CatalogColumnZ).default([]),
   /** A row estimate from the catalogue, where it has one cheaply. */
   rows: z.number().nonnegative().optional(),
+  /** The foreign keys it declares, where the driver reads them; absent where it doesn't (so none can't be told from unknown). */
+  foreignKeys: z.array(CatalogForeignKeyZ).optional(),
 });
 /** The names and types a connection was last seen to have: a small cache for the database browser and the runner. */
 export const CatalogZ = z.object({ tables: z.array(CatalogTableZ).default([]) });
@@ -493,6 +498,8 @@ export const EdgeZ = z.object({
   from: z.object({ nodeId: z.string().min(1) }),
   /** port: which input of the target the wire goes into (see inputPorts in graph.ts). */
   to: z.object({ nodeId: z.string().min(1), port: PortZ.default(0) }),
+  /** A wire Puddle made because a SQL node's query names the node it comes from; it goes when the query stops naming it. */
+  byName: z.boolean().optional(),
 });
 
 export const ProjectSettingsZ = z.object({
@@ -508,6 +515,11 @@ export const ProjectSettingsZ = z.object({
   fixAllSuggestions: z.boolean().default(false),
   /** How Fix all tidies column names: the words as they are, trimmed, or snake_case. */
   columnNames: z.enum(['words', 'snake']).default('words'),
+  /**
+   * Queries that end a flow (a SQL or Query node whose rows feed nothing but outputs) are listed in the project panel
+   * and not drawn on the canvas, which then shows only how tables are made. New projects start with it on.
+   */
+  queriesInPanel: z.boolean().default(false),
   /** When the runner (puddle-run) runs this project's outputs, in cron syntax. Nothing runs until one is set. */
   schedule: z.string().optional(),
 });
@@ -606,7 +618,7 @@ export const ProjectZ = z.object({
   createdAt: z.string(),
   updatedAt: z.string(),
   notes: z.string().default(''),
-  settings: ProjectSettingsZ.default({ sampleThresholdRows: 5_000_000, locale: 'en-GB', defaultDateFormats: [], stepsAsNodes: true, fixAllSuggestions: false, columnNames: 'words' }),
+  settings: ProjectSettingsZ.default({ sampleThresholdRows: 5_000_000, locale: 'en-GB', defaultDateFormats: [], stepsAsNodes: true, fixAllSuggestions: false, columnNames: 'words', queriesInPanel: false }),
   connections: z.array(ConnectionZ).default([]),
   sources: z.array(SourceZ).default([]),
   nodes: z.array(NodeZ).default([]),
@@ -630,6 +642,7 @@ export type ConnectionAuth = z.infer<typeof ConnectionAuthZ>;
 export type Connection = z.infer<typeof ConnectionZ>;
 export type Catalog = z.infer<typeof CatalogZ>;
 export type CatalogTable = z.infer<typeof CatalogTableZ>;
+export type CatalogForeignKey = z.infer<typeof CatalogForeignKeyZ>;
 export type ConnectionSource = z.infer<typeof ConnectionSourceZ>;
 export type Step = z.infer<typeof StepZ>;
 export type StepOrigin = z.infer<typeof StepOriginZ>;

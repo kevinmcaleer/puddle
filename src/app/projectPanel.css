@@ -1,0 +1,12 @@
+/* The project panel (ProjectPanel.tsx): the project as a list, beside the canvas. Tokens only. */
+.puddle-outline { display: grid; grid-template-rows: auto minmax(0, 1fr); min-height: 0; border-right: 1px solid var(--line); background: var(--surface-panel); }
+.puddle-outline__head { display: flex; align-items: center; justify-content: space-between; padding: var(--space-2) var(--space-2) var(--space-2) var(--space-4); border-bottom: 1px solid var(--line); }
+.puddle-outline__body { min-height: 0; overflow-y: auto; }
+.puddle-outline__list { list-style: none; margin: 0 calc(-1 * var(--space-2)); padding: 0; display: flex; flex-direction: column; }
+.puddle-outline__row { display: flex; align-items: center; gap: var(--space-2); width: 100%; min-height: var(--size-row); padding: var(--space-1) var(--space-2); border: 0; border-radius: var(--radius-sm); background: none; color: var(--ink); font: inherit; text-align: left; cursor: pointer; }
+.puddle-outline__row:hover { background: var(--surface-hover); }
+.puddle-outline__row[aria-current="true"] { background: var(--brand-tint); }
+.puddle-outline__row[aria-current="true"] .puddle-outline__name { font-weight: 600; }
+.puddle-outline__text { display: flex; flex-direction: column; flex: 1; min-width: 0; }
+.puddle-outline__name, .puddle-outline__reads { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.puddle-outline__reads { color: var(--ink-muted); font-size: 11px; line-height: 14px; }

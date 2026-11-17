@@ -1,8 +1,9 @@
 import { expect, test } from '@playwright/test';
-import { addFiles, fixture, node, openApp } from './helpers/app';
+import { addFiles, fixture, node, openApp, queriesOnCanvas } from './helpers/app';
 
 test('a SQL node’s editor marks the tables its query names, and pointing at one shows its node on the canvas', async ({ page }) => {
   await openApp(page);
+  await queriesOnCanvas(page);
   await addFiles(page, [fixture('shop-orders.csv')]);
   await expect(node(page, 'shop-orders.csv')).toHaveAttribute('data-status', 'ok', { timeout: 20_000 });
   await page.getByRole('button', { name: 'Add', exact: true }).click();

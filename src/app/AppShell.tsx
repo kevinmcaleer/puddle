@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Canvas } from '../canvas/Canvas';
 import { useFlowEvaluation } from '../flow/useFlowEvaluation';
 import { Inspector } from '../inspector/Inspector';
-import { nodeById, useProject, useProjectStore } from '../model';
+import { nodeById, offCanvasIds, useProject, useProjectStore } from '../model';
 import { FileBanners } from '../sources/ReconnectBanner';
 import { openProjectDialog } from '../home/dialogs';
 import { exportProject, goHome, importProject } from '../persistence/workspace';
@@ -71,6 +71,7 @@ import { SyncConflictBanner } from '../sync/SyncDialogs';
 import { useSession } from './session';
 import { afterSelection, nodeItems, stepItems } from './addMenu';
 import { showView } from './views';
+import { ProjectPanel } from './ProjectPanel';
 import { ViewSwitcher } from './ViewSwitcher';
 
 function EngineBadge({ status }: { status: EngineStatus }) {
@@ -262,6 +263,9 @@ export function AppShell() {
   const canUndo = useProjectStore((s) => s.history.past.length > 0);
   const canRedo = useProjectStore((s) => s.history.future.length > 0);
   const inspectorOpen = useSession((s) => s.inspectorOpen);
+  // The project panel shows itself once a query is listed in it only; after that it is as the person left it.
+  const outlineChoice = useSession((s) => s.outlineOpen);
+  const outlineOpen = outlineChoice ?? offCanvasIds(project).size > 0;
   const browsing = useSession((s) => s.browsingConnectionId);
   const consoleOpen = useSession((s) => s.consoleOpen);
   const designerId = useSession((s) => s.designerNodeId);
@@ -448,9 +452,10 @@ export function AppShell() {
           }}
         />
 
-        <div className={inspectorOpen ? 'grid min-h-0 grid-cols-[minmax(0,1fr)_var(--size-inspector)]' : 'grid min-h-0 grid-cols-[minmax(0,1fr)]'}>
+        <div className="grid min-h-0" style={{ gridTemplateColumns: [outlineOpen && 'calc(var(--size-inspector) * 0.7)', 'minmax(0, 1fr)', inspectorOpen && 'var(--size-inspector)'].filter(Boolean).join(' ') }}>
+          {outlineOpen && <ProjectPanel />}
           <main ref={canvas} tabIndex={-1} className="grid min-h-0 grid-rows-[auto_minmax(0,1fr)] focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-brand" aria-label="Canvas">
-            <ViewSwitcher />
+            <ViewSwitcher outlineOpen={outlineOpen} />
             {covering ? (
               // The canvas shows the banners about files to reconnect itself; the views that cover it show them above.
               <div className="grid min-h-0 grid-rows-[auto_minmax(0,1fr)]">

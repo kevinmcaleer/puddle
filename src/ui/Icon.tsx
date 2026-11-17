@@ -1,7 +1,7 @@
 import type { LucideIcon } from 'lucide-react';
 import {
   ArrowLeft, Blend, Calendar, ClipboardPaste, CaseSensitive, Check, ChevronDown, ChevronRight, ChevronUp, CircleHelp, Clock, Code, Columns2, Download, Ellipsis, Eye,
-  Database, File, Globe, FileText, GripVertical, Info, Keyboard, LayoutTemplate, Link, ListPlus, Monitor, Moon, PencilRuler, PanelBottomClose, PanelBottomOpen, PanelRightClose, PanelRightOpen, Pin, Plus, Redo2, RefreshCw,
+  Database, File, Globe, FileText, GripVertical, Info, Keyboard, LayoutTemplate, Link, ListPlus, Monitor, Moon, PencilRuler, PanelBottomClose, PanelBottomOpen, PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen, Pin, Plus, Redo2, RefreshCw,
   Group, LayoutGrid, Network, Search, ShieldCheck, Sigma, SlidersHorizontal, Sun, Table, TableProperties, TriangleAlert, Type, Undo2, Ungroup, Workflow, X, ZoomIn, ZoomOut, Scan,
 } from 'lucide-react';
 import { cx } from './cx';
@@ -53,6 +53,8 @@ const LUCIDE = {
   schema: PencilRuler,
   refresh: RefreshCw,
   keyboard: Keyboard,
+  'outline-close': PanelLeftClose,
+  'outline-open': PanelLeftOpen,
   'sidebar-close': PanelRightClose,
   'sidebar-open': PanelRightOpen,
   compare: Columns2,
