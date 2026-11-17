@@ -3,6 +3,7 @@ import { useFlowStore } from '../flow/status';
 import { inputEdge, inputPorts, nodeById, renameNode, setAppendSpec, swapAppendInputs, useProject, useProjectStore, type AppendNode, type AppendSpec } from '../model';
 import { CommitInput } from '../steps/CommitInput';
 import { Banner, Button, columnKind, Field, Section, Select, Switch, TypeTag } from '../ui';
+import { NodeDescription } from './NodeDescription';
 
 const apply = (edit: Parameters<ReturnType<typeof useProjectStore.getState>['apply']>[0]) => useProjectStore.getState().apply(edit);
 
@@ -44,6 +45,7 @@ export function AppendPanel({ node }: { node: AppendNode }) {
         <Field label="Node name" htmlFor="node-name">
           <CommitInput key={node.name} id="node-name" value={node.name} onCommit={(v) => apply((p) => renameNode(p, node.id, v))} />
         </Field>
+        <NodeDescription node={node} />
       </div>
       <Section title="Inputs" count={wired.length}>
         {slots.length ? (

@@ -1,6 +1,6 @@
 import { flow, src } from '../../tests/helpers/projects';
-import { makeGroup } from '../model';
-import { autoLayout } from './layout';
+import { makeGroup, setGroupDescription, setNodeDescription } from '../model';
+import { autoLayout, DESCRIPTION_H } from './layout';
 
 const p = flow({
   sources: [src({ id: 'a', format: 'csv' }), src({ id: 'b', format: 'csv' })],
@@ -51,5 +51,21 @@ describe('auto layout', () => {
     expect(card.x).toBeGreaterThan(pos('sa').x);
     expect(pos('t')).toEqual(card);
     expect(pos('out')).toEqual({ x: card.x + 300, y: card.y + 50 });
+  });
+
+  it('keeps the gap under a described card, whose description makes it taller', () => {
+    // The two sources sit one above the other; described, the upper one needs room for its description too.
+    const gap = (q: typeof p) => {
+      const laidOut = autoLayout(q);
+      const [top, bottom] = ['sa', 'sb'].map((id) => laidOut.nodes.find((n) => n.id === id)!.position).sort((a, b) => a.y - b.y);
+      return bottom!.y - top!.y;
+    };
+    const plainGap = gap(p);
+    expect(gap(setNodeDescription(setNodeDescription(p, 'sa', 'shop orders'), 'sb', 'refunds'))).toBeGreaterThanOrEqual(plainGap + DESCRIPTION_H);
+    const card = setGroupDescription(makeGroup(p, ['sa', 't'], 'g1'), 'g1', 'orders, trimmed');
+    const laidOut = autoLayout(card);
+    const cardAt = laidOut.groups[0]!.position;
+    const sb = laidOut.nodes.find((n) => n.id === 'sb')!.position;
+    expect(Math.abs(cardAt.x - sb.x) >= 232 || Math.abs(cardAt.y - sb.y) >= 96 + DESCRIPTION_H / 2).toBe(true);
   });
 });

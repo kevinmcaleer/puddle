@@ -20,4 +20,5 @@ export { ignoreIssue, recordAnalysis, unignoreIssue, type FoundIssue } from './i
 export { addConnection, connectionSources, nextConnectionName, removeConnection, updateConnection, updateConnectionSource } from './connections';
 export { logExport, setOutputFormat, setOutputSpec } from './exports';
 export { carryPin, viewWithout } from './view';
+export { cleanDescription, DESCRIPTION_MAX, setGroupDescription, setNodeDescription } from './describe';
 export { canMakeGroup, chainAround, groupById, groupOf, joinGroupOf, groupPorts, makeGroup, moveGroup, nextGroupName, pruneGroups, renameGroup, setGroupCollapsed, ungroup, type GroupPorts } from './groups';

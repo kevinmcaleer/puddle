@@ -11,6 +11,7 @@ import { AppendPanel } from './AppendPanel';
 import { JoinPanel } from './JoinPanel';
 import { LookupPanel } from './LookupPanel';
 import { KeepPanel } from './KeepPanel';
+import { NodeDescription } from './NodeDescription';
 import { NodeNotes } from './NodeNotes';
 import { OutputPanel } from './OutputPanel';
 import { QueryPanel } from './QueryPanel';
@@ -372,10 +373,11 @@ function NodeInspector({ node }: { node: GraphNode }) {
           <div className="text-label text-ink-muted">{source ? `${kind.label} · ${sourceFormatLabel(source)}${source.name !== node.name ? ` · ${source.name}` : ''}` : kind.label}</div>
         </div>
       </div>
-      <div className="border-b border-line px-4 py-3">
+      <div className="flex flex-col gap-2 border-b border-line px-4 py-3">
         <Field label="Node name" htmlFor="node-name">
           <CommitInput key={node.name} id="node-name" value={node.name} onCommit={(v) => useProjectStore.getState().apply((p) => renameNode(p, node.id, v))} />
         </Field>
+        <NodeDescription node={node} />
       </div>
       {source && source.kind === 'file' && <AttachmentBanner source={source} />}
       {source && source.kind === 'files' && <FileSetPanel source={source} />}

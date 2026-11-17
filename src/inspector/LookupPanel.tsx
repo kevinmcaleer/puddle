@@ -6,6 +6,7 @@ import { useNodeStatus } from '../flow/status';
 import { inputEdge, nodeById, renameNode, setLookupSpec, swapLookupInputs, useProject, useProjectStore, type ColumnSchema, type LookupKey, type LookupNode, type LookupSpec } from '../model';
 import { CommitInput } from '../steps/CommitInput';
 import { Banner, Button, columnKind, FieldChip, Field, fullCount, Section, Select, Switch } from '../ui';
+import { NodeDescription } from './NodeDescription';
 
 const apply = (edit: Parameters<ReturnType<typeof useProjectStore.getState>['apply']>[0]) => useProjectStore.getState().apply(edit);
 const NONE: ColumnSchema[] = [];
@@ -151,6 +152,7 @@ export function LookupPanel({ node }: { node: LookupNode }) {
         <Field label="Node name" htmlFor="node-name">
           <CommitInput key={node.name} id="node-name" value={node.name} onCommit={(v) => apply((p) => renameNode(p, node.id, v))} />
         </Field>
+        <NodeDescription node={node} />
       </div>
       <Section
         title="Inputs"

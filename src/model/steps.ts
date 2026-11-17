@@ -115,7 +115,7 @@ export function groupNodes(project: Project, ids: string[]): Project {
     const edge = inputEdges(project, id)[0]!;
     innerEdges.add(edge.id);
     const [first, ...more] = n.steps;
-    const origin = { nodeId: n.id, name: n.name, notes: n.notes, position: n.position, collapsed: n.collapsed, rules: n.rules, edgeId: edge.id };
+    const origin = { nodeId: n.id, name: n.name, description: n.description, notes: n.notes, position: n.position, collapsed: n.collapsed, rules: n.rules, edgeId: edge.id };
     steps = [...steps, { ...first!, origin }, ...more];
   }
   const last = check.chain.at(-1)!;
@@ -141,7 +141,7 @@ export function ungroupNode(project: Project, nodeId: string): Project {
     if (step.origin) {
       const { origin, ...plain } = step;
       parts.push({
-        node: { id: origin.nodeId, type: 'transform', name: origin.name, notes: origin.notes, position: origin.position, collapsed: origin.collapsed, rules: origin.rules, steps: [plain] },
+        node: { id: origin.nodeId, type: 'transform', name: origin.name, description: origin.description, notes: origin.notes, position: origin.position, collapsed: origin.collapsed, rules: origin.rules, steps: [plain] },
         edgeId: origin.edgeId,
       });
     } else parts.at(-1)!.node.steps.push(step);
@@ -163,7 +163,7 @@ export function splitNode(project: Project, nodeId: string, at: number, newNodeI
   const first = moving[0]!;
   const origin = first.origin;
   const created: TransformNode = origin
-    ? { id: origin.nodeId, type: 'transform', name: origin.name, notes: origin.notes, position: origin.position, collapsed: origin.collapsed, rules: origin.rules, steps: [{ ...first, origin: undefined }, ...moving.slice(1)] }
+    ? { id: origin.nodeId, type: 'transform', name: origin.name, description: origin.description, notes: origin.notes, position: origin.position, collapsed: origin.collapsed, rules: origin.rules, steps: [{ ...first, origin: undefined }, ...moving.slice(1)] }
     : { id: newNodeId, type: 'transform', name: `${node.name} (2)`, position: { x: node.position.x + 296, y: node.position.y }, rules: [], steps: moving };
   const edgeId = origin?.edgeId ?? newId('e');
   const outs = outputEdges(project, nodeId);

@@ -28,6 +28,7 @@ import { Banner, Button, Field, Menu, Section, StepList, Switch, type MenuItem }
 import { openTemplateDialog } from '../templates/actions';
 import { buildStep } from './addStep';
 import { useStepColumns, useStepErrors } from './useStepColumns';
+import { NodeDescription } from './NodeDescription';
 
 const apply = (edit: Parameters<ReturnType<typeof useProjectStore.getState>['apply']>[0]) => useProjectStore.getState().apply(edit);
 
@@ -174,6 +175,7 @@ export function TransformPanel({ node }: { node: TransformNode }) {
         <Field label="Node name" htmlFor="node-name">
           <CommitInput key={node.name} id="node-name" value={node.name} onCommit={(v) => apply((p) => renameNode(p, node.id, v))} />
         </Field>
+        <NodeDescription node={node} />
         <Button size="sm" variant="ghost" icon="template" disabled={!node.steps.length} title={node.steps.length ? 'Keep these steps to reuse in any project' : 'Add a step first'} onClick={() => openTemplateDialog({ kind: 'save', nodeIds: chainAround(project, node.id) })}>
           Save as template
         </Button>

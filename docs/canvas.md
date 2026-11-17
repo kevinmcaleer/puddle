@@ -34,6 +34,14 @@ Nodes that are tables in their own right carry a tag on the top edge of their ca
 
 Give a node a name that says what it holds: select it and press F2, or right-click it and choose **Rename…**, or change **Node name** in the inspector. The name shows on the card and in the results, and it is the name SQL reads the node by, so a query that names the node needs the new name. A renamed source still says which file it reads in the inspector.
 
+## Describing what a node is for
+
+A name says what a node holds; a description says why it is there, in your own words: "combine into a single list", "touchless rate per month". It shows under the node's heading on the canvas, so a flow with many steps reads at a glance. Right-click a node and choose **Add description**, type a few words and press Enter. To change it, right-click the node and choose **Edit description**, or change **Description** in the inspector, under **Node name**. Escape leaves it as it was, and clearing the words removes it. A description is one line of up to 140 characters; the card shows the first two lines of it, and the rest on hover. For anything longer, use the node's notes in the inspector.
+
+![Writing a node's description in place on the canvas](_static/screenshots/canvas-describe.png)
+
+Groups take a description too (see [Groups](#groups)). Descriptions are saved with the project and never change what runs.
+
 ## Selecting, viewing and moving
 
 - Click a node to select it. Its settings show in the inspector and its data in the results; a **Viewing** tag marks the node whose data is shown.
@@ -61,7 +69,7 @@ Double-click the card, or click its arrow, to open the group. It opens as a fram
 
 ![The group open as a frame round contacts.csv and Transform 1](_static/screenshots/groups-open.png)
 
-Right-click a group to open or close it, rename it, or **Ungroup** it. Ungrouping leaves the nodes where they are, wired as they were. Groups only change how the canvas looks: every node runs the same whether its group is open or closed. **Auto layout** treats a closed group as one node.
+Right-click a group to open or close it, rename it, describe it, or **Ungroup** it. **Add group description** says what the group's nodes do together, such as "tidy the contact list"; it shows on the closed card and at the top of the open frame, and **Edit group description** changes it. Ungrouping leaves the nodes where they are, wired as they were. Groups only change how the canvas looks: every node runs the same whether its group is open or closed. **Auto layout** treats a closed group as one node.
 
 ![The menu of a group that is a line of Transforms](_static/screenshots/groups-menu.png)
 

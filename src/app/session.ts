@@ -48,6 +48,9 @@ interface SessionState {
   /** The node being renamed in the canvas's rename dialog. */
   renamingNodeId: string | null;
   askRename: (id: string | null) => void;
+  /** The node or group (by its canvas id: a node's id, or groupCardId) whose description is being written on the canvas. */
+  describing: string | null;
+  askDescribe: (flowId: string | null) => void;
   select: (id: string | null) => void;
   toggleSelected: (id: string) => void;
   selectStep: (id: string | null) => void;
@@ -103,6 +106,8 @@ export const useSession = create<SessionState>((set) => ({
   pointedNodeId: null,
   renamingNodeId: null,
   askRename: (renamingNodeId) => set({ renamingNodeId }),
+  describing: null,
+  askDescribe: (describing) => set({ describing }),
   pointAt: (pointedNodeId) => set((s) => (s.pointedNodeId === pointedNodeId ? s : { pointedNodeId })),
   // Picking a node shows it in the inspector's Node tab.
   select: (id) => set((s) => ({ selectedNodeId: id, selectedNodeIds: id ? [id] : [], selectedStepId: null, inspectorTab: id ? 'node' : s.inspectorTab })),

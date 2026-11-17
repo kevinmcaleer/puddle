@@ -2,6 +2,7 @@ import { scriptTables, writtenSql } from '../compiler';
 import { inputEdge, nodeById, renameNode, setScriptTable, useProject, useProjectStore, type Project, type ScriptTableNode } from '../model';
 import { CommitInput } from '../steps/CommitInput';
 import { Field, Select } from '../ui';
+import { NodeDescription } from './NodeDescription';
 
 const apply = (edit: (p: Project) => Project) => useProjectStore.getState().apply(edit);
 
@@ -18,6 +19,7 @@ export function ScriptTablePanel({ node }: { node: ScriptTableNode }) {
       <Field label="Node name" htmlFor="node-name">
         <CommitInput key={node.name} id="node-name" value={node.name} onCommit={(v) => apply((p) => renameNode(p, node.id, v))} />
       </Field>
+      <NodeDescription node={node} />
       <Field label="Table" htmlFor="script-table" hint={from && script != null ? `A table ${from.name}’s script creates.` : 'Wire a SQL node with a script into it.'}>
         <Select id="script-table" options={options} value={value} disabled={!tables.length} onChange={(e) => apply((p) => setScriptTable(p, node.id, e.target.value))} />
       </Field>

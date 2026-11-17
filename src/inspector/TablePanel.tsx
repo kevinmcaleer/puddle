@@ -7,6 +7,7 @@ import { tableNotes, useSchemaTables } from '../schemaTables/state';
 import { useSession } from '../app/session';
 import { CommitInput } from '../steps/CommitInput';
 import { Banner, Button, Field, Section, Select, Switch } from '../ui';
+import { NodeDescription } from './NodeDescription';
 
 const apply = (edit: (p: Project) => Project) => useProjectStore.getState().apply(edit);
 
@@ -40,6 +41,7 @@ export function TablePanel({ node }: { node: SchemaTableNode }) {
         <Field label="Node name" htmlFor="node-name">
           <CommitInput key={node.name} id="node-name" value={node.name} onCommit={(v) => apply((p) => renameNode(p, node.id, v))} />
         </Field>
+        <NodeDescription node={node} />
         <Field label="Table" htmlFor="table-pick">
           <Select
             id="table-pick"

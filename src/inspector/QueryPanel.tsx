@@ -5,6 +5,7 @@ import { removeQueryJoin, renameNode, setQueryJoinKind, useProject, useProjectSt
 import { designerTables, useDesigner } from '../query/tables';
 import { CommitInput } from '../steps/CommitInput';
 import { Button, cx, Field, Section, Select } from '../ui';
+import { NodeDescription } from './NodeDescription';
 
 const apply = (edit: (p: Project) => Project) => useProjectStore.getState().apply(edit);
 
@@ -24,6 +25,7 @@ export function QueryPanel({ node }: { node: QueryNode }) {
         <Field label="Node name" htmlFor="node-name">
           <CommitInput key={node.name} id="node-name" value={node.name} onCommit={(v) => apply((p) => renameNode(p, node.id, v))} />
         </Field>
+        <NodeDescription node={node} />
         {!designing && (
           <Button variant="primary" icon="query" onClick={() => useSession.getState().openDesigner(node.id)}>
             Open query designer

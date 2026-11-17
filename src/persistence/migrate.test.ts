@@ -28,6 +28,31 @@ describe('project files', () => {
     expect(back.nodes.map((n) => n.notes)).toEqual(['Sent weekly by finance.', 'Drops test rows.', '<b>for</b> the board']);
   });
 
+  it('keeps node and group descriptions through .puddle.json', () => {
+    const p = {
+      ...createProject('Described'),
+      sources: [{ id: 's1', name: 'a.csv', kind: 'clipboard' as const, clipboard: { text: 'a\n1' }, format: 'csv' as const, parseOptions: {}, detectedSchema: [] }],
+      nodes: [
+        { id: 'n1', type: 'source' as const, sourceId: 's1', name: 'a.csv', description: 'last month of tickets', position: { x: 0, y: 0 }, rules: [] },
+        { id: 'n2', type: 'transform' as const, name: 'Clean', description: 'combine into a single list', position: { x: 1, y: 0 }, rules: [], steps: [] },
+        { id: 'n3', type: 'output' as const, name: 'Out', position: { x: 2, y: 0 }, rules: [], outputSpec: { format: 'csv' as const, options: {} } },
+      ],
+      groups: [{ id: 'g1', name: 'Group 1', nodeIds: ['n1', 'n2'], collapsed: true, position: { x: 0, y: 0 }, description: 'touchless rate per month' }],
+    };
+    const back = readProjectFile(writeProjectFile(p));
+    expect(back.formatVersion).toBe(FORMAT_VERSION);
+    expect(back.nodes.map((n) => n.description)).toEqual(['last month of tickets', 'combine into a single list', undefined]);
+    expect(back.groups[0]!.description).toBe('touchless rate per month');
+  });
+
+  it('opens projects saved before descriptions, at the same format, with none', () => {
+    const p = readProjectFile(fixture('grouped-before-descriptions.puddle.json'));
+    expect(p.nodes.length).toBeGreaterThan(0);
+    expect(p.groups).toHaveLength(1);
+    expect(p.nodes.every((n) => n.description === undefined)).toBe(true);
+    expect(p.groups[0]!.description).toBeUndefined();
+  });
+
   it('upgrades a format 2 project to format 3 with no connections', () => {
     const v2 = { ...JSON.parse(writeProjectFile(createProject('Two'))), formatVersion: 2 };
     delete v2.connections;
