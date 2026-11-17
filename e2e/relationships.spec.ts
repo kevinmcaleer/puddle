@@ -49,3 +49,32 @@ test('the relationships view shows a join’s key between the tables, relates tw
   await selectNode(page, 'shop-orders.csv');
   await expect(page.getByTestId('inspector')).toContainText('Every status exists in shop-customers.csv.status');
 });
+
+test('a relationship drawn after the tables are in the Schema view is written into its DBML as a Ref', async ({ page }) => {
+  await openApp(page);
+  await addFiles(page, [fixture('shop-orders.csv'), fixture('shop-customers.csv')]);
+  await expect(node(page, 'shop-orders.csv')).toHaveAttribute('data-status', 'ok');
+  await expect(node(page, 'shop-customers.csv')).toHaveAttribute('data-status', 'ok');
+
+  // The tables go into the Schema view first, with no relationships yet.
+  await page.getByTestId('project-menu').click();
+  await page.getByRole('menuitem', { name: /Relationships/ }).click();
+  await page.getByTestId('relationships').getByTestId('open-in-schema').click();
+  const schema = page.getByTestId('schema-view');
+  const dbml = schema.getByRole('combobox', { name: 'DBML' });
+  await expect(dbml).toContainText('Table "shop-orders.csv" {');
+  await expect(dbml).not.toContainText('Ref:');
+  await schema.getByRole('button', { name: 'Back to canvas' }).click();
+
+  // Then a relationship is drawn: the DBML says it beneath the tables.
+  await page.getByTestId('project-menu').click();
+  await page.getByRole('menuitem', { name: /Relationships/ }).click();
+  const rel = page.getByTestId('relationships');
+  await rel.getByTestId('rel-field-shop-orders.csv-customer_id').dragTo(rel.getByTestId('rel-field-shop-customers.csv-customer_id'));
+  await expect(rel.getByTestId('relationship')).toHaveCount(1);
+  await rel.getByRole('button', { name: 'Back to canvas' }).click();
+  await page.getByTestId('project-menu').click();
+  await page.getByRole('menuitem', { name: 'Schema' }).click();
+  await expect(dbml).toContainText('Ref: "shop-orders.csv".customer_id > "shop-customers.csv".customer_id');
+  await expect(schema.getByTestId('schema-counts')).toHaveText('2 tables, 1 ref');
+});

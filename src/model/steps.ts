@@ -3,6 +3,10 @@ import { inputEdges, nodeById, outputEdges } from './graph';
 import { joinGroupOf } from './groups';
 import { newId } from './ids';
 import { renameInSql } from './renameSql';
+import { editSchema } from './schemaDoc';
+import { renameTable } from '../schema/edit';
+import { DEFAULT_SCHEMA } from '../schema/model';
+import { parseDbml } from '../schema/parse';
 import type { GraphNode, Project, Step, TransformNode } from './schema';
 
 const transform = (project: Project, nodeId: string): TransformNode | undefined => {
@@ -70,7 +74,21 @@ export const toggleStep = (project: Project, nodeId: string, stepId: string): Pr
 export function renameNode(project: Project, nodeId: string, name: string): Project {
   const trimmed = name.trim();
   if (!trimmed) return project;
-  return renameInSql(project, { ...project, nodes: project.nodes.map((n) => (n.id === nodeId ? { ...n, name: trimmed } : n)) }, nodeId);
+  const renamed = renameInSql(project, { ...project, nodes: project.nodes.map((n) => (n.id === nodeId ? { ...n, name: trimmed } : n)) }, nodeId);
+  return renameInDbml(renamed, nodeById(project, nodeId), trimmed);
+}
+
+/**
+ * The DBML table that documents a node by its name follows the node's new name, with its refs, so the Schema view
+ * keeps documenting the node by it. Left alone when the new name is taken, or no other node goes by the old one.
+ */
+function renameInDbml(project: Project, before: GraphNode | undefined, name: string): Project {
+  if (!before || before.type === 'table' || before.name === name || !project.schema.dbml.trim()) return project;
+  const schema = parseDbml(project.schema.dbml).schema;
+  const at = (n: string) => schema.tables.some((t) => t.schema === DEFAULT_SCHEMA && t.name === n);
+  if (!at(before.name) || at(name) || project.nodes.some((n) => n.type !== 'table' && n.name === before.name)) return project;
+  const dbml = renameTable(project.schema.dbml, { schema: DEFAULT_SCHEMA, table: before.name }, name);
+  return editSchema(project, dbml, { renamed: { from: `table:${DEFAULT_SCHEMA}.${before.name}`, to: `table:${DEFAULT_SCHEMA}.${name}` } });
 }
 
 export function setNodeNotes(project: Project, nodeId: string, notes: string): Project {
