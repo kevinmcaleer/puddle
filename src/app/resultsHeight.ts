@@ -17,8 +17,11 @@ export function isSmallFlow(nodes: { position: { y: number } }[]): boolean {
 }
 /** What the toolbar, the view tabs, the results' own title bar and the status strip take of the window's height. */
 const CHROME = 150;
-/** The least a small flow's canvas is left: room for a row of nodes and the canvas controls. */
-const CANVAS_MIN = 220;
+/**
+ * The least a small flow's canvas is left: room for a row of nodes and the canvas controls, and for the inspector
+ * beside it to show its tabs, the node's name and the first issue without scrolling.
+ */
+const CANVAS_MIN = 280;
 /** The most the results may take, dragged or not, so the canvas never disappears. */
 const MAX_SHARE = 0.75;
 

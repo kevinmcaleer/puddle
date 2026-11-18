@@ -4,14 +4,18 @@ import { isSmallFlow, RESULTS_DEFAULT, RESULTS_MIN, resultsHeight } from './resu
 describe('how the window is split between the canvas and the results', () => {
   it('gives the data most of the window while the flow is small', () => {
     const h = resultsHeight({ flow: 'small', dragged: null, windowHeight: 900 });
-    expect(h).toBe(500);
+    expect(h).toBe(470);
     expect(h).toBeGreaterThan(900 / 2);
-    // The canvas keeps a third of what the toolbar, tabs and status strip leave.
-    expect(900 - 150 - h).toBe(250);
+    // A tall window's canvas keeps a third of what the toolbar, tabs and status strip leave.
+    expect(1200 - 150 - resultsHeight({ flow: 'small', dragged: null, windowHeight: 1200 })).toBe(350);
   });
 
-  it('leaves a small window’s canvas room for a row of nodes', () => {
-    expect(720 - 150 - resultsHeight({ flow: 'small', dragged: null, windowHeight: 720 })).toBe(220);
+  it('leaves a small window’s canvas room for a row of nodes, and the inspector beside it room for the first issue', () => {
+    // Regression: at 220 the inspector, which shares the canvas's row, cut off the first issue of a source.
+    expect(720 - 150 - resultsHeight({ flow: 'small', dragged: null, windowHeight: 720 })).toBe(280);
+    expect(900 - 150 - resultsHeight({ flow: 'small', dragged: null, windowHeight: 900 })).toBe(280);
+    // Still more for the data than the usual split.
+    expect(resultsHeight({ flow: 'small', dragged: null, windowHeight: 720 })).toBeGreaterThan(RESULTS_DEFAULT);
     expect(resultsHeight({ flow: 'small', dragged: null, windowHeight: 400 })).toBe(120);
   });
 

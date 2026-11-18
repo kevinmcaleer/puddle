@@ -10,7 +10,11 @@ test('on a source the issues come first, in view without scrolling, with the rea
 
   const issues = page.getByTestId('issues');
   await expect(issues).toHaveAttribute('data-state', 'ok', { timeout: 20_000 });
-  await expect(issues.locator('[data-testid^="issue-"]').first()).toBeInViewport({ ratio: 1 });
+  const first = issues.locator('[data-testid^="issue-"]').first();
+  await expect(first).toBeInViewport({ ratio: 1 });
+  // In view inside the inspector too: it shares the canvas's row, which a single source leaves short.
+  const bottom = async (box: Promise<{ y: number; height: number } | null>) => { const b = (await box)!; return b.y + b.height; };
+  expect(await bottom(first.boundingBox())).toBeLessThanOrEqual(await bottom(page.getByTestId('inspector').boundingBox()));
   // Issues are above the node's name and its read options.
   const top = async (testId: string) => (await page.getByTestId(testId).boundingBox())!.y;
   expect(await top('issues-section')).toBeLessThan((await page.getByLabel('Node name').boundingBox())!.y);

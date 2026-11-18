@@ -66,6 +66,8 @@ test('a new project is named after its first file, in the header and the project
   await expect(page.getByTestId('project-name')).toHaveText('Untitled project');
   await addFiles(page, [fixture('customers.csv'), fixture('orders.tsv')]);
   await expect(page.getByTestId('project-name')).toHaveText('customers');
+  // The name comes with the first file; the second is still being read.
+  for (const f of ['customers.csv', 'orders.tsv']) await expect(node(page, f)).toHaveAttribute('data-status', 'ok', { timeout: 20_000 });
   await projectMenu(page, 'All projects');
   await expect(page.getByTestId('project-customers')).toContainText('2 sources');
 });
