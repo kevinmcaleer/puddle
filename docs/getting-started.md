@@ -10,9 +10,9 @@ A new visit opens an empty project with two ways in. Drop a file on the canvas (
 
 ## The guided tour
 
-On your first visit Puddle offers a short tour. It opens the contact list sample and points out the main ideas one at a time: sources, the canvas, the results table, quick fixes, steps, rules and the Output node. Some stops ask you to do something, such as selecting a column, and move on by themselves once you have.
+On your first visit Puddle offers a short tour. It opens the contact list sample and follows what you would do with a file of your own: what Puddle found in it, **Fix all**, the receipt of what was fixed, and **Export**. Then it shows how that works: the canvas, steps and rules. The Fix all stop asks you to choose the button, and moves on by itself once you have.
 
-![The tour's first stop, pointing at a source on the canvas](_static/screenshots/start-tour.png)
+![The tour's first stop, pointing at what Puddle found in the sample](_static/screenshots/start-tour.png)
 
 You can leave the tour at any point with **Skip**, and pick it up again later from the **Help** menu in the toolbar. The same menu opens this guide (**User guide**).
 

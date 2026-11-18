@@ -48,29 +48,29 @@ test('the tour opens a sample and every stop is reached and dismissed with the k
 
   await expect(page.getByTestId('project-name')).toHaveText('Sample: contact list');
   await expect(node(page, 'contacts.csv')).toHaveAttribute('data-status', 'ok', { timeout: 20_000 });
-  await expect(tour(page)).toHaveAttribute('data-stop', 'sources');
-  await expect(page.getByRole('dialog', { name: 'Sources' })).toBeVisible();
+  await expect(tour(page)).toHaveAttribute('data-stop', 'found');
+  await expect(page.getByRole('dialog', { name: 'What Puddle found' })).toBeVisible();
   await expect(tour(page)).toBeFocused();
-  await expect(page.getByTestId('tour-announcer')).toHaveText('Tour, stop 1 of 7: Sources');
-  // The highlight sits on the source node.
-  const box = (await node(page, 'contacts.csv').boundingBox())!;
-  const ring = (await page.getByTestId('tour-highlight').boundingBox())!;
-  expect(Math.abs(ring.x - box.x)).toBeLessThan(2);
-  expect(Math.abs(ring.width - box.width)).toBeLessThan(2);
+  await expect(page.getByTestId('tour-announcer')).toHaveText('Tour, stop 1 of 7: What Puddle found');
+  // The highlight sits on the headline that says what was found.
+  const headline = page.getByTestId('findings-headline');
+  await expect(headline).toBeVisible({ timeout: 20_000 });
+  const ring = page.getByTestId('tour-highlight');
+  await expect.poll(async () => Math.abs((await ring.boundingBox())!.x - (await headline.boundingBox())!.x)).toBeLessThan(2);
+  await expect.poll(async () => Math.abs((await ring.boundingBox())!.width - (await headline.boundingBox())!.width)).toBeLessThan(2);
   await expect(tour(page).getByRole('button', { name: 'Back' })).toBeDisabled();
 
-  const stops = ['sources', 'canvas', 'results', 'quickfix', 'steps', 'rules', 'output'];
+  // The stops follow a first visit: what was found, Fix all, the receipt, Export, and then how it works.
+  const stops = ['found', 'fixall', 'receipt', 'export', 'canvas', 'steps', 'rules'];
   for (const [i, id] of stops.entries()) {
     await expect(tour(page)).toHaveAttribute('data-stop', id);
     await expect(tour(page)).toBeFocused();
     if (i < stops.length - 1) await pressInTour(page, 'Next');
   }
-  await expect(page.getByTestId('tour-announcer')).toHaveText('Tour, stop 7 of 7: The Output node');
-  // The last stop points at Add node, and Back goes back a stop.
-  const addNode = (await page.locator('[data-tour="add-node"]').boundingBox())!;
-  expect(Math.abs((await page.getByTestId('tour-highlight').boundingBox())!.x - addNode.x)).toBeLessThan(2);
+  await expect(page.getByTestId('tour-announcer')).toHaveText('Tour, stop 7 of 7: Rules');
+  // Back goes back a stop.
   await pressInTour(page, 'Back');
-  await expect(tour(page)).toHaveAttribute('data-stop', 'rules');
+  await expect(tour(page)).toHaveAttribute('data-stop', 'steps');
   await pressInTour(page, 'Next');
   await expect(tour(page).getByRole('button', { name: 'Skip' })).toHaveCount(0);
   await pressInTour(page, 'Finish');
@@ -79,7 +79,7 @@ test('the tour opens a sample and every stop is reached and dismissed with the k
 
   // Help starts it again, on the open project, and Escape ends it.
   await help(page, 'Take the tour');
-  await expect(tour(page)).toHaveAttribute('data-stop', 'sources');
+  await expect(tour(page)).toHaveAttribute('data-stop', 'found');
   await expect(page.getByTestId('project-name')).toHaveText('Sample: contact list');
   await page.keyboard.press('Escape');
   await expect(tour(page)).toHaveCount(0);
@@ -90,30 +90,30 @@ test('the tour opens a sample and every stop is reached and dismissed with the k
   await expect(tour(page)).toHaveCount(0);
 });
 
-test('stops wait for the action that teaches more, follow the layout and pick up where they were left', async ({ page }) => {
+test('the Fix all stop waits for the fix, the next stops point at the receipt and its foot, and a skipped tour picks up where it was left', async ({ page }) => {
   await openApp(page);
   await help(page, 'Take the tour');
   await expect(node(page, 'contacts.csv')).toHaveAttribute('data-status', 'ok', { timeout: 20_000 });
   await expectRows(page, 53);
   await tour(page).getByRole('button', { name: 'Next' }).click();
-  await tour(page).getByRole('button', { name: 'Next' }).click();
-  await expect(tour(page)).toHaveAttribute('data-stop', 'results');
-  await expect(page.getByTestId('tour-action')).toHaveText('Select a column header to carry on.');
-
-  // Selecting a column moves the tour on to the quick fixes.
-  const table = (await page.getByTestId('results-table').boundingBox())!;
-  await page.mouse.click(table.x + 100, table.y + 20);
-  await expect(tour(page)).toHaveAttribute('data-stop', 'quickfix');
-  await expect(page.getByTestId('quick-fixes')).toHaveAttribute('data-columns', 'name');
-
-  // Applying a fix moves it on to the steps in the inspector, which it points at.
-  await page.getByRole('toolbar', { name: 'Quick fixes' }).getByRole('button', { name: 'Trim' }).click();
-  await expect(tour(page)).toHaveAttribute('data-stop', 'steps');
-  await expect(node(page, 'Transform 1')).toBeVisible();
-  const steps = page.getByRole('region', { name: 'Applied steps' });
-  await expect(steps).toBeVisible();
+  await expect(tour(page)).toHaveAttribute('data-stop', 'fixall');
+  await expect(page.getByTestId('tour-action')).toHaveText('Choose Fix all to carry on.');
+  // The highlight sits on the Fix all button.
+  const fixAll = page.getByTestId('findings-headline').getByRole('button', { name: /^Fix \d+ (of \d+ )?issues?$/ });
   const ring = page.getByTestId('tour-highlight');
-  await expect.poll(async () => Math.round((await ring.boundingBox())!.y - (await steps.boundingBox())!.y)).toBe(0);
+  await expect.poll(async () => Math.round((await ring.boundingBox())!.x - (await fixAll.boundingBox())!.x)).toBe(0);
+
+  // Fixing moves the tour on to the receipt, which it points at.
+  await fixAll.click();
+  await expect(tour(page)).toHaveAttribute('data-stop', 'receipt');
+  const receipt = page.getByTestId('fix-receipt');
+  await expect(receipt).toBeVisible();
+  await expect.poll(async () => Math.round((await ring.boundingBox())!.y - (await receipt.boundingBox())!.y)).toBe(0);
+
+  // The next stop points at the receipt's foot, where Export is.
+  await tour(page).getByRole('button', { name: 'Next' }).click();
+  await expect(tour(page)).toHaveAttribute('data-stop', 'export');
+  await expect.poll(async () => Math.round((await ring.boundingBox())!.y - (await receipt.getByTestId('receipt-foot').boundingBox())!.y)).toBe(0);
 
   // The popover follows a window resize.
   const before = (await tour(page).boundingBox())!;
@@ -126,9 +126,9 @@ test('stops wait for the action that teaches more, follow the layout and pick up
   // Skipped part way, Help offers to resume where it was.
   await tour(page).getByRole('button', { name: 'Skip' }).click();
   await expect(tour(page)).toHaveCount(0);
-  expect(await progress(page)).toMatchObject({ stop: 4, finished: false });
+  expect(await progress(page)).toMatchObject({ stop: 3, finished: false });
   await page.getByTestId('help-menu').click();
-  await expect(page.getByRole('menuitem', { name: /Resume the tour/ })).toContainText('Stop 5 of 7');
+  await expect(page.getByRole('menuitem', { name: /Resume the tour/ })).toContainText('Stop 4 of 7');
   await page.getByRole('menuitem', { name: /Resume the tour/ }).click();
-  await expect(tour(page)).toHaveAttribute('data-stop', 'steps');
+  await expect(tour(page)).toHaveAttribute('data-stop', 'export');
 });
