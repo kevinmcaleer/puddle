@@ -54,7 +54,7 @@ The library holds two kinds of saved work, neither with any data in it. A **temp
 
 ### Templates
 
-To save a template, right-click a Transform and choose **Group the chain**, then right-click the group and choose **Save as template**; a single Transform has **Save as template** in the inspector, which takes the chain it is in. Pick the steps to keep. The template remembers which columns its steps read.
+To save a template, right-click a Transform and choose **Group the chain**, then right-click the group and choose **Save as template**; a single Transform has **Save as template** in the inspector, which takes the chain it is in. Pick the steps to keep. The receipt Fix all ends on has **Save as template** too, for the steps it added (see {doc}`analysing`). The template remembers which columns its steps read.
 
 ![Saving a group's steps as a template](_static/screenshots/templates-save.png)
 

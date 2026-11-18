@@ -60,7 +60,9 @@ The fixes land in two places:
 
 ![The canvas after Fix all on the CRM export: the Fixes group of Transforms after the source](_static/screenshots/analysing-fixed.png)
 
-Fix all ends on a receipt, in the inspector: each step it added, and the read options if it changed them, with the issues that step fixes and how many rows or values each one touched. Choose a line to open its step, with the results showing the rows as that step leaves them. **Export** at the foot of the receipt saves the fixed rows straight away (see {doc}`exporting`). If some issues are left, the receipt says how many, and **Show them** lists them.
+Fix all ends on a receipt, in the inspector: each step it added, and the read options if it changed them, with the issues that step fixes and how many rows or values each one touched. Choose a line to open its step, with the results showing the rows as that step leaves them. The foot of the receipt stays in view however long the list is. **Export** there saves the fixed rows straight away (see {doc}`exporting`), and **Save as template** keeps the steps Fix all added, named after the file, so the next file like this one gets the same fixes (see {doc}`projects`). If some issues are left, the receipt says how many, and **Show them** lists them.
+
+The node's badge says the same number as the receipt: it counts the issues fixed by read options as well as those fixed by steps.
 
 ![The receipt after Fix all on the CRM export: the steps it added, each with the issues it fixed](_static/screenshots/analysing-receipt.png)
 

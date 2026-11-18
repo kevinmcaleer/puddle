@@ -1,10 +1,12 @@
 // The receipt Fix all ends on, in the inspector's place: what was fixed and by which step, each line opening its
-// step, with Export at the end so a tidied file can leave straight away.
+// step. Its foot stays in view under the lines, however many there are: Export, so a tidied file can leave straight
+// away, and Save as template, so the next file like it gets the same fixes.
 import { useSession } from '../app/session';
 import { ExportHereButton } from '../export/ExportControls';
 import { nodeById, useProject, useProjectStore } from '../model';
 import { Button, formatInstant, Section, StatusBadge } from '../ui';
-import { fixReceipt, receiptTitle, type ReceiptLine } from './receipt';
+import { openTemplateDialog } from '../templates/actions';
+import { fixReceipt, receiptTemplate, receiptTitle, type ReceiptLine } from './receipt';
 import { nodeIssues, useAnalysisEntry } from './state';
 
 /** Open what a line names: its step in its Transform, viewed up to that step, or the source for a read option. */
@@ -25,9 +27,10 @@ export function FixReceipt({ nodeId }: { nodeId: string }) {
   const last = nodeById(project, receipt.lastNodeId);
   const open = nodeIssues(project, node, entry).open.length;
   const steps = receipt.lines.filter((l) => l.stepId).length;
+  const template = receiptTemplate(receipt);
   return (
-    <div data-testid="fix-receipt">
-      <div className="flex items-start justify-between gap-2 border-b border-line px-4 py-3">
+    <div className="flex min-h-0 flex-1 flex-col" data-testid="fix-receipt">
+      <div className="flex shrink-0 items-start justify-between gap-2 border-b border-line px-4 py-3">
         <div className="min-w-0">
           <div className="text-body-strong text-ink" data-testid="receipt-title">
             {receiptTitle(receipt)}
@@ -39,7 +42,8 @@ export function FixReceipt({ nodeId }: { nodeId: string }) {
         </div>
         <Button variant="ghost" size="sm" icon="cross" iconOnly aria-label="Close the receipt" onClick={close} />
       </div>
-      <Section title="What was fixed">
+      <div className="min-h-0 flex-1 overflow-auto" data-testid="receipt-scroll">
+        <Section title="What was fixed">
         <ul className="flex flex-col gap-3" data-testid="receipt-lines">
           {receipt.lines.map((line) => (
             <li key={line.key} className="flex flex-col gap-1" data-testid="receipt-line">
@@ -62,8 +66,9 @@ export function FixReceipt({ nodeId }: { nodeId: string }) {
             </li>
           ))}
         </ul>
-      </Section>
-      <div className="flex flex-col gap-3 px-4 py-3">
+        </Section>
+      </div>
+      <div className="flex shrink-0 flex-col gap-3 border-t border-line px-4 py-3" data-testid="receipt-foot">
         {open > 0 && (
           <p className="text-label text-ink-muted" data-testid="receipt-open">
             {open === 1 ? '1 issue is' : `${open} issues are`} left to look at.{' '}
@@ -73,7 +78,14 @@ export function FixReceipt({ nodeId }: { nodeId: string }) {
           </p>
         )}
         <div className="flex items-center justify-between gap-2">
-          {last && <ExportHereButton node={last} />}
+          <div className="flex items-center gap-2">
+            {last && <ExportHereButton node={last} />}
+            {template && (
+              <Button variant="ghost" size="sm" icon="template" title="Keep these fixes to use on the next file like this one" onClick={() => openTemplateDialog({ kind: 'save', ...template })}>
+                Save as template
+              </Button>
+            )}
+          </div>
           <Button variant="ghost" size="sm" onClick={close}>
             Done
           </Button>

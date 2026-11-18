@@ -24,15 +24,15 @@ const onEnter = (then: () => void) => (e: KeyboardEvent) => {
  * Save the steps of a chain of Transform nodes (one node, or a line of them, in order), all of them or some, as a
  * template. A chain that is a group is named after the group.
  */
-function SaveDialog({ nodes }: { nodes: TransformNode[] }) {
+function SaveDialog({ nodes, startName, stepIds }: { nodes: TransformNode[]; startName?: string; stepIds?: string[] }) {
   const project = useProject();
   const head = nodes[0]!;
   const group = nodes.length > 1 ? groupOf(project, head.id) : undefined;
-  const [name, setName] = useState(group?.name ?? head.name);
+  const [name, setName] = useState(startName ?? group?.name ?? head.name);
   const [description, setDescription] = useState('');
   // Every step along the chain, with the node it comes from, so the list reads in the order the data runs.
   const all = nodes.flatMap((n) => n.steps.map((step) => ({ node: n, step })));
-  const [picked, setPicked] = useState(() => new Set(all.filter((s) => !notTemplatable(s.step)).map((s) => s.step.id)));
+  const [picked, setPicked] = useState(() => new Set(all.filter((s) => !notTemplatable(s.step) && (!stepIds || stepIds.includes(s.step.id))).map((s) => s.step.id)));
   const steps: Step[] = all.filter((s) => picked.has(s.step.id)).map((s) => s.step);
   const firstPicked = all.find((s) => picked.has(s.step.id)) ?? all[0];
   // The columns arriving at the first picked step are what the template's steps start from.
@@ -286,5 +286,5 @@ export function TemplateDialogs() {
   if (!dialog) return null;
   if (dialog.kind === 'library') return <LibraryDialog />;
   const nodes = dialog.nodeIds.map((id) => nodeById(project, id)).filter((n): n is TransformNode => n?.type === 'transform');
-  return nodes.length ? <SaveDialog key={nodes.map((n) => n.id).join()} nodes={nodes} /> : null;
+  return nodes.length ? <SaveDialog key={nodes.map((n) => n.id).join()} nodes={nodes} startName={dialog.name} stepIds={dialog.stepIds} /> : null;
 }

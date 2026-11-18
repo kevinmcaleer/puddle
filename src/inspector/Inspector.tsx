@@ -302,7 +302,7 @@ export function Inspector() {
       {tab === 'notes' ? (
         <NotesPanel />
       ) : tab === 'node' && receipt ? (
-        <div className="min-h-0 flex-1 overflow-auto">
+        <div className="flex min-h-0 flex-1 flex-col">
           <FixReceipt nodeId={receipt} />
         </div>
       ) : tab === 'project' || !node ? (

@@ -9,8 +9,11 @@ import { addTemplate } from './library';
 import { mapSteps } from './mapping';
 import { createTemplate, type Template } from './template';
 
-/** Which template dialog is open: saving the steps of a chain of Transform nodes (one or more, in order), or the library. */
-export type TemplateDialog = { kind: 'save'; nodeIds: string[] } | { kind: 'library' } | null;
+/**
+ * Which template dialog is open: saving the steps of a chain of Transform nodes (one or more, in order), or the
+ * library. A save may come with the name to start from and the steps to tick, as one from a Fix all receipt does.
+ */
+export type TemplateDialog = { kind: 'save'; nodeIds: string[]; name?: string; stepIds?: string[] } | { kind: 'library' } | null;
 
 export const useTemplateDialog = create<{ dialog: TemplateDialog }>(() => ({ dialog: null }));
 

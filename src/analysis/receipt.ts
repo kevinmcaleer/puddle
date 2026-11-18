@@ -1,6 +1,6 @@
 // The receipt of a Fix all: what was fixed in a node's data and by which step, read from the analysis kept with the
 // node (see recordAnalysis) and the steps still in the project. Nothing here runs a query.
-import { nodeById, topoSort, type Project, type RecordedIssue } from '../model';
+import { fixedIssueKeys, nodeById, sourceProjectName, topoSort, type Project, type RecordedIssue } from '../model';
 
 export interface ReceiptIssue {
   key: string;
@@ -73,6 +73,29 @@ export function fixReceipt(project: Project, nodeId: string): Receipt | undefine
   if (!lines.length) return undefined;
   const keys = new Set(lines.flatMap((l) => l.issues.map((i) => i.key)));
   return { nodeId, nodeName: node.name, at: record.at, rows: record.rows, fixed: keys.size, lines, lastNodeId: lines.at(-1)!.nodeId };
+}
+
+/**
+ * How many of a node's issues stand fixed: those a step still in the project and turned on fixes, and those fixed by
+ * reading the source differently, which analysis no longer finds. The node's badge shows this, so it says the same
+ * number as the receipt's title while no fixing step is turned off.
+ */
+export function fixedCount(project: Project, nodeId: string): number {
+  const recorded = nodeById(project, nodeId)?.analysis?.issues.filter((i) => i.fixed) ?? [];
+  if (!recorded.length) return 0;
+  const bySteps = fixedIssueKeys(project, nodeId);
+  return recorded.filter((i) => i.fixedByRead || bySteps.has(i.key)).length;
+}
+
+/**
+ * What saving a receipt's fixes as a template starts from: the Transform nodes holding its steps, in the order they
+ * run, the steps to tick (the ones Fix all added, not a step of the user's own beside them), and a name after the
+ * file. Undefined when only read options changed: a template keeps steps, and there are none.
+ */
+export function receiptTemplate(receipt: Receipt): { name: string; nodeIds: string[]; stepIds: string[] } | undefined {
+  const steps = receipt.lines.filter((l) => l.stepId);
+  if (!steps.length) return undefined;
+  return { name: `${sourceProjectName({ name: receipt.nodeName })} fixes`, nodeIds: [...new Set(steps.map((l) => l.nodeId))], stepIds: steps.map((l) => l.stepId!) };
 }
 
 /** The node whose Fix all added a step in any of these nodes (those of a Fixes group, say), if one did. */
