@@ -91,7 +91,7 @@ A number or date column can't hold a word such as `empty`. Turn on **Change to t
 
 With a node selected, **Add** in the toolbar lists every step after the sources and the other nodes, grouped as Clean, Change type, Columns, Rows, Text, Dates, Numbers, Reshape and Advanced. The groups start folded, each heading saying how many steps it holds: choose a heading to open its group. Steps that add a column rather than changing one, such as Duplicate column, Text length and Time between dates, are marked **New column**. Type to search it (a group's name finds its steps), or press T on the canvas to open it with the search focused. A new step starts on the columns selected in the results, and goes after the selected node. **Add step** in the inspector lists the same steps, in the same groups, and adds to the open node (/ opens it with its search focused).
 
-![The Add menu with its search box](_static/screenshots/steps-add-menu.png)
+![The Add menu, its search finding the steps for dates](_static/screenshots/steps-add-menu.png)
 
 The {doc}`step-reference` describes them all.
 

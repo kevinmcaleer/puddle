@@ -62,6 +62,8 @@ async function addRule(page: Page, title: string) {
  */
 async function addNode(page: Page, item: string | RegExp, made: string, status: 'ok' | 'error' = 'ok') {
   await page.getByRole('button', { name: 'Add', exact: true }).click();
+  // The steps are folded under their group headings: the search finds one in any group.
+  await page.getByLabel('Search steps and nodes').fill(typeof item === 'string' ? item : item.source.replace(/^\^/, ''));
   await page.getByRole('menuitem', { name: item }).click();
   await bringIntoView(page, made);
   await expect(node(page, made)).toHaveAttribute('data-status', status, SLOW);

@@ -9,7 +9,9 @@ test('getting started', async ({ page }) => {
   await shot(page, 'start-empty');
   await page.getByRole('button', { name: 'Take the tour' }).click();
   await expect(node(page, 'contacts.csv')).toHaveAttribute('data-status', 'ok', { timeout: 20_000 });
-  await expect(page.getByRole('dialog', { name: /Sources/ })).toBeVisible();
+  await expect(page.getByRole('dialog', { name: 'What Puddle found' })).toBeVisible();
+  // The stop points at the headline, which comes once the sample has been checked.
+  await expect(page.getByTestId('findings-headline')).toBeVisible({ timeout: 20_000 });
   await shot(page, 'start-tour');
 });
 
@@ -134,7 +136,8 @@ test('analysing a file', async ({ page }) => {
   await expect(page.getByTestId('results-table')).toHaveAttribute('aria-label', /^Results of Transform \d+/, { timeout: 30_000 });
   await page.getByRole('button', { name: 'Auto layout' }).click();
   await shot(page, 'analysing-fixed');
-  await shotPanel(page, 'analysing-receipt', page.getByTestId('fix-receipt'));
+  // Tall enough for every line, and no taller: the foot sits at the bottom of the inspector.
+  await shotPanel(page, 'analysing-receipt', page.getByTestId('fix-receipt'), { height: 1250 });
 });
 
 /** Each fix opens a new node, whose table may still be loading: click name and city until they are the selection. */
@@ -171,6 +174,8 @@ test('quick fixes and steps', async ({ page }) => {
   await shot(page, 'quickfix-applied');
 
   await page.getByRole('button', { name: 'Add', exact: true }).click();
+  // The steps are folded under their groups; the search shows the ones it finds.
+  await page.getByLabel('Search steps and nodes').fill('date');
   await shot(page, 'steps-add-menu', page.getByRole('menu'));
   await page.keyboard.press('Escape');
   // Add step in the inspector adds to the node being looked at.
@@ -542,8 +547,9 @@ async function openShopSchema(page: Page) {
   await page.getByRole('menuitem', { name: 'Schema' }).click();
   await page.getByRole('combobox', { name: 'DBML' }).fill(fixtureText('dbml/shop.dbml'));
   await expect(page.getByTestId('schema-table-order_items')).toBeVisible();
-  // The whole window for the editor and the diagram.
-  await page.getByRole('button', { name: 'Hide inspector' }).click();
+  // The whole window for the editor and the diagram. A project with no node yet has the inspector closed already.
+  const hide = page.getByRole('button', { name: 'Hide inspector' });
+  if (await hide.isVisible()) await hide.click();
   await page.getByRole('button', { name: 'Hide results' }).click();
   await page.getByRole('button', { name: 'Auto-arrange' }).click();
 }
