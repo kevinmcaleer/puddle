@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { addStepWithT, fixture, node, openApp, selectNode } from './helpers/app';
+import { addStepWithT, fixture, node, openApp, selectNode, openProjectTab } from './helpers/app';
 
 /** The node is selected on the canvas (the inspector shows it). */
 const isSelected = (page: Page, name: string) => expect(node(page, name).locator('.ui-node')).toHaveClass(/is-selected/);
@@ -193,6 +193,9 @@ test('R and I show and hide the results and the inspector', async ({ page }) => 
   await page.keyboard.press('r');
   await expect(results).toHaveAttribute('data-collapsed', 'false');
 
+  // An empty project starts with the inspector closed: I opens it, and I again closes it.
+  await expect(page.getByTestId('inspector')).not.toBeAttached();
+  await page.keyboard.press('i');
   await expect(page.getByTestId('inspector')).toBeVisible();
   await page.keyboard.press('i');
   await expect(page.getByTestId('inspector')).not.toBeAttached();
@@ -202,7 +205,7 @@ test('R and I show and hide the results and the inspector', async ({ page }) => 
   // The notes are a tab of the inspector; the Project tab holds the settings.
   await page.getByRole('tab', { name: 'Notes' }).click();
   await expect(page.getByTestId('notes-panel')).toBeVisible();
-  await page.getByRole('tab', { name: 'Project' }).click();
+  await openProjectTab(page);
   await expect(page.getByTestId('project-settings')).toBeVisible();
   await page.keyboard.press('i');
   await expect(page.getByTestId('inspector')).not.toBeAttached();

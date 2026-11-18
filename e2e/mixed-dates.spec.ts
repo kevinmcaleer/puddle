@@ -7,8 +7,7 @@ const formats = (page: Page) => page.getByTestId('date-formats');
 
 test('parse dates reads a column written in several formats, the day first because its values say so', async ({ page }) => {
   await openApp(page);
-  await page.getByRole('button', { name: 'Try a sample' }).click();
-  await page.getByRole('dialog', { name: 'Try a sample' }).getByTestId('sample-sales').click();
+  await page.getByTestId('welcome-samples').getByTestId('sample-sales').click();
   await expect(node(page, 'sales.csv')).toHaveAttribute('data-status', 'ok', { timeout: 20_000 });
   await expectRows(page, 72);
 
@@ -26,7 +25,7 @@ test('parse dates reads a column written in several formats, the day first becau
   await expect(cell(page, 1, 5)).toHaveText('2024-04-28');
 
   await steps(page).first().click();
-  await expect(formats(page).getByRole('list', { name: 'Formats tried' }).locator('code')).toHaveText(['%Y-%m-%d', '%d/%m/%Y', '%d %b %Y', '%B %d, %Y']);
+  await expect(formats(page).getByRole('list', { name: 'Formats tried' }).locator('[data-format]')).toHaveText(['YYYY-MM-DD', 'DD/MM/YYYY', 'DD Mon YYYY', 'Month DD, YYYY']);
   await expect(formats(page).getByText('Reading the day first')).toBeVisible();
   await expect(formats(page).getByText(/can only be read this way/)).toBeVisible();
   await expect(formats(page).getByText(/fit none of these formats/)).toHaveCount(0);

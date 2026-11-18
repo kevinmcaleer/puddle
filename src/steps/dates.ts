@@ -1,5 +1,5 @@
 // Editor forms for the Dates step group. Parse dates detects formats when the step is added and again in the form.
-import { DATE_PARTS, INTERVAL_UNITS, PARSE_LOCALES, TRUNCATE_TO } from '../compiler';
+import { DATE_PARTS, formatFromWords, INTERVAL_UNITS, PARSE_LOCALES, TRUNCATE_TO } from '../compiler';
 import { describeFormat, strftime } from '../dates';
 import { columnKind } from '../ui/columnKind';
 import { isKind, pickColumns, pickKind } from './basic';
@@ -127,6 +127,6 @@ defineStepForm({
   type: 'formatDates',
   title: 'Format dates as text',
   group: 'Dates',
-  fields: [dateColumns, { key: 'format', label: 'Format', kind: 'text', mono: true, placeholder: '%d/%m/%Y', liveHint: (p) => formatExample(p.format) }],
+  fields: [dateColumns, { key: 'format', label: 'Format', kind: 'text', mono: true, placeholder: 'DD/MM/YYYY', show: describeFormat, read: formatFromWords, liveHint: (p) => formatExample(p.format) }],
   defaults: (ctx) => ({ columns: pickKind(ctx, 'date'), format: '%d/%m/%Y' }),
 });

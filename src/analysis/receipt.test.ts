@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { flow, src, step } from '../../tests/helpers/projects';
 import { recordAnalysis, removeStep, toggleStep } from '../model';
-import { fixReceipt, receiptNodeOf, receiptTitle, touched } from './receipt';
+import { fixedCount, fixReceipt, receiptNodeOf, receiptTemplate, receiptTitle, touched } from './receipt';
 
 const found = [
   { key: 'bannerRows', kind: 'bannerRows', label: 'Lines above the table', count: 2 },
@@ -70,6 +70,26 @@ describe('the Fix all receipt', () => {
     expect(r.lines.map((l) => l.issues.map((i) => i.key))).toEqual([['edgeSpaces:name'], ['edgeSpaces:name']]);
     expect(r.fixed).toBe(1);
     expect(receiptTitle(r)).toBe('Fixed 1 issue');
+  });
+
+  it('counts for the badge what the receipt counts: the issues fixed by read options as well as by steps', () => {
+    expect(fixedCount(fixed, 's')).toBe(4);
+    expect(fixedCount(fixed, 's')).toBe(fixReceipt(fixed, 's')!.fixed);
+    const read = recordAnalysis(base, 's', found, ['bannerRows'], AT, 12, {}, ['bannerRows']);
+    expect(fixedCount(read, 's')).toBe(1);
+    // A fix whose step is turned off or deleted is open again, so it leaves the count.
+    expect(fixedCount(toggleStep(fixed, 'a', 'trim'), 's')).toBe(2);
+    expect(fixedCount(removeStep(fixed, 'b', 'dedupe'), 's')).toBe(3);
+    expect(fixedCount(base, 's')).toBe(0);
+    expect(fixedCount(base, 'nope')).toBe(0);
+  });
+
+  it('starts a template from the steps Fix all added, in order, named after the file', () => {
+    const named = { ...fixed, nodes: fixed.nodes.map((n) => (n.id === 's' ? { ...n, name: 'people 2026.csv' } : n)) };
+    expect(receiptTemplate(fixReceipt(named, 's')!)).toEqual({ name: 'people 2026 fixes', nodeIds: ['a', 'b'], stepIds: ['trim', 'dedupe'] });
+    // The user's own step in the same node isn't one of the fixes, and read options are not steps.
+    const read = recordAnalysis(base, 's', found, ['bannerRows'], AT, 12, {}, ['bannerRows']);
+    expect(receiptTemplate(fixReceipt(read, 's')!)).toBeUndefined();
   });
 
   it('ends on the node itself when only read options changed', () => {

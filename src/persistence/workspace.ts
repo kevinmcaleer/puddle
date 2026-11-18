@@ -4,7 +4,7 @@ import { useSession } from '../app/session';
 import { dropAllKept } from '../flow/kept';
 import { resetSample } from '../flow/sample';
 import { invalidateCaches } from '../flow/status';
-import { createProject, newId, useProjectStore, type Project } from '../model';
+import { createProject, newId, setTakenProjectNames, useProjectStore, type Project } from '../model';
 import { useResultsStore } from '../results/state';
 import { attachProject } from '../sources/attach';
 import { copyHandles, deleteHandles, deleteProject, listProjects, loadHandles, loadProject, loadSyncLink, saveHandle, saveProject, saveSyncLink, type ProjectSummary, type StoredSyncLink } from './db';
@@ -62,6 +62,12 @@ function lastOpened(): string | null {
     return null;
   }
 }
+
+// A project named after its first source takes a name no other project in this browser has.
+setTakenProjectNames(() => {
+  const open = useProjectStore.getState().history.present.id;
+  return useWorkspace.getState().projects.filter((p) => p.id !== open).map((p) => p.name);
+});
 
 export async function refreshProjects() {
   const projects = await listProjects();

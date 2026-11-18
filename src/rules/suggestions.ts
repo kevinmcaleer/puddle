@@ -8,7 +8,7 @@ import { useNodeStatus } from '../flow/status';
 import { useProject, type ColumnSchema, type GraphNode, type Project } from '../model';
 import { parseProfile, parseTypeSniff, type ColumnProfile } from '../results/profile';
 import { columnKind } from '../ui/columnKind';
-import { parseSuggestionChecks, suggestionChecks, suggestRules, type CheckResult, type Suggestion } from './suggest';
+import { parseSuggestionChecks, rankSuggestions, suggestionChecks, suggestRules, type CheckResult, type Suggestion } from './suggest';
 
 export interface SuggestionFacts {
   profile: Record<string, ColumnProfile>;
@@ -78,5 +78,5 @@ export function useSuggestions(node: GraphNode): Suggestion[] {
   }, [engine, key, node.id]);
 
   if (!entry || entry.key !== key || entry.state !== 'ok') return EMPTY;
-  return suggestRules(entry.columns, entry.facts.profile, entry.facts.checked, node.rules, node.dismissedSuggestions);
+  return rankSuggestions(suggestRules(entry.columns, entry.facts.profile, entry.facts.checked, node.rules, node.dismissedSuggestions));
 }

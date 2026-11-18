@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { addFiles, cell, columnsOf, expectRows, fixture, fixtureText, node, openApp, pasteText } from './helpers/app';
+import { addFiles, cell, columnsOf, expectRows, fixture, fixtureText, node, openApp, pasteText, openReadOptions } from './helpers/app';
 
 test('a CSV added from the file chooser becomes a source node and fills the results table', async ({ page }) => {
   await openApp(page);
@@ -29,6 +29,7 @@ test('a CSV with ragged rows is still split into its columns', async ({ page }) 
   const columns = await columnsOf(page, 'bank-statement.csv');
   expect(columns.slice(0, 8)).toEqual(['Transaction Date', 'Transaction Type', 'Sort Code', 'Account Number', 'Transaction Description', 'Debit Amount', 'Credit Amount', 'Balance']);
 
+  await openReadOptions(page);
   await page.getByLabel('Delimiter').selectOption({ label: 'Comma' });
   await expect(page.getByTestId('inspector-columns').locator('.ui-col').first()).toHaveText('Transaction Date');
   await expect(node(page, 'bank-statement.csv')).toHaveAttribute('data-status', 'ok');
@@ -66,6 +67,7 @@ test('changing the delimiter in the inspector re-reads the file', async ({ page 
   await page.getByLabel('Delimiter').selectOption({ label: 'Comma' });
   await expect(page.getByTestId('inspector-columns').locator('.ui-col')).toHaveText(['id;city']);
 
+  await openReadOptions(page);
   await page.getByLabel('Delimiter').selectOption({ label: 'Semicolon' });
   await expect(page.getByTestId('inspector-columns').locator('.ui-col')).toHaveText(['id', 'city']);
 
@@ -83,7 +85,7 @@ test('treat-as-empty values come through as nulls', async ({ page }) => {
   const input = page.getByLabel('Treat as empty');
   await input.fill('N/A');
   await input.press('Enter');
-  await expect(cell(page, 1, 1)).toHaveText('null');
+  await expect(cell(page, 1, 1)).toHaveText('empty');
   await expect(cell(page, 1, 0)).toHaveText('Leeds');
 });
 

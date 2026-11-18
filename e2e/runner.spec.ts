@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { addFiles, fixture, node, openApp, selectNode } from './helpers/app';
+import { addFiles, fixture, node, openApp, selectNode, openAdvancedSettings } from './helpers/app';
 
 /** The open project's settings and sources, as the app holds them. */
 const held = (page: import('@playwright/test').Page) =>
@@ -21,7 +21,7 @@ test('a project takes a schedule and a source takes its path on the runner, both
   await expect.poll(() => held(page)).toMatchObject({ path: 'sources/customers.csv' });
 
   // The schedule is a project setting, in the Project tab.
-  await page.getByRole('tab', { name: 'Project' }).click();
+  await openAdvancedSettings(page);
   await page.getByLabel('Run on a schedule').fill('0 3 * * *');
   await page.getByLabel('Run on a schedule').press('Enter');
   await expect.poll(() => held(page)).toEqual({ schedule: '0 3 * * *', path: 'sources/customers.csv' });

@@ -35,3 +35,33 @@ test('Fix all ends on a receipt of what it fixed; a line opens its step, and the
   await receipt.getByRole('button', { name: 'Done' }).click();
   await expect(receipt).toHaveCount(0);
 });
+
+test('the receipt’s foot stays in view in a short window, the node’s badge says the same number, and the fixes are saved as a template', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 700 });
+  await openApp(page);
+  await page.getByTestId('welcome-samples').getByTestId('sample-sales').click();
+  const fixAll = page.getByTestId('results-panel').getByRole('button', { name: /^Fix \d+ (of \d+ )?issues?$/ });
+  await expect(fixAll).toBeVisible({ timeout: 20_000 });
+  await fixAll.click();
+
+  // Six lines don't fit a window this short: they scroll, and Export and Done stay where they are.
+  const receipt = page.getByTestId('fix-receipt');
+  await expect(receipt.getByTestId('receipt-title')).toHaveText('Fixed 7 issues');
+  const foot = receipt.getByTestId('receipt-foot');
+  await expect(foot.getByRole('button', { name: 'Export', exact: true })).toBeInViewport({ ratio: 1 });
+  await expect(foot.getByRole('button', { name: 'Done' })).toBeInViewport({ ratio: 1 });
+  expect(await receipt.getByTestId('receipt-scroll').evaluate((el) => el.scrollHeight > el.clientHeight)).toBe(true);
+  await receipt.getByTestId('receipt-line').last().scrollIntoViewIfNeeded();
+  await expect(foot.getByRole('button', { name: 'Done' })).toBeInViewport({ ratio: 1 });
+
+  // The badge counts the issue the read options fixed too, so it agrees with the receipt.
+  await expect(page.getByTestId('node-sales.csv').getByTestId('node-fixed')).toHaveText('7 fixed');
+
+  // Save as template: named after the file, with the five fixing steps ticked.
+  await foot.getByRole('button', { name: 'Save as template' }).click();
+  const save = page.getByRole('dialog', { name: 'Save as template' });
+  await expect(save.getByLabel('Name')).toHaveValue('sales fixes');
+  await expect(save.getByRole('switch', { checked: true })).toHaveCount(5);
+  await save.getByRole('button', { name: 'Save template' }).click();
+  await expect(page.getByTestId('canvas-notice')).toContainText('Saved “sales fixes” as a template.');
+});

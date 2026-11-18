@@ -8,7 +8,7 @@ import { sampledUpstream, useSample } from '../flow/sample';
 import { useFlowStore, useNodeStatus } from '../flow/status';
 import { addRule, dismissSuggestion, newId, nodeById, removeRule, updateRule, useProject, useProjectStore, type GraphNode, type Project, type Rule } from '../model';
 import { QualityReportButton } from '../report';
-import { newRule, ruleErrors, ruleForm, ruleForms, ruleLabel, showFailing, useSuggestions, type Suggestion } from '../rules';
+import { newRule, ruleErrors, ruleForm, ruleForms, ruleLabel, showFailing, SUGGESTIONS_SHOWN, useSuggestions, type Suggestion } from '../rules';
 import { qualified } from '../schema/model';
 import { FormFields, type OtherNode } from '../steps/StepForm';
 import { SchemaCheckPanel } from './SchemaCheckPanel';
@@ -85,21 +85,44 @@ function RuleSettings({ node, rule }: { node: GraphNode; rule: Rule }) {
   );
 }
 
-/** Suggested rules: added with one click as an ordinary rule, or dismissed for this node for good. */
+/**
+ * Suggested rules, the likeliest to be meant first: the best few, with Add all for what is listed and Show more for
+ * the rest. Each is added as an ordinary rule, or dismissed for this node for good.
+ */
 function Suggestions({ node }: { node: GraphNode }) {
   const suggestions = useSuggestions(node);
+  const [more, setMore] = useState(false);
   if (!suggestions.length) return null;
-  const add = (s: Suggestion) => {
-    const rule: Rule = { id: newId('r'), type: s.type, label: ruleLabel(s), enabled: true, severity: 'fail', params: s.params };
-    apply((p) => addRule(p, node.id, rule));
-  };
+  const listed = more ? suggestions : suggestions.slice(0, SUGGESTIONS_SHOWN);
+  const hidden = suggestions.length - listed.length;
+  const ruleOf = (s: Suggestion): Rule => ({ id: newId('r'), type: s.type, label: ruleLabel(s), enabled: true, severity: 'fail', params: s.params });
+  const add = (s: Suggestion) => apply((p) => addRule(p, node.id, ruleOf(s)));
+  // One undo step for all of them.
+  const addAll = () => apply((p) => listed.reduce((q, s) => addRule(q, node.id, ruleOf(s)), p));
   return (
     <div className="mt-2 flex flex-col border-t border-line pt-2" data-testid="rule-suggestions" aria-label="Suggested rules">
-      {suggestions.map((s) => (
+      <div className="flex items-center justify-between gap-2 pb-1">
+        <span className="text-label text-ink-muted" data-testid="suggestions-count">
+          {hidden > 0 ? `The best ${listed.length} of ${suggestions.length} suggestions` : `${suggestions.length} ${suggestions.length === 1 ? 'suggestion' : 'suggestions'}`}
+        </span>
+        {listed.length > 1 && (
+          <Button size="sm" variant="secondary" icon="plus" onClick={addAll} aria-label={`Add all ${listed.length} suggested rules`}>
+            Add all
+          </Button>
+        )}
+      </div>
+      {listed.map((s) => (
         <div key={s.key} data-testid={`suggestion-${s.key}`}>
           <RuleRow name={ruleLabel(s)} suggestion={{ reason: s.reason, onAdd: () => add(s), onDismiss: () => apply((p) => dismissSuggestion(p, node.id, s.key)) }} />
         </div>
       ))}
+      {(hidden > 0 || more) && suggestions.length > SUGGESTIONS_SHOWN && (
+        <div className="pt-1">
+          <Button size="sm" variant="ghost" aria-expanded={more} onClick={() => setMore(!more)}>
+            {more ? 'Show fewer' : `Show more (${hidden})`}
+          </Button>
+        </div>
+      )}
     </div>
   );
 }

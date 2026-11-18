@@ -1,12 +1,12 @@
 # The canvas
 
-The canvas is where your flow lives. Tabs above it switch to the {doc}`relationships` view and, once the project has a Query node, the {doc}`query designer <query-designer>`. Data runs left to right along wires: sources feed transforms and other nodes, and those feed outputs. Every node shows its row and column counts, and a badge when one of its rules fails.
+The canvas is where your flow lives. Tabs above it switch to the other views once the project has something for them: {doc}`relationships` with two sources or a Join, Lookup or Query node, the {doc}`query designer <query-designer>` with a Query node, and the {doc}`schema` once tables are designed. Until then **Relationships** and **Schema** are in the project menu, so an empty project shows only the canvas. Data runs left to right along wires: sources feed transforms and other nodes, and those feed outputs. Every node shows its row and column counts, and a badge when one of its rules fails.
 
 ![A flow on the canvas: two sources wired into a Join node](_static/screenshots/combine-join.png)
 
 ## Kinds of node
 
-**Add** in the toolbar adds a source, a node after the selected one, or a step, which goes in a Transform node of its own after the selected node. A node you add is selected and shown in the results straight away (unless the results are pinned). New nodes always arrive wired, so with nothing selected the nodes and steps wait, marked **Select a node first**; sources can be added at any time.
+**Add** in the toolbar adds a source, a node after the selected one, or a step, which goes in a Transform node of its own after the selected node. A node you add is selected and shown in the results straight away (unless the results are pinned). New nodes always arrive wired, so the menu lists only what can be added now: with nothing selected it has the sources and the nodes that need no input, with a line saying to select a node for the rest; with a node selected the other nodes and the steps join them.
 
 ![The Add menu: sources, then the nodes From template, Join, Append, Lookup, Query and Output, then every step](_static/screenshots/canvas-add-node-menu.png)
 

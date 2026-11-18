@@ -4,13 +4,13 @@ import { formatValue, type ColumnKind, type DisplayFormat } from '../ui';
 const NUMERIC: ColumnKind[] = ['integer', 'decimal'];
 
 /**
- * A results cell. Nulls read "null" in subtle italics (and to screen readers) but copy as empty;
+ * A results cell. Nulls read "empty" in subtle italics (and to screen readers) but copy as empty;
  * numbers are right-aligned; nothing is editable. Numbers and dates are shown in the display locale, but the
  * cell's data, what screen readers read and what is copied stay DuckDB's own text.
  */
 export function resultCell(value: string | null | undefined, kind: ColumnKind, nullTheme: Partial<Theme>, format?: DisplayFormat): GridCell {
   if (value === undefined) return { kind: GridCellKind.Loading, allowOverlay: false };
-  if (value === null) return { kind: GridCellKind.Text, data: 'null', displayData: 'null', copyData: '', allowOverlay: false, readonly: true, themeOverride: nullTheme };
+  if (value === null) return { kind: GridCellKind.Text, data: 'empty', displayData: 'empty', copyData: '', allowOverlay: false, readonly: true, themeOverride: nullTheme };
   const displayData = format ? formatValue(value, kind, format) : value;
   return { kind: GridCellKind.Text, data: value, displayData, copyData: value, allowOverlay: false, readonly: true, contentAlign: NUMERIC.includes(kind) ? 'right' : 'left' };
 }

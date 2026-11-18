@@ -97,8 +97,7 @@ const SAMPLES = {
 
 /** Open one of the built-in samples as a new project and wait until its sources have read. */
 export async function openSample(page: Page, id: keyof typeof SAMPLES) {
-  await page.getByRole('button', { name: 'Try a sample' }).first().click();
-  await page.getByRole('dialog', { name: 'Try a sample' }).getByTestId(`sample-${id}`).click();
+  await page.getByTestId('welcome-samples').getByTestId(`sample-${id}`).click();
   const sample = SAMPLES[id];
   await expect(page.getByTestId('project-name')).toHaveText(sample.name, { ignoreCase: true });
   for (const f of sample.files) await expect(node(page, f)).toHaveAttribute('data-status', 'ok', { timeout: 20_000 });

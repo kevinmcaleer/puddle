@@ -62,6 +62,8 @@ async function addRule(page: Page, title: string) {
  */
 async function addNode(page: Page, item: string | RegExp, made: string, status: 'ok' | 'error' = 'ok') {
   await page.getByRole('button', { name: 'Add', exact: true }).click();
+  // The steps are folded under their group headings: the search finds one in any group.
+  await page.getByLabel('Search steps and nodes').fill(typeof item === 'string' ? item : item.source.replace(/^\^/, ''));
   await page.getByRole('menuitem', { name: item }).click();
   await bringIntoView(page, made);
   await expect(node(page, made)).toHaveAttribute('data-status', status, SLOW);
@@ -175,7 +177,7 @@ test('tutorial: New York taxi trips', async ({ page }) => {
   await expect(node(page, 'Lookup 1')).toHaveAttribute('data-status', 'ok', SLOW);
   await expect(lookup.getByTestId('lookup-match')).toContainText('rows matched', SLOW);
   // Everything after it reads its result rather than running the lookup again.
-  await page.getByRole('switch', { name: 'Keep result in memory' }).click();
+  await page.getByRole('switch', { name: 'Keep this result ready' }).click();
   await expect(page.getByTestId('keep-memory')).toHaveAttribute('data-state', 'ready', SLOW);
   await expect(page.getByTestId('results-table')).toHaveAttribute('data-columns', /,Borough,Zone$/, SLOW);
   await shotPanel(page, 'tutorial-lookup', lookup);

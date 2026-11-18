@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { addFiles, addStepNode, dragWire, fixture, node, openApp, selectNode } from './helpers/app';
+import { addFiles, addStepNode, dragWire, fixture, node, openApp, selectNode, openProjectTab } from './helpers/app';
 
 test('nodes are added after the selection, wired, and laid out', async ({ page }) => {
   await openApp(page);
@@ -69,7 +69,7 @@ test('the minimap appears only once a node runs off the visible canvas, and the 
 
   // With a node selected the inspector shows it; the Project tab is a click away and back.
   await expect(page.getByTestId('inspector-transform')).toBeVisible();
-  await page.getByRole('tab', { name: 'Project' }).click();
+  await openProjectTab(page);
   await expect(page.getByTestId('project-settings')).toBeVisible();
   await expect(page.getByTestId('display-settings')).toBeVisible();
   await page.getByRole('tab', { name: 'Node' }).click();
@@ -80,12 +80,14 @@ test('dragging a wire connects nodes, and a wire that would make a loop is refus
   await openApp(page);
   await addFiles(page, [fixture('customers.csv')]);
   await expect(page.getByTestId('inspector-source')).toBeVisible();
-  // With nothing selected the Add menu's nodes and steps wait, saying why, so nothing lands unwired (principle 2).
+  // With nothing selected the Add menu leaves its nodes and steps out, saying why, so nothing lands unwired (principle 2).
   await page.getByTestId('canvas').click({ position: { x: 20, y: 20 } });
   await expect(page.getByTestId('inspector-source')).toHaveCount(0);
   await page.getByRole('button', { name: 'Add', exact: true }).click();
-  await expect(page.getByRole('menuitem', { name: /^Remove blank rows/ })).toBeDisabled();
-  await expect(page.getByRole('menuitem', { name: /^Output/ })).toContainText('Select a node first');
+  await expect(page.getByRole('menuitem', { name: /^Choose files/ })).toBeVisible();
+  await expect(page.getByRole('menuitem', { name: /^Remove blank rows/ })).toHaveCount(0);
+  await expect(page.getByRole('menuitem', { name: /^Output/ })).toHaveCount(0);
+  await expect(page.getByTestId('menu-note')).toHaveText('Select a node to add a step or another node after it.');
   await page.keyboard.press('Escape');
   // A Transform added after the source, then unwired, to drag a wire into.
   await selectNode(page, 'customers.csv');

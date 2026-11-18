@@ -9,6 +9,11 @@ export function ignoreIssue(project: Project, nodeId: string, key: string): Proj
   };
 }
 
+/** Stop showing the findings headline over a node's rows. Kept with the project, so it stays dismissed after a reload. */
+export function dismissFindings(project: Project, nodeId: string): Project {
+  return { ...project, nodes: project.nodes.map((n) => (n.id === nodeId && !n.findingsDismissed ? { ...n, findingsDismissed: true } : n)) };
+}
+
 /** Show an ignored issue again. */
 export function unignoreIssue(project: Project, nodeId: string, key: string): Project {
   if (!nodeById(project, nodeId)?.ignoredIssues?.includes(key)) return project;

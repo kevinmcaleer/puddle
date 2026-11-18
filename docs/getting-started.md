@@ -4,23 +4,23 @@
 
 Puddle is a web page. Open it in Chrome or Edge for the best experience (Firefox and Safari work too, but can't remember your files between visits). The first time it opens it starts DuckDB, which takes a moment; the status strip at the bottom right shows the DuckDB version once it's ready.
 
-A new visit opens an empty project with two ways in: **Add source** for your own files, and **Try a sample** for a small messy dataset that ships with Puddle.
+A new visit opens an empty project with two ways in. Drop a file on the canvas (or press **Add source**): Puddle reads Excel, CSV, JSON, Parquet, Access and most other data files (see {doc}`sources`). Or choose one of the samples beside it, small messy datasets that ship with Puddle.
 
-![An empty project, with Add source, Try a sample and the offer of a tour](_static/screenshots/start-empty.png)
+![An empty project: a place to drop a file, the samples and the offer of a tour](_static/screenshots/start-empty.png)
 
 ## The guided tour
 
-On your first visit Puddle offers a short tour. It opens the contact list sample and points out the main ideas one at a time: sources, the canvas, the results table, quick fixes, steps, rules and the Output node. Some stops ask you to do something, such as selecting a column, and move on by themselves once you have.
+On your first visit Puddle offers a short tour. It opens the contact list sample and follows what you would do with a file of your own: what Puddle found in it, **Fix all**, the receipt of what was fixed, and **Export**. Then it shows how that works: the canvas, steps and rules. The Fix all stop asks you to choose the button, and moves on by itself once you have.
 
-![The tour's first stop, pointing at a source on the canvas](_static/screenshots/start-tour.png)
+![The tour's first stop, pointing at what Puddle found in the sample](_static/screenshots/start-tour.png)
 
 You can leave the tour at any point with **Skip**, and pick it up again later from the **Help** menu in the toolbar. The same menu opens this guide (**User guide**).
 
 ## Samples
 
-**Try a sample** opens one of eight deliberately messy datasets as a new project. Each comes with a project note saying what is wrong with the data and where to start, and the Issues panel lists what Puddle found (see {doc}`analysing`).
+The empty canvas lists eight deliberately messy datasets, and so does the projects screen. Choosing one opens it as a new project. Each comes with a project note saying what is wrong with the data and where to start, and the Issues panel lists what Puddle found (see {doc}`analysing`). The first thing you see is what Puddle found: a headline above the rows, such as **7 problems found in sales.csv**, with **Fix all** and **Show me**.
 
-![The Try a sample dialog listing the samples](_static/screenshots/start-samples.png)
+![The samples on the empty canvas](_static/screenshots/start-samples.png)
 
 | Sample | What's wrong with it |
 | --- | --- |
@@ -41,7 +41,7 @@ Samples are ordinary projects: change them as much as you like, and delete them 
 
 1. **The toolbar.** The app switcher, which goes to Kev's other Power Tools; the Puddle wordmark, which goes back to all your projects; the project's name and menu, **Add** (sources and nodes), undo and redo, **Help** and the inspector toggle.
 2. **The canvas.** Your flow: sources on the left feed transforms, joins and other nodes, which feed outputs on the right. See {doc}`canvas`.
-3. **The inspector.** Its **Node** tab has everything about the selected node: a source's read options, a transform's steps and their settings, rules, and notes. The **Project** tab holds the project's settings, and the **Notes** tab the project's notes.
+3. **The inspector.** Its **Node** tab has everything about the selected node: a source's read options, a transform's steps and their settings, rules, and notes. The **Project** tab holds the project's settings, and the **Notes** tab the project's notes. It stays closed until the project has its first node.
 4. **The results.** The data at the node you're viewing, with each column's type and a bar showing how much of it is missing or unusual. Selecting columns here brings up the quick-fix bar.
 5. **The status strip.** Row and column counts, how long the last query took, how the viewed node's rules are doing, and a profile of the selected column.
 

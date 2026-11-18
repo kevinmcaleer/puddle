@@ -621,11 +621,13 @@ export interface SuggestionCheck {
   distinct?: boolean;
   /** List the distinct values, as text and sorted. */
   values?: boolean;
+  /** Count values the "reads as" rule for this type would fail: profiling reads more date formats than the rule does. */
+  reads?: 'number' | 'date';
 }
 
 /**
  * One row of exact facts behind suggested rules, at background priority: `rows`, and per check i `nn<i>`
- * (non-null values) plus `blank<i>`, `edges<i>`, `distinct<i>` and `values<i>` as asked for.
+ * (non-null values) plus `blank<i>`, `edges<i>`, `distinct<i>`, `values<i>` and `unread<i>` as asked for.
  */
 export function compileSuggestionChecks(project: Project, target: Target, checks: SuggestionCheck[]): string {
   const parts = ['count(*) AS "rows"'];
@@ -637,6 +639,8 @@ export function compileSuggestionChecks(project: Project, target: Target, checks
     if (c.edges) parts.push(`count(*) FILTER (WHERE ${text} <> trim(${text})) AS ${ident(`edges${i}`)}`);
     if (c.distinct) parts.push(`count(DISTINCT ${col}) AS ${ident(`distinct${i}`)}`);
     if (c.values) parts.push(`list_sort(list(DISTINCT ${text}) FILTER (WHERE ${col} IS NOT NULL)) AS ${ident(`values${i}`)}`);
+    // The rule's own predicate, so a suggestion is only made when the rule it adds passes.
+    if (c.reads) parts.push(`count(*) FILTER (WHERE NOT (${rulePredicate({ type: 'readsAs', label: '', params: { column: c.column, as: c.reads } })})) AS ${ident(`unread${i}`)}`);
   });
   return `SELECT ${parts.join(', ')} FROM (${compile(project, target).sql})`;
 }

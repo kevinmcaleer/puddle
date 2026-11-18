@@ -1,6 +1,8 @@
 # Analysing a file
 
-Every source, and any node you look at, is analysed in the background once it has run: Puddle reads its first rows, looks for the problems messy files usually have, and lists what it finds on the **Issues** panel in the inspector. Each issue comes with the fix Puddle would apply, and **Fix all** applies them in one go, as steps you can see, change and undo.
+Every source, and any node you look at, is analysed in the background once it has run: Puddle reads its first rows, looks for the problems messy files usually have, and lists what it finds on the **Issues** panel in the inspector. On a source it is the first thing under the node's name, above the name field and the read options. Each issue comes with the fix Puddle would apply, and **Fix all** applies them in one go, as steps you can see, change and undo.
+
+When a source has problems that Fix all would fix, the results say so above its rows: **7 problems found in sales.csv**, with **Fix all** beside it and **Show me**, which selects the source and opens its Issues list. The headline goes once the problems are fixed. Dismiss it (the cross) and it stays away for that source; its issues stay on the Issues list.
 
 ![The CRM export sample selected, with its issues listed in the inspector and Fix all above them](_static/screenshots/analysing-issues.png)
 
@@ -58,7 +60,9 @@ The fixes land in two places:
 
 ![The canvas after Fix all on the CRM export: the Fixes group of Transforms after the source](_static/screenshots/analysing-fixed.png)
 
-Fix all ends on a receipt, in the inspector: each step it added, and the read options if it changed them, with the issues that step fixes and how many rows or values each one touched. Choose a line to open its step, with the results showing the rows as that step leaves them. **Export** at the foot of the receipt saves the fixed rows straight away (see {doc}`exporting`). If some issues are left, the receipt says how many, and **Show them** lists them.
+Fix all ends on a receipt, in the inspector: each step it added, and the read options if it changed them, with the issues that step fixes and how many rows or values each one touched. Choose a line to open its step, with the results showing the rows as that step leaves them. The foot of the receipt stays in view however long the list is. **Export** there saves the fixed rows straight away (see {doc}`exporting`), and **Save as template** keeps the steps Fix all added, named after the file, so the next file like this one gets the same fixes (see {doc}`projects`). If some issues are left, the receipt says how many, and **Show them** lists them.
+
+The node's badge says the same number as the receipt: it counts the issues fixed by read options as well as those fixed by steps.
 
 ![The receipt after Fix all on the CRM export: the steps it added, each with the issues it fixed](_static/screenshots/analysing-receipt.png)
 

@@ -1,4 +1,5 @@
 import { useEffect, useId, useRef, useState, type RefObject } from 'react';
+import { fixReceipt } from '../analysis/receipt';
 import { useSession } from '../app/session';
 import { useProject, useProjectStore, type Project } from '../model';
 import { Button } from '../ui';
@@ -24,10 +25,16 @@ interface Layout {
 const sameLayout = (a: Layout | null, b: Layout) =>
   !!a && a.top === b.top && a.left === b.left && a.side === b.side && (a.target === b.target || (!!a.target && !!b.target && a.target.top === b.target.top && a.target.left === b.target.left && a.target.width === b.target.width && a.target.height === b.target.height));
 
-/** Get the screen ready for a stop: the results showing, or the inspector showing a node with steps. */
+/** Get the screen ready for a stop: the results showing, the receipt, or the inspector showing a node with steps. */
 function prepare(stop: TourStop, project: Project) {
   const session = useSession.getState();
   if (stop.prepare === 'results') session.setResultsOpen(true);
+  if (stop.prepare === 'receipt') {
+    // The receipt of the last Fix all, if there was one; a tour run without fixing anything shows the inspector.
+    const fixed = project.nodes.find((n) => fixReceipt(project, n.id))?.id;
+    if (fixed && !session.receiptNodeId) session.showReceipt(fixed);
+    else session.setInspectorOpen(true);
+  }
   if (stop.prepare === 'inspector') {
     session.setInspectorOpen(true);
     const selected = project.nodes.find((n) => n.id === session.selectedNodeId);

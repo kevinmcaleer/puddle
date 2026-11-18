@@ -2,21 +2,39 @@ import { describe, expect, it } from 'vitest';
 import { STEP_GROUPS, stepForms } from '../steps';
 import { afterSelection, connectorItems, nodeItems, SELECT_A_NODE_FIRST, stepItems } from './addMenu';
 
-const items = [
-  { label: 'Output', hint: undefined, onSelect: () => undefined },
-  { label: 'Join', hint: 'Two inputs', onSelect: () => undefined },
-];
+describe('the Add menu lists only what can be added now (principle 2: never an unwired node)', () => {
+  const picked: string[] = [];
+  const actions = { addNode: (t: string) => picked.push(`node:${t}`), addStep: (f: { type: string }) => picked.push(`step:${f.type}`) };
 
-describe('the Add menu’s nodes and steps (principle 2: never an unwired node)', () => {
-  it('are offered as they are once a node is selected', () => {
-    expect(afterSelection(items, true)).toBe(items);
+  it('offers no node or step while nothing is selected, and says how to get them', () => {
+    const menu = afterSelection(actions, false);
+    expect(menu.items).toEqual([]);
+    expect(menu.collapsed).toEqual([]);
+    expect(menu.note).toBe(SELECT_A_NODE_FIRST);
   });
 
-  it('wait, saying why, while nothing is selected', () => {
-    expect(afterSelection(items, false).map((i) => [i.label, i.disabled, i.hint])).toEqual([
-      ['Output', true, SELECT_A_NODE_FIRST],
-      ['Join', true, SELECT_A_NODE_FIRST],
-    ]);
+  it('offers every node and step once a node is selected, none of them disabled', () => {
+    const menu = afterSelection(actions, true);
+    expect(menu.note).toBeUndefined();
+    expect(menu.items.filter((i) => i.group === 'Nodes').map((i) => i.label)).toEqual(['Join', 'Append', 'Lookup', 'Query', 'SQL', 'Output']);
+    expect(menu.items.filter((i) => i.group !== 'Nodes').length).toBe(stepForms().length);
+    expect(menu.items.some((i) => i.disabled)).toBe(false);
+  });
+
+  it('folds the steps under their group headings, and leaves the nodes open', () => {
+    const menu = afterSelection(actions, true);
+    expect(menu.collapsed).toEqual(STEP_GROUPS.filter((g) => stepForms().some((f) => f.group === g)).map((g) => `${g} steps`));
+    expect(menu.collapsed).not.toContain('Nodes');
+    // Every step is in a folded group, so the open menu is its nodes and one heading per group.
+    for (const step of menu.items.filter((i) => i.group !== 'Nodes')) expect(menu.collapsed).toContain(step.group);
+  });
+
+  it('adds what is picked after the selected node', () => {
+    picked.length = 0;
+    const menu = afterSelection(actions, true);
+    menu.items.find((i) => i.label === 'Output')!.onSelect();
+    menu.items.find((i) => i.label === 'Trim whitespace')!.onSelect();
+    expect(picked).toEqual(['node:output', 'step:trimWhitespace']);
   });
 });
 

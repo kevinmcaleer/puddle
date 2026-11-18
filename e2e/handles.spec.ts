@@ -200,26 +200,26 @@ test('a duplicated project reconnects the same way; deleting a project forgets i
 
   await page.getByTestId('project-menu').click();
   await page.getByRole('menuitem', { name: 'All projects' }).click();
-  await page.getByRole('button', { name: 'More for Untitled project' }).click();
+  await page.getByRole('button', { name: 'More for customers' }).click();
   await page.getByRole('menuitem', { name: 'Duplicate' }).click();
-  await page.getByTestId('project-Untitled project copy').getByRole('button').first().click();
+  await page.getByTestId('project-customers copy').getByRole('button').first().click();
   // Opening a project is asynchronous: wait for the copy to be the open project before reading its id.
-  await expect(page.getByTestId('project-name')).toHaveText('Untitled project copy');
+  await expect(page.getByTestId('project-name')).toHaveText('customers copy');
   const copy = await projectId(page);
   expect(copy).not.toBe(original);
   await expect.poll(() => storedHandles(page, copy)).toBe(1);
   // Files chosen in this tab stay connected; a fresh visit reconnects the copy through its own handles.
   await reload(page);
-  await expect(page.getByTestId('project-name')).toHaveText('Untitled project copy');
+  await expect(page.getByTestId('project-name')).toHaveText('customers copy');
   await page.getByRole('button', { name: 'Reconnect 1 file' }).click();
   await expect(node(page, 'customers.csv')).toHaveAttribute('data-status', 'ok');
 
   await page.getByTestId('project-menu').click();
   await page.getByRole('menuitem', { name: 'All projects' }).click();
-  await page.getByRole('button', { name: 'More for Untitled project copy' }).click();
+  await page.getByRole('button', { name: 'More for customers copy' }).click();
   await page.getByRole('menuitem', { name: 'Delete' }).click();
   await page.getByRole('dialog', { name: 'Delete project?' }).getByRole('button', { name: 'Delete project' }).click();
-  await expect(page.getByTestId('project-Untitled project copy')).toHaveCount(0);
+  await expect(page.getByTestId('project-customers copy')).toHaveCount(0);
   expect(await storedHandles(page, copy)).toBe(0);
   expect(await storedHandles(page, original)).toBe(1);
 });

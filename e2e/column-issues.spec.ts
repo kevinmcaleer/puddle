@@ -3,8 +3,7 @@ import { expectRows, node, openApp } from './helpers/app';
 
 test('a likely misspelling is listed with its fix; ticked in Choose fixes and applied with the rest, it is put right', async ({ page }) => {
   await openApp(page);
-  await page.getByRole('button', { name: 'Try a sample' }).click();
-  await page.getByRole('dialog', { name: 'Try a sample' }).getByTestId('sample-crm').click();
+  await page.getByTestId('welcome-samples').getByTestId('sample-crm').click();
   await expect(node(page, 'messy.txt')).toHaveAttribute('data-status', 'ok', { timeout: 20_000 });
   await expectRows(page, 45);
 

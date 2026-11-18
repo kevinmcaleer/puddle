@@ -13,7 +13,7 @@ const rowsOf = (page: Page, sql: string) =>
 
 const keptTables = async (page: Page) => (await rowsOf(page, `SELECT table_name FROM duckdb_tables() WHERE table_name LIKE 'kept\\_%' ESCAPE '\\' ORDER BY 1`)).map((r) => String(r.table_name));
 
-const keepSwitch = (page: Page) => page.getByRole('switch', { name: 'Keep result in memory' });
+const keepSwitch = (page: Page) => page.getByRole('switch', { name: 'Keep this result ready' });
 const memory = (page: Page) => page.getByTestId('keep-memory');
 
 test.beforeEach(async ({ page }) => {

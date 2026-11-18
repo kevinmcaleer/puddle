@@ -68,7 +68,7 @@ Every step a Transform node can hold, as the **Add** menu groups them. The same 
 | Add or subtract time | Moves dates by a number of years, quarters, months, weeks, days, hours, minutes or seconds, the same for every row or taken from a column. |
 | Time between dates | Adds a new column with the whole number of years, months, days or other units between two date columns. |
 | Truncate dates | Rounds dates down to the start of their year, quarter, month, week (from Monday), day or hour. |
-| Format dates as text | Writes dates as text in a format you choose, such as `%d/%m/%Y`. |
+| Format dates as text | Writes dates as text in a format you choose, such as `DD/MM/YYYY`. |
 
 ### How dates are read
 
@@ -84,7 +84,7 @@ Puddle reads:
 - Numbers that stand for dates: Excel serial numbers (five digits, such as `45315`), and Unix times in seconds (`1706106600`) or milliseconds (`1706106600000`). These show in the list as `excel serial`, `unix seconds` and `unix milliseconds`.
 - Month and day names in the step's locale, such as `31. Dezember 2026` in German.
 
-Two-digit years from `00` to `68` are 2000 to 2068, and `69` to `99` are 1969 to 1999. A four-digit year format never reads a short year: `24/01/24` is read by `%d/%m/%y`, not as the year 24.
+Two-digit years from `00` to `68` are 2000 to 2068, and `69` to `99` are 1969 to 1999. A four-digit year format never reads a short year: `24/01/24` is read by `DD/MM/YY`, not as the year 24.
 
 **Day and month order.** A value such as `02/01/2024` could be 2 January or 1 February. Puddle never guesses:
 

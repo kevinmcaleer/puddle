@@ -1,8 +1,9 @@
 // Date format detection: which formats read a column, and the few that together read as much of it as they can.
 // Day and month order is never guessed: values that can only be read one way settle it, else the project's own
 // formats or the step's locale do, else it is asked.
-import { isNumberDateFormat, NUMBER_DATE_FORMATS } from '../compiler/dateRead';
+import { NUMBER_DATE_FORMATS } from '../compiler/dateRead';
 import { parseLocale } from '../compiler/locales';
+import { formatWords } from '../compiler/dateWords';
 
 /** The numeric day and month formats, both ways round, with each separator and year, and with times of day. */
 function dayMonthFormats(): string[] {
@@ -234,23 +235,5 @@ export function unreadValues(detection: Detection, formats: string[]): { example
   return { examples: missed.slice(0, 3).map((v) => v.value), count: missed.reduce((n, v) => n + v.count, 0), total: values.reduce((n, v) => n + v.count, 0) };
 }
 
-const PARTS: Record<string, string> = {
-  '%Y': 'YYYY',
-  '%y': 'YY',
-  '%m': 'MM',
-  '%d': 'DD',
-  '%B': 'Month',
-  '%b': 'Mon',
-  '%A': 'Weekday',
-  '%a': 'Wkd',
-  '%H': 'hh',
-  '%I': 'hh',
-  '%M': 'mm',
-  '%S': 'ss',
-  '%f': 'ffffff',
-  '%p': 'AM',
-  '%z': '+hh:mm',
-};
-
 /** A format as people write it, e.g. %d/%m/%Y → DD/MM/YYYY, and excel serial → Excel serial number. */
-export const describeFormat = (format: string) => (isNumberDateFormat(format) ? NUMBER_DATE_FORMATS[format].label : format.replace(/%[YymdBbAaHIMSfpz]/g, (t) => PARTS[t] ?? t));
+export const describeFormat = formatWords;

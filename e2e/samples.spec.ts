@@ -9,12 +9,13 @@ const projectMenu = async (page: Page, item: string) => {
 
 test('a sample opens from the empty canvas as a new project, with its data and its note', async ({ page }) => {
   await openApp(page);
-  await page.getByRole('button', { name: 'Try a sample' }).click();
-  const dialog = page.getByRole('dialog', { name: 'Try a sample' });
-  await expect(dialog.getByRole('listitem')).toHaveCount(8);
-  await dialog.getByTestId('sample-contacts').click();
+  // The empty canvas names what it reads and shows every sample as a card beside the drop zone.
+  await expect(page.getByTestId('welcome')).toContainText('Excel, CSV, JSON, Parquet, Access and most other data files');
+  const samples = page.getByTestId('welcome-samples');
+  await expect(samples.getByRole('listitem')).toHaveCount(8);
+  await samples.getByTestId('sample-contacts').click();
 
-  await expect(dialog).toHaveCount(0);
+  await expect(page.getByTestId('welcome')).toHaveCount(0);
   await expect(page.getByTestId('project-name')).toHaveText('Sample: contact list');
   await expect(node(page, 'contacts.csv')).toHaveAttribute('data-status', 'ok', { timeout: 20_000 });
   await expect(node(page, 'contacts.csv')).toContainText('Sample · CSV');
@@ -34,8 +35,7 @@ test('a sample opens from the empty canvas as a new project, with its data and i
 
 test('an Excel sample reads the workbook from beside the app, shows its issues, and reads it again on reload', async ({ page }) => {
   await openApp(page);
-  await page.getByRole('button', { name: 'Try a sample' }).click();
-  await page.getByRole('dialog', { name: 'Try a sample' }).getByTestId('sample-merged').click();
+  await page.getByTestId('welcome-samples').getByTestId('sample-merged').click();
   await expect(page.getByTestId('project-name')).toHaveText('Sample: merged report');
   await expect(node(page, 'merged.xlsx')).toHaveAttribute('data-status', 'ok', { timeout: 20_000 });
   await expect(node(page, 'merged.xlsx')).toContainText('Sample · Excel');

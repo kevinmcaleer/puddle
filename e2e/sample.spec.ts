@@ -1,10 +1,11 @@
 import { expect, test, type Page } from '@playwright/test';
 import { readFileSync } from 'node:fs';
-import { addFiles, expectRows, fixture, node, openApp, selectNode } from './helpers/app';
+import { addFiles, expectRows, fixture, node, openApp, selectNode, openAdvancedSettings, openReadOptions } from './helpers/app';
 
 /** Set the project's "Sample above" threshold (shown when no node is selected). */
 async function setThreshold(page: Page, rows: number) {
   await page.getByTestId('canvas').click({ position: { x: 600, y: 40 } });
+  await openAdvancedSettings(page);
   const input = page.getByLabel('Sample above');
   await input.fill(String(rows));
   await input.press('Enter');
@@ -100,6 +101,7 @@ test('a stopped preview says so and runs again', async ({ page }) => {
     void engine.query('SELECT count(*) FROM range(100000000000) t(i) WHERE i % 7 = 3', { label: 'Heavy' }).catch(() => undefined);
   });
   await expect(page.getByTestId('activity')).toContainText('Heavy');
+  await openReadOptions(page);
   await page.getByLabel('Delimiter').selectOption({ label: 'Comma' });
   await page.getByTestId('activity').getByRole('button', { name: 'Stop' }).click();
   const stopped = page.getByTestId('results-stopped');

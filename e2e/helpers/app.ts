@@ -24,14 +24,46 @@ export const fixtureText = (name: string) => readFileSync(fixture(name), 'utf8')
  */
 export async function addStepNode(page: Page, title: string, name = 'Transform 1') {
   await page.getByRole('button', { name: 'Add', exact: true }).click();
+  // The steps are folded under their group headings: the search finds one in any group.
+  await page.getByLabel('Search steps and nodes').fill(title);
   await page.getByRole('menuitem', { name: new RegExp(`^${title}`) }).click();
   await expect(node(page, name)).toBeVisible();
   await expect(page.getByLabel('Node name')).toHaveValue(name);
 }
 
+/** Show the inspector from the toolbar when it isn't showing, as on an empty project. */
+export async function openInspector(page: Page) {
+  const toggle = page.getByTestId('inspector-toggle');
+  if ((await toggle.getAttribute('aria-expanded')) !== 'true') await toggle.click();
+  await expect(page.getByTestId('inspector')).toBeVisible();
+}
+
+/**
+ * Show the inspector's Project tab. An empty project starts with the inspector closed (it opens by itself once there is
+ * a node), so it is opened from the toolbar first when it isn't showing.
+ */
+export async function openProjectTab(page: Page) {
+  await openInspector(page);
+  await page.getByTestId('inspector-tabs').getByRole('tab', { name: 'Project' }).click();
+}
+
+/** Show the Project tab with its Advanced settings (when to sample, the runner's schedule) unfolded. */
+export async function openAdvancedSettings(page: Page) {
+  await openProjectTab(page);
+  const advanced = page.getByTestId('project-settings').getByRole('button', { name: 'Advanced' });
+  if ((await advanced.getAttribute('aria-expanded')) !== 'true') await advanced.click();
+}
+
+/** Unfold the selected source's read options, which stay folded while the file reads cleanly. */
+export async function openReadOptions(page: Page) {
+  const toggle = page.getByTestId('read-options-toggle');
+  if ((await toggle.getAttribute('aria-expanded')) !== 'true') await toggle.click();
+  await expect(page.locator('#read-options')).toBeVisible();
+}
+
 /** Turn off the project setting that gives each new step a node of its own, so steps stack into the viewed Transform. */
 export async function stackSteps(page: Page) {
-  await page.getByRole('tab', { name: 'Project' }).click();
+  await openProjectTab(page);
   const setting = page.getByRole('switch', { name: 'Add each step as a new node' });
   await expect(setting).toHaveAttribute('aria-checked', 'true');
   await setting.click();
@@ -43,7 +75,7 @@ export async function stackSteps(page: Page) {
  * is a card on the canvas: for tests of what those cards do there. e2e/project-panel.spec.ts covers the panel.
  */
 export async function queriesOnCanvas(page: Page) {
-  await page.getByRole('tab', { name: 'Project' }).click();
+  await openProjectTab(page);
   const setting = page.getByRole('switch', { name: 'Keep queries in the project panel' });
   await expect(setting).toHaveAttribute('aria-checked', 'true');
   await setting.click();

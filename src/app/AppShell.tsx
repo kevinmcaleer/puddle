@@ -11,7 +11,7 @@ import { QuickFixes } from '../quickfix/QuickFixes';
 import { showFailing } from '../rules';
 import { useKeptTotal } from '../flow/kept';
 import { nodeIssues, useAnalysisEntry, useAnalysisEvaluation } from '../analysis';
-import { FixAll } from '../analysis/FixAll';
+import { BarFixAll, FindingsHeadline } from '../analysis/FindingsHeadline';
 import { ruleTally, useRuleStore } from '../flow/rules';
 import { sampledUpstream, useSample, useViewProject } from '../flow/sample';
 import { SampleBanner } from '../results/SampleBanner';
@@ -32,7 +32,6 @@ import { useSchemaTableSync } from '../schemaTables/state';
 import { LOAD_FAILURES, projectSchema } from '../compiler';
 import { useRewrittenSources } from '../sources/rewrite';
 import { useXmlSources } from '../sources/xml';
-import { SamplesDialog } from '../samples/SamplePicker';
 import { openUserGuide, startTaxiTutorial } from '../samples/open';
 import { Tour } from '../tour/Tour';
 import { TOUR_STOPS } from '../tour/stops';
@@ -56,6 +55,7 @@ import { FileSetInputs } from '../sources/FileSetInputs';
 import { ADD_AFTER_SELECTION, addFiles, addFileSet, addNodeAfterSelection, addSchemaTable, addTableFromSql, cancelWiring, chooseFiles as pickSourceFiles, addPastedText, groupSelection, layoutFlow, openSelected, pasteFromClipboard, searchAddStep, selectNeighbour, startWiring, viewSelected } from './actions';
 import { useEngineStore, type EngineStatus } from './engine';
 import { ResultsPanel } from './ResultsPanel';
+import { isSmallFlow } from './resultsHeight';
 import { Console } from '../console/Console';
 import { SqlDockPane } from './SqlDock';
 import { ShortcutsDialog } from './ShortcutsDialog';
@@ -68,8 +68,8 @@ import { useShortcuts } from './useShortcuts';
 import { PROVIDER_IDS, PROVIDERS, useSync } from '../sync';
 import { openSyncDialog } from '../sync/dialogs';
 import { SyncConflictBanner } from '../sync/SyncDialogs';
-import { useSession } from './session';
-import { afterSelection, nodeItems, stepItems } from './addMenu';
+import { inspectorShown, useSession } from './session';
+import { afterSelection } from './addMenu';
 import { showView } from './views';
 import { ProjectPanel } from './ProjectPanel';
 import { ViewSwitcher } from './ViewSwitcher';
@@ -80,7 +80,7 @@ function EngineBadge({ status }: { status: EngineStatus }) {
   const { bundle, version } = status.info;
   return (
     <span data-testid="engine-ready" data-bundle={bundle} title={`DuckDB ${version}, ${bundle} bundle`}>
-      DuckDB {version} · {bundle}
+      DuckDB {version}
     </span>
   );
 }
@@ -157,6 +157,7 @@ function ResultsTitle() {
     >
       <PinOffer />
       <SampleBanner />
+      {!failing && step == null && <FindingsHeadline node={node} />}
       {node.type === 'output' && !failing && <ExportBlockedBanner node={node} className="px-3 pb-2" />}
       {failing ? (
         <div className="px-3 pb-2">
@@ -167,8 +168,9 @@ function ResultsTitle() {
       ) : (
         <div className="flex items-start gap-2">
           <QuickFixes />
+          {/* The headline, while it shows, carries Fix all. */}
           <div className="ml-auto px-3 pb-2 empty:hidden">
-            <FixAll node={node} />
+            <BarFixAll node={node} headlineShown={step == null} />
           </div>
         </div>
       )}
@@ -262,7 +264,7 @@ export function AppShell() {
   const { undo, redo } = useProjectStore();
   const canUndo = useProjectStore((s) => s.history.past.length > 0);
   const canRedo = useProjectStore((s) => s.history.future.length > 0);
-  const inspectorOpen = useSession((s) => s.inspectorOpen);
+  const inspectorOpen = inspectorShown(useSession((s) => s.inspectorOpen), project.nodes.length);
   // The project panel shows itself once a query is listed in it only; after that it is as the person left it.
   const outlineChoice = useSession((s) => s.outlineOpen);
   const outlineOpen = outlineChoice ?? offCanvasIds(project).size > 0;
@@ -312,7 +314,7 @@ export function AppShell() {
     help: () => session().setShortcutsOpen(true),
     undo,
     redo,
-    'toggle-inspector': () => session().setInspectorOpen(!session().inspectorOpen),
+    'toggle-inspector': () => session().setInspectorOpen(!inspectorShown(session().inspectorOpen, useProjectStore.getState().history.present.nodes.length)),
     'add-source': chooseFiles,
     'add-database': () => openConnectionDialog('add'),
     'add-transform': onCanvas(() => session().requestAddMenu()),
@@ -340,6 +342,13 @@ export function AppShell() {
     'show-schema': () => showView(project, 'schema'),
   };
   useShortcuts(actions, (text) => void addPastedText(text));
+
+  // Nodes and steps go after the selected node, so with nothing selected the Add menu leaves them out (principle 2).
+  const after = afterSelection(ADD_AFTER_SELECTION, hasSelection);
+
+  // The results take most of the window while the canvas shows a small flow; the other views, and the SQL console on
+  // an empty project, need their usual room.
+  const resultsFlow = !project.nodes.length && !consoleOpen ? 'empty' : !covering && isSmallFlow(project.nodes) ? 'small' : 'grown';
 
   return (
     <ReactFlowProvider>
@@ -374,7 +383,7 @@ export function AppShell() {
               if (!next) session().clearAddMenu();
             }}
             items={[
-              { label: 'Choose files', icon: 'source', hint: 'CSV, TSV, JSON, Parquet', shortcut: shortcutText('add-source'), group: 'Sources', onSelect: chooseFiles },
+              { label: 'Choose files', icon: 'source', hint: 'Any data file', shortcut: shortcutText('add-source'), group: 'Sources', onSelect: chooseFiles },
               { label: 'Files as one table', icon: 'source', hint: 'Many files', group: 'Sources', onSelect: () => setInput.current?.click() },
               { label: 'Folder as one table', icon: 'source', hint: 'Its files', group: 'Sources', onSelect: () => folderInput.current?.click() },
               { label: 'From URL', icon: 'link', hint: 'https address', group: 'Sources', onSelect: () => openUrlDialog() },
@@ -387,13 +396,10 @@ export function AppShell() {
               { label: 'Table from SQL', icon: 'code', hint: 'CREATE TABLE', group: 'Nodes', onSelect: addTableFromSql },
               // Every table designed in the Schema view, as a node holding its rows (the selected node, if any, loads into it).
               ...schemaTables.map((t) => ({ label: t.name, icon: 'schema' as const, hint: t.schema === 'public' ? 'Schema table' : `Schema table in ${t.schema}`, group: 'Schema tables', onSelect: () => addSchemaTable(t.schema, t.name) })),
-              // Nodes and steps go after the selected node, so with nothing selected they wait (principle 2).
-              ...afterSelection([
-                ...nodeItems(ADD_AFTER_SELECTION),
-                // Every step, each making a node of its own after the selected node (T opens the menu with its search focused).
-                ...stepItems(ADD_AFTER_SELECTION),
-              ], hasSelection),
+              ...after.items,
             ]}
+            collapsed={after.collapsed}
+            note={after.note}
           />
           <Button variant="ghost" icon="undo" iconOnly aria-label="Undo" title={withShortcut('Undo', 'undo')} disabled={!canUndo} onClick={undo} />
           <Button variant="ghost" icon="redo" iconOnly aria-label="Redo" title={withShortcut('Redo', 'redo')} disabled={!canRedo} onClick={redo} />
@@ -476,7 +482,7 @@ export function AppShell() {
           )}
         </div>
 
-        <ResultsPanel bar={<ResultsTitle />}>
+        <ResultsPanel bar={<ResultsTitle />} flow={resultsFlow}>
           <div className="flex h-full min-h-0">
             <SqlDockPane />
             <div className="flex h-full min-h-0 min-w-0 flex-1 flex-col">
@@ -496,7 +502,6 @@ export function AppShell() {
       <ODataDialog />
       <ConnectionDialog />
       <DocumentSchemaDialog />
-      <SamplesDialog />
       <ShortcutsDialog />
       <TemplateDialogs />
       <RecipeDialogs />

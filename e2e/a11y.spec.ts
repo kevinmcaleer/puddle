@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { expect, test, type Page } from '@playwright/test';
 import { expectAccessible } from './helpers/axe';
-import { addFiles, addStep, addStepNode, expectRows, fixture, node, openApp, selectNode } from './helpers/app';
+import { addFiles, addStep, addStepNode, expectRows, fixture, node, openApp, selectNode, openInspector, openProjectTab } from './helpers/app';
 
 const projectMenu = async (page: Page, item: string) => {
   await page.getByTestId('project-menu').click();
@@ -29,10 +29,8 @@ for (const theme of ['light', 'dark'] as const) {
       await openApp(page);
       await expectAccessible(page, 'the empty canvas');
 
-      await page.getByRole('button', { name: 'Try a sample' }).click();
-      await expect(page.getByRole('dialog', { name: 'Try a sample' })).toBeVisible();
-      await expectAccessible(page, 'the samples dialog');
-      await page.keyboard.press('Escape');
+      // The samples are cards on the empty canvas, checked with it above.
+      await expect(page.getByTestId('welcome-samples').getByRole('listitem')).toHaveCount(8);
 
       await page.getByRole('button', { name: 'Add', exact: true }).click();
       await page.getByRole('menuitem', { name: /From URL/ }).click();
@@ -65,10 +63,12 @@ for (const theme of ['light', 'dark'] as const) {
       await expectAccessible(page, 'an open menu');
       await page.keyboard.press('Escape');
 
+      // An empty project starts with the inspector closed.
+      await openInspector(page);
       await page.getByRole('tab', { name: 'Notes' }).click();
       await expect(page.getByTestId('notes-panel')).toBeVisible();
       await expectAccessible(page, 'the notes tab');
-      await page.getByRole('tab', { name: 'Project' }).click();
+      await openProjectTab(page);
       await expect(page.getByTestId('project-settings')).toBeVisible();
 
       // The open menu hangs over the inspector's tabs, which axe reads as obscured targets, so the dock is hidden

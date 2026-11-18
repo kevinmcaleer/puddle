@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { addFiles, addStepNode, cell, expectRows, fixture, node, openApp, pasteText, saved, selectNode } from './helpers/app';
+import { addFiles, addStepNode, cell, expectRows, fixture, node, openApp, openProjectTab, pasteText, saved, selectNode } from './helpers/app';
 
 const projectMenu = async (page: Page, item: string) => {
   await page.getByTestId('project-menu').click();
@@ -60,6 +60,18 @@ test('pasted data is stored in the project and comes back connected', async ({ p
   await expect(cell(page, 0, 1)).toHaveText('B2');
 });
 
+// #289: every project was "Untitled project", so the projects list said nothing about what was in each.
+test('a new project is named after its first file, in the header and the projects list', async ({ page }) => {
+  await openApp(page);
+  await expect(page.getByTestId('project-name')).toHaveText('Untitled project');
+  await addFiles(page, [fixture('customers.csv'), fixture('orders.tsv')]);
+  await expect(page.getByTestId('project-name')).toHaveText('customers');
+  // The name comes with the first file; the second is still being read.
+  for (const f of ['customers.csv', 'orders.tsv']) await expect(node(page, f)).toHaveAttribute('data-status', 'ok', { timeout: 20_000 });
+  await projectMenu(page, 'All projects');
+  await expect(page.getByTestId('project-customers')).toContainText('2 sources');
+});
+
 test('projects can be created, renamed, duplicated and deleted from the home screen', async ({ page }) => {
   await openApp(page);
   // A first project with something in it, so it is saved.
@@ -92,7 +104,7 @@ test('projects can be created, renamed, duplicated and deleted from the home scr
   // A new project opens empty; going home lists both once it has content.
   await page.getByRole('button', { name: 'New project' }).click();
   await expect(page.getByTestId('project-name')).toHaveText('Untitled project');
-  await expect(page.getByRole('heading', { name: 'Start with a source' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Drop a messy file here' })).toBeVisible();
   await projectMenu(page, 'All projects');
   await page.getByTestId('project-Customers').getByRole('button').first().click();
   await expect(page.getByTestId('project-name')).toHaveText('Customers');
@@ -155,9 +167,11 @@ test('a project from a newer Puddle is refused with a reason', async ({ page }) 
 
 test('project settings are saved with the project', async ({ page }) => {
   await openApp(page);
+  await openProjectTab(page);
   await page.getByLabel('Locale').selectOption({ label: 'German' });
   await expect.poll(async () => (await saved(page))?.settings.locale).toBe('de-DE');
   await page.reload();
+  await openProjectTab(page);
   await expect(page.getByLabel('Locale')).toHaveValue('de-DE');
 });
 

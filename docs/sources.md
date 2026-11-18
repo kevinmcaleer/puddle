@@ -275,7 +275,7 @@ When you open the project again in another tab, a database file is chosen again,
 
 ## Read options
 
-Select a source to see how it is read in the inspector. For a CSV file that is the delimiter, whether the first row is the header, the encoding, the quote character and which values count as empty (such as `NA` or `n/a`). Two more skip what isn't the table: **Skip lines at the top** leaves out a title, comment lines or a date above the header (blank lines included), and **Skip rows at the bottom** a row count, a signature or a footer after the last row. Puddle sets both from what it finds in the file, and the Issues panel offers them as fixes when it finds more (see {doc}`analysing`). Change any of them and every node after the source updates.
+Select a source to see how it is read in the inspector, under **Read options**. A file that reads cleanly keeps them folded away, with one line saying what it was read as: choose **Show** to open them. They open by themselves when the file can't be read, for a Word or PDF document (where they choose which table is read), or when one of its issues is put right by a read option (lines to skip, words that mean empty). For a CSV file that is the delimiter, whether the first row is the header, the encoding, the quote character and which values count as empty (such as `NA` or `n/a`). Two more skip what isn't the table: **Skip lines at the top** leaves out a title, comment lines or a date above the header (blank lines included), and **Skip rows at the bottom** a row count, a signature or a footer after the last row. Puddle sets both from what it finds in the file, and the Issues panel offers them as fixes when it finds more (see {doc}`analysing`). Change any of them and every node after the source updates.
 
 ![A CSV source selected, with its read options in the inspector](_static/screenshots/screen-overview.png)
 
@@ -289,7 +289,7 @@ A file source also has **Path to this file** under *On the runner*: where `puddl
 
 Files are read from disk in pieces, so a source can be larger than your computer's memory. Above a row threshold (five million rows unless you change **Sample above** in the project's settings) Puddle previews, profiles and checks rules on the first rows of each large source so editing stays fast. The results say when you're looking at a sample, one click runs on the full data, and exports always read everything.
 
-**Keep result in memory**, in the inspector of any node, stores that node's result inside DuckDB so the nodes after it read it rather than re-running everything before it. It's worth turning on after an expensive step, such as a join of two big files.
+**Keep this result ready**, in the inspector of any node, stores that node's result inside DuckDB so the nodes after it read it rather than re-running everything before it. It's worth turning on after an expensive step, such as a join of two big files.
 
 ## Reopening a project
 

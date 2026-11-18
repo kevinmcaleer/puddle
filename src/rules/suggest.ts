@@ -22,6 +22,20 @@ const isText = (c: ColumnSchema) => columnKind(c.type) === 'text';
 const isOrdered = (c: ColumnSchema) => ['integer', 'decimal', 'date', 'timestamp'].includes(columnKind(c.type));
 const setLike = (c: ColumnSchema) => ['text', 'integer', 'boolean'].includes(columnKind(c.type));
 
+/** How many suggestions the panel lists before Show more. */
+export const SUGGESTIONS_SHOWN = 5;
+
+/** A column named as a key: id, order_id, customerId, code, "invoice no". */
+export const keyLike = (name: string) => /(^|[\s_-])(id|key|code|no|number|ref)$/i.test(name.trim()) || /[a-z](Id|ID|Key|Code)$/.test(name.trim());
+
+/**
+ * A measure: an amount, not something a row is known by. A decimal column, or text that reads as numbers (amounts
+ * written with currency symbols) unless it is named as a key. Its values may all differ today, but nobody means
+ * "amount is unique".
+ */
+export const isMeasure = (c: ColumnSchema, p: Pick<ColumnProfile, 'looksLike'> | undefined) =>
+  columnKind(c.type) === 'decimal' || (isText(c) && p?.looksLike?.kind === 'numbers' && !keyLike(c.name));
+
 /**
  * Which exact checks to run, from the profile alone: blanks only where profiling found no nulls, spaces on text
  * columns, an exact distinct count where the approximate one is close to the row count, and the values of columns
@@ -38,7 +52,9 @@ export function suggestionChecks(columns: ColumnSchema[], profile: Record<string
     // Unique is only suggested when every row has a value, so a column with nulls needs no exact count.
     if (rows >= 2 && p.empty === 0 && p.distinct != null && p.distinct >= rows * UNIQUE_NEAR) check.distinct = true;
     if (setLike(c) && p.distinct != null && p.distinct >= 2 && p.distinct <= IN_SET_MAX && rows >= 2 * p.distinct) check.values = true;
-    if (check.blank || check.edges || check.distinct || check.values) checks.push(check);
+    // Profiling reads dates written many ways; the rule reads fewer, so its own count decides.
+    if (isText(c) && p.looksLike?.share === 1) check.reads = p.looksLike.kind === 'numbers' ? 'number' : 'date';
+    if (check.blank || check.edges || check.distinct || check.values || check.reads) checks.push(check);
   }
   return checks;
 }
@@ -50,6 +66,8 @@ export interface CheckResult {
   edges?: number;
   distinct?: number;
   values?: string[];
+  /** Values the "reads as" rule would fail. */
+  unread?: number;
 }
 
 export function parseSuggestionChecks(row: Record<string, unknown>, checks: SuggestionCheck[]): { rows: number; columns: Record<string, CheckResult> } {
@@ -62,6 +80,7 @@ export function parseSuggestionChecks(row: Record<string, unknown>, checks: Sugg
       blank: c.blank ? num(`blank${i}`) : undefined,
       edges: c.edges ? num(`edges${i}`) : undefined,
       distinct: c.distinct ? num(`distinct${i}`) : undefined,
+      unread: c.reads ? num(`unread${i}`) : undefined,
       values: c.values && values != null && typeof values === 'object' && Symbol.iterator in values ? Array.from(values as Iterable<unknown>, String) : undefined,
     };
   });
@@ -103,16 +122,38 @@ export function suggestRules(
     const column = c.name;
     if (x.blank === 0) add('notEmpty', column, { column }, `${column} has no empty values`);
     // Confirmed by an exact count: every row has a value, and no two are the same.
-    if (x.distinct != null && rows >= 2 && x.nonNull === rows && x.distinct === rows)
+    if (x.distinct != null && rows >= 2 && x.nonNull === rows && x.distinct === rows && !isMeasure(c, p))
       add('unique', column, { columns: [column] }, `${column} has a different value in each of its ${s(rows, 'row')}`);
     if (x.values && x.values.length >= 2 && x.values.length <= IN_SET_MAX && x.nonNull >= 2 * x.values.length)
       add('inSet', column, { column, values: x.values, matchCase: true }, `${column} has ${s(x.values.length, 'distinct value')}`);
     if (isOrdered(c) && p.min != null && p.max != null && p.min !== p.max) add('inRange', column, { column, min: p.min, max: p.max }, `${column} runs from ${p.min} to ${p.max}`);
-    if (isText(c) && p.looksLike && p.looksLike.share === 1) {
+    // Every value looks like one, and the rule itself would pass (when that was counted).
+    if (isText(c) && p.looksLike && p.looksLike.share === 1 && !x.unread) {
       const as = p.looksLike.kind === 'numbers' ? 'number' : 'date';
       add('readsAs', column, { column, as }, `${column} is text, but every value reads as a ${as}`);
     }
     if (isText(c) && x.edges === 0 && x.nonNull > 0) add('noEdgeSpaces', column, { column }, `${column} has no spaces at either end`);
   }
   return out;
+}
+
+/** How likely a kind of rule is to be meant, the likeliest first: keys, required columns, then what the values look like. */
+const TYPE_RANK = ['unique', 'notEmpty', 'inSet', 'readsAs', 'inRange', 'noEdgeSpaces'];
+const typeRank = (type: string) => (TYPE_RANK.indexOf(type) + 1 || TYPE_RANK.length + 1) - 1;
+const suggestionColumn = (s: Suggestion) => s.key.slice(s.type.length + 1);
+
+/**
+ * Suggestions with the likeliest to be meant first. Each kind of rule takes its turn (the best key, the best required
+ * column, the best list of values and so on, then the second of each), so the first few are not five of one kind.
+ * Within a kind, columns named as keys come first, then the order of the table's columns.
+ */
+export function rankSuggestions(suggestions: Suggestion[]): Suggestion[] {
+  const byType = new Map<string, Suggestion[]>();
+  for (const s of suggestions) byType.set(s.type, [...(byType.get(s.type) ?? []), s]);
+  const turn = new Map<Suggestion, number>();
+  for (const list of byType.values()) {
+    const keysFirst = [...list.filter((s) => keyLike(suggestionColumn(s))), ...list.filter((s) => !keyLike(suggestionColumn(s)))];
+    keysFirst.forEach((s, i) => turn.set(s, i));
+  }
+  return [...suggestions].sort((a, b) => turn.get(a)! - turn.get(b)! || typeRank(a.type) - typeRank(b.type));
 }

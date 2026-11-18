@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { addFiles, addStep, addStepNode, cell, expectRows, fixture, node, openApp, selectNode } from './helpers/app';
+import { addFiles, addStep, addStepNode, cell, expectRows, fixture, node, openApp, selectNode, openReadOptions } from './helpers/app';
 
 const steps = (page: Page) => page.getByRole('listbox', { name: 'Applied steps' }).getByRole('option');
 const settings = (page: Page) => page.getByTestId('step-settings');
@@ -41,6 +41,7 @@ test('remove title rows, then use the first row as headers', async ({ page }) =>
   // Click the node once it has settled: a click while it is still being laid out can land on the pane instead.
   await expect(node(page, 'title-rows.csv')).toHaveAttribute('data-status', /ok|error/, { timeout: 20_000 });
   await selectNode(page, 'title-rows.csv');
+  await openReadOptions(page);
   await page.getByText('First row is the header').click();
   await stepAfter(page, 'title-rows.csv', 'Remove top or bottom rows');
   await settings(page).getByLabel('Rows').fill('2');

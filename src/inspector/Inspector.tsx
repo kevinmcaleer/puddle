@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { FixReceipt } from '../analysis/FixReceipt';
 import { fixReceipt } from '../analysis/receipt';
 import { useSession } from '../app/session';
@@ -5,9 +6,11 @@ import { useTheme, type ThemePreference } from '../app/theme';
 import { NotesPanel } from '../notes/NotesPanel';
 import { inspectorTabs, shownTab } from './tabs';
 import { useNodeStatus } from '../flow/status';
+import { nodeIssues, useAnalysisEntry } from '../analysis';
+import { readOptionsOpen } from './readOptions';
 import { sourceFormatLabel } from '../canvas/formatLabel';
 import { nodeById, renameNode, setParseOptions, setRunnerPath, useProject, useProjectStore, type GraphNode, type ProjectSettings as ProjectSettingsT, type Source, type SourceFormat } from '../model';
-import { Banner, browserLocale, columnKind, DISPLAY_LOCALES, Field, formatDateText, formatNumberText, Icon, NODE_KIND, Section, Select, Switch, Tabs, TypeTag, useDisplay, useDisplayFormat, type DateDisplay } from '../ui';
+import { Button, Banner, browserLocale, columnKind, DISPLAY_LOCALES, Field, formatDateText, formatNumberText, Icon, NODE_KIND, Section, Select, Switch, Tabs, TypeTag, useDisplay, useDisplayFormat, type DateDisplay } from '../ui';
 import { CommitInput } from '../steps/StepForm';
 import { AppendPanel } from './AppendPanel';
 import { JoinPanel } from './JoinPanel';
@@ -28,7 +31,7 @@ import { DetachedMessage, ReconnectButton } from '../sources/ReconnectBanner';
 import { ReattachButton } from '../sources/ReattachButton';
 import { UrlPanel } from '../sources/UrlPanel';
 import { isAccessSource } from '../sources/access';
-import { isStructured } from '../compiler';
+import { formatsFromWords, formatWords, isStructured } from '../compiler';
 import { AccessPanel } from '../sources/AccessPanel';
 import { ArchivePanel, ArrowProblemBanner } from '../sources/ArchivePanel';
 import { isArchiveSource } from '../sources/archive';
@@ -39,7 +42,7 @@ import { isExcelSource } from '../sources/excel';
 import { ExcelPanel } from '../sources/ExcelPanel';
 import { isXmlSource } from '../sources/xml';
 import { XmlPanel } from '../sources/XmlPanel';
-import { hasParseOptions, LOCALES, parseNullStrings } from './options';
+import { hasParseOptions, LOCALES } from './options';
 import { changeSourceFormat } from '../sources/add';
 import { CsvOptions } from '../sources/CsvOptions';
 import { FixedWidthOptions, LogOptions, PipesOptions, StructuredOptions } from '../sources/TextPanels';
@@ -48,11 +51,30 @@ import { FORMAT_OPTIONS } from '../sources/formats';
 import { FileSetPanel } from '../sources/FileSetPanel';
 import { ScriptTablePanel } from './ScriptTablePanel';
 
-function SourceOptions({ source }: { source: Source }) {
+function SourceOptions({ source, node }: { source: Source; node: GraphNode }) {
   const apply = useProjectStore((s) => s.apply);
+  const status = useNodeStatus(node.id);
+  const entry = useAnalysisEntry(node.id);
+  const { open: issues } = nodeIssues(useProject(), node, entry);
+  // Opened or closed by hand for this source: kept while the inspector shows it.
+  const [choice, setChoice] = useState<boolean | null>(null);
+  const state = status.state === 'ok' ? 'ok' : status.state === 'error' ? 'error' : 'other';
+  const open = readOptionsOpen({ state, issues, format: source.format }, choice);
   return (
-    <Section title="Read options">
-      <div className="flex flex-col gap-3">
+    <Section
+      title="Read options"
+      action={
+        <Button variant="ghost" size="sm" aria-expanded={open} aria-controls="read-options" data-testid="read-options-toggle" onClick={() => setChoice(!open)}>
+          {open ? 'Hide' : 'Show'}
+        </Button>
+      }
+    >
+      {!open && (
+        <p className="text-label text-ink-muted" data-testid="read-options-summary">
+          Read as {sourceFormatLabel(source)}. Show the options to change how the file is read.
+        </p>
+      )}
+      <div id="read-options" className={open ? 'flex flex-col gap-3' : 'hidden'}>
         {/* A file set's format is its files' kind: other files are another set. */}
         {source.kind !== 'files' && <FormatField source={source} />}
         {(source.format === 'csv' || source.format === 'tsv') && <CsvOptions format={source.format} options={source.parseOptions} onChange={(o) => apply((p) => setParseOptions(p, source.id, o))} />}
@@ -127,35 +149,26 @@ function Columns({ nodeId }: { nodeId: string }) {
   );
 }
 
-/** Settings for the whole project: when to sample, and how dates and numbers are read and shown. */
+/** Settings for the whole project: how dates and numbers are read and shown, and under Advanced when to sample and the runner's schedule. */
 function ProjectSettings() {
   const settings = useProject().settings;
   const apply = useProjectStore((s) => s.apply);
   const set = (patch: Partial<ProjectSettingsT>) => apply((p) => ({ ...p, settings: { ...p.settings, ...patch } }));
+  // When to sample and the runner's schedule are for someone who already knows they need them: folded away until asked for.
+  const [advanced, setAdvanced] = useState(false);
   return (
     <Section title="Project settings">
       <div className="flex flex-col gap-3" data-testid="project-settings">
-        <Field label="Sample above" htmlFor="set-sample" hint="Rows. Larger results are previewed from a sample.">
-          <CommitInput
-            key={settings.sampleThresholdRows}
-            id="set-sample"
-            value={String(settings.sampleThresholdRows)}
-            onCommit={(v) => {
-              const n = Number(v.replace(/[,\s_]/g, ''));
-              if (Number.isInteger(n) && n > 0) set({ sampleThresholdRows: n });
-            }}
-          />
-        </Field>
         <Field label="Locale" htmlFor="set-locale" hint="How this project’s data writes numbers. New parse numbers steps start with it.">
           <Select id="set-locale" options={LOCALES} value={settings.locale} onChange={(e) => set({ locale: e.target.value })} />
         </Field>
-        <Field label="Date formats" htmlFor="set-dates" hint="Tried in order when text is read as a date, separated by commas.">
+        <Field label="Date formats" htmlFor="set-dates" hint="Tried in order when text is read as a date, separated by commas. Codes such as %d/%m/%Y are taken too.">
           <CommitInput
             key={settings.defaultDateFormats.join(',')}
             id="set-dates"
-            value={settings.defaultDateFormats.join(', ')}
-            placeholder="%d/%m/%Y, %Y-%m-%d"
-            onCommit={(v) => set({ defaultDateFormats: parseNullStrings(v) })}
+            value={settings.defaultDateFormats.map(formatWords).join(', ')}
+            placeholder="DD/MM/YYYY, YYYY-MM-DD"
+            onCommit={(v) => set({ defaultDateFormats: formatsFromWords(v) })}
           />
         </Field>
         <Field hint="Steps added from the Add menu and the results table (quick fixes and the column menu) each go in a new Transform node, so every step shows on the canvas. Off, they stack into the Transform being viewed.">
@@ -170,9 +183,31 @@ function ProjectSettings() {
         <Field label="Column names" htmlFor="set-column-names" hint="How Fix all tidies untidy column names: the words as they are, trimmed, or snake_case.">
           <Select id="set-column-names" options={COLUMN_NAME_MODES} value={settings.columnNames} onChange={(e) => set({ columnNames: e.target.value as ProjectSettingsT['columnNames'] })} />
         </Field>
-        <Field label="Run on a schedule" htmlFor="set-schedule" hint="Cron syntax for puddle-run on your own machine, e.g. 0 3 * * * for 03:00 every day. Empty: never.">
-          <CommitInput key={settings.schedule ?? ''} id="set-schedule" value={settings.schedule ?? ''} placeholder="0 3 * * *" onCommit={(v) => set({ schedule: v.trim() || undefined })} />
-        </Field>
+        <div className="flex flex-col gap-3 border-t border-line pt-3">
+          <div>
+            <Button variant="ghost" size="sm" icon={advanced ? 'chevron-down' : 'chevron-right'} aria-expanded={advanced} aria-controls="project-advanced" onClick={() => setAdvanced(!advanced)}>
+              Advanced
+            </Button>
+          </div>
+          {advanced && (
+            <div id="project-advanced" className="flex flex-col gap-3" data-testid="project-advanced">
+                <Field label="Sample above" htmlFor="set-sample" hint="Rows. Larger results are previewed from a sample.">
+                  <CommitInput
+                    key={settings.sampleThresholdRows}
+                    id="set-sample"
+                    value={String(settings.sampleThresholdRows)}
+                    onCommit={(v) => {
+                      const n = Number(v.replace(/[,\s_]/g, ''));
+                      if (Number.isInteger(n) && n > 0) set({ sampleThresholdRows: n });
+                    }}
+                  />
+                </Field>
+                <Field label="Run on a schedule" htmlFor="set-schedule" hint="Cron syntax for puddle-run on your own machine, e.g. 0 3 * * * for 03:00 every day. Empty: never.">
+                  <CommitInput key={settings.schedule ?? ''} id="set-schedule" value={settings.schedule ?? ''} placeholder="0 3 * * *" onCommit={(v) => set({ schedule: v.trim() || undefined })} />
+                </Field>
+            </div>
+          )}
+        </div>
       </div>
     </Section>
   );
@@ -267,7 +302,7 @@ export function Inspector() {
       {tab === 'notes' ? (
         <NotesPanel />
       ) : tab === 'node' && receipt ? (
-        <div className="min-h-0 flex-1 overflow-auto">
+        <div className="flex min-h-0 flex-1 flex-col">
           <FixReceipt nodeId={receipt} />
         </div>
       ) : tab === 'project' || !node ? (
@@ -385,6 +420,8 @@ function NodeInspector({ node }: { node: GraphNode }) {
           <div className="text-label text-ink-muted">{source ? `${kind.label} · ${sourceFormatLabel(source)}${source.name !== node.name ? ` · ${source.name}` : ''}` : kind.label}</div>
         </div>
       </div>
+      {/* What is wrong with the data comes first: it is what a source is opened for. */}
+      {node.type === 'source' && <IssuesPanel node={node} />}
       <div className="flex flex-col gap-2 border-b border-line px-4 py-3">
         <Field label="Node name" htmlFor="node-name">
           <CommitInput key={node.name} id="node-name" value={node.name} onCommit={(v) => useProjectStore.getState().apply((p) => renameNode(p, node.id, v))} />
@@ -400,10 +437,9 @@ function NodeInspector({ node }: { node: GraphNode }) {
       {source && isXmlSource(source) && <XmlPanel source={source} />}
       {source && isAccessSource(source) && <AccessPanel source={source} />}
       {source && isConnectionSource(source) && <ConnectionPanel key={source.id} source={source} />}
-      {source && hasParseOptions(source) && <SourceOptions source={source} />}
+      {source && hasParseOptions(source) && <SourceOptions key={source.id} source={source} node={node} />}
       {source && source.kind === 'file' && <RunnerPath source={source} />}
       {node.type === 'output' && <OutputPanel node={node} />}
-      {node.type === 'source' && <IssuesPanel node={node} />}
       {node.type === 'source' && <KeepPanel key={node.id} node={node} />}
       <Columns nodeId={node.id} />
       <RulesPanel node={node} />

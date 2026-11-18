@@ -3,8 +3,7 @@ import { expectRows, node, openApp, selectNode } from './helpers/app';
 
 test('the CRM export sample opens with its comment lines and footer skipped, and Fix all leaves the clean table', async ({ page }) => {
   await openApp(page);
-  await page.getByRole('button', { name: 'Try a sample' }).click();
-  await page.getByRole('dialog', { name: 'Try a sample' }).getByTestId('sample-crm').click();
+  await page.getByTestId('welcome-samples').getByTestId('sample-crm').click();
   await expect(page.getByTestId('project-name')).toHaveText('Sample: CRM export');
   await expect(node(page, 'messy.txt')).toHaveAttribute('data-status', 'ok', { timeout: 20_000 });
   // 44 customers and the header pasted in again; the two comment lines and the row count never reach the table.

@@ -1,6 +1,8 @@
+import { readdirSync, readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { createProject, type Project } from '../model';
-import { placePopover, stepCount, TOUR_STOPS, type TourContext } from './stops';
+import { fixesRecorded, placePopover, stepCount, TOUR_STOPS, type TourContext } from './stops';
 import { canResume, readProgress, shouldOffer, writeProgress } from './tour';
 
 /** An in-memory stand-in for localStorage, optionally one that refuses every call (a blocked private window). */
@@ -71,38 +73,60 @@ describe('tour stops', () => {
   const stop = (id: string) => TOUR_STOPS.find((s) => s.id === id)!;
   const ctx = (c: Partial<TourContext>): TourContext => ({ project: createProject('p'), selectedColumns: [], ...c });
 
-  it('covers the main ideas, in order', () => {
-    expect(TOUR_STOPS.map((s) => s.id)).toEqual(['sources', 'canvas', 'results', 'quickfix', 'steps', 'rules', 'output']);
+  it('follows the loop of a first visit: what was found, Fix all, the receipt, Export, and only then how it works', () => {
+    expect(TOUR_STOPS.map((s) => s.id)).toEqual(['found', 'fixall', 'receipt', 'export', 'canvas', 'steps', 'rules']);
     for (const s of TOUR_STOPS) {
       expect(s.title).not.toBe('');
       expect(s.body.length).toBeGreaterThan(20);
     }
   });
 
-  it('waits for a column to be selected on the results stop', () => {
-    const done = stop('results').done!;
-    const start = ctx({});
-    expect(done(ctx({}), start)).toBe(false);
-    expect(done(ctx({ selectedColumns: ['email'] }), start)).toBe(true);
-    // Already selected when the stop began: only a new selection counts.
-    expect(done(ctx({ selectedColumns: ['email'] }), ctx({ selectedColumns: ['email'] }))).toBe(false);
-    expect(done(ctx({ selectedColumns: ['name'] }), ctx({ selectedColumns: ['email'] }))).toBe(true);
+  it('points every stop at something the app draws', () => {
+    // Every component's source, to look the anchors up in: a renamed test id or label would leave a stop pointing at nothing.
+    const sources = (dir: string): string[] => readdirSync(dir, { withFileTypes: true }).flatMap((e) => (e.isDirectory() ? sources(join(dir, e.name)) : /\.tsx$/.test(e.name) && !/\.test\./.test(e.name) ? [readFileSync(join(dir, e.name), 'utf8')] : []));
+    const app = sources('src').join('\n');
+    const base = createProject('p');
+    const project: Project = {
+      ...base,
+      nodes: [
+        { id: 'n1', name: 'contacts.csv', type: 'source', sourceId: 's1', position: { x: 0, y: 0 }, rules: [] },
+        { id: 'n2', name: 'Output 1', type: 'output', position: { x: 0, y: 0 }, rules: [] },
+      ] as Project['nodes'],
+    };
+    for (const s of TOUR_STOPS) {
+      const anchors = s.anchors(ctx({ project }));
+      expect(anchors.length, s.id).toBeGreaterThan(0);
+      for (const anchor of anchors) {
+        const id = /^\[data-testid="(.+)"\]$/.exec(anchor)?.[1];
+        const tour = /^\[data-tour="(.+)"\]$/.exec(anchor)?.[1];
+        const section = /^section\[aria-label="(.+)"\]$/.exec(anchor)?.[1];
+        if (id?.startsWith('node-')) expect(app, anchor).toContain('data-testid={`node-${node.name}`}');
+        else if (id) expect(app.includes(`data-testid="${id}"`) || app.includes(`testId="${id}"`), anchor).toBe(true);
+        else if (tour) expect(app, anchor).toContain(`'data-tour': '${tour}'`);
+        else if (section) expect(app.includes(`title="${section}"`) || app.includes(`aria-label="${section}"`), anchor).toBe(true);
+        else throw new Error(`${s.id}: an anchor this test can’t look up: ${anchor}`);
+      }
+    }
   });
 
-  it('waits for a fix to add a step on the quick-fix stop', () => {
-    const done = stop('quickfix').done!;
+  it('waits for Fix all on its stop: a step added, or an issue fixed by a read option', () => {
+    const done = stop('fixall').done!;
     const base = createProject('p');
     expect(stepCount(withSteps(base, 2))).toBe(2);
     expect(done(ctx({ project: base }), ctx({ project: base }))).toBe(false);
     expect(done(ctx({ project: withSteps(base, 1) }), ctx({ project: base }))).toBe(true);
     expect(done(ctx({ project: withSteps(base, 1) }), ctx({ project: withSteps(base, 1) }))).toBe(false);
+    const source = { id: 'n1', name: 'contacts.csv', type: 'source', sourceId: 's1', position: { x: 0, y: 0 }, rules: [] } as Project['nodes'][number];
+    const read: Project = { ...base, nodes: [{ ...source, analysis: { at: '2026-11-18T09:00:00.000Z', rows: 5, issues: [{ key: 'bannerRows', kind: 'bannerRows', label: 'Lines above the table', count: 2, fixed: true, fixedByRead: true }] } }] as Project['nodes'] };
+    expect(fixesRecorded(read)).toBe(1);
+    expect(done(ctx({ project: read }), ctx({ project: { ...base, nodes: [source] } }))).toBe(true);
   });
 
-  it('points the sources stop at the source nodes and the output stop at Add node until there is an Output', () => {
+  it('points the first stop at what was found, and the export stop at the receipt’s foot, then an Output, then Add', () => {
     const base = createProject('p');
     const project: Project = { ...base, nodes: [{ id: 'n1', name: 'contacts.csv', type: 'source', sourceId: 's1', position: { x: 0, y: 0 }, rules: [] } as Project['nodes'][number]] };
-    expect(stop('sources').anchors(ctx({ project }))).toEqual(['[data-testid="node-contacts\\.csv"]']);
-    expect(stop('output').anchors(ctx({ project }))).toEqual(['[data-tour="add-node"]']);
+    expect(stop('found').anchors(ctx({ project }))[0]).toBe('[data-testid="findings-headline"]');
+    expect(stop('export').anchors(ctx({ project }))).toEqual(['[data-testid="receipt-foot"]', '[data-tour="add-node"]']);
   });
 });
 

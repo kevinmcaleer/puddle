@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { addFiles, addStepNode, fixture, node, openApp, openInspector, openProjectTab, selectNode } from './helpers/app';
 
 test('the empty shell renders with every docked region', async ({ page }) => {
   await page.goto('/');
@@ -9,13 +10,43 @@ test('the empty shell renders with every docked region', async ({ page }) => {
   await expect(page.locator('.ui-toolbar').getByRole('button')).toHaveCount(8);
   await expect(page.locator('.ui-toolbar .ui-wordmark')).toHaveCount(1);
   await expect(page.getByTestId('canvas')).toBeVisible();
-  await expect(page.getByTestId('inspector')).toBeVisible();
   await expect(page.getByTestId('results-panel')).toBeVisible();
   await expect(page.getByText('Nothing leaves your browser. Projects save the steps, not the data.', { exact: false })).toBeVisible();
 });
 
+// #287: the first screen showed Project settings (a sample threshold, cron syntax) before any data was loaded.
+test('the inspector stays closed until there is a node, and the advanced settings start folded away', async ({ page }) => {
+  await openApp(page);
+  await expect(page.getByTestId('inspector')).not.toBeAttached();
+  await expect(page.getByTestId('inspector-toggle')).toHaveAttribute('aria-expanded', 'false');
+
+  // The first node opens it, on that node.
+  await addFiles(page, [fixture('customers.csv')]);
+  await expect(node(page, 'customers.csv')).toHaveAttribute('data-status', 'ok', { timeout: 20_000 });
+  await expect(page.getByTestId('inspector')).toBeVisible();
+  await expect(page.getByLabel('Node name')).toHaveValue('customers.csv');
+
+  // The Project tab leads with how data is read; when to sample and the runner's schedule are under Advanced.
+  await openProjectTab(page);
+  const settings = page.getByTestId('project-settings');
+  await expect(settings.getByLabel('Locale')).toBeVisible();
+  await expect(settings.getByLabel('Sample above')).toHaveCount(0);
+  await expect(settings.getByLabel('Run on a schedule')).toHaveCount(0);
+  await settings.getByRole('button', { name: 'Advanced' }).click();
+  await expect(settings.getByLabel('Sample above')).toHaveValue('5000000');
+  await expect(settings.getByLabel('Run on a schedule')).toBeVisible();
+
+  // Closed by hand, it stays closed when another node arrives.
+  await page.getByTestId('inspector-toggle').click();
+  await expect(page.getByTestId('inspector')).not.toBeAttached();
+  await addFiles(page, [fixture('orders.tsv')]);
+  await expect(node(page, 'orders.tsv')).toHaveAttribute('data-status', 'ok', { timeout: 20_000 });
+  await expect(page.getByTestId('inspector')).not.toBeAttached();
+});
+
 test('the inspector is docked at the token width', async ({ page }) => {
   await page.goto('/');
+  await openInspector(page);
   const box = await page.getByTestId('inspector').boundingBox();
   expect(box?.width).toBe(320);
 });
@@ -37,7 +68,7 @@ test.describe('with a dark OS theme', () => {
 
     // The theme lives with the other display settings, in the inspector's Project tab, as a choice of three.
     const pickTheme = async (name: string) => {
-      await page.getByRole('tab', { name: 'Project' }).click();
+      await openProjectTab(page);
       await page.getByTestId('display-settings').getByLabel('Theme').selectOption({ label: name });
     };
     await pickTheme('Light');
@@ -53,7 +84,7 @@ test.describe('with a dark OS theme', () => {
 
     await page.reload();
     await expect(html).toHaveAttribute('data-theme', 'dark');
-    await page.getByRole('tab', { name: 'Project' }).click();
+    await openProjectTab(page);
     await expect(page.getByTestId('display-settings').getByLabel('Theme')).toHaveValue('dark');
     await pickTheme('Match the system');
     await expect(html).not.toHaveAttribute('data-theme');
@@ -68,4 +99,33 @@ test('the results panel collapses and expands', async ({ page }) => {
   await expect(panel).toHaveAttribute('data-collapsed', 'true');
   await page.getByRole('button', { name: 'Show results' }).click();
   await expect(panel).toHaveAttribute('data-collapsed', 'false');
+});
+
+// #294: with one node on the canvas, the canvas took the top half of the window and the table showed eight rows.
+test.describe('at 1440 by 900', () => {
+  test.use({ viewport: { width: 1440, height: 900 } });
+
+  test('the data gets most of the window while the flow is small, and a divider set by hand is kept', async ({ page }) => {
+    await openApp(page);
+    await addFiles(page, [fixture('customers.csv')]);
+    const height = async () => (await page.getByTestId('results-panel').boundingBox())!.height;
+    await expect.poll(height).toBeGreaterThan(450);
+    // The canvas still has room for the node.
+    await expect(node(page, 'customers.csv')).toBeInViewport({ ratio: 1 });
+
+    // A flow that has grown shares the window as before.
+    await selectNode(page, 'customers.csv');
+    for (const [step, name] of [['Trim whitespace', 'Transform 1'], ['Remove blank rows', 'Transform 2'], ['Remove duplicates', 'Transform 3']] as const) await addStepNode(page, step, name);
+    await expect.poll(height).toBeLessThan(450);
+
+    // Dragged (here with the keyboard), the divider stays where it was put, even when the flow is small again.
+    const divider = page.getByRole('separator', { name: 'Resize results' });
+    await divider.focus();
+    const before = await height();
+    await page.keyboard.press('ArrowUp');
+    await expect.poll(height).toBe(before + 24);
+    for (let i = 0; i < 3; i++) await page.getByRole('button', { name: 'Undo' }).click();
+    await expect(node(page, 'Transform 1')).toHaveCount(0);
+    await expect.poll(height).toBe(before + 24);
+  });
 });

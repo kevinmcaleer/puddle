@@ -6,6 +6,8 @@ Rules say what the data at a node should look like, such as "email is never empt
 
 Select a node and open the **Rules** section of the inspector. Puddle profiles the data and suggests rules that already hold, each with its reason: "name has no empty values", "signed_up runs from 2024-01-09 to 2024-12-19". **Add** turns a suggestion into a rule, so you'll hear about it if a later file breaks it. **Dismiss** hides a suggestion for good.
 
+The list starts with the best five, the likeliest to be meant first: a key that is unique, a column that is never empty, a short list of allowed values, and so on. **Add all** adds the ones listed in one go (and one Undo takes them back), and **Show more** lists the rest. An amount is never suggested as unique, even when no two happen to be the same, and text is only suggested as reading as a date when every value is written the way the rule reads dates.
+
 ![The Rules section with its suggested rules](_static/screenshots/rules-suggestions.png)
 
 ## Adding a rule
