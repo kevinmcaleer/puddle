@@ -1,0 +1,3 @@
+/* The shell shares the results panel with the table: it takes up to three quarters of it, and its history scrolls. */
+.puddle-shell { max-height: 75%; }
+.puddle-shell-command { white-space: pre-wrap; word-break: break-word; margin: 0; }

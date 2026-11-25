@@ -11,9 +11,9 @@ export const CUSTOM_SQL_OPENER = 'SELECT * FROM (';
  * The line of the user's query a DuckDB error points at ("LINE 7: ..."), given the SQL that failed. DuckDB
  * counts lines of the whole compiled query; the user's start after the opener of the last custom SQL step in it.
  */
-export function customSqlErrorLine(compiledSql: string, query: string, error: string): { line: number; text: string } | undefined {
+export function customSqlErrorLine(compiledSql: string, query: string, error: string, tables?: readonly string[]): { line: number; text: string } | undefined {
   const at = /LINE (\d+):/.exec(error);
-  if (!at || customSqlProblem(query)) return undefined;
+  if (!at || customSqlProblem(query, tables)) return undefined;
   const cleaned = cleanCustomSql(query);
   const pos = compiledSql.lastIndexOf(`${CUSTOM_SQL_OPENER}\n${cleaned}\n)`);
   if (pos < 0) return undefined;

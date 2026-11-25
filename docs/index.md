@@ -21,6 +21,7 @@ canvas
 analysing
 cleaning
 combining
+shell
 query-designer
 relationships
 schema

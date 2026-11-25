@@ -43,7 +43,7 @@ Wire more inputs into the spare numbered input on the node to append more.
 
 ## SQL
 
-A SQL node runs DuckDB SQL you write. It reads any node of the project by its name (in double quotes when the name has spaces or dots): naming a node in the query wires it in for you, and the wire goes when the query stops naming it. A node wired in by hand is also readable as `input1`, `input2`..., and a lone input as `input`. Where two nodes share a name, or the node is fed by this one, wire it in yourself. The SQL console under the results turns a query into a SQL node in one click.
+A SQL node runs DuckDB SQL you write. It reads any node of the project by its name (in double quotes when the name has spaces or dots): naming a node in the query wires it in for you, and the wire goes when the query stops naming it. A node wired in by hand is also readable as `input1`, `input2`..., and a lone input as `input`. Where two nodes share a name, or the node is fed by this one, wire it in yourself. The SQL console under the results is a DuckDB shell (see {doc}`shell`) that turns a query into a SQL node in one click.
 
 While the SQL node's rows are the ones shown in the results, its query is edited beside them at the bottom of the screen, so the query and its answer are read together; drag the line between them to give either more room. With the results hidden, or pinned to another node, the query is in the inspector instead.
 
@@ -57,7 +57,7 @@ A SQL node can read the files of the sources wired into it, by name or by a patt
 
 ### Scripts
 
-A SQL node also takes a whole script: `CREATE TABLE name AS` a query, as many as you like, each able to read the inputs, the files and the tables made before it, and optionally a last `SELECT`. `CREATE OR REPLACE`, `TEMP` and `IF NOT EXISTS` are accepted, and so is `CREATE VIEW`; anything else (`INSERT`, `DROP`, `ATTACH`, `COPY` and the like) is refused, naming the statement.
+A SQL node also takes a whole script: `CREATE TABLE name AS` a query, as many as you like, each able to read the inputs, the files and the tables made before it, and optionally a last `SELECT`. `CREATE OR REPLACE`, `TEMP` and `IF NOT EXISTS` are accepted, and so is `CREATE VIEW`. A script may also declare a table by its columns and change the tables it made, with `INSERT`, `UPDATE`, `DELETE`, `ALTER TABLE` and `DROP TABLE` (the {doc}`shell` lists what each does); anything else (`ATTACH`, `COPY` and the like) is refused, naming the statement.
 
 ```sql
 CREATE OR REPLACE TABLE log AS
@@ -81,6 +81,6 @@ The node's own rows are the last statement's. Each table a script creates, even 
 `CREATE TABLE name AS` a query makes a table on the canvas wherever you write SQL:
 
 - **Add › Table from SQL** adds a SQL node whose query creates a table, and the table's node after it. The selected nodes are wired in as `input1`, `input2`...; with nothing selected the query makes its rows itself, such as `SELECT * FROM (VALUES (1, 'first'), (2, 'second')) AS t(id, name)`, so the table can start a flow as a source does. A SQL node with nothing wired in runs any query that reads no input.
-- In the **SQL console** under the results, a `CREATE TABLE` query isn't answered in place: **Create table** (or Ctrl+Enter) adds a SQL node after the viewed node that runs it, and the table's node.
+- In the **SQL console** under the results, a `CREATE TABLE` query isn't answered in place: **Create table** (or Ctrl+Enter) adds a SQL node after the viewed node that runs it, and the table's node. Later tables and changes go into the same SQL node (see {doc}`shell`).
 - In a Query's **SQL view** (see {doc}`query-designer`), `CREATE TABLE` runs as written and the table's node is wired from the Query.
 

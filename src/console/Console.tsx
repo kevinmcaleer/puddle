@@ -1,23 +1,18 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef } from 'react';
 import { useEngineStore } from '../app/engine';
-import { compileConsole, CONSOLE_ROW_LIMIT, consoleProblem, customSqlErrorLine, isScript, scriptTables } from '../compiler';
-import { isCancelled, tableColumns, tableRows, toEngineError } from '../engine';
+import { isScript, readShellCommand, scriptTables, shellCommandProblem, shellNames, SHELL_ROW_LIMIT } from '../compiler';
 import { useNodeStatus } from '../flow/status';
 import { nodeById, type ColumnSchema, type Project } from '../model';
 import { SqlEditor } from '../steps/SqlEditor';
 import { announce, Banner, Button, columnKind, TypeTag } from '../ui';
-import { makeSqlNode } from './actions';
-import { DEFAULT_QUERY, useConsoleDraft } from './draft';
-
-type Answer = { nodeId: string } & (
-  | { state: 'running' }
-  | { state: 'ok'; columns: ColumnSchema[]; rows: Record<string, unknown>[]; ms: number }
-  | { state: 'error'; message: string; line?: { line: number; text: string } }
-);
+import { keepAsSqlNode, runShellCommand, viewTable } from './shell';
+import { DEFAULT_QUERY, useConsoleDraft, type ShellEntry, type ShellOutput } from './draft';
+import './console.css';
 
 /**
- * A scratch SQL console under the results table: one query against the viewed node's rows, read as `input`, with
- * the answer shown here and nothing added to the flow. One click makes it a SQL node that keeps the query.
+ * The DuckDB shell under the results table: commands typed as in DuckDB's shell, each answered in the shell's
+ * history above the prompt. Every node is a table by its name, the viewed node is `input` too, and a statement that
+ * makes or changes a table keeps it in a SQL node, so the table is a node on the canvas.
  */
 export function Console({ project }: { project: Project }) {
   const engine = useEngineStore((s) => s.engine);
@@ -27,61 +22,67 @@ export function Console({ project }: { project: Project }) {
   const columns = status.state === 'ok' ? status.columns : [];
   const query = useConsoleDraft((s) => s.query);
   const setQuery = useConsoleDraft((s) => s.setQuery);
-  const [last, setAnswer] = useState<Answer | null>(null);
-  // An answer belongs to the node it was asked of; viewing another node starts the console afresh, the query stays.
-  const answer = last && last.nodeId === viewedId ? last : null;
-  const runId = useRef(0);
-  const problem = consoleProblem(query);
-  // CREATE TABLE name AS ... isn't answered here: it becomes a SQL node, and each table a node of its own.
-  const creates = isScript(query) ? scriptTables(query) : [];
-  const script = isScript(query);
-  // Ctrl+Enter was pressed in the editor, so the commit that follows is asked for, not just the editor losing focus.
-  const asked = useRef(false);
+  const entries = useConsoleDraft((s) => s.entries);
+  const history = useConsoleDraft((s) => s.history);
+  const names = shellNames(project, viewedId);
+  const problem = query.trim() ? shellCommandProblem(query, names) : undefined;
+  const statements = readShellCommand(query);
+  const script = isScript(query) && statements.every((s) => s.kind === 'change' || s.kind === 'query');
+  const creates = script ? scriptTables(query) : [];
+  const single = statements.length === 1 && statements[0]!.kind === 'query';
+  // Where the up and down arrows are in the history: null at the prompt, with what was being typed kept.
+  const recall = useRef<{ at: number; draft: string } | null>(null);
+  const log = useRef<HTMLDivElement>(null);
 
-  const create = (q: string) => {
-    setQuery(q);
-    if (!viewedId || consoleProblem(q)) return;
-    const tables = scriptTables(q);
-    makeSqlNode(viewedId, q);
-    setAnswer(null);
-    announce(tables.length ? `${tables.join(', ')} ${tables.length === 1 ? 'is now a table' : 'are now tables'} on the canvas` : 'The script is now a SQL node');
+  // The newest answer is in view.
+  useEffect(() => {
+    const el = log.current;
+    if (el) el.scrollTop = el.scrollHeight;
+  }, [entries]);
+
+  const run = (command: string) => {
+    setQuery(command);
+    recall.current = null;
+    if (!engine || shellCommandProblem(command, shellNames(project, viewedId))) return;
+    void runShellCommand(engine, command, viewedId).then((said) => said && announce(said));
   };
 
-  const run = async (q: string) => {
-    setQuery(q);
-    if (isScript(q)) {
-      // A script adds nodes, so only when asked: Ctrl+Enter or the button, never the editor losing focus.
-      if (asked.current) create(q);
-      else setAnswer(null);
-      return;
+  const onHistory = (direction: 'up' | 'down', text: string): string | undefined => {
+    if (!history.length) return undefined;
+    const now = recall.current ?? { at: history.length, draft: text };
+    const at = direction === 'up' ? Math.max(0, now.at - 1) : now.at + 1;
+    if (at >= history.length) {
+      if (recall.current == null) return undefined;
+      recall.current = null;
+      return now.draft;
     }
-    if (!engine || !viewedId || consoleProblem(q)) return;
-    const id = ++runId.current;
-    setAnswer({ nodeId: viewedId, state: 'running' });
-    let sql = '';
-    try {
-      sql = compileConsole(project, { nodeId: viewedId }, q);
-      const t0 = performance.now();
-      const r = await engine.query(sql, { label: 'Running the console query', supersede: 'console' });
-      if (id !== runId.current) return;
-      setAnswer({ nodeId: viewedId, state: 'ok', columns: tableColumns(r.table), rows: tableRows(r.table), ms: performance.now() - t0 });
-    } catch (e) {
-      if (id !== runId.current || isCancelled(e)) return;
-      const err = toEngineError(e);
-      setAnswer({ nodeId: viewedId, state: 'error', message: err.message, line: customSqlErrorLine(sql, q, err.detail ?? err.message) });
-    }
+    if (direction === 'up' && now.at === 0) return undefined;
+    recall.current = { at, draft: now.draft };
+    return history[at];
   };
+
+  // The answer to the last command is the shell's answer; earlier ones are its history.
+  const last = entries[entries.length - 1];
+  const latestRows = last && (last.output.kind === 'rows' || last.output.kind === 'table') ? last.id : undefined;
 
   return (
-    <section className="flex min-h-0 flex-col gap-2 border-t border-line px-3 py-2" aria-label="SQL console" data-testid="sql-console">
-      <div className="flex items-start gap-2">
+    <section className="puddle-shell flex min-h-0 flex-col gap-2 border-t border-line px-3 py-2" aria-label="SQL console" data-testid="sql-console">
+      {entries.length > 0 && (
+        <div ref={log} className="flex min-h-0 shrink flex-col gap-3 overflow-auto" role="log" aria-label="Shell history" data-testid="shell-transcript">
+          {entries.map((e) => (
+            <ShellEntryView key={e.id} entry={e} latest={e.id === latestRows} />
+          ))}
+        </div>
+      )}
+      <div className="flex shrink-0 items-start gap-2">
         <div
           className="min-w-0 flex-1"
           onKeyDownCapture={(e) => {
-            asked.current = e.key === 'Enter' && (e.ctrlKey || e.metaKey);
-          }}
-          onBlurCapture={() => {
-            asked.current = false;
+            // Ctrl+L clears the shell, as in a terminal.
+            if (e.key.toLowerCase() === 'l' && e.ctrlKey && !e.altKey && !e.metaKey) {
+              e.preventDefault();
+              useConsoleDraft.getState().clear();
+            }
           }}
         >
           <SqlEditor
@@ -92,58 +93,138 @@ export function Console({ project }: { project: Project }) {
             columns={columns}
             error={!!problem}
             placeholder={DEFAULT_QUERY}
-            onCommit={(v) => void run(v)}
-            // The editor commits only what has changed; a script it already handed over is created from here.
-            onSubmit={(v) => {
-              if (script && v === query) create(query);
-            }}
+            onCommit={setQuery}
+            onSubmit={run}
+            onHistory={onHistory}
           />
           <p className="mt-1 text-label text-ink-muted">
-            {viewed ? <>Reads the rows of <strong>{viewed.name}</strong> as <code>input</code>. Ctrl+Enter runs it; the answer shows up to {CONSOLE_ROW_LIMIT} rows and changes nothing. CREATE TABLE name AS a query adds the table to the canvas.</> : 'View a node to query its rows here.'}
+            {viewed ? (
+              <>
+                Reads the rows of <strong>{viewed.name}</strong> as <code>input</code>, and every node by its name.{' '}
+              </>
+            ) : (
+              'Reads every node by its name. '
+            )}
+            Ctrl+Enter runs DuckDB SQL, up and down bring back earlier commands; .help lists the rest. CREATE TABLE, INSERT, UPDATE and DELETE keep their tables on the canvas.
           </p>
         </div>
         <div className="flex shrink-0 flex-col gap-1">
-          {script ? (
-            <Button size="sm" variant="primary" icon="plus" disabled={!viewed || !!problem} title="Add a SQL node after the viewed node that runs this script, and a node for each table it creates" onClick={() => create(query)}>
+          {script && creates.length > 0 && statements.every((s) => s.kind === 'change') && statements.every((s) => /^\s*create\b/i.test(s.text)) ? (
+            <Button size="sm" variant="primary" icon="plus" disabled={!engine || !!problem} title="Run the script: its tables go into a SQL node, each with a node of its own on the canvas" onClick={() => run(query)}>
               {creates.length === 1 ? 'Create table' : 'Create tables'}
             </Button>
           ) : (
             <>
-              <Button size="sm" variant="primary" icon="code" disabled={!engine || !viewed || !!problem} onClick={() => void run(query)}>
+              <Button size="sm" variant="primary" icon="code" disabled={!engine || !query.trim() || !!problem} onClick={() => run(query)}>
                 Run
               </Button>
-              <Button size="sm" variant="secondary" icon="plus" disabled={!viewed || !!problem} title="Add a SQL node after the viewed node that keeps this query" onClick={() => viewedId && makeSqlNode(viewedId, query)}>
+              <Button size="sm" variant="secondary" icon="plus" disabled={!viewed || !single || !!problem} title="Add a SQL node after the viewed node that keeps this query" onClick={() => viewedId && keepAsSqlNode(viewedId, query)}>
                 Make a SQL node
               </Button>
             </>
           )}
         </div>
       </div>
-      {problem && query.trim() && (
+      {problem && (
         <Banner tone="fail" title={script ? 'This script can’t run' : 'This query can’t run'}>
           {problem[0]!.toUpperCase() + problem.slice(1)}.
         </Banner>
       )}
-      {answer?.state === 'error' && (
-        <Banner tone="fail" title="DuckDB refused the query">
-          {answer.message}
-          {answer.line && <div className="mt-1 font-mono text-label">Line {answer.line.line} of the query: {answer.line.text}</div>}
-        </Banner>
-      )}
-      {answer?.state === 'running' && <p className="text-label text-ink-muted" role="status">Running…</p>}
-      {answer?.state === 'ok' && <ConsoleAnswer columns={answer.columns} rows={answer.rows} ms={answer.ms} />}
     </section>
   );
 }
 
-function ConsoleAnswer({ columns, rows, ms }: { columns: ColumnSchema[]; rows: Record<string, unknown>[]; ms: number }) {
-  const summary = rows.length >= CONSOLE_ROW_LIMIT ? `First ${CONSOLE_ROW_LIMIT} rows` : `${rows.length} ${rows.length === 1 ? 'row' : 'rows'}`;
+function ShellEntryView({ entry, latest }: { entry: ShellEntry; latest: boolean }) {
   return (
-    <div className="ui-selectable min-h-0 overflow-auto" data-testid="console-answer">
-      <p className="mb-1 text-label text-ink-muted" role="status" data-testid="console-summary">
-        {summary} · {columns.length} {columns.length === 1 ? 'column' : 'columns'} · {Math.round(ms)} ms
+    <div className="ui-selectable flex flex-col gap-1" data-testid="shell-entry">
+      <pre className="puddle-shell-command font-mono text-body text-ink">
+        <span className="text-ink-muted" aria-hidden="true">
+          D{' '}
+        </span>
+        {entry.command}
+      </pre>
+      {entry.input && <p className="text-label text-ink-muted">input was {entry.input}</p>}
+      <ShellOutputView output={entry.output} latest={latest} />
+    </div>
+  );
+}
+
+function ShellOutputView({ output, latest }: { output: ShellOutput; latest: boolean }) {
+  switch (output.kind) {
+    case 'running':
+      return (
+        <p className="text-label text-ink-muted" role="status">
+          Running…
+        </p>
+      );
+    case 'error':
+      return (
+        <Banner tone="fail" title={output.title}>
+          {output.message}
+          {output.line && <div className="mt-1 font-mono text-label">Line {output.line.line} of the query: {output.line.text}</div>}
+        </Banner>
+      );
+    case 'text':
+      return output.code ? <pre className="font-mono text-body text-ink whitespace-pre-wrap">{output.text}</pre> : <p className="text-body text-ink whitespace-pre-wrap">{output.text}</p>;
+    case 'kept':
+      return (
+        <p className="text-label text-ink-muted">
+          Kept as{' '}
+          <button type="button" className="ui-link" onClick={() => viewTable(output.nodeId)}>
+            {output.name}
+          </button>
+          : its rows are in the table above.
+        </p>
+      );
+    case 'tables':
+      return output.tables.length ? (
+        <ul className="flex flex-wrap gap-x-4 gap-y-1" data-testid="shell-tables">
+          {output.tables.map((t) => (
+            <li key={t.nodeId} className="flex items-baseline gap-1">
+              <button type="button" className="ui-link font-mono" title={`View ${t.name} in the table above`} onClick={() => viewTable(t.nodeId)}>
+                {t.name}
+              </button>
+              <span className="text-label text-ink-muted">
+                {t.type}
+                {t.columns != null ? ` · ${t.columns} ${t.columns === 1 ? 'column' : 'columns'}` : ''}
+              </span>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="text-label text-ink-muted">No tables match.</p>
+      );
+    case 'table':
+      return (
+        <div className="flex flex-col gap-1">
+          <p className="text-body text-ink" data-testid="shell-changed">
+            {output.message}
+            {output.nodeId && (
+              <>
+                {' '}
+                <button type="button" className="ui-link" onClick={() => viewTable(output.nodeId!)}>
+                  View on the canvas
+                </button>
+              </>
+            )}
+          </p>
+          {output.columns && output.rows && <RowsView columns={output.columns} rows={output.rows} latest={latest} />}
+        </div>
+      );
+    case 'rows':
+      return <RowsView columns={output.columns} rows={output.rows} ms={output.ms} latest={latest} />;
+  }
+}
+
+function RowsView({ columns, rows, ms, latest }: { columns: ColumnSchema[]; rows: Record<string, unknown>[]; ms?: number; latest: boolean }) {
+  const summary = rows.length >= SHELL_ROW_LIMIT ? `First ${SHELL_ROW_LIMIT} rows` : `${rows.length} ${rows.length === 1 ? 'row' : 'rows'}`;
+  return (
+    <div className="ui-selectable min-h-0 overflow-auto" data-testid={latest ? 'console-answer' : 'shell-answer'}>
+      <p className="mb-1 text-label text-ink-muted" role={latest ? 'status' : undefined} data-testid={latest ? 'console-summary' : undefined}>
+        {summary} · {columns.length} {columns.length === 1 ? 'column' : 'columns'}
+        {ms != null ? ` · ${Math.round(ms)} ms` : ''}
       </p>
-      <table className="w-full border-collapse text-body font-mono">
+      <table className="border-collapse text-body font-mono">
         <thead>
           <tr>
             {columns.map((c) => (
@@ -171,3 +252,4 @@ function ConsoleAnswer({ columns, rows, ms }: { columns: ColumnSchema[]; rows: R
     </div>
   );
 }
+

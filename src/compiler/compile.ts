@@ -9,7 +9,7 @@ import { compileQuery, queryProblems } from './query';
 import { compileQuerySql, querySqlNames } from './querySql';
 import { customSqlProblem } from './customSql';
 import { compileSqlNode, sqlInputNames, type SqlInput } from './sqlNode';
-import { compileScriptOver, isScript, readScriptOver, scriptTableRefs, type ReadScript, type ScriptBinding, type ScriptFile } from './sqlScript';
+import { compileScriptOver, isScript, readScriptOver, scriptRowsIndex, scriptTableCtes, scriptTableRefs, type ReadScript, type ScriptBinding, type ScriptFile } from './sqlScript';
 import { fileSetFileName, fileSetMembers } from './fileSet';
 import { compileSchemaTable, failingRows, failureCounts, heldTableRows, LOAD_FAILURES, loadChecks, projectSchema, tableFor, type LoadCheck, type TableInput } from './schemaTable';
 import { foreignKey, schemaDdl } from './ddl/duckdb';
@@ -211,10 +211,8 @@ function build(project: Project, target: Target, book: SchemaBook, options: Comp
     if ('problem' in script) throw new CompileError(`This ${isScript(sql) ? 'script' : 'query'} can’t run: ${script.problem}.`, n.id);
     const cteOf = (k: number) => ident(`n_${n.id}_t${k}`);
     ctes.push(...compileScriptOver(script, bindings, cteOf));
-    const made = new Map<string, string>();
-    script.statements.forEach((st, k) => st.table && made.set(st.table, cteOf(k)));
-    tables.set(n.id, made);
-    out.set(n.id, cteOf(script.statements.length - 1));
+    tables.set(n.id, scriptTableCtes(script, cteOf));
+    out.set(n.id, cteOf(scriptRowsIndex(script)));
     return true;
   };
 
