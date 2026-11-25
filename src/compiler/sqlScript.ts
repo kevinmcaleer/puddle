@@ -10,6 +10,7 @@ import { globMatches, isGlob } from './fileSet';
 import { sqlInputNames, type SqlInput } from './sqlNode';
 import { ident, strList } from './sql';
 import { CUSTOM_SQL_OPENER } from './steps/advanced';
+import { readChange, type ChangedName, type ChangeKind, type WrittenPiece } from './scriptChanges';
 
 /** A file a SQL node may read by name: its name as chosen, and the name DuckDB has it registered under. */
 export interface ScriptFile {
@@ -17,12 +18,20 @@ export interface ScriptFile {
   registered: string;
 }
 
-/** One statement of a script: the table it creates (none for a last query) and its query, as written. */
+/**
+ * One statement of a script: the table it creates (none for a last query) and its query, as written. A statement that
+ * changes a table made before it (INSERT, UPDATE, DELETE, ALTER TABLE) makes a new version of that table, its query
+ * the table's rows after the change; DROP TABLE has no query and `drops` the table.
+ */
 export interface ScriptStatement {
   table?: string;
   /** The table's name as written, for messages. */
   label?: string;
   query: string;
+  /** What the statement does, when it isn't CREATE TABLE name AS a query (or a query). */
+  change?: ChangeKind;
+  /** The table the statement takes away: DROP TABLE's, or the old name of ALTER TABLE ... RENAME TO. */
+  drops?: string;
 }
 
 /** The words a query starts with, for telling a query written straight after a table's name from anything else. */
@@ -37,11 +46,27 @@ const isName = (t: SqlToken | undefined): t is SqlToken => !!t && (t.kind === 'w
  */
 export function splitScript(sql: string): { statements: ScriptStatement[] } | { problem: string } {
   const split = splitPlaced(sql);
-  return 'problem' in split ? split : { statements: split.statements.map(({ at: _at, name: _name, ...s }) => s) };
+  return 'problem' in split ? split : { statements: split.statements.map(unplaced) };
 }
 
-/** A statement with where it sits in the script: its query's offset, and the span of the table name it creates. */
-type PlacedStatement = ScriptStatement & { at: number; name?: [start: number, end: number] };
+/**
+ * A statement with where it sits in the script: its query's offset, the span of the table name it creates, the names
+ * it acts on and the pieces of what was written it reads as SQL (its query, or a change's values and conditions).
+ */
+type PlacedStatement = ScriptStatement & {
+  at: number;
+  name?: [start: number, end: number];
+  names: ChangedName[];
+  pieces: WrittenPiece[];
+  /** CREATE OR REPLACE: may make a table the script made before. */
+  replace?: boolean;
+  /** The table a change acts on (as written), which the script must have made before it. */
+  target?: ChangedName;
+  /** DROP TABLE IF EXISTS. */
+  ifExists?: boolean;
+};
+
+const unplaced = ({ at: _at, name: _name, names: _names, pieces: _pieces, replace: _replace, target: _target, ifExists: _ifExists, ...s }: PlacedStatement): ScriptStatement => s;
 
 function splitPlaced(sql: string): { statements: PlacedStatement[] } | { problem: string } {
   let tokens: SqlToken[];
@@ -62,14 +87,34 @@ function splitPlaced(sql: string): { statements: PlacedStatement[] } | { problem
     if (!words.length) continue;
     const from = words[0]!.start;
     const to = end(words[words.length - 1]!);
+    const change = readChange(words, sql);
+    if (change && 'problem' in change) return change;
+    if (change) {
+      const { table, target, query, pieces } = change;
+      statements.push({
+        ...(table ? { table: table.table, label: table.label } : {}),
+        query,
+        change: change.change,
+        ...(change.change === 'drop' || change.change === 'rename' ? { drops: target!.table } : {}),
+        at: from,
+        ...(table?.makes ? { name: table.span } : {}),
+        names: [...(target ? [target] : []), ...(table && table !== target && table.span[0] !== target?.span[0] ? [table] : [])],
+        pieces,
+        ...(change.change !== 'declare' ? { target } : {}),
+        ...(change.ifExists ? { ifExists: true } : {}),
+        replace: /^\s*create\s+or\s+replace\b/i.test(sql.slice(from, to)),
+      });
+      continue;
+    }
     if (words[0]!.value !== 'create' || words[0]!.kind !== 'word') {
-      statements.push({ query: sql.slice(from, to), at: from });
+      statements.push({ query: sql.slice(from, to), at: from, names: [], pieces: [{ at: from, text: sql.slice(from, to) }] });
       continue;
     }
     // CREATE [OR REPLACE] [TEMP | TEMPORARY] TABLE | VIEW [IF NOT EXISTS] name AS query
     let k = 1;
     const word = (v: string) => words[k]?.kind === 'word' && words[k]!.value === v;
-    if (word('or') && words[k + 1]?.value === 'replace') k += 2;
+    const replace = word('or') && words[k + 1]?.value === 'replace';
+    if (replace) k += 2;
     if (word('temp') || word('temporary')) k++;
     if (!word('table') && !word('view')) return { problem: `${shown(words, 0, k + 1)} isn’t something a script can do: it can only CREATE TABLE name AS a query` };
     k++;
@@ -87,12 +132,23 @@ function splitPlaced(sql: string): { statements: PlacedStatement[] } | { problem
     const as = words[k + 1];
     // CREATE TABLE users SELECT ...: the query is there, only the AS before it is missing.
     if (as?.kind === 'word' && QUERY_WORDS.has(as.value)) return { problem: `put AS between ${name.text} and its query: ${shown(words, 0, k)} ${name.text} AS ${as.text} ...` };
-    if (!as || as.kind !== 'word' || as.value !== 'as') return { problem: `give ${name.text} its rows with AS and a query: CREATE TABLE ${name.text} AS SELECT ... (a script can’t declare columns or insert rows)` };
+    if (!as || as.kind !== 'word' || as.value !== 'as') return { problem: `give ${name.text} its rows with AS and a query: CREATE TABLE ${name.text} AS SELECT ... or declare its columns: CREATE TABLE ${name.text} (id INTEGER, name VARCHAR)` };
     if (!words[k + 2]) return { problem: `write the query ${name.text} is made from after AS` };
     // CREATE TABLE name AS (SELECT ...): the brackets around the whole query say nothing, so they go.
     const body = wrapped(words, k + 2) ? words.slice(k + 3, -1) : words.slice(k + 2);
     if (!body.length) return { problem: `write the query ${name.text} is made from after AS` };
-    statements.push({ table: name.value, label: name.kind === 'quoted' ? name.text.slice(1, -1).replace(/""/g, '"') : name.text, query: sql.slice(body[0]!.start, end(body[body.length - 1]!)), at: body[0]!.start, name: [name.start, end(name)] });
+    const label = name.kind === 'quoted' ? name.text.slice(1, -1).replace(/""/g, '"') : name.text;
+    const query = sql.slice(body[0]!.start, end(body[body.length - 1]!));
+    statements.push({
+      table: name.value,
+      label,
+      query,
+      at: body[0]!.start,
+      name: [name.start, end(name)],
+      names: [{ span: [name.start, end(name)], table: name.value, label, makes: true }],
+      pieces: [{ at: body[0]!.start, text: query }],
+      ...(replace ? { replace } : {}),
+    });
   }
   return { statements };
 }
@@ -144,13 +200,30 @@ const shown = (tokens: SqlToken[], from: number, to: number) => tokens.slice(fro
 /** True when a SQL node's query is a script: more than one statement, or a CREATE TABLE. */
 export function isScript(sql: string): boolean {
   const split = splitScript(sql);
-  return 'problem' in split ? /^\s*create\b/i.test(sql.replace(/--[^\n]*|\/\*[\s\S]*?\*\//g, '')) || /;\s*\S/.test(sql) : split.statements.length > 1 || split.statements.some((s) => s.table);
+  return 'problem' in split
+    ? /^\s*(create|insert|update|delete|alter|drop)\b/i.test(sql.replace(/--[^\n]*|\/\*[\s\S]*?\*\//g, '')) || /;\s*\S/.test(sql)
+    : split.statements.length > 1 || split.statements.some((s) => s.table || s.change);
 }
 
-/** The tables a script creates, in order, as written. Empty for a single query, or a script that can't be read. */
+/**
+ * The tables a script leaves, in the order they were first made, as written. A table dropped (or renamed) isn't one;
+ * one changed is still the one table. Empty for a single query, or a script that can't be read.
+ */
 export function scriptTables(sql: string): string[] {
   const split = splitScript(sql);
-  return 'problem' in split ? [] : split.statements.flatMap((s) => (s.label ? [s.label] : []));
+  if ('problem' in split) return [];
+  const tables: string[] = [];
+  for (const s of split.statements) {
+    if (s.drops) {
+      const at = tables.findIndex((t) => t.toLowerCase() === s.drops);
+      if (at >= 0 && !(s.change === 'rename' && s.table)) tables.splice(at, 1);
+      // Renamed: the table keeps its place under its new name.
+      else if (at >= 0 && s.label) tables[at] = s.label;
+      continue;
+    }
+    if (s.label && !tables.some((t) => t.toLowerCase() === s.table)) tables.push(s.label);
+  }
+  return tables;
 }
 
 /** A table named in a script, for an editor to mark: an input, a table the script makes, or one that isn't there. */
@@ -171,18 +244,22 @@ export function scriptTableRefs(sql: string, names: readonly string[]): ScriptTa
   const split = splitPlaced(sql);
   if ('problem' in split) return [];
   const inputs = names.map((n) => n.toLowerCase());
-  const made: string[] = [];
+  const made = new Set<string>();
   const out: ScriptTableRef[] = [];
   for (const s of split.statements) {
-    if (s.table && s.name) out.push({ start: s.name[0], end: s.name[1], name: s.table, kind: 'made' });
-    let refs: ReturnType<typeof sqlTableRefs> = [];
-    try {
-      refs = sqlTableRefs(s.query, [...inputs, ...made]);
-    } catch {
-      // Text the lexer won't guess about: nothing to mark in this statement.
+    for (const n of s.names) out.push({ start: n.span[0], end: n.span[1], name: n.table, kind: n.makes || made.has(n.table) ? 'made' : 'unknown' });
+    for (const piece of s.pieces) {
+      let refs: ReturnType<typeof sqlTableRefs> = [];
+      try {
+        // A value or condition is read as the query that selects it, so its subqueries' tables are found.
+        refs = piece.expr ? sqlTableRefs(`SELECT ${piece.text}`, [...inputs, ...made]).map((r) => ({ ...r, start: r.start - 7, end: r.end - 7 })) : sqlTableRefs(piece.text, [...inputs, ...made]);
+      } catch {
+        // Text the lexer won't guess about: nothing to mark in this piece.
+      }
+      for (const r of refs) out.push({ start: piece.at + r.start, end: piece.at + r.end, name: r.name, kind: !r.known ? 'unknown' : made.has(r.name) ? 'made' : 'input' });
     }
-    for (const r of refs) out.push({ start: s.at + r.start, end: s.at + r.end, name: r.name, kind: !r.known ? 'unknown' : made.includes(r.name) ? 'made' : 'input' });
-    if (s.table) made.push(s.table);
+    if (s.drops) made.delete(s.drops);
+    if (s.table) made.add(s.table);
   }
   return out.sort((a, b) => a.start - b.start);
 }
@@ -345,27 +422,70 @@ export function readScript(sql: string, inputs: Pick<SqlInput, 'port' | 'label'>
 
 /** readScript for any node that runs SQL as written: `names` are the names its inputs may be read by. */
 export function readScriptOver(sql: string, names: readonly string[], files: ScriptFile[]): ReadScript | { problem: string } {
-  const split = splitScript(sql);
+  const split = splitPlaced(sql);
   if ('problem' in split) return split;
   if (!split.statements.length) return { problem: `write a query, such as SELECT * FROM ${names[0] ?? 'input1'}` };
   const inputNames = names.map((n) => n.toLowerCase());
-  const made: string[] = [];
+  // The tables made so far, each by its name in lower case to its name as written.
+  const made = new Map<string, string>();
   let n = 0;
   const statements: ReadScript['statements'] = [];
   for (const [i, s] of split.statements.entries()) {
-    const which = split.statements.length > 1 ? (s.label ? `in ${s.label}: ` : `in statement ${i + 1}: `) : '';
-    if (!s.table && i < split.statements.length - 1) return { problem: `${which}a query in the middle of a script does nothing: make it CREATE TABLE name AS ${s.query.trim().split(/\s+/)[0]} ...` };
-    if (s.table && inputNames.includes(s.table)) return { problem: `${s.label} is already the name of an input: give the table another name` };
-    if (s.table && made.includes(s.table)) return { problem: `the script creates ${s.label} twice: give each table its own name` };
-    if (s.table && s.table.startsWith('__puddle_')) return { problem: `${s.label} is a name Puddle keeps for itself: give the table another name` };
+    const which = split.statements.length > 1 ? (s.label ? `in ${s.label}: ` : s.target ? `in ${s.target.label}: ` : `in statement ${i + 1}: `) : '';
+    if (!s.table && !s.change && i < split.statements.length - 1) return { problem: `${which}a query in the middle of a script does nothing: make it CREATE TABLE name AS ${s.query.trim().split(/\s+/)[0]} ...` };
+    if (s.target && !made.has(s.target.table)) {
+      if (s.ifExists) continue;
+      const what = s.change === 'drop' ? 'drop' : 'change';
+      if (inputNames.includes(s.target.table)) return { problem: `${which}${s.target.label} is a table this node reads, which a script can’t ${what}: make a table of your own from it first, CREATE TABLE my_${s.target.table.replace(/\W+/g, '_')} AS SELECT * FROM ${s.target.label}` };
+      return { problem: `${which}there’s no table ${s.target.label} to ${what}: the script makes it first with CREATE TABLE ${s.target.label} AS ...` };
+    }
+    const makes = s.table && (!s.change || s.change === 'declare' || s.change === 'rename');
+    if (makes && inputNames.includes(s.table!)) return { problem: `${s.label} is already the name of an input: give the table another name` };
+    if (makes && made.has(s.table!) && !s.replace) return { problem: s.change === 'rename' ? `${which}there’s already a table ${s.label}: rename it to another name` : `the script creates ${s.label} twice: write CREATE OR REPLACE TABLE ${s.label} to make it again, or give each table its own name` };
+    if (makes && s.table!.startsWith('__puddle_')) return { problem: `${s.label} is a name Puddle keeps for itself: give the table another name` };
+    const at = (statement: ScriptStatement) => {
+      const { at: _a, name: _n, names: _ns, pieces: _p, replace: _r, target: _t, ifExists: _e, ...rest } = statement as PlacedStatement;
+      return rest;
+    };
+    if (s.change === 'drop') {
+      made.delete(s.drops!);
+      statements.push({ ...at(s), reads: [] });
+      continue;
+    }
     const lifted = liftFileReads(s.query, files, () => fileCte(++n));
     if ('problem' in lifted) return { problem: which + lifted.problem };
-    const problem = customSqlProblem(lifted.query, [...inputNames, ...made, ...lifted.reads.map((r) => r.cte)]);
+    const problem = customSqlProblem(lifted.query, [...inputNames, ...made.keys(), ...lifted.reads.map((r) => r.cte)]);
     if (problem) return { problem: which + problem };
-    statements.push({ ...s, query: lifted.query, reads: lifted.reads });
-    if (s.table) made.push(s.table);
+    statements.push({ ...at(s), query: lifted.query, reads: lifted.reads });
+    if (s.drops) made.delete(s.drops);
+    if (s.table) made.set(s.table, s.label ?? s.table);
   }
+  if (!statements.some((s) => s.change !== 'drop')) return { problem: `write a query, such as SELECT * FROM ${names[0] ?? 'input1'}` };
   return { statements };
+}
+
+/**
+ * The statement whose rows are the script's: the last one, or where the script ends by dropping tables, the last
+ * statement left whose table it didn't drop.
+ */
+export function scriptRowsIndex(script: ReadScript): number {
+  const dropped = new Set<string>();
+  for (let k = script.statements.length - 1; k >= 0; k--) {
+    const s = script.statements[k]!;
+    if (s.drops && s.change === 'drop') dropped.add(s.drops);
+    else if (!s.table || !dropped.has(s.table)) return k;
+  }
+  return script.statements.length - 1;
+}
+
+/** The CTE (by `cteOf`) that holds each table the script leaves, by its name in lower case. */
+export function scriptTableCtes(script: ReadScript, cteOf: (k: number) => string): Map<string, string> {
+  const made = new Map<string, string>();
+  script.statements.forEach((st, k) => {
+    if (st.drops) made.delete(st.drops);
+    if (st.table) made.set(st.table, cteOf(k));
+  });
+  return made;
 }
 
 /**
@@ -385,8 +505,11 @@ export interface ScriptBinding {
 /** compileScript for a script read by readScriptOver: `bindings` give each of its names the CTE it reads. */
 export function compileScriptOver(script: ReadScript, bindings: ScriptBinding[], cteOf: (k: number) => string): string[] {
   const bound = bindings.map((b) => `${ident(b.name)} AS (SELECT * FROM ${b.cte})`);
-  return script.statements.map((s, k) => {
-    const earlier = script.statements.slice(0, k).flatMap((e, j) => (e.table ? [`${ident(e.table)} AS (SELECT * FROM ${cteOf(j)})`] : []));
+  return script.statements.flatMap((s, k) => {
+    // A DROP TABLE makes no rows: the tables after it just can't read the one it drops.
+    if (s.change === 'drop') return [];
+    // Each table made before, at its latest version: a change reads the version before it.
+    const earlier = [...scriptTableCtes({ statements: script.statements.slice(0, k) }, cteOf)].map(([table, cte]) => `${ident(table)} AS (SELECT * FROM ${cte})`);
     const reads = s.reads.map((r) => `${ident(r.cte)} AS (SELECT * FROM ${r.relation})`);
     const ctes = [...bound, ...earlier, ...reads];
     const body = `${CUSTOM_SQL_OPENER}\n${cleanCustomSql(s.query)}\n)`;

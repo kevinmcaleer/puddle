@@ -45,7 +45,8 @@ export { knownSchemas, SchemaBook } from './schemaBook';
 export { cleanCustomSql, customSqlProblem, INPUT_NAME, lexSql, SqlRefusal, sqlTableRefs, type SqlTableRef, type SqlToken, type SqlTokenKind } from './customSql';
 export { compileConsole, CONSOLE_ROW_LIMIT, consoleProblem } from './console';
 export { compileSqlNode, sqlInputNames, sqlNodeProblem, sqlTableNames, type SqlInput } from './sqlNode';
-export { compileScript, compileScriptOver, isScript, liftFileReads, readScript, readScriptOver, scriptTableRefs, scriptTables, splitScript, sqlReads, writtenSqlErrorLine, type FileRead, type ScriptBinding, type ScriptTableRef, type ReadScript, type ScriptFile, type ScriptStatement } from './sqlScript';
+export type { ChangeKind } from './scriptChanges';
+export { compileScript, compileScriptOver, isScript, liftFileReads, readScript, readScriptOver, scriptRowsIndex, scriptTableCtes, scriptTableRefs, scriptTables, splitScript, sqlReads, writtenSqlErrorLine, type FileRead, type ScriptBinding, type ScriptTableRef, type ReadScript, type ScriptFile, type ScriptStatement } from './sqlScript';
 export { FILE_COLUMN, FILE_SET_FORMATS, fileSetFileName, fileSetMembers, fileSetNames, globMatches, globRegExp, isFileSetFormat, isGlob } from './fileSet';
 export { renameSqlColumns, sqlColumnRefs } from './columnRefs';
 export { describeType, typeFamily, typesFit } from './types';
@@ -61,3 +62,4 @@ export { bool, cteName, ident, list, num, stepFailure, str, strList } from './sq
 export * from './steps';
 export { defineRule, describeRule, PATTERN_PRESETS, READS_AS_TYPES, ruleColumns, ruleDef, ruleParams, rulePredicate, ruleRefs, ruleScope, ruleTypes, type NodeNames, type PatternPreset, type ReadsAs, type RuleContext, type RuleDef } from './rules';
 export { compileExport, compileFullCount, compileFullData, compileSheetExport, CSV_DELIMITERS, EXPORT_FORMATS, exportFileName, exportOptions, PARQUET_COMPRESSION, sheetColumn, type ExportFormat, type OutputSpec, type XlsxExportOptions } from './export';
+export { compileShellCount, compileShellDescribe, compileShellPreview, compileShellTable, compileShellQuery, DOT_COMMANDS, likePattern, readShellCommand, schemaStatement, SHELL_ROW_LIMIT, shellCommandProblem, shellNames, shellProblem, type ShellStatement } from './shell';

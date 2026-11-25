@@ -50,7 +50,7 @@ The **Help** menu opens this **User guide** in a new tab, starts the {doc}`taxi 
 
 ![The keyboard shortcuts](_static/screenshots/settings-shortcuts.png)
 
-Puddle selects text like an app, not a web page: dragging across the canvas, menus or panels selects nothing, and Ctrl+A never selects the whole page. Text you type, SQL console answers, notes previews, code and messages can still be selected and copied, and Ctrl+A in one of them selects just that text.
+Puddle selects text like an app, not a web page: dragging across the canvas, menus or panels selects nothing, and Ctrl+A never selects the whole page. Text you type, SQL console (shell) answers, notes previews, code and messages can still be selected and copied, and Ctrl+A in one of them selects just that text.
 
 ## Working offline
 

@@ -421,6 +421,31 @@ test('query designer', async ({ page }) => {
   await shot(page, 'query-pivot');
 });
 
+test('the DuckDB shell', async ({ page }) => {
+  await start(page);
+  await addFiles(page, [fixture('shop-orders.csv'), fixture('shop-customers.csv')]);
+  for (const f of ['shop-orders.csv', 'shop-customers.csv']) await expect(node(page, f)).toHaveAttribute('data-status', 'ok', { timeout: 20_000 });
+  await page.getByTestId('console-toggle').click();
+  // A taller results panel, so the shell's history shows more than its last answer.
+  const handle = (await page.getByRole('separator', { name: 'Resize results' }).boundingBox())!;
+  await page.mouse.move(handle.x + handle.width / 2, handle.y + handle.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(handle.x + handle.width / 2, handle.y - 320, { steps: 5 });
+  await page.mouse.up();
+  const prompt = page.getByLabel('Console query');
+  const run = async (command: string) => {
+    await prompt.fill(command);
+    await prompt.press('Control+Enter');
+  };
+  await run('.tables');
+  await expect(page.getByTestId('shell-tables')).toContainText('shop-customers.csv');
+  await run('CREATE TABLE big_orders AS\nSELECT * FROM "shop-orders.csv" WHERE total > 5');
+  await expect(page.getByTestId('shell-changed').last()).toContainText('big_orders has 3 rows');
+  await run('SELECT c.name, count(*) AS orders, sum(total) AS spent\nFROM big_orders JOIN "shop-customers.csv" c USING (customer_id)\nGROUP BY 1 ORDER BY 1');
+  await expect(page.getByTestId('console-summary')).toContainText('2 rows');
+  await shot(page, 'shell');
+});
+
 test('relationships', async ({ page }) => {
   await start(page);
   await combine(page, ['shop-orders.csv', 'shop-customers.csv'], /Join/, 'selection');

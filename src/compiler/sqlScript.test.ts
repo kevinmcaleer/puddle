@@ -33,7 +33,7 @@ SELECT * FROM docs;`);
   });
 
   it('refuses statements that do anything but make a table from a query', () => {
-    expect(splitScript('CREATE TABLE t (id INT)')).toEqual({ problem: expect.stringMatching(/give t its rows with AS and a query/) });
+    expect(splitScript('CREATE TABLE t (id INT) AS SELECT 1')).toEqual({ problem: expect.stringMatching(/give t its rows with AS and a query/) });
     expect(splitScript('CREATE SCHEMA s')).toEqual({ problem: expect.stringMatching(/^CREATE SCHEMA isn’t something a script can do/) });
     expect(splitScript('CREATE TABLE main.t AS SELECT 1')).toEqual({ problem: expect.stringMatching(/without a schema/) });
     expect(splitScript('CREATE TABLE t AS')).toEqual({ problem: 'write the query t is made from after AS' });
@@ -102,7 +102,7 @@ describe('a script against its inputs and files', () => {
   });
 
   it('refuses a table named twice, after an input, or a query that isn’t last', () => {
-    expect(readScript('CREATE TABLE a AS SELECT 1; CREATE OR REPLACE TABLE A AS SELECT 2', inputs, files)).toEqual({ problem: 'the script creates A twice: give each table its own name' });
+    expect(readScript('CREATE TABLE a AS SELECT 1; CREATE TABLE A AS SELECT 2', inputs, files)).toEqual({ problem: 'the script creates A twice: write CREATE OR REPLACE TABLE A to make it again, or give each table its own name' });
     expect(readScript('CREATE TABLE logs AS SELECT 1', inputs, files)).toEqual({ problem: 'logs is already the name of an input: give the table another name' });
     expect(readScript('SELECT 1; CREATE TABLE a AS SELECT 2', inputs, files)).toEqual({ problem: expect.stringMatching(/^in statement 1: a query in the middle of a script does nothing/) });
   });
@@ -185,9 +185,10 @@ describe('SQL written on other nodes', () => {
 
   it('a Query says why its SQL can’t run in the same words, and still runs a plain query as before', () => {
     const p = (sql: string) => flow({ sources: [orders], nodes: [{ id: 'o', type: 'source', sourceId: 'orders', name: 'orders' }, { id: 'q', type: 'query', querySpec: { sql } }], wires: [['o', 'q', 0]] });
-    expect(sqlProblem(p('CREATE TABLE big (id INT)'), 'q')).toMatch(/give big its rows with AS and a query/);
+    expect(sqlProblem(p('CREATE TABLE big (id INT) AS SELECT 1'), 'q')).toMatch(/give big its rows with AS and a query/);
     expect(() => compile(p('CREATE TABLE orders AS SELECT 1'), { nodeId: 'q' })).toThrow('This script can’t run: orders is already the name of an input: give the table another name.');
-    expect(() => compile(p('DROP TABLE orders'), { nodeId: 'q' })).toThrow(/^This query can’t run: DROP isn’t allowed/);
+    expect(() => compile(p('DROP TABLE orders'), { nodeId: 'q' })).toThrow(/^This script can’t run: orders is a table this node reads, which a script can’t drop/);
+    expect(() => compile(p('DROP SCHEMA main'), { nodeId: 'q' })).toThrow(/^This script can’t run: DROP SCHEMA isn’t something a script can do/);
     expect(compile(p('SELECT * FROM orders'), { nodeId: 'q' }).sql).toContain('"n_q" AS (WITH "input1"');
   });
 

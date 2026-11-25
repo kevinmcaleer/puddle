@@ -1,4 +1,4 @@
-import { autocompletion, type CompletionContext, type CompletionResult } from '@codemirror/autocomplete';
+import { autocompletion, completionStatus, type CompletionContext, type CompletionResult } from '@codemirror/autocomplete';
 import { defaultKeymap, history, historyKeymap } from '@codemirror/commands';
 import { PostgreSQL, sql } from '@codemirror/lang-sql';
 import { HighlightStyle, syntaxHighlighting } from '@codemirror/language';
@@ -34,6 +34,7 @@ interface Latest {
   onSubmit?: (v: string) => void;
   marks?: (text: string) => TextMark[];
   onPoint?: (mark: TextMark | undefined) => void;
+  onHistory?: (direction: 'up' | 'down', text: string) => string | undefined;
 }
 
 const sameMark = (a: TextMark | undefined, b: TextMark | undefined) => a?.start === b?.start && a?.end === b?.end && a?.nodeId === b?.nodeId;
@@ -55,6 +56,7 @@ export function SqlEditor({
   onSubmit,
   marks,
   onPoint,
+  onHistory,
 }: {
   id: string;
   value: string;
@@ -71,15 +73,20 @@ export function SqlEditor({
   marks?: (text: string) => TextMark[];
   /** The mark under the pointer, else the one the caret is in while the editor has focus; undefined when neither. */
   onPoint?: (mark: TextMark | undefined) => void;
+  /**
+   * Up on the first line or down on the last, with no suggestion open: the text to show instead (an earlier command,
+   * as a shell recalls it), or undefined to move the caret as usual.
+   */
+  onHistory?: (direction: 'up' | 'down', text: string) => string | undefined;
 }) {
   // In the dock beside the rows the editor takes the dock's height; elsewhere it keeps its own, and can be dragged taller.
   const fill = useContext(DockedContext);
   const host = useRef<HTMLDivElement>(null);
   const view = useRef<EditorView | null>(null);
-  const latest = useRef<Latest>({ value, columns, onCommit, onSubmit, marks, onPoint });
+  const latest = useRef<Latest>({ value, columns, onCommit, onSubmit, marks, onPoint, onHistory });
   const pointed = useRef<{ hovered?: TextMark; told?: TextMark }>({});
   useEffect(() => {
-    latest.current = { value, columns, onCommit, onSubmit, marks, onPoint };
+    latest.current = { value, columns, onCommit, onSubmit, marks, onPoint, onHistory };
   });
 
   useEffect(() => {
@@ -152,6 +159,23 @@ export function SqlEditor({
                 },
               },
             ]),
+          ),
+          Prec.high(
+            keymap.of(
+              (['up', 'down'] as const).map((direction) => ({
+                key: direction === 'up' ? 'ArrowUp' : 'ArrowDown',
+                run: (v: EditorView) => {
+                  const recall = latest.current.onHistory;
+                  if (!recall || completionStatus(v.state) === 'active') return false;
+                  const line = v.state.doc.lineAt(v.state.selection.main.head).number;
+                  if (direction === 'up' ? line !== 1 : line !== v.state.doc.lines) return false;
+                  const text = recall(direction, v.state.doc.toString());
+                  if (text == null) return false;
+                  v.dispatch({ changes: { from: 0, to: v.state.doc.length, insert: text }, selection: { anchor: text.length } });
+                  return true;
+                },
+              })),
+            ),
           ),
           keymap.of([...defaultKeymap, ...historyKeymap]),
           language,
